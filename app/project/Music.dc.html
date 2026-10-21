@@ -154,7 +154,7 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
   <header style="padding:22px 16px 12px;display:flex;flex-direction:column;gap:12px">
     <div style="display:flex;justify-content:space-between;align-items:flex-end;padding:0 4px">
       <h1 style="margin:0;font-size:26px;font-weight:600">Show</h1>
-      <div style="font-size:12px;color:#A3ACB8;text-align:right">Spotify · offline<br>on Mac mini</div>
+      <div style="font-size:12px;color:{{statusColor}};text-align:right">{{statusLine}}<br>{{statusWhere}}</div>
     </div>
     <nav style="display:flex;gap:4px;background:#161A21;border:1px solid #262C36;border-radius:12px;padding:4px" aria-label="Show sections">
       <a href="Show.dc.html" style="flex:1;display:flex;align-items:center;justify-content:center;min-height:44px;border-radius:9px;color:#A3ACB8;text-decoration:none;font-size:13px;font-weight:500">Show</a>
@@ -167,6 +167,16 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
   </header>
 
   <main class=" wide2" style="flex:1;overflow-y:auto;padding:0 16px 16px;display:flex;flex-direction:column;gap:12px">
+    <sc-if value="{{helperDown}}" hint-placeholder-val="{{ false }}">
+      <div class="card wfull" role="alert" style="border-color:#FF7A45;display:flex;flex-direction:column;gap:6px">
+        <div style="font-weight:600;color:#FF9C70">Can’t reach Spotify</div>
+        <div style="font-size:13px;color:#C9CFD7;line-height:1.45">{{helperErr}}</div>
+        <a href="Help.dc.html" style="font-size:13px">Help › Music › The C3 Life helper on the Mac mini</a>
+      </div>
+    </sc-if>
+    <sc-if value="{{msg}}" hint-placeholder-val="{{ false }}">
+      <div class="card wfull" role="status" style="font-size:13px;color:#C9CFD7;padding:10px 14px">{{msg}}</div>
+    </sc-if>
     <section class="card" style="display:flex;flex-direction:column;gap:12px">
       <div style="display:flex;gap:12px;align-items:center">
         <div style="width:72px;height:72px;border-radius:10px;background:{{art}};display:flex;align-items:center;justify-content:center;flex:none" aria-hidden="true">
@@ -175,50 +185,66 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
         <div style="flex:1;min-width:0">
           <div class="lbl">{{stateLabel}} · {{playlistName}}</div>
           <div style="font-size:17px;font-weight:600;margin-top:2px">{{track}}</div>
-          <div style="font-size:13px;color:#A3ACB8">Walk-in playlist · track {{trackNum}} of {{trackCount}}</div>
+          <div style="font-size:13px;color:#A3ACB8">{{subLine}}</div>
         </div>
       </div>
       <div style="display:flex;flex-direction:column;gap:4px">
         <div style="height:4px;border-radius:2px;background:#0F1318;overflow:hidden"><div style="height:4px;background:#F5C518;width:{{progress}}%"></div></div>
-        <div class="mono" style="display:flex;justify-content:space-between;font-size:11px;color:#A3ACB8"><span>{{elapsed}}</span><span>3:48</span></div>
+        <div class="mono" style="display:flex;justify-content:space-between;font-size:11px;color:#A3ACB8"><span>{{elapsed}}</span><span>{{durLabel}}</span></div>
       </div>
       <div style="display:flex;justify-content:center;align-items:center;gap:18px">
-        <button class="ctl" onClick="{{prev}}" aria-label="Previous track"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button>
-        <button class="ctl big" onClick="{{togglePlay}}" aria-label="{{playAria}}">
+        <button class="ctl" onClick="{{prev}}" aria-label="Previous track" disabled="{{noCtl}}"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button>
+        <button class="ctl big" onClick="{{togglePlay}}" aria-label="{{playAria}}" disabled="{{noCtl}}">
           <sc-if value="{{playing}}" hint-placeholder-val="{{ true }}"><svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg></sc-if>
           <sc-if value="{{paused}}" hint-placeholder-val="{{ false }}"><svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></sc-if>
         </button>
-        <button class="ctl" onClick="{{next}}" aria-label="Next track"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button>
+        <button class="ctl" onClick="{{next}}" aria-label="Next track" disabled="{{noCtl}}"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button>
       </div>
       <div style="display:flex;align-items:center;gap:10px">
         <label for="vol" style="font-size:13px;color:#A3ACB8;width:56px">Volume</label>
-        <input id="vol" type="range" min="0" max="100" value="{{vol}}" onChange="{{setVol}}">
+        <input id="vol" type="range" min="0" max="100" value="{{vol}}" onChange="{{setVol}}" disabled="{{noCtl}}">
         <span class="mono" style="font-size:13px;width:40px;text-align:right">{{vol}}%</span>
       </div>
       <div style="display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:8px">
-        <button class="btn" onClick="{{fadeOut}}" disabled="{{fading}}">{{fadeOutLabel}}</button>
-        <button class="btn" onClick="{{fadeIn}}" disabled="{{fading}}">Fade in to 30%</button>
+        <button class="btn" onClick="{{fadeOut}}" disabled="{{fadeOff}}">{{fadeOutLabel}}</button>
+        <button class="btn" onClick="{{fadeIn}}" disabled="{{fadeOff}}">Fade in to {{walkVol}}%</button>
       </div>
     </section>
 
     <a href="Foyer.dc.html" class="card" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:#ECEEF1;padding:12px 14px;min-height:44px">
-      <span style="flex:1"><span style="font-size:15px;font-weight:600">Foyer: Spotify</span><br><span style="font-size:12px;color:#A3ACB8">Switch source and set foyer volume</span></span>
+      <span style="flex:1"><span style="font-size:15px;font-weight:600">Foyer</span><br><span style="font-size:12px;color:#A3ACB8">Switch source and set foyer volume</span></span>
       <span style="font-size:13px;color:#6CB4F5">Foyer ›</span>
     </a>
 
     <section class="card" style="display:flex;flex-direction:column;padding:6px 14px">
       <div style="display:flex;justify-content:space-between;align-items:baseline;padding:6px 0">
         <div class="lbl">Playlists · downloaded for offline</div>
-        <span style="font-size:12px;color:#A3ACB8">Play or stop</span>
+        <sc-if value="{{canEdit}}" hint-placeholder-val="{{ false }}"><button class="btn" style="min-height:36px;padding:0 10px;font-size:13px" onClick="{{toggleEdit}}" aria-pressed="{{edit}}">{{editLabel}}</button></sc-if>
+        <sc-if value="{{noEdit}}" hint-placeholder-val="{{ true }}"><span style="font-size:12px;color:#A3ACB8">Play or stop</span></sc-if>
       </div>
+      <sc-if value="{{noLists}}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:13px;color:#A3ACB8;padding:10px 0;border-top:1px solid #222831;line-height:1.45">{{noListsText}}</div>
+      </sc-if>
       <sc-for list="{{playlists}}" as="p" hint-placeholder-count="4">
         <div style="display:flex;align-items:center;gap:10px;min-height:64px;border-top:1px solid #222831">
           <span style="width:40px;height:40px;border-radius:8px;flex:none;background:{{p.color}}"></span>
           <span style="flex:1;min-width:0"><span style="font-weight:{{p.weight}}">{{p.name}}</span><br><span style="font-size:12px;color:{{p.subColor}}">{{p.sub}}</span></span>
-          <button class="{{p.playCls}}" onClick="{{p.play}}" aria-label="Play {{p.name}}" aria-pressed="{{p.on}}"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></button>
-          <button class="pb" onClick="{{p.stop}}" aria-label="Stop {{p.name}}"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1"/></svg></button>
+          <sc-if value="{{p.editing}}" hint-placeholder-val="{{ false }}"><button class="btn" style="min-height:44px" onClick="{{p.remove}}" aria-label="Remove {{p.name}}">Remove</button></sc-if>
+          <sc-if value="{{p.notEditing}}" hint-placeholder-val="{{ true }}">
+          <button class="{{p.playCls}}" onClick="{{p.play}}" aria-label="Play {{p.name}}" aria-pressed="{{p.on}}" disabled="{{noCtl}}"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></button>
+          <button class="pb" onClick="{{p.stop}}" aria-label="Stop {{p.name}}" disabled="{{noCtl}}"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1"/></svg></button>
+          </sc-if>
         </div>
       </sc-for>
+      <sc-if value="{{edit}}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:8px;padding:10px 0 8px;border-top:1px solid #222831">
+          <div class="lbl">Add a playlist</div>
+          <input id="mu-add-name" aria-label="Playlist name" placeholder="Name, e.g. Walk-in" value="{{addName}}" onChange="{{setAddName}}" maxlength="40" style="min-height:44px;border-radius:9px;border:1px solid #333B47;background:#0F1318;color:#ECEEF1;padding:0 10px">
+          <input id="mu-add-uri" aria-label="Spotify link" placeholder="Spotify link: ••• › Share › Copy link" value="{{addUri}}" onChange="{{setAddUri}}" autocapitalize="off" autocomplete="off" spellcheck="false" style="min-height:44px;border-radius:9px;border:1px solid #333B47;background:#0F1318;color:#ECEEF1;padding:0 10px">
+          <button class="btn pri" onClick="{{addList}}">Add</button>
+          <div style="font-size:12px;color:#A3ACB8;line-height:1.45">In Spotify on the Mac, right-click the playlist › Share › Copy link to playlist, and paste it here. Download it in Spotify too, so it plays without internet.</div>
+        </div>
+      </sc-if>
     </section>
 
     <section class="card" style="display:flex;flex-direction:column;padding:6px 14px">
@@ -237,17 +263,30 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
     <section class="card" style="display:flex;flex-direction:column;gap:10px">
       <div style="display:flex;align-items:center;gap:10px">
         <span style="flex:1;font-size:14px">Plays on</span>
+        <sc-if value="{{demo}}" hint-placeholder-val="{{ true }}">
         <select aria-label="Mac that plays the music" value="{{mac}}" onChange="{{pickMac}}">
           <sc-for list="{{macs}}" as="m" hint-placeholder-count="2"><option value="{{m}}">{{m}}</option></sc-for>
         </select>
+        </sc-if>
+        <sc-if value="{{live}}" hint-placeholder-val="{{ false }}"><span class="mono" style="font-size:12px;color:#C9CFD7">{{helperUrl}}</span></sc-if>
       </div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span style="flex:1;font-size:14px;min-width:150px">ProPresenter on that Mac<br><span style="font-size:12px;color:{{ppColor}}">{{ppLabel}}</span></span>
+        <button class="btn" onClick="{{askPP}}" disabled="{{ppOff}}">Open ProPresenter</button>
+      </div>
+      <sc-if value="{{ppAsk}}" hint-placeholder-val="{{ false }}">
+        <div role="alertdialog" aria-label="Open ProPresenter?" style="display:flex;flex-direction:column;gap:8px;border:1px solid #F5C518;border-radius:8px;padding:10px">
+          <div style="font-size:14px">Open ProPresenter on the Mac mini? It starts ProPresenter there; nothing goes on screen.</div>
+          <div style="display:flex;gap:8px"><button class="btn pri" style="flex:1" onClick="{{openPP}}">Open it</button><button class="btn" style="flex:1" onClick="{{cancelPP}}">Cancel</button></div>
+        </div>
+      </sc-if>
       <div style="display:flex;align-items:center;gap:10px">
         <span style="flex:1;font-size:14px">Into the Wing on</span>
         <span style="font-size:13px;color:#C9CFD7">Aux 2 · Walk-in</span>
       </div>
       <div style="display:flex;align-items:center;gap:10px">
         <span style="flex:1;font-size:14px">Offline status</span>
-        <span style="font-size:13px;color:#6CB4F5">All playlists ready</span>
+        <span style="font-size:13px;color:#6CB4F5">{{offlineLabel}}</span>
       </div>
       <div style="font-size:12px;color:#A3ACB8;line-height:1.45">Re-sync downloads on the Mac every few weeks while it has internet. Make sure your church's music licences cover playing recorded music in services.</div>
     </section>
@@ -265,24 +304,60 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
 class Component extends DCLogic {
   constructor(props) {
     super(props);
+    // The preview's demo. On the C3 Life server the list, the track and the buttons are Spotify's on the Mac mini.
     this.lists = [
       { name: 'Walk-in', songs: 42, color: '#F5C518', synced: 'Downloaded · 42 songs' },
       { name: 'After service', songs: 35, color: '#6CB4F5', synced: 'Downloaded · 35 songs' },
       { name: 'Kids', songs: 28, color: '#7FD1C1', synced: 'Downloaded · 28 songs' },
       { name: 'Christmas', songs: 51, color: '#B48CF2', synced: '3 songs not downloaded · re-sync' }
     ];
+    this.colors = ['#F5C518', '#6CB4F5', '#7FD1C1', '#B48CF2', '#FF9C70', '#E58FB8'];
     this.state = { list: 0, track: 7, playing: true, vol: 30, t: 72, fading: false, mac: 'Mac mini', interlock: true,
-      mutes: [{ label: 'Spotify', ch: 'Bus 7 · Foyer Spotify', muted: false }, { label: 'Live service', ch: 'Bus 8 · Foyer Live', muted: true }], foyerMtx: 'Mtx 1 · Foyer', admin: false };
+      mutes: [{ label: 'Spotify', ch: 'Bus 7 · Foyer Spotify', muted: false }, { label: 'Live service', ch: 'Bus 8 · Foyer Live', muted: true }], foyerMtx: 'Mtx 1 · Foyer', admin: false,
+      mu: null, muAt: 0, msg: '', edit: false, addName: '', addUri: '', ppAsk: false, volHeld: null };
+  }
+  muTok() { try { const x = JSON.parse(localStorage.getItem('booth.session') || 'null'); return x ? x.token : ''; } catch (e) { return ''; } }
+  muApi(path, method, body) {
+    const t = this.muTok(), h = t ? { Authorization: 'Bearer ' + t } : {};
+    if (body) h['Content-Type'] = 'application/json';
+    return fetch(path, { method: method || 'GET', headers: h, body: body ? JSON.stringify(body) : undefined })
+      .then((r) => r.json().catch(() => ({})).then((j) => ({ code: r.status, j: j })));
+  }
+  muGot(j) { if (j && j.playlists) this.setState({ mu: j, muAt: Date.now() }); }
+  muLoad() {
+    if (this.demo || this.muBusy) return;
+    this.muBusy = true;
+    this.muApi('/api/music').then(({ code, j }) => {
+      this.muBusy = false;
+      if (code === 404) { this.demo = true; this.setState({ mu: null }); return; }
+      if (code === 200 && j.ok) this.muGot(j);
+      else if (code === 401 || code === 403) this.setState({ mu: null, msg: code === 401 ? 'Sign in to see the music (Change user).' : 'Your role can’t see the music (Access levels).' });
+    }).catch(() => { this.muBusy = false; });
+  }
+  muDo(body, done) {
+    this.muApi('/api/music/do', 'POST', body).then(({ j }) => {
+      this.muGot(j);
+      this.setState({ msg: (j && j.error) || (done || '') });
+    }).catch(() => this.setState({ msg: 'The C3 Life server didn’t answer. Try again.' }));
+  }
+  muSave(lists, done) {
+    const m = this.state.mu;
+    return this.muApi('/api/music', 'PUT', { playlists: lists, fade_seconds: m.fade_seconds, walk_in_volume: m.walk_in_volume }).then(({ j }) => {
+      if (j && j.ok) { this.muGot(j); this.setState({ msg: done || 'Saved.' }); return true; }
+      this.setState({ msg: (j && j.error) || 'Not saved. Try again.' }); return false;
+    }).catch(() => { this.setState({ msg: 'Not saved: the C3 Life server didn’t answer.' }); return false; });
   }
   componentDidMount() {
     this.timer = setInterval(() => {
       const s = this.state;
+      if (s.mu) { if (s.mu.spotify && s.mu.spotify.state === 'playing') this.setState({ tick: Date.now() }); return; }
       if (!s.playing) return;
       if (s.t >= 228) this.setState({ t: 0, track: (s.track % this.lists[s.list].songs) + 1 });
       else this.setState({ t: s.t + 1 });
     }, 1000);
+    this.muLoad(); this.muT = setInterval(() => this.muLoad(), 2000);
   }
-  componentWillUnmount() { clearInterval(this.timer); clearInterval(this.fadeT); }
+  componentWillUnmount() { clearInterval(this.timer); clearInterval(this.fadeT); clearInterval(this.muT); clearTimeout(this.volT); }
   fadeTo(target, pauseAtEnd) {
     clearInterval(this.fadeT);
     this.setState({ fading: true, playing: true });
@@ -298,62 +373,123 @@ class Component extends DCLogic {
       } else this.setState({ vol: v });
     }, 150);
   }
+  clock(sec) { sec = Math.max(0, Math.floor(sec || 0)); return Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0'); }
+  liveVals() {
+    const s = this.state, m = s.mu, sp = m.spotify || {}, up = m.helper && m.helper.ok, on = up && sp.running;
+    const playing = on && sp.state === 'playing', ctl = !!m.can && on;
+    const pos = playing ? Math.min(sp.duration || 0, (sp.position || 0) + (Date.now() - s.muAt) / 1000) : (sp.position || 0);
+    const held = s.volHeld && Date.now() - s.volHeld.at < 1500 ? s.volHeld.v : null;
+    const vol = held != null ? held : (sp.volume || 0);
+    const kind = (u) => (u.split(':')[1] || 'playlist');
+    return {
+      statusLine: !up ? 'Spotify · not reachable' : (!sp.running ? 'Spotify · not open' : 'Spotify · ' + (sp.fading ? 'fading' : sp.state)),
+      statusWhere: 'on Mac mini', statusColor: up && sp.running ? '#A3ACB8' : '#FF9C70',
+      helperDown: !up, helperErr: up ? '' : m.helper.error,
+      demo: false, live: true, helperUrl: (m.helper && m.helper.url || '').replace(/^https?:\/\//, ''),
+      art: (m.playlists.findIndex((p) => p.name === m.now) >= 0) ? this.colors[m.playlists.findIndex((p) => p.name === m.now) % this.colors.length] : '#333B47',
+      stateLabel: !on ? 'Not playing' : (sp.fading ? 'Fading' : (playing ? 'Playing' : 'Paused')),
+      playlistName: m.now || 'Spotify',
+      track: on ? (sp.track || 'Nothing playing') : (up ? 'Spotify isn’t open on the Mac' : '—'),
+      subLine: on && sp.artist ? sp.artist + (sp.album ? ' · ' + sp.album : '') : (m.can ? 'Tap a playlist to start' : ''),
+      progress: sp.duration ? Math.round(pos / sp.duration * 100) : 0,
+      elapsed: this.clock(pos), durLabel: this.clock(sp.duration),
+      playing: playing, paused: !playing, playAria: playing ? 'Pause' : 'Play',
+      noCtl: !ctl,
+      togglePlay: () => this.muDo({ do: playing ? 'pause' : 'play' }),
+      prev: () => this.muDo({ do: 'previous' }),
+      next: () => this.muDo({ do: 'next' }),
+      vol: vol,
+      setVol: (e) => {
+        const v = Number(e.target.value);
+        this.setState({ volHeld: { v: v, at: Date.now() } });
+        clearTimeout(this.volT);
+        this.volT = setTimeout(() => this.muDo({ do: 'volume', value: v }), 250);
+      },
+      fading: !!sp.fading, fadeOff: !ctl || !!sp.fading,
+      fadeOutLabel: sp.fading ? 'Fading…' : 'Fade out · ' + m.fade_seconds + 's',
+      fadeOut: () => this.muDo({ do: 'fade', to: 0, then: 'pause' }, 'Fading out over ' + m.fade_seconds + ' seconds, then it pauses.'),
+      fadeIn: () => this.muDo({ do: 'fade', to: m.walk_in_volume }, 'Fading in to ' + m.walk_in_volume + '%.'),
+      walkVol: m.walk_in_volume,
+      canEdit: !!m.can, noEdit: !m.can, edit: s.edit && !!m.can, editLabel: s.edit ? 'Done' : 'Change list',
+      toggleEdit: () => this.setState({ edit: !s.edit, msg: '' }),
+      noLists: !m.playlists.length, noListsText: m.can ? 'No playlists yet. Tap Change list to add the church’s Spotify playlists.' : 'No playlists yet. Someone with Show control adds them here.',
+      playlists: m.playlists.map((p, i) => {
+        const cur = p.name === m.now && playing;
+        return {
+          name: p.name, color: this.colors[i % this.colors.length], on: cur, weight: p.name === m.now ? '600' : '400',
+          sub: 'Spotify ' + kind(p.uri), subColor: '#A3ACB8', playCls: cur ? 'pb on' : 'pb',
+          editing: s.edit && !!m.can, notEditing: !(s.edit && m.can),
+          play: () => this.muDo({ do: 'playlist', name: p.name }, 'Playing ' + p.name + '.'),
+          stop: () => { if (p.name === m.now) this.muDo({ do: 'pause' }); },
+          remove: () => this.muSave(m.playlists.filter((x) => x.name !== p.name), 'Removed ' + p.name + '.')
+        };
+      }),
+      addName: s.addName, addUri: s.addUri,
+      setAddName: (e) => this.setState({ addName: e.target.value }),
+      setAddUri: (e) => this.setState({ addUri: e.target.value }),
+      addList: () => {
+        const n = s.addName.trim(), u = s.addUri.trim();
+        if (!n || !u) { this.setState({ msg: 'Give the playlist a name and paste its Spotify link.' }); return; }
+        this.muSave(m.playlists.concat([{ name: n, uri: u }]), 'Added ' + n + '.').then((ok) => { if (ok) this.setState({ addName: '', addUri: '' }); });
+      },
+      ppLabel: m.propresenter.running === true ? 'Open' : (m.propresenter.running === false ? 'Not open' : 'Not known (the helper isn’t answering)'),
+      ppColor: m.propresenter.running === true ? '#7FD1C1' : '#A3ACB8',
+      ppOff: !m.can || !up || m.propresenter.running === true,
+      ppAsk: s.ppAsk,
+      askPP: () => this.setState({ ppAsk: true }),
+      cancelPP: () => this.setState({ ppAsk: false }),
+      openPP: () => {
+        this.setState({ ppAsk: false, msg: 'Opening ProPresenter on the Mac mini…' });
+        this.muApi('/api/music/propresenter', 'POST', {}).then(({ j }) => { this.muGot(j); this.setState({ msg: (j && j.error) || 'ProPresenter is opening on the Mac mini.' }); })
+          .catch(() => this.setState({ msg: 'The C3 Life server didn’t answer. Try again.' }));
+      },
+      offlineLabel: 'Download each playlist in Spotify on the Mac'
+    };
+  }
   renderVals() {
     const s = this.state;
     const L = this.lists[s.list];
     const mm = Math.floor(s.t / 60), ss = String(s.t % 60).padStart(2, '0');
-    return {
+    const base = {
       art: L.color,
+      statusLine: 'Spotify · offline', statusWhere: 'on Mac mini (demo)', statusColor: '#A3ACB8',
+      helperDown: false, helperErr: '', msg: s.msg, demo: true, live: false, helperUrl: '',
       stateLabel: s.fading ? 'Fading' : (s.playing ? 'Playing' : 'Paused'),
       playlistName: L.name,
       track: 'Walk-in track ' + s.track,
-      trackNum: s.track, trackCount: L.songs,
+      subLine: L.name + ' playlist · track ' + s.track + ' of ' + L.songs,
       progress: Math.round((s.t / 228) * 100),
-      elapsed: mm + ':' + ss,
+      elapsed: mm + ':' + ss, durLabel: '3:48',
       playing: s.playing, paused: !s.playing,
       playAria: s.playing ? 'Pause' : 'Play',
+      noCtl: false,
       togglePlay: () => this.setState({ playing: !s.playing }),
       prev: () => this.setState({ track: Math.max(1, s.track - 1), t: 0 }),
       next: () => this.setState({ track: (s.track % L.songs) + 1, t: 0 }),
       vol: s.vol,
       setVol: (e) => this.setState({ vol: Number(e.target.value) }),
-      fading: s.fading,
+      fading: s.fading, fadeOff: s.fading,
       fadeOutLabel: s.fading ? 'Fading…' : 'Fade out · 10s',
       fadeOut: () => this.fadeTo(0, true),
       fadeIn: () => this.fadeTo(30, false),
+      walkVol: 30,
+      canEdit: false, noEdit: true, edit: false, editLabel: '', toggleEdit: () => {},
+      noLists: false, noListsText: '',
       playlists: this.lists.map((p, i) => ({
         name: p.name, color: p.color, on: i === s.list && s.playing,
         weight: i === s.list ? '600' : '400',
         sub: p.synced,
         subColor: p.synced.indexOf('re-sync') > -1 ? '#FF7A45' : '#A3ACB8',
         playCls: i === s.list && s.playing ? 'pb on' : 'pb',
+        editing: false, notEditing: true, remove: () => {},
         play: () => this.setState({ list: i, track: i === s.list ? s.track : 1, t: i === s.list ? s.t : 0, playing: true }),
         stop: () => { if (i === s.list) this.setState({ playing: false, t: 0 }); }
       })),
-      interlock: s.interlock,
-      toggleInterlock: () => this.setState({ interlock: !s.interlock }),
-      chOpts: ['Bus 5 · Stream L/R', 'Bus 6 · Spare', 'Bus 7 · Foyer Spotify', 'Bus 8 · Foyer Live', 'Bus 9 · Crèche', 'Bus 10 · Spare'],
-      mtxOpts: ['Mtx 1 · Foyer', 'Mtx 2 · Lobby', 'Mtx 3 · Crèche'],
-      foyerMtx: s.foyerMtx,
-      pickMtx: (e) => this.setState({ foyerMtx: e.target.value }),
-      locked: !s.admin, unlocked: s.admin,
-      lockColor: s.admin ? '#F5C518' : '#A3ACB8',
-      lockOpacity: s.admin ? '1' : '0.6',
-      demoAdminLabel: s.admin ? 'Lock setup again' : 'Demo: unlock as Admin',
-      demoAdmin: () => this.setState({ admin: !s.admin }),
-      mutes: s.mutes.map((m, i) => ({
-        label: m.label, ch: m.ch, muted: m.muted,
-        pathColor: m.muted ? '#A3ACB8' : '#F5C518',
-        cls: m.muted ? 'mt muted' : 'mt',
-        state: (m.muted ? 'Off' : 'In the foyer') + ' · ' + m.ch,
-        aria: (m.muted ? 'Unmute ' : 'Mute ') + m.label + ', ' + m.ch,
-        toggle: () => this.setState({ mutes: s.mutes.map((x, j) => {
-          if (j === i) return { ...x, muted: !x.muted };
-          if (s.interlock && m.muted) return { ...x, muted: true };
-          return x;
-        }) }),
-        pick: (e) => this.setState({ mutes: s.mutes.map((x, j) => (j === i ? { ...x, ch: e.target.value } : x)) })
-      })),
+      addName: '', addUri: '', setAddName: () => {}, setAddUri: () => {}, addList: () => {},
+      ppLabel: 'Demo: on the C3 Life server this shows whether it’s open', ppColor: '#A3ACB8', ppOff: false, ppAsk: s.ppAsk,
+      askPP: () => this.setState({ ppAsk: true }), cancelPP: () => this.setState({ ppAsk: false }),
+      openPP: () => this.setState({ ppAsk: false, msg: 'Demo: on the C3 Life server this opens ProPresenter on the Mac mini.' }),
+      offlineLabel: 'All playlists ready',
       schedule: [
         { t: '9:45', what: 'Play Walk-in at 30%' },
         { t: '9:59:50', what: 'Fade out over 10s, then pause' },
@@ -363,6 +499,7 @@ class Component extends DCLogic {
       mac: s.mac,
       pickMac: (e) => this.setState({ mac: e.target.value })
     };
+    return s.mu ? Object.assign(base, this.liveVals(), { msg: s.msg }) : base;
   }
 }
 </script>

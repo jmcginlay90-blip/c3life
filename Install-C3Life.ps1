@@ -44,6 +44,10 @@ param(
   # The Behringer Wing's IP address (on the Wing: Setup > Network). Leave out to keep what's set, or set it
   # later on the Mixer screen (Find the Wing). The app starts as Watch only; an Admin switches it to Control.
   [string]$WingIp = '',
+  # Music: the C3 Life helper on the Mac mini (helper/c3life_helper.py) plays Spotify and opens ProPresenter.
+  # Its address, and the key it shows when it starts (leave the key out to keep what's set).
+  [string]$Helper = 'http://192.168.10.30:8099',
+  [string]$HelperKey = '',
   # The Yamaha Tio1608-D's IP address, so C3 Life can change its gain and phantom power (like R Remote).
   [string]$TioIp = '',
   # Bible Scripture: KJV and WEBBE are built in. Keys for the others (leave out to keep what's set):
@@ -66,7 +70,7 @@ $here = $PSScriptRoot
 
 $p = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
 if (-not $p.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { throw 'Run this in an Administrator PowerShell.' }
-foreach ($need in 'server\c3life_server.py', 'server\listen.py', 'server\access.py', 'server\dante.py', 'server\nametags.py', 'server\scripture.py', 'server\cues.py', 'server\reports.py', 'server\pco.py', 'server\wing.py', 'server\tio.py', 'server\monitors.py', 'server\scan.py', 'server\hwcheck.py', 'server\foyer.py', 'server\rta_inputs.py', 'server\rta_patch.py', 'server\dante_names.py', 'server\lightkey.py', 'server\rta_live.py', 'server\midi_in.py', 'server\desk.py', 'server\bibles\KJV.txt.gz', 'server\bibles\WEBBE.txt.gz', 'app\player.html') {
+foreach ($need in 'server\c3life_server.py', 'server\listen.py', 'server\access.py', 'server\dante.py', 'server\nametags.py', 'server\scripture.py', 'server\cues.py', 'server\reports.py', 'server\pco.py', 'server\wing.py', 'server\tio.py', 'server\monitors.py', 'server\scan.py', 'server\hwcheck.py', 'server\foyer.py', 'server\rta_inputs.py', 'server\rta_patch.py', 'server\dante_names.py', 'server\lightkey.py', 'server\rta_live.py', 'server\midi_in.py', 'server\desk.py', 'server\music.py', 'server\bibles\KJV.txt.gz', 'server\bibles\WEBBE.txt.gz', 'app\player.html') {
   if (-not (Test-Path (Join-Path $here $need))) { throw "Missing $need next to this script. Copy the whole c3life-server folder." }
 }
 
@@ -178,7 +182,7 @@ if (-not $go) { Write-Host 'Nothing was changed.'; Stop-Transcript | Out-Null; r
 Stop-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
 Get-CimInstance Win32_Process -Filter "Name like 'python%'" | Where-Object { $_.CommandLine -like '*c3life_server.py*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 New-Item -ItemType Directory -Force -Path $serverDir, $appDir | Out-Null
-Copy-Item -Force (Join-Path $here 'server\c3life_server.py'), (Join-Path $here 'server\listen.py'), (Join-Path $here 'server\access.py'), (Join-Path $here 'server\dante.py'), (Join-Path $here 'server\nametags.py'), (Join-Path $here 'server\scripture.py'), (Join-Path $here 'server\cues.py'), (Join-Path $here 'server\reports.py'), (Join-Path $here 'server\pco.py'), (Join-Path $here 'server\wing.py'), (Join-Path $here 'server\tio.py'), (Join-Path $here 'server\monitors.py'), (Join-Path $here 'server\scan.py'), (Join-Path $here 'server\hwcheck.py'), (Join-Path $here 'server\foyer.py'), (Join-Path $here 'server\rta_inputs.py'), (Join-Path $here 'server\rta_patch.py'), (Join-Path $here 'server\dante_names.py'), (Join-Path $here 'server\lightkey.py'), (Join-Path $here 'server\rta_live.py'), (Join-Path $here 'server\midi_in.py'), (Join-Path $here 'server\desk.py') $serverDir
+Copy-Item -Force (Join-Path $here 'server\c3life_server.py'), (Join-Path $here 'server\listen.py'), (Join-Path $here 'server\access.py'), (Join-Path $here 'server\dante.py'), (Join-Path $here 'server\nametags.py'), (Join-Path $here 'server\scripture.py'), (Join-Path $here 'server\cues.py'), (Join-Path $here 'server\reports.py'), (Join-Path $here 'server\pco.py'), (Join-Path $here 'server\wing.py'), (Join-Path $here 'server\tio.py'), (Join-Path $here 'server\monitors.py'), (Join-Path $here 'server\scan.py'), (Join-Path $here 'server\hwcheck.py'), (Join-Path $here 'server\foyer.py'), (Join-Path $here 'server\rta_inputs.py'), (Join-Path $here 'server\rta_patch.py'), (Join-Path $here 'server\dante_names.py'), (Join-Path $here 'server\lightkey.py'), (Join-Path $here 'server\rta_live.py'), (Join-Path $here 'server\midi_in.py'), (Join-Path $here 'server\desk.py'), (Join-Path $here 'server\music.py') $serverDir
 New-Item -ItemType Directory -Force -Path (Join-Path $serverDir 'bibles') | Out-Null
 Copy-Item -Force (Join-Path $here 'server\bibles\*') (Join-Path $serverDir 'bibles')
 # netaudio reads the Dante routing (read only), so Listen sources can be named from Dante.
@@ -201,6 +205,11 @@ if ($PlanningCenterAppId -and $PlanningCenterSecret) {
   Write-Host 'Name tags: no Planning Center token yet. Run again with -PlanningCenterAppId and -PlanningCenterSecret to turn them on.'
 }
 $cfg | Add-Member -Force -NotePropertyName propresenter -NotePropertyValue $ProPresenter
+$cfg | Add-Member -Force -NotePropertyName helper -NotePropertyValue $Helper
+if ($HelperKey) {
+  $cfg | Add-Member -Force -NotePropertyName helper_key -NotePropertyValue $HelperKey
+  Write-Host "Music: the helper on $Helper, with its key"
+}
 if ($WingIp) {
   if ($WingIp -notmatch '^\d{1,3}(\.\d{1,3}){3}$') { throw "-WingIp should look like 192.168.10.20" }
   $cfg | Add-Member -Force -NotePropertyName wing_ip -NotePropertyValue $WingIp
