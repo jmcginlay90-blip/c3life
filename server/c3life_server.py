@@ -93,6 +93,9 @@ API (JSON):
   POST /api/lights/do {"do": "cue"|"go"|"back"|"release"|"preset"|"look"|"master"|"blackout"|"tap"|"tempo"|"fixture"|"clear", ...}
                                            (Lights control) send it to Lightkey as OSC; "fixture" and "look" take "fade"
   POST /api/lights/find                    (Admin) look for Lightkey on the network (Bonjour)
+  GET  /api/lights/midi                    (Lights view) the network MIDI session (MultiTracks Playback), who's connected,
+                                           what each message does, and the last ones heard with what they did
+  PUT  /api/lights/midi {"follow","channel","pc","pc_from","notes","cc_master","tempo"}   (Lights control)
 
 Listening from home: add the private network (for example Tailscale, "100.64.0.0/10") to
 "remote_networks". Devices there can only open the Listen page and the audio their group allows
@@ -137,6 +140,7 @@ import rta_patch as rta_patch_mod
 import dante_names as dante_names_mod
 import lightkey as lightkey_mod
 import rta_live as rta_live_mod
+import midi_in as midi_mod
 
 VERSION = "0.3.0"
 START = time.time()
@@ -378,7 +382,7 @@ def _ip_ok(x):
         return False
 
 
-def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bible=None, cues=None, reports=None, plan=None, wing=None, tio=None, monitors=None, scanner=None, foyer=None, rta_inputs=None, dante_names=None, lights=None, rta_live=None):
+def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bible=None, cues=None, reports=None, plan=None, wing=None, tio=None, monitors=None, scanner=None, foyer=None, rta_inputs=None, dante_names=None, lights=None, rta_live=None, midi=None):
     nets = cfg["_nets"]
     remote_nets = cfg.get("_remote", [])
 
@@ -760,6 +764,10 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
             if path == "/api/foyer":
                 if self.level("Foyer", "Show", "Mixer"):
                     self.send_json(200, dict(foyer.view(wing), ok=True))
+                return
+            if path == "/api/lights/midi":
+                if self.level("Lights"):
+                    self.send_json(200, dict(midi.view(), ok=True))
                 return
             if path == "/api/lights":
                 if self.level("Lights"):
@@ -1383,6 +1391,22 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 log.info("foyer: %s set the foyer to %r (mixes bus %d and %d, matrix %d)", s["name"], d["name"].strip(), d["mix_a"], d["mix_b"], d["mtx"])
                 self.send_json(200, dict(foyer.view(wing), ok=True))
                 return
+            if self.route() == "/api/lights/midi":
+                s = self.level("Lights", need=2)
+                if not s:
+                    return
+                body = self.read_json()
+                d = dict(midi.settings(), **{k: v for k, v in body.items() if k in midi_mod.DEFAULT}) if isinstance(body, dict) else None
+                err = midi_mod.valid(d, lights.show)
+                if err:
+                    self.send_json(400, {"ok": False, "error": err})
+                    return
+                was = midi.settings()["follow"]
+                midi.save(d)
+                if d["follow"] != was:
+                    log.info("lights: %s turned Follow Playback %s", s["name"], "on" if d["follow"] else "off")
+                self.send_json(200, dict(midi.view(), ok=True))
+                return
             if self.route() in ("/api/lights/show", "/api/lights/settings"):
                 show = self.route().endswith("/show")
                 s = self.level("Lights", need=2) if show else self.admin()
@@ -1647,17 +1671,21 @@ def serve(cfg):
     rta_inputs = rta_inputs_mod.RtaInputs(cfg["data_dir"])
     lights = lightkey_mod.Lightkey(cfg["data_dir"], cfg, log)
     rta_live = rta_live_mod.Analyser(cfg["data_dir"], cfg, log, rta_inputs)
+    if int(cfg["port"]) == 0:  # the tests: any free ports, so several servers can run at once
+        cfg.setdefault("midi_port", 0)
+    midi = midi_mod.Midi(cfg["data_dir"], cfg, log, lights, allowed=lambda ip: any(ipaddress.ip_address(ip) in n for n in cfg["_nets"]))
+    midi.start()
     cfg.setdefault("_my_ips", _my_ips())
     scanner = scan_mod.Scanner(cfg["data_dir"], cfg, log, wing=wing, tio=tio,
                                wing_find=lambda: wing_mod.find(port=wing.native_port, target=cfg.get("wing_find_target", "255.255.255.255")))
     # Port 0 is only used by the tests (any free port): they scan when they mean to, not by themselves.
     if cfg.get("scan_auto", True) and int(cfg["port"]) != 0:
         threading.Thread(target=scanner.loop, daemon=True).start()
-    httpd = ThreadingHTTPServer((cfg["bind"], int(cfg["port"])), make_handler(cfg, store, sessions, listen, access, dante, tags, bible, cues, reports, plan, wing, tio, monitors, scanner, foyer, rta_inputs, dante_names, lights, rta_live))
+    httpd = ThreadingHTTPServer((cfg["bind"], int(cfg["port"])), make_handler(cfg, store, sessions, listen, access, dante, tags, bible, cues, reports, plan, wing, tio, monitors, scanner, foyer, rta_inputs, dante_names, lights, rta_live, midi))
     httpd.daemon_threads = True
     close = httpd.server_close
-    httpd.server_close = lambda: (scanner.stop.set(), lights.close(), rta_live.stop(), close())
-    httpd.store, httpd.sessions, httpd.listen, httpd.access, httpd.tags, httpd.bible, httpd.reports, httpd.plan, httpd.wing, httpd.tio, httpd.monitors, httpd.scanner, httpd.foyer, httpd.rta_inputs, httpd.lights, httpd.rta_live = store, sessions, listen, access, tags, bible, reports, plan, wing, tio, monitors, scanner, foyer, rta_inputs, lights, rta_live
+    httpd.server_close = lambda: (scanner.stop.set(), lights.close(), rta_live.stop(), midi.close(), close())
+    httpd.store, httpd.sessions, httpd.listen, httpd.access, httpd.tags, httpd.bible, httpd.reports, httpd.plan, httpd.wing, httpd.tio, httpd.monitors, httpd.scanner, httpd.foyer, httpd.rta_inputs, httpd.lights, httpd.rta_live, httpd.midi = store, sessions, listen, access, tags, bible, reports, plan, wing, tio, monitors, scanner, foyer, rta_inputs, lights, rta_live, midi
     return httpd
 
 
