@@ -164,7 +164,7 @@ class Session(unittest.TestCase):
         self.mac.send([0xBF, 7, 127])               # CC 7: the master, full
         self.mac.send([0x9F, 64, 90])               # E3: blackout
         self.mac.send([0x90, 60, 100])              # channel 1: not ours
-        self.assertTrue(wait(lambda: len(self.fake.got) >= 5))
+        self.assertTrue(wait(lambda: self.fake.msgs()[-1:] == [("/output/master", [0.0])]))  # the blackout, last
         got = [m[0] for m in self.fake.msgs()]
         self.assertEqual(got[0], "/live/Main_Page/cue/Pre-service/activate")
         self.assertIn("/live/selected/cue/Worship_big/activate", got)  # Go: the next one
