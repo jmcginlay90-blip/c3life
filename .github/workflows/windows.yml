@@ -97,3 +97,67 @@ jobs:
         with:
           name: install-logs
           path: C:\C3Life\logs
+
+  helper-windows:
+    name: Helper installer (Windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install the helper, check it, take it off again
+        shell: pwsh
+        run: |
+          Set-ExecutionPolicy -Scope Process Bypass -Force
+          .\helper\Install-Helper.ps1 -Yes
+          $t = Get-ScheduledTask -TaskName 'C3 Life helper'
+          "Logon task: $($t.State), runs $($t.Actions[0].Execute) $($t.Actions[0].Arguments)"
+          if ($t.Triggers[0].CimClass.CimClassName -ne 'MSFT_TaskLogonTrigger') { throw 'It should start at logon' }
+          if ($t.Actions[0].Execute -notlike '*pythonw.exe') { throw 'It should run hidden (pythonw.exe)' }
+          $fw = Get-NetFirewallRule -DisplayName 'C3 Life helper' | Get-NetFirewallPortFilter
+          if ($fw.LocalPort -ne '8099') { throw 'The firewall rule should open port 8099' }
+          $h = Invoke-RestMethod http://127.0.0.1:8099/hello -TimeoutSec 5
+          "It answers: $($h.name), os $($h.os), can $($h.can -join ', ')"
+          if ($h.os -ne 'windows' -or $h.can -notcontains 'spotify') { throw 'It should say it is a Windows helper that can do Spotify' }
+          $cfg = Get-Content "$env:LOCALAPPDATA\C3 Life Helper\helper.json" | ConvertFrom-Json
+          try { Invoke-RestMethod http://127.0.0.1:8099/status -TimeoutSec 5 | Out-Null; throw 'status needs the key' } catch { if ($_.Exception.Message -eq 'status needs the key') { throw } }
+          $st = Invoke-RestMethod http://127.0.0.1:8099/status -Headers @{ 'X-C3Life-Key' = $cfg.key } -TimeoutSec 5
+          if (-not $st.ok) { throw 'status with the key should answer' }
+          # installed again: the same key
+          .\helper\Install-Helper.ps1 -Yes
+          if ((Get-Content "$env:LOCALAPPDATA\C3 Life Helper\helper.json" | ConvertFrom-Json).key -ne $cfg.key) { throw 'The key should stay the same' }
+          .\helper\Uninstall-Helper.ps1 -Yes
+          if (Get-ScheduledTask -TaskName 'C3 Life helper' -ErrorAction SilentlyContinue) { throw 'The logon task should be gone' }
+          if (Get-NetFirewallRule -DisplayName 'C3 Life helper' -ErrorAction SilentlyContinue) { throw 'The firewall rule should be gone' }
+          Start-Sleep 2
+          try { Invoke-RestMethod http://127.0.0.1:8099/hello -TimeoutSec 3 | Out-Null; throw 'still answering' } catch { if ($_.Exception.Message -eq 'still answering') { throw } }
+          'Installed, answered, kept its key, and came off cleanly'
+
+  helper-mac:
+    name: Helper installer (Mac)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install the helper, check it, take it off again
+        run: |
+          bash helper/Install-Helper.command --yes
+          launchctl list | grep org.c3life.helper
+          plutil -lint ~/Library/LaunchAgents/org.c3life.helper.plist
+          grep -q '<key>RunAtLoad</key><true/>' ~/Library/LaunchAgents/org.c3life.helper.plist
+          grep -q '<key>KeepAlive</key><true/>' ~/Library/LaunchAgents/org.c3life.helper.plist
+          h=$(curl -s -m 5 http://127.0.0.1:8099/hello); echo "It answers: $h"
+          echo "$h" | python3 -c 'import json,sys; j=json.load(sys.stdin); assert j["os"]=="mac" and "spotify_more" in j["can"], j'
+          key=$(python3 -c 'import json,os; print(json.load(open(os.path.expanduser("~/Library/Application Support/C3 Life Helper/helper.json")))["key"])')
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8099/status)" = 401
+          test "$(curl -s -o /dev/null -w '%{http_code}' -H "X-C3Life-Key: $key" http://127.0.0.1:8099/status)" = 200
+          # it restarts if it stops
+          pkill -f 'C3 Life Helper/c3life_helper.py'; sleep 15
+          curl -s -m 5 http://127.0.0.1:8099/hello | grep -q c3life-helper
+          # installed again: the same key
+          bash helper/Install-Helper.command --yes
+          test "$(python3 -c 'import json,os; print(json.load(open(os.path.expanduser("~/Library/Application Support/C3 Life Helper/helper.json")))["key"])')" = "$key"
+          bash helper/Uninstall-Helper.command --yes
+          ! launchctl list | grep -q org.c3life.helper
+          sleep 2; ! curl -s -m 3 http://127.0.0.1:8099/hello
+          echo 'Installed, answered, restarted itself, kept its key, and came off cleanly'

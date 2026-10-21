@@ -10,9 +10,14 @@ does what the server asks. What it can do depends on the computer, and it says s
     python3 c3life_helper.py            starts it on port 8099 and shows its key (type the key on the C3 Life server once)
     (Windows: py c3life_helper.py)
     python3 c3life_helper.py --new-key  makes a new key (the old one stops working)
+    python3 c3life_helper.py --show-key shows the key (and makes one the first time), then stops
+
+Install-Helper.command (Mac) and Install-Helper.cmd (Windows), next to this file, install it so it starts by itself
+whenever someone logs in and restarts if it stops: no Terminal window to keep open.
 
 Only the C3 Life server should talk to it: every call but GET /hello needs the key (header X-C3Life-Key), and only the
-booth network may connect. Kept in helper.json next to this file: {"key", "id", "name", "port", "allowed_networks"}.
+booth network may connect: the networks this computer is on (worked out at each start, so a computer that moves to
+another address still works), unless helper.json says "allowed_networks". Kept in helper.json next to this file: {"key", "id", "name", "port", "allowed_networks"}.
 The C3 Life server finds the helper by itself (its network scan asks every address on port 8099 for /hello), and
 follows it by its "id" if the Mac's address changes. Only the key has to be typed in, once (Music on the server).
 
@@ -47,7 +52,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 VERSION = 1
 PORT = 8099
 HERE = os.path.dirname(os.path.abspath(__file__))
-DEFAULT = {"key": "", "id": "", "name": "", "port": PORT, "allowed_networks": ["192.168.10.0/24", "127.0.0.0/8"]}
+DEFAULT = {"key": "", "id": "", "name": "", "port": PORT, "allowed_networks": None}  # None: this computer's own networks
 MAX_FADE = 60
 STEP = 0.2  # seconds between volume steps in a fade
 PROPRESENTER_APP = "ProPresenter"
@@ -398,8 +403,34 @@ def save(path, cfg):
         pass
 
 
+def my_networks():
+    """The private networks this computer is on (each address's /24), and itself. The booth network, in practice."""
+    ips = set()
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("192.0.2.1", 9))  # no packet is sent; it only picks the address this computer would use
+        ips.add(s.getsockname()[0])
+        s.close()
+    except OSError:
+        pass
+    try:
+        ips.update(a for a in socket.gethostbyname_ex(socket.gethostname())[2])
+    except OSError:
+        pass
+    nets = {"127.0.0.0/8"}
+    for ip in ips:
+        try:
+            a = ipaddress.ip_address(ip)
+        except ValueError:
+            continue
+        if a.version == 4 and a.is_private and not a.is_loopback and not a.is_link_local:
+            nets.add(str(ipaddress.ip_network(ip + "/24", strict=False)))
+    return sorted(nets)
+
+
 def make_handler(cfg, helper):
-    nets = [ipaddress.ip_network(n, strict=False) for n in cfg.get("allowed_networks") or []]
+    allowed = cfg.get("allowed_networks")
+    nets = [ipaddress.ip_network(n, strict=False) for n in (allowed if allowed is not None else my_networks())]
 
     def hello():
         return {"service": "c3life-helper", "id": cfg.get("id", ""), "name": cfg.get("name") or socket.gethostname(),
@@ -412,7 +443,8 @@ def make_handler(cfg, helper):
         def log_message(self, fmt, *a):
             if cfg.get("_quiet"):
                 return
-            sys.stderr.write("%s %s\n" % (time.strftime("%H:%M:%S"), fmt % a))
+            if sys.stderr:  # none when it runs hidden (pythonw on Windows)
+                sys.stderr.write("%s %s\n" % (time.strftime("%H:%M:%S"), fmt % a))
 
         def send_json(self, code, obj):
             b = json.dumps(obj).encode("utf-8")
@@ -492,9 +524,10 @@ def serve(cfg, helper=None, port=None):
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(description="C3 Life helper (Spotify and ProPresenter on this Mac)")
+    ap = argparse.ArgumentParser(description="C3 Life helper (Spotify and ProPresenter on this Mac or Windows PC)")
     ap.add_argument("--config", default=os.path.join(HERE, "helper.json"))
     ap.add_argument("--new-key", action="store_true", help="make a new key (the old one stops working)")
+    ap.add_argument("--show-key", action="store_true", help="show the key (making one the first time), then stop")
     a = ap.parse_args(argv)
     cfg = load(a.config)
     if not cfg.get("key") or a.new_key or not cfg.get("id"):
@@ -502,15 +535,19 @@ def main(argv=None):
             cfg["key"] = secrets.token_urlsafe(24)
         cfg["id"] = cfg.get("id") or secrets.token_hex(8)  # this helper, wherever the Mac's address moves
         save(a.config, cfg)
+    if a.show_key:
+        print(cfg["key"])
+        return
     if OS == "other":
         print(NOT_MAC + " It will answer, but can't control anything here.")
     elif OS == "windows":
         print("Windows: Spotify's Play/Pause, Next and Previous, and opening ProPresenter. (" + NO_WIN + ")")
     print("Key for the C3 Life server: %s" % cfg["key"])
-    print("Type it on the C3 Life server once: Show > Music > Helper key (an Admin). The server finds this Mac by itself.")
+    print("An Admin types it once on the C3 Life server: Show > Music > Computers with the C3 Life helper. The server finds this computer by itself.")
     print("(Kept in %s.)" % a.config)
     httpd = serve(cfg)
-    print("C3 Life helper on port %d. Stop with Ctrl+C." % cfg["port"])
+    allowed = cfg.get("allowed_networks")
+    print("C3 Life helper on port %d, answering %s. Stop with Ctrl+C." % (cfg["port"], ", ".join(allowed if allowed is not None else my_networks())))
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:

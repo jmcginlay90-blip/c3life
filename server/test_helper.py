@@ -229,6 +229,28 @@ class HelperServer(unittest.TestCase):
         finally:
             httpd.shutdown(); httpd.server_close()
 
+    def test_it_answers_the_networks_this_computer_is_on(self):
+        nets = hp.my_networks()
+        self.assertIn("127.0.0.0/8", nets)
+        self.assertTrue(all(s.ipaddress.ip_network(n).is_private for n in nets))
+        self.assertIsNone(hp.DEFAULT["allowed_networks"])  # nothing to set, unless helper.json says otherwise
+
+    def test_show_key_shows_it_and_stops(self):
+        tmp = tempfile.mkdtemp()
+        try:
+            path = os.path.join(tmp, "helper.json")
+            r = subprocess.run([sys.executable, os.path.join(os.path.dirname(hp.__file__), "c3life_helper.py"), "--config", path, "--show-key"],
+                               capture_output=True, text=True, timeout=30)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            c = hp.load(path)
+            self.assertEqual(r.stdout.strip(), c["key"])
+            self.assertEqual(len(c["id"]), 16)
+            r2 = subprocess.run([sys.executable, os.path.join(os.path.dirname(hp.__file__), "c3life_helper.py"), "--config", path, "--show-key"],
+                                capture_output=True, text=True, timeout=30)
+            self.assertEqual((r2.stdout.strip(), hp.load(path)["id"]), (c["key"], c["id"]))  # the same next time
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
     def test_key_made_once_and_kept(self):
         tmp = tempfile.mkdtemp()
         try:
