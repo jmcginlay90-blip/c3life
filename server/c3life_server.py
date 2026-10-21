@@ -46,6 +46,9 @@ API (JSON):
   GET  /api/wing/meters                    (Mixer view) channel levels in dB
   GET  /api/wing/channel?n=<1-40>          (Mixer view) one channel's trim, filters, gate, EQ and compressor
                                            (read while it's open; change them with /api/wing/set, field "eq/1g"...)
+  GET  /api/wing/tapeq?n=<1-40>            (Tap EQ view) a channel's tap EQ: its own 3-band EQ on the pre-fader send tap,
+                                           heard in every monitor mix that takes the channel pre-fader (not front of house)
+  POST /api/wing/tapeq {"n","field","value"}   (Tap EQ control) "peq/on", "peq/1g", "peq/1f", "peq/1q", ... 3
   GET  /api/wing/history?n=&since=          (Mixer view) the open channel's last 8 s of level and gate/comp gain reduction
   GET  /api/wing/rta                       (Mixer view) the Wing's RTA: 120 bands from 20 Hz, and what it's on
   POST /api/wing/rta {"n","tap","kind"?}   (Mixer control; a musician for their own mix, "kind": "bus") point the Wing's
@@ -810,6 +813,21 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 desk.channel(int(n))  # keeps it open
                 self.send_json(200, {"ok": True, "n": int(n), "hist": desk.history(int(n), since), "now": round(time.time(), 2)})
                 return
+            if path == "/api/wing/tapeq":
+                s = self.level("Tap EQ")
+                if not s:
+                    return
+                q = urllib.parse.parse_qs(self.path.split("?", 1)[1] if "?" in self.path else "")
+                n = (q.get("n") or [""])[0]
+                if not n.isdigit() or not 1 <= int(n) <= desk.KINDS.get("ch", 0) or not desk.TAP_EQ:
+                    self.send_json(400, {"ok": False, "error": "Which channel?" if desk.TAP_EQ else "This desk has no tap EQ."})
+                    return
+                proc, st = desk.channel(int(n)), desk.state()
+                self.send_json(200, {"ok": True, "n": int(n), "status": st["status"], "mode": st["mode"],
+                                     "name": st["strips"].get("ch", {}).get(n, {}).get("name", ""),
+                                     "eq": {k: v for k, v in proc.items() if k in desk.TAP_EQ},
+                                     "can_change": access.level(s["role"], "Tap EQ") >= 2 and desk.settings["mode"] == "control"})
+                return
             if path == "/api/wing/channel":
                 if not self.level("Mixer"):
                     return
@@ -1100,6 +1118,22 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                     return
                 self.send_json(200, {"ok": True})
                 return
+            if path == "/api/wing/tapeq":
+                s = self.level("Tap EQ", need=2)
+                if not s:
+                    return
+                body = self.read_json() or {}
+                f = body.get("field")
+                if f not in desk.TAP_EQ:
+                    self.send_json(400, {"ok": False, "error": "That isn't part of the tap EQ."})
+                    return
+                err = desk.set("ch", body.get("n"), f, body.get("value"))
+                if err:
+                    self.send_json(409, {"ok": False, "error": err})
+                    return
+                log.info("wing: %s set ch %s tap EQ %s to %r", s["name"], body.get("n"), f, body.get("value"))
+                self.send_json(200, {"ok": True})
+                return
             if path in ("/api/wing/set", "/api/wing/fade", "/api/wing/find"):
                 if path.endswith("/find"):
                     s = self.admin()
@@ -1112,6 +1146,9 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 body = self.read_json()
                 if body is None:
                     self.send_json(400, {"ok": False, "error": "Bad request"})
+                    return
+                if path.endswith("/set") and str(body.get("field", "")) in desk.TAP_EQ and access.level(s["role"], "Tap EQ") < 2:
+                    self.send_json(403, {"ok": False, "error": "Changing the tap EQ needs Tap EQ control (Access levels)."})
                     return
                 if path.endswith("/set"):
                     err = desk.set(body.get("kind", "ch"), body.get("n"), body.get("field"), body.get("value"))

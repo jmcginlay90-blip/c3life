@@ -48,6 +48,12 @@ PROC = dict({
     "dyn/on": ("b",), "dyn/thr": ("n", -60, 0), "dyn/ratio": ("n", 1.1, 100), "dyn/gain": ("n", -6, 12),
     "dyn/att": ("n", 0, 120), "dyn/rel": ("n", 4, 4000), "dyn/auto": ("b",), "dyn/mdl": ("s",),
 }, **_EQ)
+# Tap EQ: each channel's own 3-band EQ on its pre-fader send tap (what the in-ears hear, not front of house). It belongs
+# to the channel, so it's heard in every monitor mix that takes that channel pre-fader. Read with the channel's processing.
+TAP_EQ = {"peq/on": ("b",)}
+for _b in "123":
+    TAP_EQ.update({"peq/%sg" % _b: ("n", -15, 15), "peq/%sf" % _b: ("n", 20, 20000), "peq/%sq" % _b: ("n", 0.44, 10)})
+PROC.update(TAP_EQ)
 RTA_TAPS = ("IN", "PREEQ", "POSTEQ", "POST")
 # The RTA's source is one index across the strips, in this order (channel 1 is 1, bus 1 is 49). The channels' part is
 # confirmed by reading it back; the buses' place after the 8 aux inputs is how the Wing orders its strips, not yet
@@ -907,4 +913,4 @@ def find(port=2222, timeout=1.5, target="255.255.255.255"):
 
 
 # what the Wing has, for the Desk interface (desk.py)
-Wing.KINDS, Wing.SENDERS, Wing.BUS_EQ, Wing.RATIOS, Wing.RTA_TAPS, Wing.OUTS = KINDS, SENDERS, BUS_EQ, RATIOS, RTA_TAPS, OUTS
+Wing.KINDS, Wing.SENDERS, Wing.BUS_EQ, Wing.RATIOS, Wing.RTA_TAPS, Wing.OUTS, Wing.TAP_EQ = KINDS, SENDERS, BUS_EQ, RATIOS, RTA_TAPS, OUTS, TAP_EQ

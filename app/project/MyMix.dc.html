@@ -472,6 +472,7 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
           <select value="{{hpfF}}" onChange="{{setHpf}}" aria-label="Low cut frequency" class="eqsel"><sc-for list="{{hpfOpts}}" as="o" hint-placeholder-count="6"><option value="{{o.v}}">{{o.t}}</option></sc-for></select>
           <button class="ub" style="width:auto;padding:0 14px;font-size:14px" onClick="{{flatEq}}" disabled="{{locked}}">Flat</button>
           <button class="{{rtaCls}}" onClick="{{toggleRta}}" aria-pressed="{{rtaOn}}" aria-label="RTA on my mix">RTA</button>
+          <div style="display:contents"><sc-if value="{{tqShow}}" hint-placeholder-val="{{ false }}"><button class="onb" onClick="{{tqOpen}}" aria-label="Tap EQ: a channel's own EQ for the in-ears">TAP EQ</button></sc-if></div>
           <span class="eqbus">EQ on {{busName}} only</span>
         </div>
         <div style="display:contents"><sc-if value="{{rtaOn}}" hint-placeholder-val="{{ false }}"><div class="eqrta" role="status">{{rtaLine}}</div></sc-if></div>
@@ -528,6 +529,26 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
         </div>
       </div>
     </sc-if>
+
+    <div style="display:contents"><sc-if value="{{tqOpenNow}}" hint-placeholder-val="{{ false }}">
+      <div class="panel" role="dialog" aria-label="Tap EQ" style="top:auto;bottom:16px;left:50%;right:auto;transform:translateX(-50%);width:min(440px, calc(100% - 24px))">
+        <div style="display:flex;align-items:center;gap:10px"><div style="flex:1;font-size:17px;font-weight:600">Tap EQ</div><button class="ub" onClick="{{tqClose}}" aria-label="Close">✕</button></div>
+        <div class="ptext">A channel’s own EQ for the in-ears, on the Wing’s pre-fader send. Front of house doesn’t hear it.</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <select id="mm-tq-ch" value="{{tqCh}}" onChange="{{tqPick}}" aria-label="Tap EQ channel" class="eqsel" style="flex:1;min-height:44px"><sc-for list="{{tqChs}}" as="o" hint-placeholder-count="8"><option value="{{o.v}}">{{o.t}}</option></sc-for></select>
+          <button class="{{tqOnCls}}" onClick="{{tqToggle}}" aria-pressed="{{tqOn}}" disabled="{{tqLocked}}" aria-label="Tap EQ on" style="min-height:44px">ON</button>
+        </div>
+        <div class="ptext" style="color:{{tqWarnColor}}">{{tqWarn}}</div>
+        <sc-for list="{{tqBands}}" as="b" hint-placeholder-count="3">
+          <div style="display:grid;grid-template-columns:46px minmax(0,1fr) 54px 84px;gap:8px;align-items:center;min-height:44px">
+            <span style="font-size:13px;color:#C9CFD7">{{b.name}}</span>
+            <input type="range" min="-12" max="12" step="0.5" value="{{b.g}}" onChange="{{b.draftG}}" onPointerUp="{{b.sendG}}" onKeyUp="{{b.sendG}}" disabled="{{tqLocked}}" aria-label="{{b.aria}}" style="width:100%">
+            <span class="mono" style="font-size:13px;text-align:right">{{b.gText}}</span>
+            <select value="{{b.f}}" onChange="{{b.setF}}" disabled="{{tqLocked}}" aria-label="Tap EQ {{b.name}} frequency" class="eqsel"><sc-for list="{{b.fopts}}" as="o" hint-placeholder-count="6"><option value="{{o.v}}">{{o.t}}</option></sc-for></select>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if></div>
 
     <sc-if value="{{asking}}" hint-placeholder-val="{{ false }}">
       <div class="panel" role="dialog" aria-label="{{askTitle}}" style="top:auto;bottom:16px;left:50%;right:auto;transform:translateX(-50%);border-color:#F5C518">
@@ -686,6 +707,68 @@ class Component extends DCLogic {
   }
   // Each EQ band's frequencies to choose from (Low, Low mid, High mid, High)
   get EQF() { return [[60, 80, 100, 150, 200], [200, 300, 400, 600, 800, 1000], [1500, 2000, 2500, 3000, 4000, 5000], [5000, 6000, 8000, 10000, 12000]]; }
+  // ---- Tap EQ: a channel's own EQ for the in-ears (the Wing's EQ on its pre-fader send tap) ----
+  // It belongs to the channel, so it's heard in every monitor mix that has that channel. Its own access level.
+  tqLevel() {
+    let u = null, r = null; try { u = JSON.parse(localStorage.getItem('booth.user') || 'null'); r = JSON.parse(localStorage.getItem('booth.access') || 'null'); } catch (e) {}
+    if (!u) return 1;
+    const role = u.role || u.name;
+    if (role === 'Admin') return 2;
+    const row = Array.isArray(r) ? r.find((x) => x.name === role) : null;
+    if (row && row.p && row.p.length > 15) return row.p[15];
+    return { 'FOH sound': 2, Musician: 1 }[role] || 0;
+  }
+  tqDemo(ch) {
+    let d = null; try { d = JSON.parse(localStorage.getItem('booth.tapeq.' + ch) || 'null'); } catch (e) {}
+    return d || { 'peq/on': 0, 'peq/1g': 0, 'peq/1f': 200, 'peq/1q': 2, 'peq/2g': 0, 'peq/2f': 1000, 'peq/2q': 2, 'peq/3g': 0, 'peq/3f': 5000, 'peq/3q': 2 };
+  }
+  tqLoad() {
+    const s = this.state; if (!s.tq || !s.tq.open) return;
+    if (!s.wingOn) { this.setState({ tq: { ...s.tq, eq: this.tqDemo(s.tq.ch), can: this.tqLevel() >= 2, demo: true } }); return; }
+    if (this.tqBusy) return; this.tqBusy = true;
+    this.wApi('/api/wing/tapeq?n=' + s.tq.ch).then(({ j }) => {
+      this.tqBusy = false;
+      if (j && j.ok && this.state.tq && this.state.tq.ch === j.n && !(this.tqSent && Date.now() - this.tqSent < 2500)) this.setState({ tq: { ...this.state.tq, eq: j.eq, can: j.can_change, demo: false } });
+    }).catch(() => { this.tqBusy = false; });
+  }
+  tqSet(field, value) {
+    const s = this.state, tq = s.tq; if (!tq) return;
+    const eq = { ...(tq.eq || this.tqDemo(tq.ch)), [field]: value };
+    this.setState({ tq: { ...tq, eq } });
+    if (tq.demo || !s.wingOn) { try { localStorage.setItem('booth.tapeq.' + tq.ch, JSON.stringify(eq)); } catch (e) {} return; }
+    this.tqSent = Date.now();
+    this.wApi('/api/wing/tapeq', 'POST', { n: tq.ch, field, value }).then(({ j }) => {
+      if (!j || !j.ok) { this.setState({ toast: (j && j.error) || 'The Wing didn\u2019t take that.' }); clearTimeout(this.t); this.t = setTimeout(() => this.setState({ toast: '' }), 3000); }
+    }).catch(() => {});
+  }
+  tqVals() {
+    const s = this.state, lv = this.tqLevel(), tq = s.tq || {}, eq = tq.eq || this.tqDemo(tq.ch || 1);
+    const chs = this.src.filter((x) => x.ch).map((x) => ({ v: String(x.ch), t: this.chLabel(x.ch) }));
+    const can = lv >= 2 && (tq.can !== false);
+    const fopts = [[80, 120, 200, 300, 400], [300, 500, 800, 1000, 1500, 2000, 3000], [2000, 3000, 5000, 8000, 10000, 12000]];
+    const fmt = (f) => (f >= 1000 ? (f / 1000) + 'k' : String(f));
+    const near = (list, v) => list.reduce((a, o) => (Math.abs(Math.log(o / v)) < Math.abs(Math.log(a / v)) ? o : a));
+    return {
+      tqShow: lv >= 1,
+      tqOpen: () => { const ch = (chs[0] && Number(chs[0].v)) || 1; this.setState({ tq: { open: true, ch: (s.tq && s.tq.ch) || ch } }); setTimeout(() => this.tqLoad(), 0); },
+      tqClose: () => this.setState({ tq: { ...tq, open: false } }),
+      tqOpenNow: !!tq.open,
+      tqCh: String(tq.ch || ''), tqChs: chs,
+      tqPick: (e) => { this.setState({ tq: { open: true, ch: Number(e.target.value) } }); setTimeout(() => this.tqLoad(), 0); },
+      tqOn: !!eq['peq/on'], tqOnCls: eq['peq/on'] ? 'onb on' : 'onb', tqToggle: () => this.tqSet('peq/on', eq['peq/on'] ? 0 : 1),
+      tqLocked: !can,
+      tqWarn: lv < 2 ? 'You can look. Changing it needs Tap EQ control (Access levels).' : 'Heard in every in-ear mix that has ' + this.chName(tq.ch || 1) + ', not only yours.',
+      tqWarnColor: lv < 2 ? '#A3ACB8' : '#F5C518',
+      tqBands: ['1', '2', '3'].map((k, i) => {
+        const g = eq['peq/' + k + 'g'] || 0, f = eq['peq/' + k + 'f'] || [200, 1000, 5000][i], name = ['Low', 'Mid', 'High'][i];
+        const show = (x) => (x > 0 ? '+' : '') + x.toFixed(1);
+        return { name, g, gText: show(g), aria: 'Tap EQ ' + name + ' gain', f: String(near(fopts[i], f)), fopts: fopts[i].map((v) => ({ v: String(v), t: fmt(v) })),
+          draftG: (e) => { this.tqDraft = Number(e.target.value); const t = e.target.nextElementSibling; if (t) t.textContent = show(this.tqDraft); },
+          sendG: () => { if (this.tqDraft === undefined) return; const x = this.tqDraft; this.tqDraft = undefined; this.tqSet('peq/' + k + 'g', x); },
+          setF: (e) => this.tqSet('peq/' + k + 'f', Number(e.target.value)) };
+      })
+    };
+  }
   // ---- the RTA behind My mix's EQ: the Wing's RTA on my bus, after the EQ ----
   rtaPoint() {
     const b = this.myBusNow();
@@ -837,6 +920,7 @@ class Component extends DCLogic {
 
   componentDidMount() {
     this.rtaT = setInterval(() => this.rtaTick(), 250);
+    this.tqT = setInterval(() => this.tqLoad(), 1500);
     const check = () => { let lock = false, u = null; try { lock = localStorage.getItem('booth.mixlock') === 'locked'; u = JSON.parse(localStorage.getItem('booth.user') || 'null'); } catch (e) {} if (lock !== this.state.locked || (u && (!this.state.user || u.name !== this.state.user.name))) this.setState({ locked: lock, user: u }); };
     // A saved mix picked on the sign-in pop-up: load it once, with Undo available.
     const pending = () => {
@@ -872,7 +956,7 @@ class Component extends DCLogic {
     this.onResize = () => { const w = window.innerWidth, h = window.innerHeight; if (w !== this.state.vw || h !== this.state.vh) this.setState({ vw: w, vh: h }); };
     window.addEventListener('resize', this.onResize); window.addEventListener('orientationchange', this.onResize);
   }
-  componentWillUnmount() { clearInterval(this.rtaT); clearInterval(this.wingT); clearInterval(this.wingF); clearInterval(this.syncPoll); clearTimeout(this.pushTimer); clearInterval(this.poll); clearTimeout(this.t); window.removeEventListener('resize', this.onResize); window.removeEventListener('orientationchange', this.onResize); }
+  componentWillUnmount() { clearInterval(this.tqT); clearInterval(this.rtaT); clearInterval(this.wingT); clearInterval(this.wingF); clearInterval(this.syncPoll); clearTimeout(this.pushTimer); clearInterval(this.poll); clearTimeout(this.t); window.removeEventListener('resize', this.onResize); window.removeEventListener('orientationchange', this.onResize); }
   save(next, say, keepUndo) {
     try { localStorage.setItem(this.key(), JSON.stringify(next)); } catch (e) {}
     this.wingPush(this.state.mix, next);
@@ -1016,6 +1100,7 @@ class Component extends DCLogic {
           eqPts: pts, eqZero: (H / 2).toFixed(1),
           // The Wing's RTA of my mix (after the EQ), behind the curve, like the channel EQ on Mixer
           ...this.rtaVals(W, H, fx, resp, xs),
+          ...this.tqVals(),
           flatEq: () => ed((q) => { q.bands.forEach((b) => { b.g = 0; }); }, 'EQ flat'),
           eqBands: eq.bands.map((b, i) => {
             const f = this.fader(['eq', i], ((b.g + 12) / 24) * 100);

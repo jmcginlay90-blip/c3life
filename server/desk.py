@@ -10,6 +10,7 @@ What a driver provides (the Wing's driver, wing.py, is the full example):
   NAME, KINDS          the desk's name, and its strips: {"ch": 40, "aux": 8, "bus": 16, "main": 4, "mtx": 8, "dca": 16}
   SENDERS              which kinds of strip send to buses ("ch", "aux")
   BUS_EQ, RATIOS       a bus's EQ fields with their ranges; the compressor's ratios
+  TAP_EQ               a channel's EQ on its pre-fader send tap (the in-ears), if the desk has one
   RTA_TAPS, OUTS       where the RTA can listen (before or after the EQ...); outputs C3 Life may patch, {"CRD": 64}
   CAN                  what it can do (see CAN below)
   settings             {"ip", "mode": "off" | "watch" | "control"}
@@ -29,7 +30,7 @@ What a driver provides (the Wing's driver, wing.py, is the full example):
 import importlib
 
 # What a driver can do. The Wing's driver can do all of these.
-CAN = ("faders", "names", "sends", "bus_eq", "processing", "preamps", "meters", "rta", "fades", "patch_outputs", "find")
+CAN = ("faders", "names", "sends", "bus_eq", "tap_eq", "processing", "preamps", "meters", "rta", "fades", "patch_outputs", "find")
 CANT = "This desk can't do that yet."
 
 # config.json "desk" -> (module, class)
@@ -46,6 +47,7 @@ class Desk:
     RATIOS = ()
     RTA_TAPS = ()
     OUTS = {}
+    TAP_EQ = {}  # each channel's EQ on its pre-fader send tap (the in-ears), {"peq/on": ("b",), "peq/1g": ("n", -15, 15)...}
     CAN = {k: False for k in CAN}
 
     def __init__(self, data_dir=None, cfg=None, log=None):

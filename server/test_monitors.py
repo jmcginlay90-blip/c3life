@@ -113,6 +113,33 @@ class Api(unittest.TestCase):
         self.assertEqual(self.call("/api/wing/rta", "POST", {"kind": "bus", "n": 4, "tap": "PREEQ"}, who="Keys (musician)")[0], 403)
         self.assertEqual(self.call("/api/wing/rta", who="Viewer")[0], 403)
 
+    def test_tap_eq_has_its_own_access_level(self):
+        # FOH sound (Tap EQ: Control) reads and changes channel 2's tap EQ, the in-ears' own EQ on it
+        st, t = self.call("/api/wing/tapeq?n=2", who="FOH sound")
+        self.assertEqual((st, t["can_change"]), (200, True))
+        self.assertTrue(wait(lambda: self.call("/api/wing/tapeq?n=2", who="FOH sound")[1]["eq"].get("peq/2f") == 1000.0))
+        for f, v in (("peq/on", True), ("peq/2g", -3.5), ("peq/2f", 800.0)):
+            self.assertEqual(self.call("/api/wing/tapeq", "POST", {"n": 2, "field": f, "value": v}, who="FOH sound")[0], 200, f)
+        self.assertTrue(wait(lambda: self.f.vals["/ch/2/peq/2g"] == -3.5 and self.f.vals["/ch/2/peq/on"] == 1 and self.f.vals["/ch/2/peq/2f"] == 800.0))
+        self.assertEqual(self.call("/api/wing/tapeq", "POST", {"n": 2, "field": "peq/2g", "value": 40}, who="FOH sound")[0], 409)
+        self.assertEqual(self.call("/api/wing/tapeq", "POST", {"n": 2, "field": "eq/2g", "value": 1}, who="FOH sound")[0], 400)  # not the tap EQ
+        # a musician (Tap EQ: View) can look, not change
+        st, t = self.call("/api/wing/tapeq?n=2", who="Keys (musician)")
+        self.assertEqual((st, t["can_change"], t["eq"]["peq/2g"]), (200, False, -3.5))
+        self.assertEqual(self.call("/api/wing/tapeq", "POST", {"n": 2, "field": "peq/2g", "value": 0}, who="Keys (musician)")[0], 403)
+        self.assertEqual(self.call("/api/wing/tapeq?n=2", who="Viewer")[0], 403)
+        # Mixer control without Tap EQ control can't change it through the Mixer either
+        roles = self.call("/api/access")[1]["roles"]
+        from access import AREAS
+        for r in roles:
+            if r["name"] == "FOH sound":
+                r["p"][AREAS.index("Tap EQ")] = 1
+        self.assertEqual(self.call("/api/access", "PUT", {"roles": roles, "password": "c3life-admin"})[0], 200)
+        st, r = self.call("/api/wing/set", "POST", {"kind": "ch", "n": 2, "field": "peq/2g", "value": 0}, who="FOH sound")
+        self.assertEqual(st, 403)
+        self.assertIn("Tap EQ", r["error"])
+        self.assertEqual(self.call("/api/wing/set", "POST", {"kind": "ch", "n": 2, "field": "eq/2g", "value": 0}, who="FOH sound")[0], 200)
+
     def test_the_lock(self):
         d = self.call("/api/monitors")[1]
         d["locked"] = True

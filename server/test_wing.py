@@ -49,6 +49,10 @@ class FakeWing:
                          "dyn/on": 0, "dyn/thr": -10.0, "dyn/ratio": 3.0, "dyn/gain": 0.0, "dyn/att": 50.0, "dyn/rel": 152.6, "dyn/auto": 1, "dyn/mdl": "COMP"}.items():
                 self.vals["/ch/%d/%s" % (n, k)] = v
         self.vals["/ch/4/eq/mdl"] = "SOUL"
+        for n in range(1, 41):  # each channel's tap EQ (the in-ears), off and flat
+            self.vals["/ch/%d/peq/on" % n] = 0
+            for i, f in zip("123", (200.0, 1000.0, 5000.0)):
+                self.vals.update({"/ch/%d/peq/%sg" % (n, i): 0.0, "/ch/%d/peq/%sf" % (n, i): f, "/ch/%d/peq/%sq" % (n, i): 2.0})
         for n in range(1, 41):  # sends to the 16 buses: Pre, pan link off, -inf, except bus 1 (the wedges)
             for b in range(1, 17):
                 self.vals.update({"/ch/%d/send/%d/on" % (n, b): 1, "/ch/%d/send/%d/lvl" % (n, b): -144.0, "/ch/%d/send/%d/mode" % (n, b): "PRE",

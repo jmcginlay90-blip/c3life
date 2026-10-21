@@ -8,21 +8,24 @@ import os
 import threading
 
 AREAS = ["Mixer", "Wing patch", "Dante", "RTA", "Show", "Lights", "Running order", "Macros", "Chat", "Foyer",
-         "Foyer setup", "Settings", "Own monitor mix", "Listen", "RTA settings"]
+         "Foyer setup", "Settings", "Own monitor mix", "Listen", "RTA settings", "Tap EQ"]
 LISTEN = AREAS.index("Listen")
 # RTA settings: where the RTA listens, Set it up for me (with Wing patch and Dante control), the level alert and feedback
 # watch. Added after the others, so a saved access.json from before gets each role's usual level for it.
-NEW_AREA_DEFAULTS = {"RTA settings": {"Admin": 2, "FOH sound": 2, "ProPresenter": 1, "Lighting": 1, "Viewer": 1}}
+# Tap EQ: the Wing's 3-band EQ on each channel's pre-fader send tap (what the in-ears hear). It belongs to the channel,
+# so a change is heard in every monitor mix that has that channel: Control for the sound team, musicians can look.
+NEW_AREA_DEFAULTS = {"RTA settings": {"Admin": 2, "FOH sound": 2, "ProPresenter": 1, "Lighting": 1, "Viewer": 1},
+                     "Tap EQ": {"Admin": 2, "FOH sound": 2, "Musician": 1}}
 
 DEFAULT_ROLES = [
-    {"name": "Admin", "note": "Everything, including access levels", "p": [2] * 15, "lock": "15 minutes"},
-    {"name": "FOH sound", "note": "Sound desk operator", "p": [2, 2, 1, 2, 1, 1, 1, 2, 2, 2, 1, 0, 2, 1, 2], "lock": "Never during a service"},
-    {"name": "ProPresenter", "note": "Lyrics and slides operator", "p": [0, 0, 0, 1, 2, 0, 1, 1, 2, 1, 1, 0, 0, 1, 1], "lock": "30 minutes"},
-    {"name": "Lighting", "note": "Events only · Christmas and special services", "p": [0, 0, 0, 1, 1, 2, 1, 1, 2, 1, 1, 0, 0, 1, 1], "lock": "30 minutes"},
-    {"name": "Foyer team", "note": "Welcome team · only sees the Foyer screen, Listen and chat", "p": [0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 0, 0, 0, 1, 0], "lock": "5 minutes"},
-    {"name": "Musician", "note": "Each musician · only their own monitor mix and chat", "p": [0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0], "lock": "15 minutes"},
-    {"name": "Viewer", "note": "Pastor, band leader · look only", "p": [0, 0, 0, 1, 1, 0, 1, 0, 2, 1, 0, 0, 0, 1, 1], "lock": "10 minutes"},
-    {"name": "Listener", "note": "Crèche, kids, welcome or overflow helpers · only Listen", "p": [0] * 13 + [1, 0], "lock": "Never"},
+    {"name": "Admin", "note": "Everything, including access levels", "p": [2] * 16, "lock": "15 minutes"},
+    {"name": "FOH sound", "note": "Sound desk operator", "p": [2, 2, 1, 2, 1, 1, 1, 2, 2, 2, 1, 0, 2, 1, 2, 2], "lock": "Never during a service"},
+    {"name": "ProPresenter", "note": "Lyrics and slides operator", "p": [0, 0, 0, 1, 2, 0, 1, 1, 2, 1, 1, 0, 0, 1, 1, 0], "lock": "30 minutes"},
+    {"name": "Lighting", "note": "Events only · Christmas and special services", "p": [0, 0, 0, 1, 1, 2, 1, 1, 2, 1, 1, 0, 0, 1, 1, 0], "lock": "30 minutes"},
+    {"name": "Foyer team", "note": "Welcome team · only sees the Foyer screen, Listen and chat", "p": [0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 0, 0, 0, 1, 0, 0], "lock": "5 minutes"},
+    {"name": "Musician", "note": "Each musician · only their own monitor mix and chat", "p": [0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 1], "lock": "15 minutes"},
+    {"name": "Viewer", "note": "Pastor, band leader · look only", "p": [0, 0, 0, 1, 1, 0, 1, 0, 2, 1, 0, 0, 0, 1, 1, 0], "lock": "10 minutes"},
+    {"name": "Listener", "note": "Crèche, kids, welcome or overflow helpers · only Listen", "p": [0] * 13 + [1, 0, 0], "lock": "Never"},
 ]
 LOCKS = ("2 minutes", "5 minutes", "10 minutes", "15 minutes", "30 minutes", "Never during a service", "Never")
 
