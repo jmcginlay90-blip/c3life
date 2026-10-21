@@ -68,10 +68,16 @@ class Mac:
 
     def __init__(self, port, name="MacBook Pro"):
         self.port, self.ssrc = port, 0x1234ABCD
-        self.ctl = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.ctl.bind(("127.0.0.1", 0))
-        self.dat = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.dat.bind(("127.0.0.1", self.ctl.getsockname()[1] + 1))
+        for _ in range(30):  # two ports side by side, like a Mac's session
+            self.ctl = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            self.ctl.bind(("127.0.0.1", 0))
+            self.dat = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            try:
+                self.dat.bind(("127.0.0.1", self.ctl.getsockname()[1] + 1))
+                break
+            except (OSError, OverflowError):
+                self.ctl.close()
+                self.dat.close()
         for x in (self.ctl, self.dat):
             x.settimeout(2)
         self.name, self.seq = name, 0
@@ -116,6 +122,7 @@ class Session(unittest.TestCase):
         self.k.save_settings(dict(lk.SETTINGS, ip="127.0.0.1", port=self.fake.port, mode="control"))
         self.m = mi.Midi(self.tmp, {"midi_port": 0}, logging.getLogger("test"), self.k)
         self.m.start()
+        self.assertTrue(self.m.ctl, self.m.error)
         self.mac = Mac(self.m.port)
 
     def tearDown(self):
@@ -178,10 +185,10 @@ class Session(unittest.TestCase):
     def test_tempo_from_the_midi_clock(self):
         self.mac.join()
         self.m.save(dict(mi.DEFAULT, follow=True, tempo=True))
-        beat = 60.0 / 120  # 120 BPM: 24 clocks a beat
-        for _ in range(60):
-            self.m.handle(0xF8, b"")
-            time.sleep(beat / 24)
+        beat = 60.0 / 120  # 120 BPM: 24 clocks a beat, each with the time it arrived (Windows can't sleep 21 ms steps)
+        t0 = time.time() - 60 * beat / 24
+        for i in range(60):
+            self.m.handle(0xF8, b"", now=t0 + i * beat / 24)
         self.assertTrue(wait(lambda: any(m[0] == "/beat/tempo" for m in self.fake.msgs())))
         bpm = [m[1][0] for m in self.fake.msgs() if m[0] == "/beat/tempo"][0]
         self.assertAlmostEqual(bpm, 120, delta=4)

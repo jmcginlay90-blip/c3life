@@ -240,7 +240,7 @@ class Link(unittest.TestCase):
         self.assertEqual(st["strips"]["ch"]["15"]["mute"], 1)
         self.assertEqual(st["strips"]["main"]["1"]["name"], "Main LR")
         self.assertEqual(st["strips"]["dca"]["1"]["name"], "Band")
-        self.assertTrue(wait(lambda: self.w.state()["inputs"].get("LCL/1", {}).get("g") == 20.0))
+        self.assertTrue(wait(lambda: self.w.state()["inputs"].get("LCL/1", {}).get("g") == 20.0, 15))  # after its source, a round later
         self.assertEqual(self.w.src(10), "A/2")
         self.assertIsNone(self.w.src(20))  # USB: no gain or phantom
 

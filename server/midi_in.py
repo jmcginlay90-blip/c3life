@@ -159,18 +159,27 @@ class Midi:
         self.error = ""
 
     def start(self):
-        try:
-            self.ctl = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            self.ctl.bind(("0.0.0.0", self.port))
-            self.dat = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            self.dat.bind(("0.0.0.0", self.ctl.getsockname()[1] + 1))
-        except OSError as e:
-            self.error = "Port %d or %d is in use, so Playback can't connect (%s)." % (self.port, self.port + 1, e.strerror or e)
-            self.log.warning("midi: %s", self.error)
-            for s in (self.ctl, self.dat):
-                if s:
-                    s.close()
+        # Network MIDI uses two ports side by side (5004 and 5005). With port 0 (the tests: any free pair), try a few.
+        for _ in range(1 if self.port else 30):
             self.ctl = self.dat = None
+            try:
+                self.ctl = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                self.ctl.bind(("0.0.0.0", self.port))
+                p = self.ctl.getsockname()[1]
+                if p >= 65535:
+                    raise OSError(0, "no port after %d" % p)
+                self.dat = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                self.dat.bind(("0.0.0.0", p + 1))
+                break
+            except OSError as e:
+                for x in (self.ctl, self.dat):
+                    if x:
+                        x.close()
+                self.ctl = self.dat = None
+                err = e
+        if not self.ctl:
+            self.error = "Port %d or %d is in use, so Playback can't connect (%s)." % (self.port, self.port + 1, err.strerror or err)
+            self.log.warning("midi: %s", self.error)
             return
         self.port = self.ctl.getsockname()[1]
         for sock in (self.ctl, self.dat):
@@ -242,12 +251,12 @@ class Midi:
         for status, data in parse_rtp_midi(pkt):
             self.handle(status, data, who)
 
-    def handle(self, status, data, who="Playback"):
-        """One MIDI message -> what it does (if Follow Playback is on)."""
+    def handle(self, status, data, who="Playback", now=None):
+        """One MIDI message -> what it does (if Follow Playback is on). `now`: when it arrived (the tests)."""
         d = self.settings()
         if status == 0xF8:  # clock: 24 a beat
             if d["tempo"]:
-                self.tick(d["follow"])
+                self.tick(d["follow"], now)
             return
         if status >= 0xF0:
             return
@@ -299,8 +308,8 @@ class Midi:
               "look": lambda: "look " + name("looks", act["id"]), "blackout": lambda: "Blackout " + ("on" if act["on"] else "off"),
               "master": lambda: "master %d%%" % round(act["value"] * 100)}[act["do"]])()
 
-    def tick(self, follow):
-        now = time.time()
+    def tick(self, follow, now=None):
+        now = time.time() if now is None else now
         with self.lock:
             self.clock = [t for t in self.clock if now - t < 3.0] + [now]
             if len(self.clock) < 48:
