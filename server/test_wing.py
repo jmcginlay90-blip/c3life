@@ -358,6 +358,15 @@ class Link(unittest.TestCase):
         self.assertTrue(wait(lambda: self.w.rta_state()["src"] == 3 and self.w.rta_state()["tap"] == "POSTEQ"))
         self.assertEqual(self.f.vals["/cfg/rta/rtasrc"], 2)
         self.assertIn("before or after the EQ", self.w.rta_point(3, "SOMEWHERE"))
+        self.assertEqual((self.w.rta_state()["kind"], self.w.rta_state()["n"]), ("ch", 3))
+        # a monitor mix: bus 4 is index 52 (after 40 channels and 8 aux inputs)
+        self.assertIsNone(self.w.rta_point(4, "POSTEQ", "bus"))
+        self.assertTrue(wait(lambda: (self.w.rta_state()["kind"], self.w.rta_state()["n"]) == ("bus", 4)))
+        self.assertEqual(self.f.vals["/cfg/rta/rtasrc"], 51)
+        self.assertIsNotNone(self.w.rta_point(17, "POSTEQ", "bus"))
+        self.assertEqual(wm.rta_strip(49), ("bus", 1))
+        self.assertEqual(wm.rta_strip(41), ("aux", 1))
+        self.assertEqual(wm.rta_strip(None), (None, None))
 
     def test_rta_index_counted_from_one(self):
         self.f.rta_base = 0  # a Wing whose RTA index counts from 1

@@ -94,6 +94,25 @@ class Api(unittest.TestCase):
         code, d = self.call("/api/wing/send", "POST", {"bus": 2, "n": 2, "field": "lvl", "value": 0.0}, who="FOH sound")
         self.assertEqual(code, 200)
 
+    def test_a_musician_puts_the_rta_on_their_own_mix(self):
+        # the Wing's RTA on a channel: a musician doesn't see it
+        self.assertEqual(self.call("/api/wing/rta", "POST", {"n": 3, "tap": "POSTEQ"})[0], 200)
+        self.assertTrue(wait(lambda: self.call("/api/wing/rta")[1].get("kind") == "ch"))
+        code, r = self.call("/api/wing/rta", who="Keys (musician)")
+        self.assertEqual((code, r["mine"], r["rta"]), (200, False, []))
+        # their own mix (bus 4): yes, and then they see it; someone else's (bus 5): no
+        self.assertEqual(self.call("/api/wing/rta", "POST", {"kind": "bus", "n": 5, "tap": "POSTEQ"}, who="Keys (musician)")[0], 403)
+        self.assertEqual(self.call("/api/wing/rta", "POST", {"n": 3, "tap": "POSTEQ"}, who="Keys (musician)")[0], 403)
+        self.assertEqual(self.call("/api/wing/rta", "POST", {"kind": "bus", "n": 4, "tap": "POSTEQ"}, who="Keys (musician)")[0], 200)
+        self.assertTrue(wait(lambda: self.call("/api/wing/rta", who="Keys (musician)")[1].get("mine") and len(self.call("/api/wing/rta", who="Keys (musician)")[1]["rta"]) == 120))
+        self.assertEqual(self.f.vals["/cfg/rta/rtasrc"], 51)
+        # locked: they can't move it
+        d = self.call("/api/monitors")[1]
+        d["locked"] = True
+        self.call("/api/monitors", "PUT", d)
+        self.assertEqual(self.call("/api/wing/rta", "POST", {"kind": "bus", "n": 4, "tap": "PREEQ"}, who="Keys (musician)")[0], 403)
+        self.assertEqual(self.call("/api/wing/rta", who="Viewer")[0], 403)
+
     def test_the_lock(self):
         d = self.call("/api/monitors")[1]
         d["locked"] = True

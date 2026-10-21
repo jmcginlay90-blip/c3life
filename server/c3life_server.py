@@ -48,7 +48,9 @@ API (JSON):
                                            (read while it's open; change them with /api/wing/set, field "eq/1g"...)
   GET  /api/wing/history?n=&since=          (Mixer view) the open channel's last 8 s of level and gate/comp gain reduction
   GET  /api/wing/rta                       (Mixer view) the Wing's RTA: 120 bands from 20 Hz, and what it's on
-  POST /api/wing/rta {"n","tap"}            (Mixer control) point the Wing's RTA at a channel (IN, PREEQ, POSTEQ, POST)
+  POST /api/wing/rta {"n","tap","kind"?}   (Mixer control; a musician for their own mix, "kind": "bus") point the Wing's
+                                           RTA at a channel or a bus (IN, PREEQ, POSTEQ, POST). GET: a musician sees it
+                                           only while it's on one of their own mixes
   POST /api/wing/set  {"kind","n","field","value"}   (Mixer control) fdr, mute, name, col, gain or vph
   POST /api/wing/fade {"moves":[...]}       (Mixer or Macros control) slide cues' fades, run here
   PUT  /api/wing/settings {"ip"?,"mode"?}   (Admin) the Wing's address; off, watch or control
@@ -771,11 +773,22 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 if self.level("Mixer"):
                     self.send_json(200, dict(tio.state(), ok=True))
                 return
-            if path in ("/api/wing/rta", "/api/wing/history"):
-                if not self.level("Mixer"):
+            if path == "/api/wing/rta":
+                s, _ = self.session()
+                if not s:
                     return
-                if path.endswith("/rta"):
-                    self.send_json(200, dict(wing.rta_state(), ok=True))
+                st = wing.rta_state()
+                if access.level(s["role"], "Mixer") >= 1:
+                    self.send_json(200, dict(st, ok=True))
+                elif access.level(s["role"], "Own monitor mix") >= 1:
+                    # a musician: only while the Wing's RTA is on one of their own mixes
+                    mine = st["kind"] == "bus" and st["n"] in monitors.mine(s["name"])
+                    self.send_json(200, dict(st, ok=True, rta=st["rta"] if mine else [], mine=mine))
+                else:
+                    self.send_json(403, {"ok": False, "error": "Your role can't do this (Access levels)."})
+                return
+            if path == "/api/wing/history":
+                if not self.level("Mixer"):
                     return
                 q = urllib.parse.parse_qs(self.path.split("?", 1)[1] if "?" in self.path else "")
                 n, since = (q.get("n") or [""])[0], (q.get("since") or ["0"])[0]
@@ -1059,10 +1072,21 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 self.send_json(200, {"ok": True})
                 return
             if path == "/api/wing/rta":
-                if not self.level("Mixer", need=2):
+                s, _ = self.session()
+                if not s:
                     return
                 body = self.read_json() or {}
-                err = wing.rta_point(body.get("n"), body.get("tap", "POSTEQ"))
+                kind, mixer = body.get("kind", "ch"), access.level(s["role"], "Mixer")
+                if mixer < 2:
+                    # a musician may point it at their own mix (a bus), while mixes aren't locked
+                    b = body.get("n")
+                    err = "Your role can't do this (Access levels)."
+                    if kind == "bus" and isinstance(b, int) and b in monitors.mine(s["name"]) and access.level(s["role"], "Own monitor mix") >= 2:
+                        err = monitors.may_change(s["name"], mixer, b)
+                    if err:
+                        self.send_json(403, {"ok": False, "error": err})
+                        return
+                err = wing.rta_point(body.get("n"), body.get("tap", "POSTEQ"), kind)
                 if err:
                     self.send_json(409, {"ok": False, "error": err})
                     return

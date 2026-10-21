@@ -47,6 +47,10 @@ PROC = dict({
     "dyn/att": ("n", 0, 120), "dyn/rel": ("n", 4, 4000), "dyn/auto": ("b",), "dyn/mdl": ("s",),
 }, **_EQ)
 RTA_TAPS = ("IN", "PREEQ", "POSTEQ", "POST")
+# The RTA's source is one index across the strips, in this order (channel 1 is 1, bus 1 is 49). The channels' part is
+# confirmed by reading it back; the buses' place after the 8 aux inputs is how the Wing orders its strips, not yet
+# tried on our Wing (the screen reads the source back and says when it isn't the mix it asked for).
+RTA_BASE = {"ch": 0, "aux": 40, "bus": 48, "main": 64, "mtx": 68}
 # a channel's send to a bus: /ch/N/send/B/<field> (an aux input's too: /aux/N/send/B/<field>, kept as "a<N>")
 SEND = {"on": "b", "lvl": "n", "mode": "s", "plink": "b", "pan": "n"}
 SENDERS = ("ch", "aux")
@@ -828,20 +832,23 @@ class Wing:
     def rta_state(self):
         with self.lock:
             fresh = time.time() - self.rta_at < 2
-            return {"rta": list(self.rta) if fresh else [], "src": self.rtacfg.get("$src"), "tap": self.rtacfg.get("$tap") or self.rtacfg.get("rtatap"), "fresh": fresh}
+            src = self.rtacfg.get("$src")
+            kind, n = rta_strip(src)
+            return {"rta": list(self.rta) if fresh else [], "src": src, "kind": kind, "n": n, "tap": self.rtacfg.get("$tap") or self.rtacfg.get("rtatap"), "fresh": fresh}
 
-    def rta_point(self, n, tap):
-        """Point the Wing's RTA at channel n (the desk's own RTA screen follows). The source is an index;
-        it's set, then read back, and corrected if the Wing counts from 1."""
+    def rta_point(self, n, tap, kind="ch"):
+        """Point the Wing's RTA at channel n, or another strip (a bus: a monitor mix), and the desk's own RTA screen
+        follows. The source is an index; it's set, then read back, and corrected if the Wing counts from 1."""
         if self.settings["mode"] != "control":
             return "The app is set to watch the Wing only."
         if self.status()["status"] != "connected":
             return "The Wing isn't answering, so nothing was sent."
-        if not isinstance(n, int) or isinstance(n, bool) or not 1 <= n <= KINDS["ch"] or tap not in RTA_TAPS:
+        if kind not in RTA_BASE or not isinstance(n, int) or isinstance(n, bool) or not 1 <= n <= KINDS[kind] or tap not in RTA_TAPS:
             return "Pick a channel, and before or after the EQ."
-        self.rta_want = (n, tap)
+        idx = RTA_BASE[kind] + n
+        self.rta_want = (idx, tap)
         self.send(osc("/cfg/rta/rtatap", tap))
-        self.send(osc("/cfg/rta/rtasrc", n - 1 + self.rta_off))
+        self.send(osc("/cfg/rta/rtasrc", idx - 1 + self.rta_off))
         for a in ("/cfg/rta/$src", "/cfg/rta/$tap", "/cfg/rta/rtasrc"):
             self.send(osc(a))
         return None
@@ -856,6 +863,16 @@ class Wing:
             self.rta_off = 1
             self.send(osc("/cfg/rta/rtasrc", w[0] - 1 + self.rta_off))
             self.send(osc("/cfg/rta/$src"))
+
+def rta_strip(src):
+    """The RTA's source index -> ("bus", 4), or (None, None)."""
+    if not isinstance(src, int) or isinstance(src, bool):
+        return None, None
+    for kind, base in sorted(RTA_BASE.items(), key=lambda kv: -kv[1]):
+        if src > base:
+            return (kind, src - base) if src - base <= KINDS[kind] else (None, None)
+    return None, None
+
 
 def find(port=2222, timeout=1.5, target="255.255.255.255"):
     """Look for Wings on the network. -> [{"ip","name","model","firmware"}]"""
