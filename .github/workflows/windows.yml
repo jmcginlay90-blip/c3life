@@ -55,6 +55,8 @@ jobs:
       - name: What is on port 8080 after the install
         shell: pwsh
         run: |
+          # the lists in config.json must stay lists (an empty one once came out as null)
+          python -c "import json; d = json.load(open(r'C:\C3Life\server\config.json', encoding='utf-8-sig')); bad = [k for k in ('allowed_networks', 'remote_networks', 'remote_support_roles') if not isinstance(d.get(k), list)]; print('config.json lists:', {k: d.get(k) for k in ('allowed_networks', 'remote_networks', 'remote_support_roles')}); assert not bad, bad"
           Get-ScheduledTask | Where-Object TaskName -like '*C3*' | Format-Table TaskName, State -AutoSize | Out-String | Write-Host
           foreach ($c in @(Get-NetTCPConnection -LocalPort 8080 -State Listen -ErrorAction SilentlyContinue)) {
             $w = Get-CimInstance Win32_Process -Filter "ProcessId=$($c.OwningProcess)"

@@ -285,8 +285,13 @@ if (-not $NoSubtitles) {
     Write-Warning "Subtitles weren't set up ($_). Listen still works without them. Check the internet and run this again."
   }
 }
-$cfg | Add-Member -Force -NotePropertyName remote_networks -NotePropertyValue $(if ($ListenFromHome -or $RemoteSupport) { @($TailscaleNetwork) } else { @() })
-$cfg | Add-Member -Force -NotePropertyName remote_support_roles -NotePropertyValue $(if ($RemoteSupport) { @('Admin') } else { @() })
+# Lists stay lists in config.json: $(if ...) would turn an empty list into null and a list of one into a plain string
+[string[]]$remoteNets = @()
+if ($ListenFromHome -or $RemoteSupport) { $remoteNets = @($TailscaleNetwork) }
+[string[]]$supportRoles = @()
+if ($RemoteSupport) { $supportRoles = @('Admin') }
+$cfg | Add-Member -Force -NotePropertyName remote_networks -NotePropertyValue $remoteNets
+$cfg | Add-Member -Force -NotePropertyName remote_support_roles -NotePropertyValue $supportRoles
 $cfg | ConvertTo-Json -Depth 4 | Set-Content -Path $cfgPath -Encoding UTF8
 # Where the apps C3 Life opens on this PC are (Dante > Open R Remote, and Dante Controller).
 [ordered]@{ rremote = $found['R Remote']; dante = $found['Dante Controller']; dvs = $found['Dante Virtual Soundcard']; companion = $found['Companion'] } |

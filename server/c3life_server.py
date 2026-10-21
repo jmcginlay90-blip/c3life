@@ -353,8 +353,12 @@ def load_config(path):
             cfg.update(json.load(f))
     cfg["app_dir"] = os.path.abspath(cfg["app_dir"])
     cfg["data_dir"] = os.path.abspath(cfg["data_dir"])
+    # a list, even if config.json says null or gives one as a plain string
+    for k in ("allowed_networks", "remote_networks", "remote_support_roles"):
+        v = cfg.get(k)
+        cfg[k] = [] if v is None else [v] if isinstance(v, str) else list(v)
     cfg["_nets"] = [ipaddress.ip_network(n, strict=False) for n in cfg["allowed_networks"]]
-    cfg["_remote"] = [ipaddress.ip_network(n, strict=False) for n in cfg.get("remote_networks", [])]
+    cfg["_remote"] = [ipaddress.ip_network(n, strict=False) for n in cfg["remote_networks"]]
     return cfg
 
 

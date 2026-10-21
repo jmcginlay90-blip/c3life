@@ -189,3 +189,18 @@ class ServerTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ConfigFile(unittest.TestCase):
+    def test_lists_written_by_powershell_still_load(self):
+        # Install-C3Life.ps1 once wrote an empty list as null and a list of one as a plain string
+        d = tempfile.mkdtemp()
+        try:
+            p = os.path.join(d, "config.json")
+            with open(p, "w", encoding="utf-8-sig") as f:  # PowerShell's UTF-8 has a BOM
+                json.dump({"remote_networks": None, "allowed_networks": "192.168.10.0/24", "remote_support_roles": None}, f)
+            cfg = s.load_config(p)
+            self.assertEqual((cfg["remote_networks"], cfg["_remote"], cfg["remote_support_roles"]), ([], [], []))
+            self.assertEqual([str(n) for n in cfg["_nets"]], ["192.168.10.0/24"])
+        finally:
+            shutil.rmtree(d, ignore_errors=True)
