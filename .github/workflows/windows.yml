@@ -52,21 +52,40 @@ jobs:
           Set-ExecutionPolicy -Scope Process Bypass -Force
           # Port 80 is already taken on GitHub's Windows computer, so this run uses 8080
           .\Install-C3Life.ps1 -Yes -NoKiosk -NoSubtitles -Languages '' -Port 8080
+      - name: What is on port 8080 after the install
+        shell: pwsh
+        run: |
+          Get-ScheduledTask | Where-Object TaskName -like '*C3*' | Format-Table TaskName, State -AutoSize | Out-String | Write-Host
+          foreach ($c in @(Get-NetTCPConnection -LocalPort 8080 -State Listen -ErrorAction SilentlyContinue)) {
+            $w = Get-CimInstance Win32_Process -Filter "ProcessId=$($c.OwningProcess)"
+            Write-Host "Listening on 8080: $($w.ProcessId) $($w.CommandLine)"
+          }
+          # The booth user never signs in here, so stop whatever the scheduled task started and run C3 Life directly
+          Get-ScheduledTask | Where-Object TaskName -like '*C3*' | Stop-ScheduledTask -ErrorAction SilentlyContinue
+          Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*c3life_server.py*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
       - name: Start C3 Life and ask it how it is
         shell: pwsh
         run: |
           $py = (Get-Command python).Source
-          $p = Start-Process $py -ArgumentList 'C:\C3Life\server\c3life_server.py', '--config', 'C:\C3Life\server\config.json', '--log', 'C:\C3Life\logs\ci-server.log' -PassThru
+          # After 60 s Python writes where every thread is, so a hang shows where it is stuck
+          $code = "import faulthandler, sys; faulthandler.dump_traceback_later(60, exit=True); sys.path.insert(0, r'C:\C3Life\server'); import c3life_server; c3life_server.main(['--config', r'C:\C3Life\server\config.json', '--log', r'C:\C3Life\logs\ci-server.log'])"
+          $p = Start-Process $py -ArgumentList '-c', "`"$code`"" -PassThru -RedirectStandardOutput C:\C3Life\logs\ci-out.txt -RedirectStandardError C:\C3Life\logs\ci-err.txt
           $ok = $false
-          foreach ($i in 1..30) {
+          foreach ($i in 1..20) {
             Start-Sleep 2
-            try { $h = Invoke-RestMethod http://127.0.0.1:8080/api/health; $ok = $h.ok; if ($ok) { break } } catch { }
+            try { $h = Invoke-RestMethod http://127.0.0.1:8080/api/health -TimeoutSec 3; $ok = $h.ok; if ($ok) { break } } catch { Write-Host "  not yet: $($_.Exception.Message)" }
           }
-          if (-not $ok) { throw 'C3 Life did not answer on http://127.0.0.1:8080/api/health' }
+          if (-not $ok) {
+            Start-Sleep 25
+            Write-Host '--- C3 Life output'; Get-Content C:\C3Life\logs\ci-out.txt -ErrorAction SilentlyContinue
+            Write-Host '--- C3 Life errors'; Get-Content C:\C3Life\logs\ci-err.txt -ErrorAction SilentlyContinue
+            Write-Host '--- C3 Life log'; Get-Content C:\C3Life\logs\ci-server.log -ErrorAction SilentlyContinue
+            throw 'C3 Life did not answer on http://127.0.0.1:8080/api/health'
+          }
           "C3 Life $($h.version) is up, serving the $($h.app) folder"
-          $r = Invoke-WebRequest http://127.0.0.1:8080/ -MaximumRedirection 0 -SkipHttpErrorCheck
+          $r = Invoke-WebRequest http://127.0.0.1:8080/ -MaximumRedirection 0 -SkipHttpErrorCheck -TimeoutSec 5
           "The address opens: $($r.Headers.Location)"
-          Invoke-WebRequest http://127.0.0.1:8080/project/Lights.dc.html -UseBasicParsing | Out-Null
+          Invoke-WebRequest http://127.0.0.1:8080/project/Lights.dc.html -UseBasicParsing -TimeoutSec 5 | Out-Null
           'Lights page served'
           Stop-Process $p
       - name: Keep the install logs

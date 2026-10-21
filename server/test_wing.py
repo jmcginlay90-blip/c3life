@@ -256,6 +256,7 @@ class Link(unittest.TestCase):
         self.assertIsNone(self.w.set("ch", 10, "vph", True))
         self.assertTrue(wait(lambda: self.w.inputs.get("A/2", {}).get("vph") == 1 and self.w.inputs["A/2"].get("g") == 32.5))
         self.assertIn(("/io/in/A/2/vph", 1), self.f.sets)
+        self.assertTrue(wait(lambda: self.w.src_any(20) == "USB/20"))  # its source arrives in its own time
         self.assertIn("isn't fed by a mic input (it's USB)", self.w.set("ch", 20, "vph", True))
         self.assertIn("−3 to +60", self.w.set("ch", 10, "gain", 80))
 

@@ -230,6 +230,10 @@ class Wing:
 
     def start(self):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:  # room for a whole round of answers: Windows' own buffer is small and drops the rest
+            self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 1 << 20)
+        except OSError:
+            pass
         self.sock.bind(("0.0.0.0", 0))
         self.sock.settimeout(0.5)
         for fn in (self.rx_loop, self.ask_loop, self.meter_loop):
@@ -261,16 +265,18 @@ class Wing:
                 q += ["/%s/%d/fdr" % (k, n), "/%s/%d/mute" % (k, n)] + (["/%s/%d/pan" % (k, n)] if k != "dca" else [])
                 if slow:
                     q += ["/%s/%d/name" % (k, n), "/%s/%d/col" % (k, n)]
-        if slow:
-            for n in range(1, KINDS["ch"] + 1):
+        for n in range(1, KINDS["ch"] + 1):
+            # every 20 s, and every round until the answer has come (a lost reply isn't left for 20 s)
+            st = self.strips["ch"].get(n) or {}
+            if slow or "src_grp" not in st or "src_in" not in st:
                 q += ["/ch/%d/in/conn/grp" % n, "/ch/%d/in/conn/in" % n]
         with self.lock:
             used = sorted(set(self.src(n) for n in range(1, KINDS["ch"] + 1)) - {None})
             fed = sorted(set(self.src_any(n) for n in range(1, KINDS["ch"] + 1)) - {None})
         for key in used:
             q += ["/io/in/%s/g" % key, "/io/in/%s/vph" % key]
-        if slow:
-            q += ["/io/in/%s/mode" % key for key in fed]  # mono (M), stereo (ST) or mid-side (MS)
+        # mono (M), stereo (ST) or mid-side (MS): every 20 s, and every round for an input whose mode hasn't come yet
+        q += ["/io/in/%s/mode" % key for key in fed if slow or "mode" not in self.inputs.get(key, {})]
         q += ["/cfg/rta/$src", "/cfg/rta/$tap"]
         return q
 
