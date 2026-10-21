@@ -646,7 +646,8 @@ class Public(ListenTest):
         self.rec = os.path.join(self.tmp, "args.json")
         fake = os.path.join(self.tmp, "fake_ffmpeg.py")
         with open(fake, "w") as fh:
-            fh.write("import json,sys,time\njson.dump(sys.argv[1:],open(%r,'w'))\ntime.sleep(60)\n" % self.rec)
+            # written whole, then renamed, so the test never reads it half-written
+            fh.write("import json,os,sys,time\njson.dump(sys.argv[1:],open(%r,'w'))\nos.replace(%r,%r)\ntime.sleep(60)\n" % (self.rec + ".tmp", self.rec + ".tmp", self.rec))
         self.fake = fake
 
     def tearDown(self):
