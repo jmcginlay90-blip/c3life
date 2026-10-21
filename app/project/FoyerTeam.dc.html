@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>C3 Life – Foyer team</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet" data-look>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Safari / iPad: no zoom when typing, no double-tap zoom, no text-select or callout while dragging */
+html{-webkit-text-size-adjust:100%;touch-action:manipulation}
+input,select,textarea{font-size:16px!important}
+button,a,summary,label,[role=slider]{-webkit-tap-highlight-color:transparent}
+[role=slider],.fader,.pan{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+body{margin:0;background:#0D1015}
+a{color:#6CB4F5}a:hover{color:#9CCBF8}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:62px;color:#A3ACB8;text-decoration:none;font-size:12px;font-weight:500;border-top:2px solid transparent}
+.tab.on{color:#F5C518;border-top-color:#F5C518}
+.card{background:#161A21;border:1px solid #262C36;border-radius:14px;padding:14px}
+.lbl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#A3ACB8;font-weight:500}
+.mono{font-family:'IBM Plex Mono',ui-monospace,monospace}
+.btn{min-height:48px;padding:0 14px;border-radius:12px;border:1px solid #333B47;background:#1E232C;color:#ECEEF1;font:500 15px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer}
+.btn.hot{background:#FF7A45;border-color:#FF7A45;color:#1A0A03;font-weight:600}
+.src{flex:1;min-height:96px;border-radius:16px;border:2px solid #333B47;background:#1E232C;color:#ECEEF1;font:600 19px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:4px;padding:12px 16px;text-align:left}
+.src.on{background:#F5C518;border-color:#F5C518;color:#1A1204}
+.src small{font-size:13px;font-weight:500;color:#A3ACB8}
+.src.on small{color:#1A1204}
+.pre{flex:1;min-height:52px;border-radius:12px;border:1px solid #333B47;background:#1E232C;color:#ECEEF1;font:600 14px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer}
+.pre.on{border-color:#F5C518;color:#F5C518}
+.q{flex:none;min-height:40px;padding:0 14px;border-radius:20px;border:1px solid #333B47;background:#161A21;color:#ECEEF1;font:500 13px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer;white-space:nowrap}
+input[type=range]{width:100%;accent-color:#F5C518;height:40px}
+input[type=range]:disabled{opacity:.4}
+
+/* Fills any screen. Wider than 700px (iPad, laptop, web) the content sits in a centred column. */
+@media (min-width:700px){
+  .app > *:not(.bn):not([style*="position:absolute"]){width:100%;max-width:760px;margin-left:auto;margin-right:auto;box-sizing:border-box}
+}
+
+/* Easy to use: every link, tick box and control is at least 40-44px tall, so it is easy to hit with a thumb. */
+a[style*="min-height:28px"]{min-height:44px !important}
+a[style*="font-size:12px"][style*="text-decoration:none"],a[style*="font-size:13px"][style*="text-decoration:none"]{display:inline-flex;align-items:center;min-height:40px}
+label:has(> input[type=checkbox]),label:has(> input[type=radio]){min-height:44px}
+input[type=checkbox],input[type=radio]{width:22px;height:22px;flex:none;accent-color:#F5C518}
+input[type=range]{min-height:40px}
+select{min-height:44px}
+button.sw::after,button.cell::after{content:'';position:absolute;inset:-7px -4px}
+.cell{position:relative}
+input[type=checkbox][aria-label]{width:32px;height:32px}
+
+/* Menu: a drop-down list at the top of every screen. Tap Menu to open it, tap again (or pick a page) to close. */
+.topmenu{position:relative;z-index:20;flex:none;background:#11151B;border-bottom:1px solid #262C36}
+.topmenu summary{list-style:none;display:flex;align-items:center;gap:10px;min-height:52px;padding:0 16px;cursor:pointer;color:#ECEEF1;font:600 15px 'IBM Plex Sans',system-ui,sans-serif;max-width:760px;margin:0 auto;box-sizing:border-box}
+.topmenu summary::-webkit-details-marker{display:none}
+.topmenu .mlabel{font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:#A3ACB8}
+.topmenu .mcur{flex:1;color:#F5C518}
+.topmenu .chev{transition:transform .15s}
+.topmenu details[open] .chev{transform:rotate(180deg)}
+.topmenu .mlist{position:absolute;left:8px;right:8px;top:calc(100% + 4px);background:#161A21;border:1px solid #333B47;border-radius:14px;box-shadow:0 14px 34px rgba(0,0,0,.55);padding:6px;display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.topmenu .mlist a{display:flex;align-items:center;gap:10px;min-height:52px;padding:0 12px;border-radius:10px;color:#ECEEF1;text-decoration:none;font:500 15px 'IBM Plex Sans',system-ui,sans-serif}
+.topmenu .mlist a:hover{background:#1E232C}
+.topmenu .mlist a.on{background:#262C36;color:#F5C518}
+@media (min-width:700px){.topmenu .mlist{left:calc(50% - 372px);right:auto;width:440px}}
+@media (min-width:700px) and (max-width:800px){.topmenu .mlist{left:16px}}
+/* wide:start — iPad landscape and laptops: use the width */
+@media (min-width:1000px){
+  .app > *:not(.bn):not([style*="position:absolute"]){max-width:1240px}
+  .topmenu summary{max-width:1240px}
+  .app main.wide2{display:grid !important;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:14px 18px !important}
+  .app main.wide2 > *{min-width:0}
+  .app main.wide2 > :not(section):not(.card):not(details):not(.wcol){grid-column:1 / -1}
+  .app main.wide2 > .wfull{grid-column:1 / -1}
+  .app main.wide1{max-width:980px !important}
+  .app:has(main.wide1) > *:not(.bn):not([style*="position:absolute"]){max-width:980px}
+  .app:has(main.wide1) .topmenu summary{max-width:980px}
+}
+@media (min-width:1500px){ .app main.wide2.wide3{grid-template-columns:repeat(3,minmax(0,1fr))} }
+/* wide:end */
+/* look:start — the WING look (like WING Edit): near-black, outlined panels, condensed headings, yellow for active, blue for selected.
+   Settings › Look › Classic puts the old look back on this device (html[data-look=classic]). */
+:root{--wk-bg:#0A0B0D;--wk-panel:#121418;--wk-panel2:#181B20;--wk-line:#2E333A;--wk-yellow:#F5C518;--wk-blue:#2F6CC4;--wk-cond:'Barlow Condensed','IBM Plex Sans',system-ui,sans-serif}
+html:not([data-look=classic]) body{background:var(--wk-bg)}
+html:not([data-look=classic]) .app{background:var(--wk-bg) !important}
+html:not([data-look=classic]) .card{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .lbl{font-family:var(--wk-cond);font-size:13px;font-weight:600;letter-spacing:.07em;color:#D4D9E0}
+html:not([data-look=classic]) h1{font-family:var(--wk-cond);font-weight:600 !important;text-transform:uppercase;letter-spacing:.05em;font-size:21px !important;line-height:1.2;color:var(--wk-yellow);border:1.5px solid var(--wk-yellow);border-radius:3px;padding:2px 12px;display:inline-block}
+html:not([data-look=classic]) .btn,html:not([data-look=classic]) .lk,html:not([data-look=classic]) .mxb,html:not([data-look=classic]) .mxbk,html:not([data-look=classic]) .mute,html:not([data-look=classic]) .pbtn{font-family:var(--wk-cond);font-size:15px;letter-spacing:.02em;border-radius:4px}
+html:not([data-look=classic]) .btn.pri{background:var(--wk-yellow);border-color:var(--wk-yellow);color:#111}
+html:not([data-look=classic]) .seg{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .seg a{font-family:var(--wk-cond);font-size:15px;letter-spacing:.03em;border-radius:4px}
+html:not([data-look=classic]) .seg a.on,html:not([data-look=classic]) .lk.on{background:var(--wk-blue);color:#fff}
+html:not([data-look=classic]) .tab.on{color:var(--wk-yellow);border-top-color:var(--wk-yellow)}
+html:not([data-look=classic]) .topmenu{background:#000;border-bottom-color:var(--wk-line)}
+html:not([data-look=classic]) .topmenu summary{font-family:var(--wk-cond);font-size:16px;letter-spacing:.03em}
+html:not([data-look=classic]) .topmenu .mcur{color:var(--wk-yellow)}
+html:not([data-look=classic]) .topmenu .mlist{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .topmenu .mlist a{font-family:var(--wk-cond);font-size:16px;border-radius:4px}
+html:not([data-look=classic]) .topmenu .mlist a.on{background:var(--wk-panel2);color:var(--wk-yellow);box-shadow:inset 3px 0 0 var(--wk-yellow)}
+html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic]) input[type=radio],html:not([data-look=classic]) input[type=range]{accent-color:var(--wk-yellow)}
+.wkside{display:none}
+/* iPad landscape and laptops: a sidebar like WING Edit's (HOME, MIXER, ...) instead of the menu at the top */
+@media (min-width:1000px){
+  html:not([data-look=classic]) .wkside{display:flex;flex-direction:column;gap:2px;position:fixed;left:0;top:0;bottom:0;width:132px !important;max-width:132px !important;margin:0 !important;padding:8px 6px 12px;box-sizing:border-box;background:#000;border-right:1px solid var(--wk-line);overflow-y:auto;z-index:30}
+  html:not([data-look=classic]) .wkside .wkbrand{font:700 24px var(--wk-cond);letter-spacing:.06em;color:var(--wk-yellow);padding:6px 8px 12px}
+  html:not([data-look=classic]) .wkside a{display:flex;align-items:center;gap:9px;min-height:46px;padding:0 8px;border-radius:4px;color:#D4D9E0;text-decoration:none;font:600 15px var(--wk-cond);text-transform:uppercase;letter-spacing:.04em}
+  html:not([data-look=classic]) .wkside a:hover{background:var(--wk-panel2)}
+  html:not([data-look=classic]) .wkside a.on{background:var(--wk-panel2);color:var(--wk-yellow);box-shadow:inset 3px 0 0 var(--wk-yellow)}
+  html:not([data-look=classic]) .wkside svg{flex:none}
+  html:not([data-look=classic]) .app{padding-left:132px;box-sizing:border-box !important}
+  html:not([data-look=classic]) .app > .topmenu{display:none}
+}
+/* look:end */
+</style>
+</helmet>
+<div class="app has-bn" style="width:100%;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;background:#0D1015;color:#ECEEF1;font-family:'IBM Plex Sans',system-ui,sans-serif;overflow:hidden">
+  
+  
+  
+  
+  <nav class="wkside" aria-label="Main menu (side)"><div class="wkbrand" aria-hidden="true">C3 LIFE</div><a href="FoyerTeam.dc.html" class="on" aria-current="page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5L6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>Foyer</a>
+        <a href="Chat.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>Chat</a>
+        <a href="Listen.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="15" width="4" height="6" rx="1.5"/><rect x="17" y="15" width="4" height="6" rx="1.5"/><path d="M10 9.5a2.5 2.5 0 0 1 4 0"/></svg>Listen</a></nav>
+  <nav class="bn topmenu" aria-label="Main menu">
+    <details>
+      <summary aria-label="Menu. You are on Foyer team"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span class="mlabel">Menu</span><span class="mcur">Foyer team</span><svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+      <div class="mlist">
+        <a href="FoyerTeam.dc.html" class="on" aria-current="page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5L6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>Foyer</a>
+        <a href="Chat.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>Chat</a>
+        <a href="Listen.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="15" width="4" height="6" rx="1.5"/><rect x="17" y="15" width="4" height="6" rx="1.5"/><path d="M10 9.5a2.5 2.5 0 0 1 4 0"/></svg>Listen</a>
+      </div>
+    </details>
+  </nav>
+  <header style="padding:20px 16px 12px;display:flex;justify-content:space-between;align-items:center;gap:10px">
+    <div style="padding-left:4px">
+      <div class="lbl">{{svcLabel}}</div>
+      <h1 style="margin:4px 0 0;font-size:26px;font-weight:600">{{fyName}}</h1>
+    </div>
+    <a href="User.dc.html" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:#ECEEF1;background:#161A21;border:1px solid #262C36;border-radius:24px;padding:5px 12px 5px 5px;min-height:44px;box-sizing:border-box" aria-label="Signed in as Foyer team. Change user">
+      <span style="width:34px;height:34px;border-radius:50%;background:#22A05A;color:#0D1015;font-weight:600;font-size:13px;display:flex;align-items:center;justify-content:center">FY</span>
+      <span style="line-height:1.25"><span style="font-size:13px;font-weight:600">Foyer team</span><br><span style="font-size:12px;color:#6CB4F5">Change user</span></span>
+    </a>
+  </header>
+
+  <div style="padding:0 16px 10px">
+    <div role="timer" aria-live="off" style="display:flex;align-items:center;gap:10px;background:#161A21;border:1px solid {{timerBorder}};border-radius:12px;padding:8px 12px">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{{timerColor}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M9 2h6"/></svg>
+      <span style="flex:1;font-size:13px">Screen locks in <span class="mono" style="color:{{timerColor}}">{{left}}</span> if not used</span>
+      <button class="q" style="min-height:36px" onClick="{{keep}}">Keep open</button>
+    </div>
+  </div>
+
+  <main class=" wide2" style="flex:1;overflow-y:auto;padding:0 16px 16px;display:flex;flex-direction:column;gap:12px">
+    <section class="card" style="display:flex;flex-direction:column;gap:10px">
+      <div class="lbl">{{fyName}} · what it plays</div>
+      <div style="display:flex;gap:10px">
+        <sc-for list="{{sources}}" as="sr" hint-placeholder-count="2">
+          <button class="{{sr.cls}}" onClick="{{sr.pick}}" aria-pressed="{{sr.on}}"><span>{{sr.name}}</span><small>{{sr.sub}}</small></button>
+        </sc-for>
+      </div>
+    </section>
+
+    <section class="card" style="display:flex;flex-direction:column;gap:12px;border-color:{{volBorder}}">
+      <div style="display:flex;justify-content:space-between;align-items:baseline">
+        <div class="lbl">Volume</div>
+        <span class="mono" style="font-size:22px;color:{{dbColor}}">{{dbText}}</span>
+      </div>
+      <div style="height:8px;border-radius:4px;background:#0F1318;overflow:hidden" aria-hidden="true"><div style="height:8px;border-radius:4px;background:#6CB4F5;width:{{meter}}%"></div></div>
+      <input type="range" min="0" max="100" value="{{lvl}}" onChange="{{setLvl}}" disabled="{{muted}}" aria-label="{{fyName}} volume">
+      <div style="display:flex;gap:8px">
+        <sc-for list="{{presets}}" as="p" hint-placeholder-count="3">
+          <button class="{{p.cls}}" onClick="{{p.pick}}" disabled="{{muted}}">{{p.name}}</button>
+        </sc-for>
+      </div>
+      <sc-if value="{{muted}}" hint-placeholder-val="{{ false }}"><button class="btn hot" onClick="{{toggleMute}}">{{fyName}} muted · tap to unmute</button></sc-if>
+      <sc-if value="{{live}}" hint-placeholder-val="{{ true }}"><button class="btn" onClick="{{toggleMute}}">Mute {{fyName}}</button></sc-if>
+      <div style="font-size:12px;color:#A3ACB8">Can't go above the maximum set by Admin ({{maxText}}).</div>
+    </section>
+
+    <section class="card" style="display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline">
+        <div class="lbl">Message the booth</div>
+        <span style="font-size:12px;color:#6CB4F5">{{sent}}</span>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <sc-for list="{{quick}}" as="q" hint-placeholder-count="4"><button class="q" onClick="{{q.send}}">{{q.text}}</button></sc-for>
+      </div>
+    </section>
+
+    <button class="btn" style="font-size:13px;color:#A3ACB8" onClick="{{demoTimeout}}">Demo: skip to 5 seconds before it locks</button>
+  </main>
+
+
+  <sc-if value="{{locked}}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;inset:0;z-index:8;background:rgba(13,16,21,.97);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:32px;text-align:center">
+      <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#A3ACB8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+      <div style="font-size:22px;font-weight:600">Screen locked</div>
+      <div style="font-size:14px;color:#A3ACB8;line-height:1.5">{{fyName}} keeps playing: {{srcName}} at {{dbText}}.<br>Enter the Foyer team PIN to carry on.</div>
+      <a href="User.dc.html" class="btn" style="display:flex;align-items:center;justify-content:center;text-decoration:none;min-width:220px;background:#F5C518;border-color:#F5C518;color:#1A1204;font-weight:600">Unlock with PIN</a>
+      <button class="btn" onClick="{{unlockDemo}}">Demo: unlock</button>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"lockMinutes":{"editor":"int","default":5,"min":1,"max":60},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { src: 0, lvl: 63, muted: false, meter: 40, left: this.full(), sent: '' };
+  }
+  // ---- the foyer's name and its two mixes: kept on the C3 Life server, and named from the desk ----
+  fyTok() { try { const x = JSON.parse(localStorage.getItem('booth.session') || 'null'); return x ? x.token : ''; } catch (e) { return ''; } }
+  fyApi(path, method, body) {
+    const t = this.fyTok(), h = t ? { Authorization: 'Bearer ' + t } : {};
+    if (body) h['Content-Type'] = 'application/json';
+    return fetch(path, { method: method || 'GET', headers: h, body: body ? JSON.stringify(body) : undefined })
+      .then((r) => r.json().catch(() => ({})).then((j) => ({ code: r.status, j: j })));
+  }
+  // In the preview: what the demo desk calls its buses (or what the Mixer screen last read from the real one).
+  fyLocal() {
+    let c = {}, w = null;
+    try { c = JSON.parse(localStorage.getItem('booth.foyer') || '{}') || {}; } catch (e) {}
+    try { w = JSON.parse(localStorage.getItem('booth.wingnames') || 'null'); } catch (e) {}
+    const demo = { bus: { 1: 'Wedges', 2: 'Drums IEM', 3: 'Bass IEM', 4: 'IEM Keys', 5: 'Stream L/R', 7: 'Foyer Spotify', 8: 'Foyer Live', 9: 'Crèche' }, mtx: { 1: 'Foyer', 2: 'Lobby', 3: 'Crèche' } };
+    const names = { bus: (w && w.bus && Object.keys(w.bus).length) ? w.bus : demo.bus, mtx: (w && w.mtx && Object.keys(w.mtx).length) ? w.mtx : demo.mtx };
+    const d = { name: 'Foyer', mix_a: 7, mix_b: 8, mtx: 1, max_db: -5, ...c };
+    return { ...d, names, from_desk: !!(w && w.bus), mix_a_name: names.bus[d.mix_a] || 'Spotify', mix_b_name: names.bus[d.mix_b] || 'Live service', mtx_name: names.mtx[d.mtx] || '' };
+  }
+  fyCache(j) { try { localStorage.setItem('booth.foyer', JSON.stringify({ name: j.name, mix_a: j.mix_a, mix_b: j.mix_b, mtx: j.mtx, max_db: j.max_db })); } catch (e) {} }
+  fyLoad() {
+    if (this.fyDemo) { const l = this.fyLocal(); if (JSON.stringify(l) !== JSON.stringify(this.state.fy)) this.setState({ fy: l }); return; }
+    if (this.fyBusy) return;
+    this.fyBusy = true;
+    this.fyApi('/api/foyer').then(({ code, j }) => {
+      this.fyBusy = false;
+      if (code === 404) { this.fyDemo = true; this.setState({ fy: this.fyLocal() }); return; }
+      if (code === 200 && j.ok) { this.setState({ fy: j, fyLive: true }); this.fyCache(j); }
+      else if (!this.state.fy) this.setState({ fy: this.fyLocal() });
+    }).catch(() => { this.fyBusy = false; if (!this.state.fy) this.setState({ fy: this.fyLocal() }); });
+  }
+  fySave(patch, msg) {
+    const c = this.state.fy || this.fyLocal();
+    const next = { name: c.name, mix_a: c.mix_a, mix_b: c.mix_b, mtx: c.mtx, max_db: c.max_db, ...patch };
+    if (next.mix_a === next.mix_b) { this.setState({ fyMsg: 'The two mixes need to be different buses.' }); return; }
+    if (this.fyDemo) { this.fyCache(next); this.setState({ fy: this.fyLocal(), fyMsg: msg || 'Saved.' }); return; }
+    this.fyApi('/api/foyer', 'PUT', next).then(({ j }) => {
+      if (j && j.ok) { this.setState({ fy: j, fyMsg: msg || 'Saved.' }); this.fyCache(j); }
+      else this.setState({ fyMsg: (j && j.error) || 'Not saved. Try again.' });
+    }).catch(() => this.setState({ fyMsg: 'Not saved: the C3 Life server didn’t answer.' }));
+  }
+  full() { return (this.props.lockMinutes ?? 5) * 60; }
+  componentDidMount() {
+    this.fyLoad(); this.fyT = setInterval(() => this.fyLoad(), 5000);
+    this.timer = setInterval(() => {
+      const s = this.state;
+      this.setState({
+        meter: s.muted ? 0 : Math.round(s.lvl * (0.5 + Math.random() * 0.35)),
+        left: Math.max(0, s.left - (s.left > 0 ? 1 : 0))
+      });
+    }, 1000);
+  }
+  componentWillUnmount() { clearInterval(this.timer); clearInterval(this.fyT); clearTimeout(this.t); }
+  touch(patch) { this.setState({ ...patch, left: this.full() }); }
+  db(l) { return l <= 0 ? -90 : (l >= 75 ? ((l - 75) / 25) * 10 : -((75 - l) * 1.2)); }
+  lvlFor(d) { return d >= 0 ? 75 + (d / 10) * 25 : 75 + d / 1.2; }
+  fmt(d) { return d <= -90 ? '−∞' : (d > 0 ? '+' : '') + d.toFixed(1) + ' dB'; }
+  // Services: each has its own times (the RTA report marks them), saved setup and running order.
+  svcDefaults() {
+    return [
+      { id: 's1', name: 'Sunday 10:00', start: '10:00', end: '12:10', setup: 'v12 · Sunday standard', order: 'Planning Center · Sunday Morning' },
+      { id: 's2', name: 'Sunday evening', start: '18:30', end: '19:45', setup: 'v9 · Evening acoustic', order: 'ProPresenter · Evening playlist' },
+      { id: 's3', name: 'Wednesday midweek', start: '19:30', end: '21:00', setup: 'v9 · Evening acoustic', order: 'Planning Center · Midweek' },
+      { id: 's4', name: 'Christmas Eve', start: '23:00', end: '00:15', setup: 'v10 · Christmas 2025', order: 'Planning Center · Christmas' }
+    ];
+  }
+  svcList() { try { const l = JSON.parse(localStorage.getItem('booth.services') || 'null'); if (Array.isArray(l) && l.length) return l; } catch (e) {} return this.svcDefaults(); }
+  svcCur() { const l = this.svcList(); let id = ''; try { id = localStorage.getItem('booth.service') || ''; } catch (e) {} return l.find((x) => x.id === id) || l[0]; }
+  renderVals() {
+    const s = this.state;
+    const fy = s.fy || this.fyLocal();
+    const maxDb = fy.max_db, maxLvl = this.lvlFor(maxDb);
+    const d = this.db(s.lvl);
+    const mm = Math.floor(s.left / 60), ss = String(s.left % 60).padStart(2, '0');
+    const warn = s.left <= 30;
+    return {
+      svcLabel: this.svcCur().name,
+      left: mm + ':' + ss,
+      timerColor: warn ? '#FF7A45' : '#A3ACB8',
+      timerBorder: warn ? '#FF7A45' : '#262C36',
+      keep: () => this.touch({}),
+      locked: s.left <= 0,
+      unlockDemo: () => this.touch({}),
+      demoTimeout: () => this.setState({ left: 5 }),
+      fyName: fy.name,
+      srcName: s.src === 0 ? fy.mix_a_name : fy.mix_b_name,
+      sources: [{ name: fy.mix_a_name, sub: 'From the desk \u00b7 Bus ' + fy.mix_a }, { name: fy.mix_b_name, sub: 'From the desk \u00b7 Bus ' + fy.mix_b }].map((x, i) => ({
+        ...x, on: s.src === i, cls: s.src === i ? 'src on' : 'src', pick: () => this.touch({ src: i })
+      })),
+      lvl: s.lvl,
+      setLvl: (e) => this.touch({ lvl: Math.min(Number(e.target.value), maxLvl) }),
+      dbText: s.muted ? 'Muted' : this.fmt(d),
+      dbColor: s.muted ? '#FF7A45' : '#F5C518',
+      volBorder: s.muted ? '#FF7A45' : '#262C36',
+      meter: s.meter,
+      maxText: this.fmt(maxDb),
+      presets: [['Quiet', -20], ['Normal', -10], ['Loud', maxDb]].map(([name, v]) => ({
+        name, cls: Math.abs(d - v) < 0.6 ? 'pre on' : 'pre', pick: () => this.touch({ lvl: this.lvlFor(v) })
+      })),
+      muted: s.muted, live: !s.muted,
+      toggleMute: () => this.touch({ muted: !s.muted }),
+      sent: s.sent,
+      quick: ['Too loud', 'Too quiet', 'Can’t hear the service', 'All good'].map((t) => ({
+        text: t,
+        send: () => { this.touch({ sent: 'Sent: ' + t }); clearTimeout(this.t); this.t = setTimeout(() => this.setState({ sent: '' }), 3000); }
+      }))
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,1002 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>C3 Life – RTA</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet" data-look>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Safari / iPad: no zoom when typing, no double-tap zoom, no text-select or callout while dragging */
+html{-webkit-text-size-adjust:100%;touch-action:manipulation}
+input,select,textarea{font-size:16px!important}
+button,a,summary,label,[role=slider]{-webkit-tap-highlight-color:transparent}
+[role=slider],.fader,.pan{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+body{margin:0;background:#0D1015}
+a{color:#6CB4F5}a:hover{color:#9CCBF8}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:62px;color:#A3ACB8;text-decoration:none;font-size:12px;font-weight:500;border-top:2px solid transparent}
+.tab:hover{color:#ECEEF1}
+.tab.on{color:#F5C518;border-top-color:#F5C518}
+.card{background:#161A21;border:1px solid #262C36;border-radius:14px;padding:14px}
+.lbl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#A3ACB8;font-weight:500}
+.mono{font-family:'IBM Plex Mono',ui-monospace,monospace}
+.pill{flex:1;min-height:44px;border-radius:10px;border:1px solid #333B47;background:#1E232C;color:#A3ACB8;font:500 13px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer;padding:0 6px}
+.pill.on{background:#262C36;border-color:#F5C518;color:#ECEEF1}
+.btn{min-height:44px;padding:0 16px;border-radius:10px;border:1px solid #333B47;background:#1E232C;color:#ECEEF1;font:500 14px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer}
+.btn.pri{background:#F5C518;border-color:#F5C518;color:#1A1204}
+.sq{width:44px;min-height:44px;border-radius:10px;border:1px solid #333B47;background:#1E232C;color:#ECEEF1;font:600 18px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer}
+input[type=checkbox]{width:20px;height:20px;accent-color:#F5C518}
+
+/* Fills any screen. Wider than 700px (iPad, laptop, web) the content sits in a centred column. */
+@media (min-width:700px){
+  .app > *:not(.bn):not([style*="position:absolute"]){width:100%;max-width:760px;margin-left:auto;margin-right:auto;box-sizing:border-box}
+}
+
+/* Easy to use: every link, tick box and control is at least 40-44px tall, so it is easy to hit with a thumb. */
+a[style*="min-height:28px"]{min-height:44px !important}
+a[style*="font-size:12px"][style*="text-decoration:none"],a[style*="font-size:13px"][style*="text-decoration:none"]{display:inline-flex;align-items:center;min-height:40px}
+label:has(> input[type=checkbox]),label:has(> input[type=radio]){min-height:44px}
+input[type=checkbox],input[type=radio]{width:22px;height:22px;flex:none;accent-color:#F5C518}
+input[type=range]{min-height:40px}
+select{min-height:44px}
+button.sw::after,button.cell::after{content:'';position:absolute;inset:-7px -4px}
+.cell{position:relative}
+input[type=checkbox][aria-label]{width:32px;height:32px}
+
+/* Menu: a drop-down list at the top of every screen. Tap Menu to open it, tap again (or pick a page) to close. */
+.topmenu{position:relative;z-index:20;flex:none;background:#11151B;border-bottom:1px solid #262C36}
+.topmenu summary{list-style:none;display:flex;align-items:center;gap:10px;min-height:52px;padding:0 16px;cursor:pointer;color:#ECEEF1;font:600 15px 'IBM Plex Sans',system-ui,sans-serif;max-width:760px;margin:0 auto;box-sizing:border-box}
+.topmenu summary::-webkit-details-marker{display:none}
+.topmenu .mlabel{font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:#A3ACB8}
+.topmenu .mcur{flex:1;color:#F5C518}
+.topmenu .chev{transition:transform .15s}
+.topmenu details[open] .chev{transform:rotate(180deg)}
+.topmenu .mlist{position:absolute;left:8px;right:8px;top:calc(100% + 4px);background:#161A21;border:1px solid #333B47;border-radius:14px;box-shadow:0 14px 34px rgba(0,0,0,.55);padding:6px;display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.topmenu .mlist a{display:flex;align-items:center;gap:10px;min-height:52px;padding:0 12px;border-radius:10px;color:#ECEEF1;text-decoration:none;font:500 15px 'IBM Plex Sans',system-ui,sans-serif}
+.topmenu .mlist a:hover{background:#1E232C}
+.topmenu .mlist a.on{background:#262C36;color:#F5C518}
+@media (min-width:700px){.topmenu .mlist{left:calc(50% - 372px);right:auto;width:440px}}
+@media (min-width:700px) and (max-width:800px){.topmenu .mlist{left:16px}}
+/* wide:start — iPad landscape and laptops: use the width */
+@media (min-width:1000px){
+  .app > *:not(.bn):not([style*="position:absolute"]){max-width:1240px}
+  .topmenu summary{max-width:1240px}
+  .app main.wide2{display:grid !important;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:14px 18px !important}
+  .app main.wide2 > *{min-width:0}
+  .app main.wide2 > :not(section):not(.card):not(details):not(.wcol){grid-column:1 / -1}
+  .app main.wide2 > .wfull{grid-column:1 / -1}
+  .app main.wide1{max-width:980px !important}
+  .app:has(main.wide1) > *:not(.bn):not([style*="position:absolute"]){max-width:980px}
+  .app:has(main.wide1) .topmenu summary{max-width:980px}
+}
+@media (min-width:1500px){ .app main.wide2.wide3{grid-template-columns:repeat(3,minmax(0,1fr))} }
+/* wide:end */
+/* look:start — the WING look (like WING Edit): near-black, outlined panels, condensed headings, yellow for active, blue for selected.
+   Settings › Look › Classic puts the old look back on this device (html[data-look=classic]). */
+:root{--wk-bg:#0A0B0D;--wk-panel:#121418;--wk-panel2:#181B20;--wk-line:#2E333A;--wk-yellow:#F5C518;--wk-blue:#2F6CC4;--wk-cond:'Barlow Condensed','IBM Plex Sans',system-ui,sans-serif}
+html:not([data-look=classic]) body{background:var(--wk-bg)}
+html:not([data-look=classic]) .app{background:var(--wk-bg) !important}
+html:not([data-look=classic]) .card{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .lbl{font-family:var(--wk-cond);font-size:13px;font-weight:600;letter-spacing:.07em;color:#D4D9E0}
+html:not([data-look=classic]) h1{font-family:var(--wk-cond);font-weight:600 !important;text-transform:uppercase;letter-spacing:.05em;font-size:21px !important;line-height:1.2;color:var(--wk-yellow);border:1.5px solid var(--wk-yellow);border-radius:3px;padding:2px 12px;display:inline-block}
+html:not([data-look=classic]) .btn,html:not([data-look=classic]) .lk,html:not([data-look=classic]) .mxb,html:not([data-look=classic]) .mxbk,html:not([data-look=classic]) .mute,html:not([data-look=classic]) .pbtn{font-family:var(--wk-cond);font-size:15px;letter-spacing:.02em;border-radius:4px}
+html:not([data-look=classic]) .btn.pri{background:var(--wk-yellow);border-color:var(--wk-yellow);color:#111}
+html:not([data-look=classic]) .seg{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .seg a{font-family:var(--wk-cond);font-size:15px;letter-spacing:.03em;border-radius:4px}
+html:not([data-look=classic]) .seg a.on,html:not([data-look=classic]) .lk.on{background:var(--wk-blue);color:#fff}
+html:not([data-look=classic]) .tab.on{color:var(--wk-yellow);border-top-color:var(--wk-yellow)}
+html:not([data-look=classic]) .topmenu{background:#000;border-bottom-color:var(--wk-line)}
+html:not([data-look=classic]) .topmenu summary{font-family:var(--wk-cond);font-size:16px;letter-spacing:.03em}
+html:not([data-look=classic]) .topmenu .mcur{color:var(--wk-yellow)}
+html:not([data-look=classic]) .topmenu .mlist{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .topmenu .mlist a{font-family:var(--wk-cond);font-size:16px;border-radius:4px}
+html:not([data-look=classic]) .topmenu .mlist a.on{background:var(--wk-panel2);color:var(--wk-yellow);box-shadow:inset 3px 0 0 var(--wk-yellow)}
+html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic]) input[type=radio],html:not([data-look=classic]) input[type=range]{accent-color:var(--wk-yellow)}
+.wkside{display:none}
+/* iPad landscape and laptops: a sidebar like WING Edit's (HOME, MIXER, ...) instead of the menu at the top */
+@media (min-width:1000px){
+  html:not([data-look=classic]) .wkside{display:flex;flex-direction:column;gap:2px;position:fixed;left:0;top:0;bottom:0;width:132px !important;max-width:132px !important;margin:0 !important;padding:8px 6px 12px;box-sizing:border-box;background:#000;border-right:1px solid var(--wk-line);overflow-y:auto;z-index:30}
+  html:not([data-look=classic]) .wkside .wkbrand{font:700 24px var(--wk-cond);letter-spacing:.06em;color:var(--wk-yellow);padding:6px 8px 12px}
+  html:not([data-look=classic]) .wkside a{display:flex;align-items:center;gap:9px;min-height:46px;padding:0 8px;border-radius:4px;color:#D4D9E0;text-decoration:none;font:600 15px var(--wk-cond);text-transform:uppercase;letter-spacing:.04em}
+  html:not([data-look=classic]) .wkside a:hover{background:var(--wk-panel2)}
+  html:not([data-look=classic]) .wkside a.on{background:var(--wk-panel2);color:var(--wk-yellow);box-shadow:inset 3px 0 0 var(--wk-yellow)}
+  html:not([data-look=classic]) .wkside svg{flex:none}
+  html:not([data-look=classic]) .app{padding-left:132px;box-sizing:border-box !important}
+  html:not([data-look=classic]) .app > .topmenu{display:none}
+}
+/* look:end */
+
+/* rta look: in the style of a phone analyser (dark, green spectrum with a red peak hold, spectrograph, big numbers) */
+.rsr{position:absolute !important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;margin:0;padding:0;border:0}
+.rtop{padding:10px 12px 0;display:flex;flex-direction:column;gap:10px;border-bottom:1px solid #1E2430}
+.rbar{display:flex;align-items:center;gap:8px}
+.rgrp{display:flex;background:#161A21;border:1px solid #262C36;border-radius:12px;padding:3px;gap:2px}
+.rb{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;border-radius:9px;border:0;background:transparent;color:#A3ACB8;cursor:pointer;padding:0 8px}
+.rb.box{background:#161A21;border:1px solid #262C36;border-radius:12px}
+.rb.on{background:#17402A;color:#4CD964}
+.rb.box.on{border-color:#2F7A45}
+.rt{min-height:44px;padding:0 10px;border:0;border-radius:9px;background:transparent;color:#A3ACB8;font:600 16px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer}
+.rt.on{color:#4CD964}
+.rt.hot{color:#FF5A4F}
+.rseg{display:flex;align-self:center;background:#161A21;border:1px solid #262C36;border-radius:12px;padding:3px;margin-bottom:10px}
+.rseg button{min-width:110px;min-height:40px;border:0;border-radius:9px;background:transparent;color:#C9CFD7;font:500 17px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer}
+.rseg button.on{background:#2F6CC4;color:#fff}
+.rgraph{display:flex;flex-direction:column;gap:6px;flex:none}
+.rplot{display:grid;grid-template-columns:30px minmax(0,1fr) 30px;grid-template-rows:minmax(0,1fr);gap:4px;height:340px}
+.yax{position:relative;font:400 11px 'IBM Plex Mono',ui-monospace,monospace;color:#7F8896}
+.yax span{position:absolute;right:2px;transform:translateY(-50%)}
+.yax.r span{left:2px;right:auto}
+.rpa{position:relative;min-height:0;border-radius:6px;overflow:hidden;background:#0A0D14;touch-action:none}
+.rpa > svg,.rhg > svg{position:absolute;inset:0}
+.rbox{position:absolute;left:50%;top:12px;transform:translateX(-50%);display:grid;grid-template-columns:auto auto auto;align-items:end;gap:4px 18px;padding:10px 16px 8px;border:1px solid #262C36;border-radius:14px;background:rgba(13,16,21,.72);text-align:center;pointer-events:none}
+.rbk .k{font-size:12px;color:#A3ACB8}
+.rbk .v{font-size:20px;font-weight:600;color:#ECEEF1}
+.rbig .n{font-size:40px;font-weight:700;line-height:1}
+.rbig .u{font-size:13px;font-weight:600;margin-top:2px}
+.rsub{grid-column:1 / -1;font-size:12px;color:#A3ACB8}
+.rtag{position:absolute;bottom:8px;transform:translateX(-50%);font:600 11px 'IBM Plex Mono',ui-monospace,monospace;background:#ECEEF1;color:#0D1015;border-radius:5px;padding:2px 6px;white-space:nowrap;pointer-events:none}
+.rtag.hot{background:#FF5A4F;color:#1A0503;bottom:30px}
+.rh{position:absolute;right:6px;width:44px;height:30px;transform:translateY(-50%);border-radius:7px;background:#2A303B;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:ns-resize;touch-action:none}
+.rh span{display:block;width:16px;height:2px;border-radius:1px;background:#C9CFD7}
+.rh:focus-visible{outline:2px solid #6CB4F5;outline-offset:2px}
+.xax{position:relative;height:18px;margin:0 34px;font:400 11px 'IBM Plex Mono',ui-monospace,monospace;color:#7F8896}
+.xax span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+.rleg{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:#A3ACB8;padding:0 34px}
+.rleg i{display:inline-block;width:12px;height:3px;border-radius:2px;margin-right:5px;vertical-align:middle}
+.rleg .mono{margin-left:auto}
+.rro{display:flex;flex-wrap:wrap;align-items:center;gap:8px;justify-content:space-between;font-size:13px;color:#A3ACB8;padding:0 34px}
+.rro .btn{min-height:38px;font-size:13px;border-style:dashed;color:#A3ACB8}
+.rspec{display:flex;flex-direction:column;gap:6px;flex:none;border-top:1px solid #1E2430;padding-top:10px}
+.rspec-h{display:flex;gap:12px;align-items:baseline;font-size:15px;color:#A3ACB8;padding:0 34px 0 0}
+.rspec-h .mono{min-width:30px;text-align:right;font-size:12px;white-space:nowrap}
+.rspec-h span:nth-child(2){flex:1}
+.rspec-p{display:grid;grid-template-columns:30px minmax(0,1fr) 30px;grid-template-rows:minmax(0,1fr);gap:4px;height:230px}
+.rspec-now{align-self:end;font-size:12px;color:#7F8896;text-align:right}
+.rspec-img{width:100%;height:100%;min-height:0;object-fit:fill;display:block;border-radius:4px;background:#0A0D14;image-rendering:auto}
+.rspl{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 0 4px}
+.splbig{font-size:88px;font-weight:700;line-height:1}
+.splu{font-size:17px;color:#A3ACB8}
+.leqs{display:flex;align-items:center;gap:clamp(6px,2.4vw,14px);justify-content:center;margin-top:10px;max-width:100%}
+.leqs .k{font-size:13px;color:#A3ACB8;text-align:center}
+.leqs .v{font-size:clamp(17px,5.2vw,26px);font-weight:600;text-align:center}
+.leqs .rb{min-width:40px;padding:0 4px}
+.rnote{display:flex;gap:10px;align-items:flex-start;background:#121620;border-top:1px solid #1E2430;border-bottom:1px solid #1E2430;padding:10px 12px;font-size:14px;color:#C9CFD7;line-height:1.45}
+.rnote svg{flex:none;margin-top:2px}
+.rhist{display:flex;flex-direction:column;gap:10px;flex:none}
+.rhp{display:grid;grid-template-columns:24px 34px minmax(0,1fr);grid-template-rows:minmax(0,1fr);gap:6px;height:280px;flex:none}
+.rmeter{position:relative;border-radius:6px;background:#161A21;border:1px solid #262C36;overflow:hidden}
+.rmeter .mfill{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(180deg,#5FE08A,#3E9E5C);border-radius:0 0 5px 5px}
+.rticks{position:relative;font:400 12px 'IBM Plex Mono',ui-monospace,monospace;color:#7F8896}
+.rticks span{position:absolute;left:0;transform:translateY(-50%)}
+.rhg{position:relative;min-height:0;overflow:hidden;border:1px solid #1E2430;border-radius:4px}
+.ridle{position:absolute;inset:0;pointer-events:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;font-size:16px;color:#A3ACB8;text-align:center;padding:0 10px}
+.rmm{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border-top:1px solid #1E2430;padding-top:12px}
+.rstats{display:flex;flex-direction:column;gap:6px;font-size:15px;color:#A3ACB8;min-width:120px}
+.rstats div{display:grid;grid-template-columns:56px auto;gap:10px}
+.rstats .mono{color:#ECEEF1}
+.rss{display:grid;grid-template-columns:1fr 1fr;gap:10px;flex:1;max-width:360px}
+.rss button{min-height:48px;font-size:16px}
+.rss .go{background:#163322;border:1px solid #2F7A45;color:#ECEEF1}
+.rss .stop{background:#3A1614;border:1px solid #8E1B12;color:#ECEEF1}
+.rguard{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:16px;font-weight:500}
+.rguard .gsub{font-size:12px;font-weight:400;color:#A3ACB8}
+.rsw{position:relative;width:64px;height:36px;border-radius:18px;border:0;background:#3A4250;cursor:pointer;flex:none}
+.rsw span{position:absolute;top:3px;left:3px;width:30px;height:30px;border-radius:50%;background:#fff;transition:left .15s}
+.rsw.on{background:#3E9E5C}
+.rsw.on span{left:31px}
+.rlim{display:flex;align-items:center;gap:10px;justify-content:flex-end;font-size:14px;color:#A3ACB8}
+.rlim .mono{font-size:18px;color:#ECEEF1;min-width:90px;text-align:center}
+.rseth{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:4px 2px}
+@media (min-width:700px){ .rplot{height:420px} .rspec-p{height:260px} .splbig{font-size:110px} .rhp{height:320px} }
+@media (prefers-reduced-motion:reduce){ .rsw span{transition:none} }
+</style>
+</helmet>
+<div class="app has-bn" style="width:100%;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;color:#ECEEF1;font-family:'IBM Plex Sans',system-ui,sans-serif;overflow:hidden;transition:background-color .25s;background:{{bg}}">
+  
+  
+  
+  
+  <nav class="wkside" aria-label="Main menu (side)"><div class="wkbrand" aria-hidden="true">C3 LIFE</div><a href="Main.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Home</a>
+        <a href="Wing.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4v16M12 4v16M18 4v16"/><path d="M4 14h4M10 8h4M16 16h4"/></svg>Mixer</a>
+        <a href="RTA.dc.html" class="on" aria-current="page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V12M9 20V6M14 20V10M19 20V4"/></svg>RTA</a>
+        <a href="Show.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M10 8l5 2-5 2z"/><path d="M8 20h8"/></svg>Show</a>
+        <a href="Lights.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>Lights</a>
+        <a href="Plan.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h1M4 12h1M4 18h1"/></svg>Plan</a>
+        <a href="Chat.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>Chat</a>
+        <a href="Listen.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="15" width="4" height="6" rx="1.5"/><rect x="17" y="15" width="4" height="6" rx="1.5"/><path d="M10 9.5a2.5 2.5 0 0 1 4 0"/></svg>Listen</a>
+        <a href="Help.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2.5 2-2.5 3.5M12 17h.01"/></svg>Help</a>
+        <a href="Report.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4h11l-1.5 4L16 12H5"/></svg>Report an issue</a></nav>
+  <nav class="bn topmenu" aria-label="Main menu">
+    <details>
+      <summary aria-label="Menu. You are on RTA"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span class="mlabel">Menu</span><span class="mcur">RTA</span><svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+      <div class="mlist">
+        <a href="Main.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Home</a>
+        <a href="Wing.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4v16M12 4v16M18 4v16"/><path d="M4 14h4M10 8h4M16 16h4"/></svg>Mixer</a>
+        <a href="RTA.dc.html" class="on" aria-current="page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V12M9 20V6M14 20V10M19 20V4"/></svg>RTA</a>
+        <a href="Show.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M10 8l5 2-5 2z"/><path d="M8 20h8"/></svg>Show</a>
+        <a href="Lights.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>Lights</a>
+        <a href="Plan.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h1M4 12h1M4 18h1"/></svg>Plan</a>
+        <a href="Chat.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>Chat</a>
+        <a href="Listen.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="15" width="4" height="6" rx="1.5"/><rect x="17" y="15" width="4" height="6" rx="1.5"/><path d="M10 9.5a2.5 2.5 0 0 1 4 0"/></svg>Listen</a>
+        <a href="Help.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2.5 2-2.5 3.5M12 17h.01"/></svg>Help</a>
+        <a href="Report.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4h11l-1.5 4L16 12H5"/></svg>Report an issue</a>
+      </div>
+    </details>
+  </nav>
+  <header class="rtop">
+    <h1 class="rsr">RTA</h1>
+    <div class="rbar">
+      <div class="rgrp" role="group" aria-label="Live or paused">
+        <button class="{{playCls}}" onClick="{{goLive}}" aria-pressed="{{isLive}}" aria-label="Live"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4l13 8-13 8z" fill="currentColor"/></svg></button>
+        <button class="{{pauseCls}}" onClick="{{goPause}}" aria-pressed="{{frozen}}" aria-label="Pause"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="4" width="4" height="16" rx="1" fill="currentColor"/><rect x="14" y="4" width="4" height="16" rx="1" fill="currentColor"/></svg></button>
+      </div>
+      <button class="{{cmpCls}}" onClick="{{toggleCompare}}" aria-pressed="{{compareOn}}" aria-label="Compare with the desk reference"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M2 12h2M5 9v6M8 6v12M11 9v6M14 3v18M17 8v8M20 10v4M22 12h0"/></svg></button>
+      <button class="{{idCls}}" onClick="{{toggleId}}" aria-pressed="{{idOn}}" aria-label="ID: mark the loudest frequency">ID</button>
+      <button class="{{roCls}}" onClick="{{toggleFb}}" aria-pressed="{{fbOn}}" aria-label="Ring-Out: watch for feedback">Ring-Out</button>
+      <span style="flex:1"></span>
+      <button class="{{setCls}}" onClick="{{toggleSet}}" aria-pressed="{{viewSet}}" aria-label="RTA settings" style="display:{{setShow}}"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/><circle cx="9" cy="6" r="2.2" fill="#161A21"/><circle cx="15" cy="12" r="2.2" fill="#161A21"/><circle cx="8" cy="18" r="2.2" fill="#161A21"/></svg></button>
+    </div>
+    <div class="rseg" role="tablist" aria-label="RTA or SPL">
+      <button role="tab" class="{{rtaTabCls}}" aria-selected="{{viewRta}}" onClick="{{showRta}}">RTA</button>
+      <button role="tab" class="{{splTabCls}}" aria-selected="{{viewSpl}}" onClick="{{showSpl}}">SPL</button>
+    </div>
+  </header>
+  <main class=" wide1" style="flex:1;overflow-y:auto;padding:4px 12px 16px;display:flex;flex-direction:column;gap:12px">
+    <sc-if value="{{over}}" hint-placeholder-val="{{ false }}">
+      <div role="alert" style="background:#FFFFFF;color:#8E1B12;border-radius:14px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px">
+        <div>
+          <div style="font-size:20px;font-weight:600">Over {{limit}} dB</div>
+          <div style="font-size:13px">Room mic · {{overFor}}</div>
+        </div>
+        <div class="mono" style="font-size:36px;font-weight:500">{{spl}}</div>
+      </div>
+    </sc-if>
+    <div><sc-if value="{{fbRinging}}" hint-placeholder-val="{{ false }}">
+        <div role="alert" style="background:#FF7A45;color:#1A0A03;border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:6px">
+          <div style="font-size:17px;font-weight:600">Feedback ringing at {{fbFreq}}</div>
+          <div style="font-size:13px;line-height:1.45">Started {{fbAgo}}. Most often a lectern, lapel or handheld mic near a speaker. On the Wing, lower that channel's fader a little, or cut {{fbFreq}} by 3 to 6 dB on its EQ.</div>
+          <button style="min-height:44px;border-radius:10px;border:0;background:#1A0A03;color:#FFFFFF;font:500 14px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer" onClick="{{fbClear}}">It's sorted</button>
+        </div>
+      </sc-if></div>
+    <div style="display:contents"><sc-if value="{{viewRta}}" hint-placeholder-val="{{ true }}">
+      <section class="rgraph" aria-label="Spectrum">
+        <div class="rplot">
+          <div class="yax" aria-hidden="true"><sc-for list="{{yTicks}}" as="t" hint-placeholder-count="9"><span style="top:{{t.pct}}%">{{t.t}}</span></sc-for></div>
+          <div class="rpa">
+            <svg viewBox="0 0 360 300" preserveAspectRatio="none" width="100%" height="100%" role="img" aria-label="{{graphAria}}" style="display:block">
+              <defs><linearGradient id="rtafill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3DDC84" stop-opacity="0.62"></stop><stop offset="0.45" stop-color="#1F6F6B" stop-opacity="0.45"></stop><stop offset="0.8" stop-color="#1D2F7A" stop-opacity="0.38"></stop><stop offset="1" stop-color="#0B1030" stop-opacity="0.15"></stop></linearGradient></defs>
+              <sc-for list="{{hLines}}" as="g" hint-placeholder-count="9"><line x1="0" x2="360" y1="{{g}}" y2="{{g}}" stroke="#1E2430" stroke-width="1" vector-effect="non-scaling-stroke"></line></sc-for>
+              <sc-for list="{{vLines}}" as="g" hint-placeholder-count="10"><line y1="0" y2="300" x1="{{g}}" x2="{{g}}" stroke="#1E2430" stroke-width="1" vector-effect="non-scaling-stroke"></line></sc-for>
+              <polygon points="{{fillPts}}" fill="url(#rtafill)"></polygon>
+              <polyline points="{{deskPts}}" fill="none" stroke="#F5C518" stroke-width="2" stroke-opacity="{{deskOp}}" vector-effect="non-scaling-stroke" stroke-linejoin="round"></polyline>
+              <polyline points="{{peakPts}}" fill="none" stroke="#FF5A4F" stroke-width="1.6" vector-effect="non-scaling-stroke" stroke-linejoin="round"></polyline>
+              <polyline points="{{roomPts}}" fill="none" stroke="#4CD964" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round"></polyline>
+              <line x1="{{idX}}" x2="{{idX}}" y1="0" y2="300" stroke="#ECEEF1" stroke-opacity="{{idOp}}" stroke-dasharray="4 4" vector-effect="non-scaling-stroke"></line>
+              <line x1="{{roX}}" x2="{{roX}}" y1="0" y2="300" stroke="#FF5A4F" stroke-opacity="{{roOp}}" stroke-width="2" vector-effect="non-scaling-stroke"></line>
+            </svg>
+            <div class="rbox" aria-live="off">
+              <div class="rbk"><div class="k">1m Leq</div><div class="v mono">{{leq1}}</div></div>
+              <div class="rbig"><div class="n mono" style="color:{{bigColor}}">{{bigDb}}</div><div class="u" style="color:{{unitColor}}">dB(A)</div></div>
+              <div class="rbk"><div class="k">15m Leq</div><div class="v mono">{{leq15}}</div></div>
+              <div class="rsub">{{boxSub}}</div>
+            </div>
+            <div><sc-if value="{{idOn}}" hint-placeholder-val="{{ false }}"><div class="rtag" style="left:{{idPct}}%">{{idText}}</div></sc-if></div>
+            <div><sc-if value="{{roMark}}" hint-placeholder-val="{{ false }}"><div class="rtag hot" style="left:{{roPct}}%">Ringing {{fbFreq}}</div></sc-if></div>
+            <div class="rh" role="slider" tabindex="0" style="top:{{hTopPct}}%" aria-label="Top of the scale" aria-valuemin="60" aria-valuemax="140" aria-valuenow="{{scaleTop}}" aria-valuetext="{{scaleTop}} dB" onPointerDown="{{hTop.down}}" onPointerMove="{{hTop.move}}" onPointerUp="{{hTop.up}}" onKeyDown="{{hTop.key}}"><span></span><span></span><span></span></div>
+            <div class="rh" role="slider" tabindex="0" style="top:{{hBotPct}}%" aria-label="Bottom of the scale" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{scaleBot}}" aria-valuetext="{{scaleBot}} dB" onPointerDown="{{hBot.down}}" onPointerMove="{{hBot.move}}" onPointerUp="{{hBot.up}}" onKeyDown="{{hBot.key}}"><span></span><span></span><span></span></div>
+          </div>
+          <div class="yax r" aria-hidden="true"><sc-for list="{{yTicks}}" as="t" hint-placeholder-count="9"><span style="top:{{t.pct}}%">{{t.t}}</span></sc-for></div>
+        </div>
+        <div class="xax" aria-hidden="true"><sc-for list="{{xTicks}}" as="t" hint-placeholder-count="10"><span style="left:{{t.pct}}%">{{t.t}}</span></sc-for></div>
+        <div class="rleg"><span><i style="background:#4CD964"></i>Room mic</span><span><i style="background:#FF5A4F"></i>Peak hold</span><span style="opacity:{{deskOp}}"><i style="background:#F5C518"></i>Desk reference</span><span class="mono">dB SPL · 1/12 octave</span></div>
+      </section>
+      <div><sc-if value="{{fbQuiet}}" hint-placeholder-val="{{ false }}"><div class="rro"><span>Ring-Out · {{fbQuietText}}</span><button class="btn" onClick="{{fbDemo}}">Demo: feedback starts</button></div></sc-if></div>
+      <section class="rspec" aria-label="Spectrograph">
+        <div class="rspec-h"><span class="mono">{{specSpan}}</span><span>Spectrograph</span><span style="color:{{liveColor}};font-weight:600">{{liveText}}</span></div>
+        <div class="rspec-p">
+          <div class="rspec-now mono" aria-hidden="true">now</div>
+          <img class="rspec-img" src="{{specImg}}" alt="{{specAlt}}" role="img">
+        </div>
+        <div class="xax" aria-hidden="true"><sc-for list="{{xTicks}}" as="t" hint-placeholder-count="10"><span style="left:{{t.pct}}%">{{t.t}}</span></sc-for></div>
+      </section>
+      <sc-if value="{{compareOn}}" hint-placeholder-val="{{ false }}">
+        <section class="card" style="display:flex;flex-direction:column;gap:2px;padding:8px 14px">
+          <div style="display:flex;justify-content:space-between;padding:4px 0 6px">
+            <div class="lbl">Room vs desk</div>
+            <div style="font-size:11px;color:#A3ACB8">+ means louder in the room</div>
+          </div>
+          <sc-for list="{{summary}}" as="r" hint-placeholder-count="3">
+            <div style="display:flex;align-items:center;gap:10px;min-height:48px;border-top:1px solid #222831">
+              <div style="width:62px">
+                <div style="font-size:14px;font-weight:600">{{r.name}}</div>
+                <div style="font-size:11px;color:#A3ACB8">{{r.range}}</div>
+              </div>
+              <div class="mono" style="width:64px;font-size:18px;text-align:right">{{r.diff}}</div>
+              <div style="flex:1;font-size:13px;color:#C9CFD7">{{r.words}}</div>
+            </div>
+          </sc-for>
+        </section>
+      </sc-if>
+    </sc-if></div>
+    <div style="display:contents"><sc-if value="{{viewSpl}}" hint-placeholder-val="{{ false }}">
+      <section class="rspl" aria-label="Sound level">
+        <div class="splbig mono" style="color:{{bigColor}}">{{bigDb}}</div>
+        <div class="splu">dB(A) · slow</div>
+        <div class="leqs">
+          <sc-for list="{{leqs}}" as="l" hint-placeholder-count="5"><div><div class="k">{{l.k}}</div><div class="v mono" style="color:{{l.c}}">{{l.v}}</div></div></sc-for>
+          <button class="rb" onClick="{{resetLeq}}" aria-label="Start the averages again"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></button>
+        </div>
+      </section>
+      <div class="rnote"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#A3ACB8"/><path d="M12 10.5v6M12 7.5v.01" stroke="#0D1015" stroke-width="2.2" stroke-linecap="round"/></svg><span>{{calNote}} <a href="Calibrate.dc.html">Calibrate</a></span></div>
+      <section class="rhist" aria-label="SPL history">
+        <div class="lbl">SPL history</div>
+        <div class="rhp">
+          <div class="rmeter" role="meter" aria-label="Level now" aria-valuemin="40" aria-valuemax="120" aria-valuenow="{{meterVal}}"><div class="mfill" style="height:{{meterPct}}%"></div></div>
+          <div class="rticks" aria-hidden="true"><sc-for list="{{hTicks}}" as="t" hint-placeholder-count="9"><span style="top:{{t.pct}}%">{{t.t}}</span></sc-for></div>
+          <div class="rhg">
+            <svg viewBox="0 0 300 240" preserveAspectRatio="none" width="100%" height="100%" role="img" aria-label="{{histAria}}" style="display:block">
+              <sc-for list="{{histH}}" as="g" hint-placeholder-count="8"><line x1="0" x2="300" y1="{{g}}" y2="{{g}}" stroke="#1E2430" stroke-width="1" vector-effect="non-scaling-stroke"></line></sc-for>
+              <sc-for list="{{histV}}" as="g" hint-placeholder-count="7"><line y1="0" y2="240" x1="{{g}}" x2="{{g}}" stroke="#1E2430" stroke-width="1" vector-effect="non-scaling-stroke"></line></sc-for>
+              <line x1="0" x2="300" y1="{{limY}}" y2="{{limY}}" stroke="#FF5A4F" stroke-opacity="{{limOp}}" stroke-dasharray="6 4" vector-effect="non-scaling-stroke"></line>
+              <polyline points="{{histPts}}" fill="none" stroke="#4CD964" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round"></polyline>
+            </svg>
+            <div><sc-if value="{{histIdle}}" hint-placeholder-val="{{ true }}"><div class="ridle"><svg width="56" height="48" viewBox="0 0 24 20" fill="none" stroke="#3A4250" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 2v16h20"/><path d="M5 14l4-5 3 3 6-7"/><path d="M15 5h3v3"/></svg><div>Press Start to begin monitoring</div></div></sc-if></div>
+          </div>
+        </div>
+        <div class="rmm">
+          <div class="rstats"><div><span>Min</span><span class="mono">{{hMin}}</span></div><div><span>Max</span><span class="mono">{{hMax}}</span></div><div><span>Avg</span><span class="mono">{{hAvg}}</span></div></div>
+          <div class="rss"><button class="{{startCls}}" onClick="{{toggleHist}}">{{startLabel}}</button><button class="btn" onClick="{{resetHist}}">Reset</button></div>
+        </div>
+        <div class="rguard"><span>Limit Guard<br><span class="gsub">{{guardSub}}</span></span><button class="{{guardCls}}" role="switch" aria-checked="{{redOn}}" aria-label="Limit Guard" onClick="{{toggleRed}}" disabled="{{setLocked}}"><span></span></button></div>
+        <div><sc-if value="{{redOn}}" hint-placeholder-val="{{ true }}"><div class="rlim"><span>Limit</span><button class="sq" onClick="{{down}}" aria-label="Lower limit" disabled="{{setLocked}}">−</button><span class="mono">{{limit}} dB(A)</span><button class="sq" onClick="{{up}}" aria-label="Raise limit" disabled="{{setLocked}}">+</button></div></sc-if></div>
+      </section>
+    </sc-if></div>
+    <div style="display:contents"><sc-if value="{{viewSet}}" hint-placeholder-val="{{ false }}">
+      <div class="rseth"><div style="font-size:17px;font-weight:600">RTA settings</div><button class="btn" onClick="{{toggleSet}}">Done</button></div>
+      <div><sc-if value="{{setLook}}" hint-placeholder-val="{{ false }}"><div role="status" style="font-size:13px;color:#A3ACB8;background:#161A21;border:1px solid #262C36;border-radius:12px;padding:10px 12px">You can look at these. Changing them needs RTA settings: Control (Access levels). FOH sound and Admins have it.</div></sc-if></div>
+      <section class="card" role="region" aria-label="Where the RTA listens" style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline">
+          <div class="lbl">Where the RTA listens</div>
+          <a href="Dante.dc.html" style="font-size:12px;text-decoration:none">Dante routing ›</a>
+        </div>
+        <div style="font-size:12px;color:#A3ACB8;line-height:1.45">Choose where each one comes from and how it reaches the C3 Life server. Choosing here doesn’t change the desk or Dante: C3 Life listens on the channel you pick, and the steps say what to set.</div>
+        <sc-for list="{{riSigs}}" as="g" hint-placeholder-count="2">
+          <div role="group" aria-label="{{g.title}}" style="display:flex;flex-direction:column;gap:8px;border-top:1px solid #222831;padding-top:10px">
+            <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline"><span style="font-size:15px;font-weight:600">{{g.title}}</span><span class="mono" style="font-size:12px;color:#C9CFD7;text-align:right">{{g.summary}}</span></div>
+            <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#A3ACB8">Mono or stereo
+              <select aria-label="{{g.title}} mono or stereo" value="{{g.kind}}" onChange="{{g.setKind}}" disabled="{{riLocked}}"><option value="mono">Mono (one channel)</option><option value="stereo">Stereo (left and right)</option></select>
+            </label>
+            <div style="display:grid;grid-template-columns:2fr 1fr;gap:8px">
+              <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#A3ACB8">{{g.fromLabel}}
+                <select aria-label="{{g.title}} comes from" value="{{g.grp}}" onChange="{{g.setGrp}}" disabled="{{riLocked}}"><sc-for list="{{g.grpOpts}}" as="o" hint-placeholder-count="8"><option value="{{o.v}}">{{o.l}}</option></sc-for></select>
+              </label>
+              <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#A3ACB8">Number
+                <select aria-label="{{g.title}} number" value="{{g.num}}" onChange="{{g.setNum}}" disabled="{{g.numOff}}"><sc-for list="{{g.numOpts}}" as="o" hint-placeholder-count="8"><option value="{{o.v}}">{{o.l}}</option></sc-for></select>
+              </label>
+            </div>
+            <div style="display:grid;grid-template-columns:2fr 1fr;gap:8px">
+              <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#A3ACB8">Reaches C3 Life by
+                <select aria-label="{{g.title}} reaches C3 Life by" value="{{g.via}}" onChange="{{g.setVia}}" disabled="{{riLocked}}"><sc-for list="{{riVias}}" as="o" hint-placeholder-count="3"><option value="{{o.v}}">{{o.l}}</option></sc-for></select>
+              </label>
+              <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#A3ACB8">{{g.chLabel}}
+                <select aria-label="{{g.title}} channel" value="{{g.ch}}" onChange="{{g.setCh}}" disabled="{{riLocked}}"><sc-for list="{{g.chOpts}}" as="o" hint-placeholder-count="8"><option value="{{o}}">{{o}}</option></sc-for></select>
+              </label>
+            </div>
+            <div><sc-if value="{{g.stereo}}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;gap:8px;border-left:2px solid #2F6CC4;padding-left:10px">
+                <div style="display:grid;grid-template-columns:2fr 1fr;gap:8px">
+                  <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#A3ACB8">Right comes from
+                    <select aria-label="{{g.title}} right comes from" value="{{g.grp2}}" onChange="{{g.setGrp2}}" disabled="{{riLocked}}"><sc-for list="{{g.grpOpts}}" as="o" hint-placeholder-count="8"><option value="{{o.v}}">{{o.l}}</option></sc-for></select>
+                  </label>
+                  <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#A3ACB8">Number
+                    <select aria-label="{{g.title}} right number" value="{{g.num2}}" onChange="{{g.setNum2}}" disabled="{{g.numOff2}}"><sc-for list="{{g.numOpts2}}" as="o" hint-placeholder-count="8"><option value="{{o.v}}">{{o.l}}</option></sc-for></select>
+                  </label>
+                </div>
+                <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#A3ACB8">Right channel
+                  <select aria-label="{{g.title}} right channel" value="{{g.ch2}}" onChange="{{g.setCh2}}" disabled="{{riLocked}}"><sc-for list="{{g.chOpts}}" as="o" hint-placeholder-count="8"><option value="{{o}}">{{o}}</option></sc-for></select>
+                </label>
+              </div>
+            </sc-if></div>
+            <div><sc-if value="{{g.isRef}}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <label style="display:flex;align-items:flex-start;gap:8px;font-size:14px"><input type="checkbox" checked="{{g.subsOn}}" onChange="{{g.toggleSubs}}" disabled="{{riLocked}}" aria-label="Add the subs to the desk reference"><span>Add the subs (stereo)<br><span style="font-size:12px;color:#A3ACB8">The subwoofer feed is added to the reference, so the room is compared with mains and subs together.</span></span></label>
+                <div><sc-if value="{{g.subsOn}}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex;flex-direction:column;gap:8px;border-left:2px solid #F5C518;padding-left:10px">
+                    <div style="display:grid;grid-template-columns:2fr 1fr;gap:8px">
+                      <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#A3ACB8">Subs left come from
+                        <select aria-label="Subs left come from" value="{{g.sgrp}}" onChange="{{g.setSgrp}}" disabled="{{riLocked}}"><sc-for list="{{g.grpOpts}}" as="o" hint-placeholder-count="3"><option value="{{o.v}}">{{o.l}}</option></sc-for></select>
+                      </label>
+                      <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#A3ACB8">Number
+                        <select aria-label="Subs left number" value="{{g.snum}}" onChange="{{g.setSnum}}" disabled="{{riLocked}}"><sc-for list="{{g.snumOpts}}" as="o" hint-placeholder-count="8"><option value="{{o.v}}">{{o.l}}</option></sc-for></select>
+                      </label>
+                    </div>
+                    <div style="display:grid;grid-template-columns:2fr 1fr;gap:8px">
+                      <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#A3ACB8">Subs right come from
+                        <select aria-label="Subs right come from" value="{{g.sgrp2}}" onChange="{{g.setSgrp2}}" disabled="{{riLocked}}"><sc-for list="{{g.grpOpts}}" as="o" hint-placeholder-count="3"><option value="{{o.v}}">{{o.l}}</option></sc-for></select>
+                      </label>
+                      <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#A3ACB8">Number
+                        <select aria-label="Subs right number" value="{{g.snum2}}" onChange="{{g.setSnum2}}" disabled="{{riLocked}}"><sc-for list="{{g.snumOpts2}}" as="o" hint-placeholder-count="8"><option value="{{o.v}}">{{o.l}}</option></sc-for></select>
+                      </label>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                      <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#A3ACB8">Subs left channel
+                        <select aria-label="Subs left channel" value="{{g.sch}}" onChange="{{g.setSch}}" disabled="{{riLocked}}"><sc-for list="{{g.chOpts}}" as="o" hint-placeholder-count="8"><option value="{{o}}">{{o}}</option></sc-for></select>
+                      </label>
+                      <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#A3ACB8">Subs right channel
+                        <select aria-label="Subs right channel" value="{{g.sch2}}" onChange="{{g.setSch2}}" disabled="{{riLocked}}"><sc-for list="{{g.chOpts}}" as="o" hint-placeholder-count="8"><option value="{{o}}">{{o}}</option></sc-for></select>
+                      </label>
+                    </div>
+                  </div>
+                </sc-if></div>
+              </div>
+            </sc-if></div>
+            <sc-for list="{{g.routes}}" as="rt" hint-placeholder-count="1">
+              <div style="display:flex;gap:8px;align-items:flex-start;font-size:13px;line-height:1.45"><span style="width:9px;height:9px;border-radius:50%;flex:none;margin-top:6px;background:{{rt.dot}}"></span><span style="color:{{rt.color}}">{{rt.text}}</span></div>
+            </sc-for>
+            <ol style="margin:0;padding-left:20px;font-size:13px;color:#C9CFD7;line-height:1.5;display:flex;flex-direction:column;gap:2px">
+              <sc-for list="{{g.steps}}" as="t" hint-placeholder-count="2"><li>{{t}}</li></sc-for>
+            </ol>
+            <div><sc-if value="{{g.showAuto}}" hint-placeholder-val="{{ true }}"><button class="btn" style="width:100%" onClick="{{g.auto}}" disabled="{{g.autoOff}}" aria-label="Set up the {{g.title}} for me">Set it up for me</button></sc-if></div>
+            <div><sc-if value="{{g.autoHint}}" hint-placeholder-val="{{ false }}"><div style="font-size:12px;color:#A3ACB8">{{g.autoHint}}</div></sc-if></div>
+            <div><sc-if value="{{g.hasPlan}}" hint-placeholder-val="{{ false }}">
+              <div role="dialog" aria-label="{{g.planTitle}}" style="display:flex;flex-direction:column;gap:8px;background:#0F1318;border:1px solid {{g.planEdge}};border-radius:12px;padding:12px">
+                <div style="font-size:15px;font-weight:600">{{g.planTitle}}</div>
+                <sc-for list="{{g.planLines}}" as="l" hint-placeholder-count="2">
+                  <div style="display:flex;gap:8px;font-size:13px;line-height:1.45"><span class="mono" style="width:14px;flex:none;color:{{l.c}}">{{l.mark}}</span><span style="color:{{l.tc}}">{{l.t}}</span></div>
+                </sc-for>
+                <div style="font-size:12px;color:#A3ACB8;line-height:1.45">{{g.planNote}}</div>
+                <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px">
+                  <button class="btn" onClick="{{g.planNo}}">{{g.noLabel}}</button>
+                  <div><sc-if value="{{g.planCanYes}}" hint-placeholder-val="{{ true }}"><button class="btn pri" style="width:100%" onClick="{{g.planYes}}" disabled="{{g.planBusy}}">{{g.yesLabel}}</button></sc-if></div>
+                </div>
+              </div>
+            </sc-if></div>
+          </div>
+        </sc-for>
+        <div><sc-if value="{{riErr}}" hint-placeholder-val="{{ false }}"><div role="alert" style="font-size:13px;color:#FF7A45">{{riErr}}</div></sc-if></div>
+        <div><sc-if value="{{riMsg}}" hint-placeholder-val="{{ false }}"><div role="status" style="font-size:13px;color:#6CB4F5;line-height:1.45">{{riMsg}}</div></sc-if></div>
+        <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px">
+          <button class="btn" onClick="{{riUndo}}" disabled="{{riClean}}">Put back</button>
+          <button class="btn pri" onClick="{{riSave}}" disabled="{{riCantSave}}">{{riSaveLabel}}</button>
+        </div>
+        <div style="font-size:12px;color:#A3ACB8">{{riWho}} The MD mic for the MD talk log is set on Mixer › Dante.</div>
+      </section>
+      <a href="Calibrate.dc.html" class="card" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:#ECEEF1;padding:12px 14px;min-height:44px">
+        <span style="flex:1"><span style="font-size:15px;font-weight:600">Mic calibrated</span><br><span style="font-size:12px;color:#A3ACB8">dbx RTA-M · 12 Oct · +2.4 dB offset · gain locked</span></span>
+        <span style="font-size:13px;color:#6CB4F5">Calibrate</span>
+      </a>
+      <section class="card" style="display:flex;flex-direction:column;gap:10px;border-color:{{fbEdge}}">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="flex:1">
+            <div style="font-size:15px;font-weight:600">Feedback watch</div>
+            <div style="font-size:12px;color:#A3ACB8">Listens to the room mic for one note that keeps ringing</div>
+          </div>
+          <input type="checkbox" checked="{{fbOn}}" onChange="{{toggleFb}}" aria-label="Feedback watch on" disabled="{{setLocked}}">
+        </div>
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:13px;color:#A3ACB8">How sensitive
+          <select value="{{fbSens}}" onChange="{{setFbSens}}" aria-label="Feedback sensitivity" disabled="{{setLocked}}">
+            <option value="low">Low · only loud, obvious ringing</option>
+            <option value="normal">Normal</option>
+            <option value="high">High · catches it early, may warn on a held note</option>
+          </select>
+        </label>
+        <div style="font-size:12px;color:#A3ACB8;line-height:1.45">It warns, it never changes the desk by itself. The RTA bar on every screen shows FEEDBACK too. A held note on a keyboard or vocal can sometimes look the same, so check by ear.</div>
+      </section>
+      <section class="card" style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="flex:1">
+            <div style="font-size:15px;font-weight:600">Level alert</div>
+            <div style="font-size:12px;color:#A3ACB8">1-second average, so it won't flicker</div>
+          </div>
+          <button class="sq" onClick="{{down}}" aria-label="Lower limit" disabled="{{setLocked}}">−</button>
+          <div class="mono" style="font-size:18px;width:44px;text-align:center">{{limit}}</div>
+          <button class="sq" onClick="{{up}}" aria-label="Raise limit" disabled="{{setLocked}}">+</button>
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px"><input type="checkbox" checked="{{redOn}}" onChange="{{toggleRed}}" disabled="{{setLocked}}"> Turn the screen red when over</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px"><input type="checkbox" checked> Show on every phone and log each time</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px"><input type="checkbox" checked> RTA bar at the bottom of other screens</label>
+      </section>
+      <a href="Connect.dc.html" style="display:flex;align-items:center;gap:10px;background:#1E232C;border:1px solid #333B47;border-radius:12px;padding:10px 12px;text-decoration:none;color:#ECEEF1;min-height:44px">
+        <span style="width:8px;height:8px;border-radius:50%;background:#FF7A45;flex:none"></span>
+        <span style="flex:1;font-size:13px"><strong>Logging</strong> since start-up 08:31 · auto-saved 10:45</span>
+        <span style="font-size:12px;color:#6CB4F5">Schedule</span>
+      </a>
+      <button class="btn pri" style="flex:1" onClick="{{snap}}">{{snapLabel}}</button>
+    </sc-if></div>
+  </main>
+
+  <div style="position:absolute;inset:0;z-index:6;pointer-events:none">
+    <dc-import name="MDTalk" hint-size="390px,844px"></dc-import>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"limit":{"editor":"int","default":90,"min":70,"max":110},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      mode: 2, inSrc: 0, frozen: false, redOn: true, limit: null, overSince: null,
+      room: new Array(31).fill(70), desk: new Array(31).fill(70), peaks: new Array(31).fill(70), specRows: [], tick: 0,
+      spl: 88.6, avg: 88.6, peak: 93.0, snapLabel: 'Save snapshot',
+      fbOn: true, fbSens: 'normal', fb: (() => { try { return JSON.parse(localStorage.getItem('booth.feedback') || 'null'); } catch (e) { return null; } })()
+    };
+  }
+  componentDidMount() {
+    this.riLoad(); this.riT = setInterval(() => this.riLoad(), 15000);
+    this.timer = setInterval(() => {
+      const s = this.state;
+      if (s.frozen) return;
+      // Off the RTA tab nothing moves fast: the SPL page and settings update once a second, so taps always land.
+      if ((s.lkView || 'rta') !== 'rta' && ((this.lkSlow = (this.lkSlow || 0) + 1) % 9)) return;
+      const desk = s.desk.map((v, i) => {
+        const base = 80 - i * 0.35 + (i < 3 ? -8 : 0) + (i > 27 ? -6 : 0);
+        return v + (base + (Math.random() - 0.5) * 6 - v) * 0.4;
+      });
+      const room = s.room.map((v, i) => {
+        const roomShape = (i >= 4 && i <= 10 ? 5 : 0) + (i >= 13 && i <= 16 ? -2 : 0) + (i >= 23 ? -(i - 22) * 0.9 : 0);
+        return v + (desk[i] + roomShape + (Math.random() - 0.5) * 5 - v) * 0.4;
+      });
+      const peaks = s.peaks.map((p, i) => Math.max(room[i], p - 0.4));
+      let spl = s.spl + (Math.random() - 0.5) * 0.9 + (89 - s.spl) * 0.01;
+      spl = Math.max(82, Math.min(96, spl));
+      const avg = s.avg + (spl - s.avg) * 0.1;
+      const over = avg >= this.limit();
+      this.setState({
+        desk, room, peaks, spl, avg, peak: Math.max(s.peak, spl),
+        tick: s.tick + 1,
+        specRows: s.tick % 3 === 0 ? [room.map((x, i) => x + (i === 19 && (s.tick % 90) > 50 ? 10 : 0))].concat(s.specRows).slice(0, 24) : s.specRows,
+        overSince: over ? (s.overSince || Date.now()) : null
+      });
+      this.lkTick(room, desk, avg);
+    }, 110);
+  }
+  componentWillUnmount() { clearInterval(this.timer); clearInterval(this.riT); clearTimeout(this.rpT); }
+  // Feedback is shared so the RTA bar on every screen can show it.
+  setFb(fb) { try { if (fb) localStorage.setItem('booth.feedback', JSON.stringify(fb)); else localStorage.removeItem('booth.feedback'); } catch (e) {} this.setState({ fb }); }
+  limit() { return this.state.limit ?? this.props.limit ?? 90; }
+  // ---- where the RTA listens: the room mic and the desk reference (kept on the C3 Life server) ----
+  riTok() { try { const x = JSON.parse(localStorage.getItem('booth.session') || 'null'); return x ? x.token : ''; } catch (e) { return ''; } }
+  riApi(path, method, body) {
+    const t = this.riTok(), h = t ? { Authorization: 'Bearer ' + t } : {};
+    if (body) h['Content-Type'] = 'application/json';
+    return fetch(path, { method: method || 'GET', headers: h, body: body ? JSON.stringify(body) : undefined })
+      .then((r) => r.json().catch(() => ({})).then((j) => ({ code: r.status, j: j })));
+  }
+  riDefault() { return { mic: { from: 'LCL/8', via: 'dvs', ch: 1 }, ref: { from: 'MAIN/1', via: 'dvs', ch: 2 } }; }
+  // The preview: what the demo Dante network routes into the C3 Life server's channels.
+  riLocal() {
+    let c = null; try { c = JSON.parse(localStorage.getItem('booth.rtainputs') || 'null'); } catch (e) {}
+    const d = c && c.mic && c.ref ? { mic: c.mic, ref: c.ref } : this.riDefault();
+    let made = {}; try { made = JSON.parse(localStorage.getItem('booth.rtademo') || '{}') || {}; } catch (e) {}
+    const demo = { 1: { tx_device: 'WING-card', tx_channel: 'RTA Mic', status: 'Connected' }, 2: { tx_device: 'WING-card', tx_channel: 'Main L', status: 'Connected' }, 3: { tx_device: 'WING-card', tx_channel: 'MD Talkback', status: 'Connected' }, 5: { tx_device: 'Tio1608-D', tx_channel: '01', status: 'Connected' } };
+    Object.assign(demo, made);
+    const route = (x) => (x.via === 'dvs' ? demo[x.ch] || null : null);
+    const route2 = (x) => (x.stereo && x.via === 'dvs' ? demo[x.ch2] || null : null);
+    const subsR = (x) => (x.subs && x.subs.on ? { ...x.subs, route: x.via === 'dvs' ? demo[x.subs.ch] || null : null, route2: x.via === 'dvs' ? demo[x.subs.ch2] || null : null } : x.subs);
+    return { mic: { ...d.mic, route: route(d.mic), route2: route2(d.mic) }, ref: { ...d.ref, route: route(d.ref), route2: route2(d.ref), subs: subsR(d.ref) }, dante: { status: 'ok', device: 'c3life-server', at: '', reason: '' }, names: { 'LCL/8': 'RTA Mic', 'MAIN/1': 'Main LR', 'BUS/5': 'Stream L/R', 'MTX/1': 'Foyer', 'LCL/1': 'Lead Vox' }, demo: true };
+  }
+  riLoad() {
+    if (this.riDemo) { if (!this.state.ri) this.setState({ ri: this.riLocal() }); return; }
+    this.riApi('/api/rta/inputs').then(({ code, j }) => {
+      if (code === 404) { this.riDemo = true; this.setState({ ri: this.riLocal() }); return; }
+      if (code === 200 && j.ok) { this.setState({ ri: j }); this.riCache(j); }
+      else if (!this.state.ri) this.setState({ ri: this.riLocal(), riNoAccess: code === 401 || code === 403 });
+    }).catch(() => { if (!this.state.ri) this.setState({ ri: this.riLocal() }); });
+  }
+  riPick(x) {
+    const o = x.stereo ? { from: x.from, via: x.via, ch: x.ch, stereo: true, from2: x.from2, ch2: x.ch2 } : { from: x.from, via: x.via, ch: x.ch };
+    if (x.subs && x.subs.on) o.subs = { on: true, from: x.subs.from, ch: x.subs.ch, from2: x.subs.from2, ch2: x.subs.ch2 };
+    return o;
+  }
+  riCache(j) { try { localStorage.setItem('booth.rtainputs', JSON.stringify({ mic: this.riPick(j.mic), ref: this.riPick(j.ref) })); } catch (e) {} }
+  // "Main 1 L", "Local In 8", or for stereo "Main 1 L + Main 1 R -> Dante Virtual Soundcard 2 + 3"
+  riSummary(x, names) {
+    const short = (v) => this.riSrcName(v, names).replace(/^Wing /, '');
+    const main = x.stereo ? short(x.from) + ' + ' + short(x.from2) + ' \u2192 ' + this.riVia(x) + ' + ' + x.ch2 : short(x.from) + ' \u2192 ' + this.riVia(x);
+    return x.subs && x.subs.on ? main + ', with subs ' + short(x.subs.from).replace(/ \u00b7 .*/, '') + ' + ' + short(x.subs.from2).replace(/ \u00b7 .*/, '') + ' \u2192 ' + x.subs.ch + ' + ' + x.subs.ch2 : main;
+  }
+  // RTA settings (Access levels): 0 none, 1 look, 2 change. Admin always 2; FOH sound 2; ProPresenter, Lighting, Viewer 1.
+  rtaSetLevel() {
+    let u = null, r = null; try { u = JSON.parse(localStorage.getItem('booth.user') || 'null'); r = JSON.parse(localStorage.getItem('booth.access') || 'null'); } catch (e) {}
+    if (!u) return 0;
+    const role = u.role || u.name;
+    if (role === 'Admin') return 2;
+    const row = Array.isArray(r) ? r.find((x) => x.name === role) : null;
+    if (row && row.p && row.p.length > 14) return row.p[14];
+    return { 'FOH sound': 2, ProPresenter: 1, Lighting: 1, Viewer: 1 }[role] || 0;
+  }
+  riCanEdit() { return this.rtaSetLevel() >= 2; }
+  // Names for where a sound can start.
+  riSrcName(v, names) {
+    if (v === 'DANTE') return 'Another Dante device';
+    const [g, n, side] = v.split('/'), nm = (names || {})[g + '/' + n];
+    if (['MAIN', 'BUS', 'MTX'].indexOf(g) > -1) return { MAIN: 'Main ', BUS: 'Bus ', MTX: 'Matrix ' }[g] + n + ' ' + (side === 'R' ? 'R' : 'L') + (nm ? ' \u00b7 ' + nm : '');
+    const base = { LCL: 'Wing Local In ', AUX: 'Wing Aux In ', A: 'AES50 A ', B: 'AES50 B ', C: 'AES50 C ', CRD: 'Wing card in ', USB: 'Wing USB in ', TIO: 'Tio1608-D input ', MAIN: 'Main ', BUS: 'Bus ', MTX: 'Matrix ' }[g] || g + ' ';
+    return base + n + (nm ? ' · ' + nm : '');
+  }
+  riVia(x) { return { dvs: 'Dante Virtual Soundcard', aes67: 'AES67', usb: 'Wing USB' }[x.via] + ' ' + x.ch; }
+  // What to set on the desk and in Dante Controller, so that sound arrives where C3 Life listens.
+  riSteps(x, names, dvs) {
+    if (x.subs && x.subs.on) return this.riSteps({ ...x, subs: null }, names, dvs).concat(this.riSteps({ from: x.subs.from, via: x.via, ch: x.subs.ch }, names, dvs).map((t) => 'Subs left: ' + t), this.riSteps({ from: x.subs.from2, via: x.via, ch: x.subs.ch2 }, names, dvs).map((t) => 'Subs right: ' + t));
+    if (x.stereo) return this.riSteps({ from: x.from, via: x.via, ch: x.ch }, names, dvs).map((t) => 'Left: ' + t).concat(this.riSteps({ from: x.from2, via: x.via, ch: x.ch2 }, names, dvs).map((t) => 'Right: ' + t));
+    const src = this.riSrcName(x.from, names), g = x.from.split('/')[0], ch = x.ch;
+    const wingIn = ['LCL', 'AUX', 'A', 'B', 'C', 'CRD', 'USB'].indexOf(g) > -1, bus = ['MAIN', 'BUS', 'MTX'].indexOf(g) > -1, onWing = wingIn || bus;
+    const pre = wingIn ? ' (straight from the input, so EQ, fader and mute don’t change it)' : '';
+    if (x.via === 'dvs') {
+      if (onWing) return ['On the Wing: send ' + src + ' to a Dante card output' + pre + '.', 'In Dante Controller: route that WING output to ' + dvs + ' channel ' + ch + '.'];
+      if (g === 'TIO') return ['In Dante Controller: route Tio1608-D channel ' + x.from.split('/')[1] + ' to ' + dvs + ' channel ' + ch + '. It doesn’t go through the desk.'];
+      return ['In Dante Controller: route the device’s channel to ' + dvs + ' channel ' + ch + '.'];
+    }
+    if (x.via === 'aes67') {
+      const first = onWing ? 'On the Wing: send ' + src + ' to a Dante card output' + pre + '.' : (g === 'TIO' ? 'The Tio1608-D sends input ' + x.from.split('/')[1] + ' on Dante.' : 'The other Dante device sends it on Dante.');
+      return [first, 'In Dante Controller: turn on AES67 for that device and put it in a multicast flow. C3 Life listens to AES67 channel ' + ch + '.'];
+    }
+    if (onWing) return ['On the Wing: send ' + src + ' to USB output ' + ch + pre + '.', 'The Wing’s USB goes to the C3 Life server. Media backup can’t use USB at the same time.'];
+    return ['In Dante Controller: route it into the Wing’s Dante card.', 'On the Wing: send that card input to USB output ' + ch + '. Media backup can’t use USB at the same time.'];
+  }
+  // "Set it up for me": ask the C3 Life server what it would change, show it, and only make it after Yes.
+  rpCheck(which, tries) {
+    this.setState({ rp: { which, phase: 'checking' } });
+    if (this.riDemo || (this.state.ri && this.state.ri.demo)) { setTimeout(() => this.setState({ rp: { which, phase: 'plan', plan: this.rpDemoPlan(which) } }), 400); return; }
+    this.riApi('/api/rta/plan?which=' + which).then(({ code, j }) => {
+      if (code !== 200 || !j.ok) { this.setState({ rp: { which, phase: 'error', msg: (j && j.error) || 'The C3 Life server didn’t answer.' } }); return; }
+      if ((tries || 0) < 8 && j.blocked.some((b) => /still reading/.test(b))) { clearTimeout(this.rpT); this.rpT = setTimeout(() => this.rpCheck(which, (tries || 0) + 1), 1500); return; }
+      this.setState({ rp: { which, phase: 'plan', plan: j } });
+    }).catch(() => this.setState({ rp: { which, phase: 'error', msg: 'The C3 Life server didn’t answer.' } }));
+  }
+  rpDemoPlan(which) {
+    const x0 = (this.state.ri || this.riLocal())[which];
+    const parts = x0.stereo ? [this.rpDemoOne({ from: x0.from, via: x0.via, ch: x0.ch, route: x0.route }, which, ' (left)', 12), this.rpDemoOne({ from: x0.from2, via: x0.via, ch: x0.ch2, route: x0.route2 }, which, ' (right)', 13)] : [this.rpDemoOne(x0, which, '', 12)];
+    if (x0.subs && x0.subs.on) parts.push(this.rpDemoOne({ from: x0.subs.from, via: x0.via, ch: x0.subs.ch, route: x0.subs.route }, which, ' (subs left)', 14), this.rpDemoOne({ from: x0.subs.from2, via: x0.via, ch: x0.subs.ch2, route: x0.subs.route2 }, which, ' (subs right)', 15));
+    const blocked = parts.map((q) => q.blocked).find((b) => b.length) || [];
+    return { steps: [].concat(...parts.map((q) => q.steps)), notes: [].concat(...parts.map((q) => q.notes)), blocked, id: 'demo' };
+  }
+  rpDemoOne(x, which, tag, card) {
+    if (x.via === 'aes67' || x.from === 'DANTE') return { steps: [], notes: [], blocked: ['AES67 flows and other Dante devices are set up in Dante Controller. The steps above say what to set.'], id: 'demo' };
+    const r = x.via === 'dvs' ? x.route : null, src = this.riSrcName(x.from, (this.state.ri || {}).names).replace(/^Wing /, '');
+    const tio = x.from.split('/')[0] === 'TIO', n = x.from.split('/')[1];
+    const want = tio ? { tx_device: 'Tio1608-D', tx_channel: ('0' + n).slice(-2) } : { tx_device: 'WING-card', tx_channel: which === 'mic' && x.from === 'LCL/8' ? 'RTA Mic' : String(card) };
+    if (r && r.tx_device === want.tx_device && r.tx_channel === want.tx_channel) return { steps: [], notes: ['Dante already routes ' + want.tx_device + ' \u00b7 ' + want.tx_channel + ' to channel ' + x.ch + tag + '.'], blocked: [], id: 'demo' };
+    const steps = [];
+    if (!tio) steps.push({ kind: 'wing', text: (x.via === 'usb' ? 'Wing: USB output ' + x.ch + ' from Off to ' + src : 'Wing: card output ' + card + ' from Off to ' + src) + tag });
+    if (x.via === 'dvs') steps.push({ kind: 'dante', text: 'Dante: C3 Life server channel ' + x.ch + ' from ' + (r ? r.tx_device + ' \u00b7 ' + r.tx_channel : 'nothing') + ' to ' + want.tx_device + ' \u00b7 ' + want.tx_channel + tag, demoRoute: { ch: x.ch, ...want } });
+    return { steps, notes: [], blocked: [], id: 'demo' };
+  }
+  rpYes() {
+    const rp = this.state.rp;
+    if (!rp || !rp.plan) return;
+    if (rp.phase === 'done') {  // Put it back
+      this.setState({ rp: { ...rp, phase: 'doing' } });
+      if (this.riDemo || (this.state.ri && this.state.ri.demo)) { this.rpDemoRoutes(rp.plan, true); this.setState({ rp: { ...rp, phase: 'undone', results: rp.plan.steps.slice().reverse().map((st) => ({ text: st.text, ok: true })) }, ri: this.riLocal() }); return; }
+      this.riApi('/api/rta/unpatch', 'POST', { which: rp.which }).then(({ j }) => { this.setState({ rp: { ...rp, phase: 'undone', results: (j && j.results) || [], msg: (j && j.error) || '' } }); this.riLoad(); });
+      return;
+    }
+    this.setState({ rp: { ...rp, phase: 'doing' } });
+    if (this.riDemo || (this.state.ri && this.state.ri.demo)) { this.rpDemoRoutes(rp.plan, false); this.setState({ rp: { ...rp, phase: 'done', results: rp.plan.steps.map((st) => ({ text: st.text, ok: true })), canUndo: true }, ri: this.riLocal() }); return; }
+    this.riApi('/api/rta/patch', 'POST', { which: rp.which, id: rp.plan.id }).then(({ code, j }) => {
+      if (code === 409 && j && j.plan) { this.setState({ rp: { ...rp, phase: 'plan', plan: j.plan, msg: j.error } }); return; }
+      if (code !== 200) { this.setState({ rp: { ...rp, phase: 'error', msg: (j && j.error) || 'Not changed.' } }); return; }
+      this.setState({ rp: { ...rp, phase: 'done', results: j.results, canUndo: j.can_undo } });
+      this.riLoad();
+    }).catch(() => this.setState({ rp: { ...rp, phase: 'error', msg: 'The C3 Life server didn’t answer. Check the Wing and Dante Controller before trying again.' } }));
+  }
+  rpDemoRoutes(plan, undo) {
+    let m = {}; try { m = JSON.parse(localStorage.getItem('booth.rtademo') || '{}') || {}; } catch (e) {}
+    plan.steps.forEach((st) => { if (st.demoRoute) { if (undo) delete m[st.demoRoute.ch]; else m[st.demoRoute.ch] = { tx_device: st.demoRoute.tx_device, tx_channel: st.demoRoute.tx_channel, status: 'Connected' }; } });
+    try { localStorage.setItem('booth.rtademo', JSON.stringify(m)); } catch (e) {}
+  }
+  rpVals(k, clean) {
+    const s = this.state, rp = s.rp && s.rp.which === k ? s.rp : null;
+    const live = !(this.riDemo || (s.ri && s.ri.demo));
+    const out = { showAuto: !rp, autoOff: !clean || !this.riCanEdit(), autoHint: !rp && !clean ? 'Save first, then C3 Life can set it up for you.' : '', hasPlan: !!rp, planTitle: '', planLines: [], planNote: '', planEdge: '#333B47', planCanYes: false, planBusy: false, yesLabel: '', noLabel: 'Cancel',
+      auto: () => this.rpCheck(k), planNo: () => { clearTimeout(this.rpT); this.setState({ rp: null }); }, planYes: () => this.rpYes() };
+    if (!rp) return out;
+    const BLUE = '#6CB4F5', AMBER = '#F5C518', ORANGE = '#FF7A45', GREY = '#A3ACB8';
+    if (rp.phase === 'checking') return { ...out, planTitle: 'Checking the Wing and Dante…', planNote: 'Nothing changes yet.' };
+    if (rp.phase === 'error') return { ...out, planTitle: 'Couldn’t set it up', planLines: [{ mark: '!', c: ORANGE, t: rp.msg, tc: ORANGE }], planEdge: ORANGE, noLabel: 'Close' };
+    const p = rp.plan || { steps: [], notes: [], blocked: [] }, res = rp.results || [];
+    const lines = [];
+    if (rp.msg) lines.push({ mark: '!', c: AMBER, t: rp.msg, tc: AMBER });
+    if (rp.phase === 'done' || rp.phase === 'undone') res.forEach((r) => lines.push({ mark: r.ok ? '✓' : '!', c: r.ok ? BLUE : ORANGE, t: (rp.phase === 'undone' ? 'Put back: ' : '') + r.text + (r.ok ? '' : ' · ' + r.error), tc: r.ok ? '#ECEEF1' : ORANGE }));
+    else p.steps.forEach((st) => lines.push({ mark: '→', c: AMBER, t: st.text, tc: '#ECEEF1' }));
+    p.notes.forEach((t) => lines.push({ mark: '✓', c: GREY, t, tc: GREY }));
+    p.blocked.forEach((t) => lines.push({ mark: '!', c: ORANGE, t, tc: ORANGE }));
+    const n = p.steps.length, okAll = res.length && res.every((r) => r.ok);
+    const needs = [p.steps.some((st) => st.kind === 'wing') ? 'the Wing in Control (Mixer) and Wing patch control' : '', p.steps.some((st) => st.kind === 'dante') ? 'Dante control (an Admin)' : ''].filter(Boolean).join(', and ');
+    if (rp.phase === 'plan' || rp.phase === 'doing') {
+      return { ...out, planLines: lines, planBusy: rp.phase === 'doing',
+        planTitle: p.blocked.length ? 'C3 Life can’t set this up yet' : (n ? 'C3 Life will change ' + (n === 1 ? 'one thing' : n + ' things') + ':' : 'Already set up. Nothing to change.'),
+        planEdge: p.blocked.length ? ORANGE : (n ? AMBER : BLUE), planCanYes: !p.blocked.length && n > 0, yesLabel: rp.phase === 'doing' ? 'Changing…' : 'Yes, change ' + (n === 1 ? 'it' : 'them'), noLabel: n && !p.blocked.length ? 'Cancel' : 'Close',
+        planNote: n && !p.blocked.length ? 'Each change is read back to check it took, and you can put it back. Needs ' + needs + '.' + (live ? ' This hasn’t been tried on our Wing and Dante yet: do it with FOH watching, not during a service.' : ' (Preview: nothing real changes.)') : '' };
+    }
+    return { ...out, planLines: lines, planTitle: rp.phase === 'undone' ? 'Put back' : (okAll ? 'Done' : 'Stopped'), planEdge: okAll ? BLUE : ORANGE, noLabel: 'Close',
+      planCanYes: rp.phase === 'done' && !!rp.canUndo, yesLabel: 'Put it back', planNote: rp.phase === 'done' && !okAll ? 'It stopped at the first change that didn’t take. Check the desk and Dante Controller.' : '' };
+  }
+  riVals() {
+    const s = this.state, ri = s.ri || this.riLocal(), cur = s.riDraft || { mic: this.riPick(ri.mic), ref: this.riPick(ri.ref) };
+    const names = ri.names || {}, dvs = (ri.dante && ri.dante.device ? ri.dante.device.toUpperCase() : 'C3LIFE-SERVER');
+    const clean = JSON.stringify(cur) === JSON.stringify({ mic: this.riPick(ri.mic), ref: this.riPick(ri.ref) });
+    const can = this.riCanEdit() && !s.riNoAccess;
+    const MAX = { dvs: 64, aes67: 8, usb: 48 };
+    const GRPS = { mic: [['LCL', 'Wing Local In', 8], ['AUX', 'Wing Aux In', 8], ['A', 'AES50 A', 48], ['B', 'AES50 B', 48], ['C', 'AES50 C', 48], ['CRD', 'Wing card in', 64], ['USB', 'Wing USB in', 48], ['TIO', 'Tio1608-D input (straight on Dante)', 16], ['DANTE', 'Another Dante device', 0]],
+      ref: [['MAIN', 'Main', 4], ['BUS', 'Bus', 16], ['MTX', 'Matrix', 8]] };
+    const set = (k, patch) => {
+      const d = JSON.parse(JSON.stringify(cur)); d[k] = { ...d[k], ...patch };
+      if (d[k].ch > MAX[d[k].via]) d[k].ch = 1;
+      if (d[k].stereo && d[k].ch2 > MAX[d[k].via]) d[k].ch2 = d[k].ch === 1 ? 2 : 1;
+      if (d[k].subs && d[k].subs.on) ['ch', 'ch2'].forEach((f) => { if (d[k].subs[f] > MAX[d[k].via]) d[k].subs[f] = 1; });
+      d[k] = this.riPick(d[k]);
+      this.setState({ riDraft: d, riMsg: '', riErr: '' });
+    };
+    const chans = (x) => (x.stereo ? [x.ch, x.ch2] : [x.ch]).concat(x.subs && x.subs.on ? [x.subs.ch, x.subs.ch2] : []).map((c) => x.via + ':' + c);
+    const all = chans(cur.mic).concat(chans(cur.ref));
+    const same = new Set(all).size !== all.length;
+    // the right side's defaults: the other side of a desk mix, or the next input; and the next free channel
+    const def2 = (k, from) => { if (from === 'DANTE') return 'DANTE'; const p = from.split('/'); if (k === 'ref') return p[0] + '/' + p[1] + '/R'; const max = (GRPS[k].find((q) => q[0] === p[0]) || [0, 0, 1])[2]; return p[0] + '/' + Math.min(parseInt(p[1], 10) + 1, max); };
+    const free2 = (k, x) => { const taken = new Set(chans(cur[k === 'mic' ? 'ref' : 'mic']).concat([x.via + ':' + x.ch])); for (let c = x.ch + 1; c <= MAX[x.via]; c++) if (!taken.has(x.via + ':' + c)) return c; for (let c = 1; c <= MAX[x.via]; c++) if (!taken.has(x.via + ':' + c)) return c; return 1; };
+    const nums = (k, grp) => {
+      const gi = GRPS[k].find((q) => q[0] === grp) || GRPS[k][0];
+      if (grp === 'DANTE') return [{ v: '', l: '\u2014' }];
+      if (k === 'ref') return [].concat(...Array.from({ length: gi[2] }, (_, i) => [{ v: String(i + 1), l: (i + 1) + ' L' + (names[grp + '/' + (i + 1)] ? ' \u00b7 ' + names[grp + '/' + (i + 1)] : '') }, { v: (i + 1) + '/R', l: (i + 1) + ' R' + (names[grp + '/' + (i + 1)] ? ' \u00b7 ' + names[grp + '/' + (i + 1)] : '') }]));
+      return Array.from({ length: gi[2] }, (_, i) => ({ v: String(i + 1), l: (i + 1) + (names[grp + '/' + (i + 1)] ? ' \u00b7 ' + names[grp + '/' + (i + 1)] : '') }));
+    };
+    const parts = (v) => (v === 'DANTE' ? ['DANTE', ''] : [v.split('/')[0], v.split('/').slice(1).join('/')]);
+    const regrp = (k, g, num) => { const q = GRPS[k].find((z) => z[0] === g); if (q[0] === 'DANTE') return 'DANTE'; if (k === 'ref') return q[0] + '/' + (/^\d+(\/R)?$/.test(num) && parseInt(num, 10) <= q[2] ? num : '1'); return q[0] + '/' + Math.min(parseInt(num, 10) || 1, q[2]); };
+    const routeLine = (x, saved, ch, savedCh, r0, label) => {
+      const r = x.via === 'dvs' && x.via === saved.via && ch === savedCh ? r0 : null, pre = label ? label + ': ' : '';
+      if (x.via !== 'dvs') return { text: pre + 'C3 Life listens on ' + ({ dvs: 'Dante Virtual Soundcard', aes67: 'AES67', usb: 'Wing USB' }[x.via]) + ' ' + ch + '. Dante Controller shows whether it\u2019s arriving.', dot: '#A3ACB8', color: '#A3ACB8' };
+      if (ch !== savedCh || x.via !== saved.via) return { text: pre + 'Save to see what Dante routes into channel ' + ch + '.', dot: '#A3ACB8', color: '#A3ACB8' };
+      if (r) { const ok = /connect/i.test(r.status || '') || !r.status; return { text: pre + 'Dante: ' + r.tx_device + ' \u00b7 ' + r.tx_channel + ' \u2192 ' + dvs + ' channel ' + ch + (ok ? ' \u2713' : ' \u00b7 ' + r.status), dot: ok ? '#6CB4F5' : '#FF7A45', color: ok ? '#ECEEF1' : '#FF7A45' }; }
+      if (ri.dante && ri.dante.status === 'ok') return { text: pre + 'Dante has nothing routed to ' + dvs + ' channel ' + ch + ' yet. Do the steps below.', dot: '#F5C518', color: '#F5C518' };
+      return { text: pre + 'The Dante routing couldn\u2019t be read' + (ri.dante && ri.dante.reason ? ' (' + ri.dante.reason + ')' : '') + '. Check it in Dante Controller.', dot: '#A3ACB8', color: '#A3ACB8' };
+    };
+    const sig = (k, title) => {
+      const x = cur[k], saved = ri[k];
+      const routes = x.stereo ? [routeLine(x, saved, x.ch, saved.ch, saved.route, 'Left'), routeLine(x, saved, x.ch2, saved.stereo ? saved.ch2 : -1, saved.route2, 'Right')] : [routeLine(x, saved, x.ch, saved.ch, saved.route, '')];
+      const sb = x.subs && x.subs.on ? x.subs : null, ssv = saved.subs && saved.subs.on ? saved.subs : {};
+      if (sb) routes.push(routeLine(x, saved, sb.ch, ssv.ch || -1, ssv.route, 'Subs left'), routeLine(x, saved, sb.ch2, ssv.ch2 || -1, ssv.route2, 'Subs right'));
+      const setSub = (patch) => set(k, { subs: { ...(x.subs || {}), ...patch } });
+      const freeN = (n) => { const taken = new Set(all); const out = []; for (let c = 1; c <= MAX[x.via] && out.length < n; c++) if (!taken.has(x.via + ':' + c)) out.push(c); while (out.length < n) out.push(1); return out; };
+      const [sgrp, snum] = sb ? parts(sb.from) : ['MTX', '1'], [sgrp2, snum2] = sb ? parts(sb.from2) : ['MTX', '1/R'];
+      const [grp, num] = parts(x.from), [grp2, num2] = x.stereo ? parts(x.from2) : ['', ''];
+      return { title, via: x.via, ch: String(x.ch), summary: this.riSummary(x, names),
+        kind: x.stereo ? 'stereo' : 'mono', stereo: !!x.stereo, fromLabel: x.stereo ? 'Left comes from' : 'Comes from', chLabel: x.stereo ? 'Left channel' : 'Channel',
+        setKind: (e) => (e.target.value === 'stereo' ? set(k, { stereo: true, from2: def2(k, x.from), ch2: free2(k, x) }) : set(k, { stereo: false })),
+        grp, num, numOff: !can || grp === 'DANTE', grp2, num2, numOff2: !can || grp2 === 'DANTE', ch2: String(x.ch2 || ''),
+        grpOpts: GRPS[k].map((q) => ({ v: q[0], l: q[1] })),
+        numOpts: nums(k, grp), numOpts2: x.stereo ? nums(k, grp2) : [],
+        chOpts: Array.from({ length: MAX[x.via] }, (_, i) => String(i + 1)),
+        setGrp: (e) => set(k, { from: regrp(k, e.target.value, num) }),
+        setNum: (e) => set(k, { from: grp + '/' + e.target.value }), setVia: (e) => set(k, { via: e.target.value }), setCh: (e) => set(k, { ch: parseInt(e.target.value, 10) }),
+        setGrp2: (e) => set(k, { from2: regrp(k, e.target.value, num2) }),
+        setNum2: (e) => set(k, { from2: grp2 + '/' + e.target.value }), setCh2: (e) => set(k, { ch2: parseInt(e.target.value, 10) }),
+        isRef: k === 'ref', subsOn: !!sb,
+        toggleSubs: () => { if (sb) setSub({ on: false }); else { const [a, b2] = freeN(2); setSub({ on: true, from: 'MTX/2', from2: 'MTX/2/R', ch: a, ch2: b2 }); } },
+        sgrp, snum, sgrp2, snum2, sch: String(sb ? sb.ch : ''), sch2: String(sb ? sb.ch2 : ''),
+        snumOpts: sb ? nums('ref', sgrp) : [], snumOpts2: sb ? nums('ref', sgrp2) : [],
+        setSgrp: (e) => setSub({ from: regrp('ref', e.target.value, snum) }), setSnum: (e) => setSub({ from: sgrp + '/' + e.target.value }),
+        setSgrp2: (e) => setSub({ from2: regrp('ref', e.target.value, snum2) }), setSnum2: (e) => setSub({ from2: sgrp2 + '/' + e.target.value }),
+        setSch: (e) => setSub({ ch: parseInt(e.target.value, 10) }), setSch2: (e) => setSub({ ch2: parseInt(e.target.value, 10) }),
+        routes, steps: this.riSteps(x, names, dvs), ...this.rpVals(k, clean) };
+    };
+    return {
+      riSigs: [sig('mic', 'Room mic'), sig('ref', 'Desk reference')],
+      riVias: [{ v: 'dvs', l: 'Dante Virtual Soundcard' }, { v: 'aes67', l: 'AES67 stream' }, { v: 'usb', l: 'Wing USB' }],
+      riLocked: !can, riClean: clean,
+      riCantSave: !can || clean || same || !!s.riBusy,
+      riSaveLabel: s.riBusy ? 'Saving…' : 'Save',
+      riErr: same ? 'Two of these use the same channel. Each one (and each side) needs its own.' : (s.riErr || ''),
+      riMsg: s.riMsg || '',
+      riWho: s.riNoAccess ? 'Sign in to see where the RTA listens.' : (can ? 'FOH sound or an Admin can change this.' : 'FOH sound or an Admin can change this.'),
+      riUndo: () => this.setState({ riDraft: null, riMsg: '', riErr: '' }),
+      riSave: () => {
+        const d = cur, done = (j) => { this.setState({ ri: j, riDraft: null, riBusy: false, riMsg: 'Saved. The RTA now listens to ' + this.riSummary(d.mic, names) + ', against ' + this.riSummary(d.ref, names) + '. Nothing changed on the desk or Dante: do the steps above if they aren\u2019t done.' }); this.riCache(j); };
+        if (this.riDemo || (s.ri && s.ri.demo)) { try { localStorage.setItem('booth.rtainputs', JSON.stringify(d)); } catch (e) {} done(this.riLocal()); return; }
+        this.setState({ riBusy: true });
+        this.riApi('/api/rta/inputs', 'PUT', d).then(({ j }) => { if (j && j.ok) done(j); else this.setState({ riBusy: false, riErr: (j && j.error) || 'Not saved. Try again.' }); })
+          .catch(() => this.setState({ riBusy: false, riErr: 'Not saved: the C3 Life server didn’t answer.' }));
+      },
+      riMicName: this.riSummary(ri.mic, names),
+      riRefName: this.riSummary(ri.ref, names)
+    };
+  }
+  // ---- the analyser look: fine spectrum, peak hold, spectrograph, Leq and SPL history ----
+  lkTop() { return this.state.scTop ?? 110; }
+  lkBot() { return this.state.scBot ?? 30; }
+  // 120 points at 1/12 octave from 20 Hz (like the Wing's own RTA), made from the 31 third-octave bands
+  lkFine(b) {
+    const j = this.lkJ || (this.lkJ = Array.from({ length: 120 }, () => (Math.random() - 0.5) * 1.8));
+    return Array.from({ length: 120 }, (_, i) => { const k = Math.min(30, i / 4), lo = Math.floor(k), hi = Math.min(30, lo + 1), f = k - lo; return b[lo] * (1 - f) + b[hi] * f + j[i] + (Math.random() - 0.5) * 0.8; });
+  }
+  lkTick(room, desk, avg) {
+    if (!this.lkJ || Math.random() < 0.08) this.lkJ = Array.from({ length: 120 }, (_, i) => (this.lkJ ? this.lkJ[i] * 0.7 : 0) + (Math.random() - 0.5) * 1.8);
+    const r = this.lkFine(room);
+    this.lkRoom = r; this.lkDesk = this.lkFine(desk);
+    this.lkPk = this.lkPk ? this.lkPk.map((p, i) => Math.max(r[i], p - 0.35)) : r.slice();
+    this.lkN = (this.lkN || 0) + 1;
+    if (this.lkN % 3 === 0) { this.lkRows = [r].concat(this.lkRows || []).slice(0, 52); this.lkImg = this.lkPaint(); }
+    const now = Date.now();
+    if (!this.lkLast || now - this.lkLast >= 900) {  // once a second (ticks don't land exactly on the second): the level, for the averages and the history
+      this.lkLast = now;
+      this.lkSecs = (this.lkSecs || []).concat([[now, avg]]);
+      if (this.lkSecs.length > 28800) this.lkSecs.splice(0, this.lkSecs.length - 28800);
+      if (this.state.lkRec) this.setState({ lkHist: (this.state.lkHist || []).concat([avg]).slice(-3600) });
+    }
+  }
+  // The spectrograph is one small picture (newest row at the bottom), so the screen stays light.
+  lkPaint() {
+    try {
+      const W = 120, H = 52, c = this.lkCv || (this.lkCv = document.createElement('canvas'));
+      c.width = W; c.height = H;
+      const g = c.getContext('2d'), img = g.createImageData(W, H), rows = this.lkRows || [], top = this.lkTop(), bot = this.lkBot();
+      const st = [[0, [11, 16, 48]], [0.35, [29, 58, 138]], [0.6, [47, 168, 79]], [0.82, [155, 225, 93]], [1, [245, 230, 99]]];
+      for (let y = 0; y < H; y++) {
+        const row = rows[H - 1 - y];
+        for (let x = 0; x < W; x++) {
+          const o = (y * W + x) * 4;
+          if (!row) { img.data[o + 3] = 0; continue; }
+          const v = Math.max(0, Math.min(1, (row[x] - bot) / (top - bot)));
+          let k = 0; while (k < st.length - 2 && v > st[k + 1][0]) k++;
+          const a = st[k], b = st[k + 1], f = (v - a[0]) / (b[0] - a[0]);
+          for (let ch = 0; ch < 3; ch++) img.data[o + ch] = a[1][ch] + (b[1][ch] - a[1][ch]) * f;
+          img.data[o + 3] = 255;
+        }
+      }
+      g.putImageData(img, 0, 0);
+      return c.toDataURL();
+    } catch (e) { return ''; }
+  }
+  lkLeq(sec) {
+    const now = Date.now(), xs = (this.lkSecs || []).filter((p) => p[0] >= now - sec * 1000);
+    if (!xs.length) return '---';
+    return (10 * Math.log10(xs.reduce((a, p) => a + Math.pow(10, p[1] / 10), 0) / xs.length)).toFixed(1);
+  }
+  lkHandle(which) {
+    const clamp = (t, b) => ({ scTop: Math.max(b + 20, Math.min(140, t)), scBot: Math.max(0, Math.min(t - 20, b)) });
+    const nudge = (d) => { const t = this.lkTop(), b = this.lkBot(); this.setState(which === 'top' ? clamp(t + d, b) : clamp(t, b + d)); };
+    return {
+      down: (e) => { try { e.currentTarget.setPointerCapture(e.pointerId); } catch (er) {} const box = e.currentTarget.parentElement.getBoundingClientRect(); this.lkDrag = { which, y: e.clientY, h: box.height, t: this.lkTop(), b: this.lkBot() }; },
+      move: (e) => { const d = this.lkDrag; if (!d || d.which !== which || !e.buttons) return; const db = Math.round(((e.clientY - d.y) / d.h) * (d.t - d.b)); this.setState(which === 'top' ? clamp(d.t + db, d.b) : clamp(d.t, d.b + db)); },
+      up: () => { this.lkDrag = null; },
+      key: (e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowRight') { e.preventDefault(); nudge(5); } else if (e.key === 'ArrowDown' || e.key === 'ArrowLeft') { e.preventDefault(); nudge(-5); } }
+    };
+  }
+  lkVals() {
+    const s = this.state, top = this.lkTop(), bot = this.lkBot(), span = top - bot, limit = this.limit();
+    const view = s.lkView || 'rta', over = s.overSince !== null, fb = s.fb;
+    const xi = (f) => 12 * Math.log2(f / 20), X = (i) => (i / 119) * 360, Y = (v) => Math.max(0, Math.min(300, ((top - v) / span) * 300));
+    const room = this.lkRoom || this.lkFine(s.room.map(() => 70)), desk = this.lkDesk || room, pk = this.lkPk || room;
+    const pts = (a) => a.map((v, i) => X(i).toFixed(1) + ',' + Y(v).toFixed(1)).join(' ');
+    const fmtF = (f) => (f < 1000 ? Math.round(f) + ' Hz' : (f / 1000).toFixed(f < 10000 ? 2 : 1).replace(/\.?0+$/, '') + ' kHz');
+    let mi = Math.round(xi(40)); for (let i = mi; i <= Math.round(xi(16000)); i++) if (room[i] > room[mi]) mi = i;
+    const fbF = fb ? (/k/i.test(fb.freq) ? parseFloat(fb.freq) * 1000 : parseFloat(fb.freq)) : 0;
+    const ticks = []; for (let v = Math.ceil(bot / 10) * 10; v <= top; v += 10) ticks.push(v);
+    const xs = [[31.5, '31.5'], [63, '63'], [125, '125'], [250, '250'], [500, '500'], [1000, '1k'], [2000, '2k'], [4000, '4k'], [8000, '8k'], [16000, '16k']];
+    const hist = s.lkHist || [], n = Math.min(hist.length, 600), hv = hist.slice(-n);
+    const HY = (v) => Math.max(0, Math.min(240, ((120 - v) / 80) * 240));
+    const hAvg = hv.length ? (10 * Math.log10(hv.reduce((a, v) => a + Math.pow(10, v / 10), 0) / hv.length)).toFixed(1) : '---';
+    const big = s.avg, bigColor = over ? '#FF5A4F' : (big >= limit - 3 ? '#F5C518' : '#4CD964');
+    const tabCls = (v) => (view === v ? 'on' : '');
+    return {
+      viewRta: view === 'rta', viewSpl: view === 'spl', viewSet: view === 'set' && this.rtaSetLevel() > 0,
+      setShow: this.rtaSetLevel() > 0 ? 'inline-flex' : 'none', setLook: this.rtaSetLevel() === 1, setLocked: this.rtaSetLevel() < 2,
+      showRta: () => this.setState({ lkView: 'rta' }), showSpl: () => this.setState({ lkView: 'spl' }),
+      toggleSet: () => this.setState(view === 'set' ? { lkView: s.lkPrev || 'rta' } : { lkView: 'set', lkPrev: view }),
+      rtaTabCls: tabCls('rta'), splTabCls: tabCls('spl'), setCls: 'rb box' + (view === 'set' ? ' on' : ''),
+      frozen: !!s.frozen, isLive: !s.frozen, playCls: 'rb' + (!s.frozen ? ' on' : ''), pauseCls: 'rb' + (s.frozen ? ' on' : ''),
+      goLive: () => this.setState({ frozen: false }), goPause: () => this.setState({ frozen: true }),
+      compareOn: !!s.cmpOn, cmpCls: 'rb box' + (s.cmpOn ? ' on' : ''), toggleCompare: () => this.setState({ cmpOn: !s.cmpOn }), deskOp: s.cmpOn ? 1 : 0,
+      idOn: !!s.idOn, idCls: 'rt' + (s.idOn ? ' on' : ''), toggleId: () => this.setState({ idOn: !s.idOn }),
+      roCls: 'rt' + (s.fbOn && fb ? ' hot' : (s.fbOn ? ' on' : '')),
+      yTicks: ticks.map((v) => ({ t: String(v), pct: (((top - v) / span) * 100).toFixed(2) })),
+      hLines: ticks.map((v) => Y(v).toFixed(1)), vLines: xs.map(([f]) => X(xi(f)).toFixed(1)),
+      xTicks: xs.map(([f, t]) => ({ t, pct: ((xi(f) / 119) * 100).toFixed(2) })),
+      roomPts: pts(room), peakPts: pts(pk), deskPts: pts(desk), fillPts: pts(room) + ' 360,300 0,300',
+      idX: X(mi).toFixed(1), idOp: s.idOn ? 0.8 : 0, idPct: ((mi / 119) * 100).toFixed(2), idText: fmtF(20 * Math.pow(2, mi / 12)) + ' · ' + room[mi].toFixed(0) + ' dB',
+      roMark: !!(s.fbOn && fb), roX: X(fbF ? xi(fbF) : 0).toFixed(1), roOp: s.fbOn && fb ? 0.9 : 0, roPct: (((fbF ? xi(fbF) : 0) / 119) * 100).toFixed(2),
+      hTop: this.lkHandle('top'), hBot: this.lkHandle('bot'), scaleTop: top, scaleBot: bot, hTopPct: 10, hBotPct: 88,
+      leq1: this.lkLeq(60), leq15: this.lkLeq(900), bigDb: big.toFixed(1), bigColor, unitColor: '#D9A441',
+      boxSub: 'Calibrated · dbx RTA-M room mic',
+      graphAria: 'Room mic spectrum from 20 Hz to 20 kHz, ' + bot + ' to ' + top + ' dB. Loudest at ' + fmtF(20 * Math.pow(2, mi / 12)) + '.' + (s.cmpOn ? ' The desk reference is shown too.' : ''),
+      specImg: this.lkImg || '', specSpan: '−' + ((this.lkRows || []).length * 0.33).toFixed(1) + 's',
+      specAlt: 'Spectrograph of the room mic over the last ' + Math.round((this.lkRows || []).length * 0.33) + ' seconds. Brighter means louder.',
+      liveText: s.frozen ? 'Paused' : 'Live', liveColor: s.frozen ? '#F5C518' : '#3E9E5C',
+      // SPL
+      leqs: [['1m', 60], ['15m', 900], ['30m', 1800], ['1h', 3600], ['8h', 28800]].map(([k, sec]) => ({ k, v: this.lkLeq(sec), c: '#4CD964' })),
+      resetLeq: () => { this.lkSecs = []; this.setState({ lkReset: Date.now() }); },
+      calNote: 'Calibrated with the dbx RTA-M on 12 Oct (+2.4 dB), so this reads true dB(A). It’s the room mic, not this device’s microphone.',
+      meterVal: big.toFixed(1), meterPct: Math.max(0, Math.min(100, ((big - 40) / 80) * 100)).toFixed(1),
+      hTicks: [120, 110, 100, 90, 80, 70, 60, 50, 40].map((v) => ({ t: String(v), pct: (((120 - v) / 80) * 100).toFixed(2) })),
+      histH: [110, 100, 90, 80, 70, 60, 50].map((v) => HY(v).toFixed(1)), histV: [50, 100, 150, 200, 250],
+      histPts: hv.length > 1 ? hv.map((v, i) => ((i / (hv.length - 1)) * 300).toFixed(1) + ',' + HY(v).toFixed(1)).join(' ') : '',
+      limY: HY(limit).toFixed(1), limOp: s.redOn ? 0.9 : 0,
+      histIdle: !s.lkRec && !hist.length,
+      histAria: hv.length ? 'Sound level over the last ' + hv.length + ' seconds, from ' + Math.min(...hv).toFixed(1) + ' to ' + Math.max(...hv).toFixed(1) + ' dB(A).' : 'No history yet.',
+      hMin: hv.length ? Math.min(...hv).toFixed(1) : '---', hMax: hv.length ? Math.max(...hv).toFixed(1) : '---', hAvg,
+      startLabel: s.lkRec ? 'Stop' : 'Start', startCls: 'btn ' + (s.lkRec ? 'stop' : 'go'),
+      toggleHist: () => this.setState({ lkRec: !s.lkRec }), resetHist: () => this.setState({ lkHist: [], lkRec: false }),
+      guardSub: s.redOn ? 'Over ' + limit + ' dB(A) turns every screen red and is logged' : 'Off: nothing warns when it’s loud',
+      guardCls: 'rsw' + (s.redOn ? ' on' : '')
+    };
+  }
+  renderVals() {
+    const s = this.state;
+    const limit = this.limit();
+    const over = s.overSince !== null;
+    const red = over && s.redOn;
+    const show = { 2: '31', 5: '63', 8: '125', 11: '250', 14: '500', 17: '1k', 20: '2k', 23: '4k', 26: '8k', 29: '16k' };
+    const px = (v) => Math.max(0, Math.min(220, ((v - 40) / 70) * 220));
+    const x = (i) => (i * 310 / 30).toFixed(1);
+    const line = (arr) => arr.map((v, i) => x(i) + ',' + (220 - px(v)).toFixed(1)).join(' ');
+    const single = s.mode < 2;
+    const src = s.mode === 1 ? s.desk : s.room;
+    const avgRange = (arr, a, b) => { let t = 0; for (let i = a; i <= b; i++) t += arr[i]; return t / (b - a + 1); };
+    const bandsDef = [['Low', '20–250 Hz', 0, 11], ['Mid', '250 Hz–4 kHz', 11, 23], ['High', '4–20 kHz', 23, 30]];
+    const summary = bandsDef.map(([name, range, a, b]) => {
+      const d = avgRange(s.room, a, b) - avgRange(s.desk, a, b);
+      let words = 'Close match';
+      if (d > 2) words = name === 'Low' ? 'Room is boomy · try cutting lows' : 'Louder in the room';
+      else if (d < -2) words = name === 'High' ? 'Room is dull · highs get lost' : 'Quieter in the room';
+      return { name, range, diff: (d > 0 ? '+' : '') + d.toFixed(1), words };
+    });
+    const secs = over ? Math.floor((Date.now() - s.overSince) / 1000) : 0;
+    const modes = ['Room', 'Desk', 'Compare', 'Spectrogram'];
+    const fb = s.fb;
+    const fbAgo = fb ? Math.max(1, Math.round((Date.now() - fb.at) / 1000)) : 0;
+    return {
+      fbOn: s.fbOn, toggleFb: () => { this.setState({ fbOn: !s.fbOn }); if (s.fbOn) this.setFb(null); },
+      fbSens: s.fbSens, setFbSens: (e) => this.setState({ fbSens: e.target.value }),
+      fbRinging: s.fbOn && !!fb, fbQuiet: !(s.fbOn && fb),
+      fbQuietText: s.fbOn ? 'Listening \u00b7 no ringing' : 'Feedback watch is off',
+      fbFreq: fb ? fb.freq : '', fbAgo: fbAgo < 60 ? fbAgo + ' s ago' : Math.round(fbAgo / 60) + ' min ago',
+      fbEdge: s.fbOn && fb ? '#FF7A45' : '#262C36',
+      fbDemo: () => { if (!s.fbOn) this.setState({ fbOn: true }); this.setFb({ freq: ['2.5 kHz', '630 Hz', '3.15 kHz'][Math.floor(Math.random() * 3)], at: Date.now() }); },
+      fbClear: () => this.setFb(null),
+      bg: red ? '#8E1B12' : '#0D1015',
+      over: over,
+      overFor: 'over for ' + secs + 's · logged',
+      limit: limit,
+      modes: modes.map((l, i) => ({ label: l, on: s.mode === i, off: s.mode !== i, pick: () => this.setState({ mode: i }) })),
+      compare: s.mode === 2, single: single, spectro: s.mode === 3,
+      spec: (() => {
+        const stops = [[16, 22, 30], [29, 78, 137], [108, 180, 245], [232, 243, 255]];
+        const col = (v) => {
+          const t = Math.max(0, Math.min(1, (v - 40) / 60)) * 3, k = Math.min(2, Math.floor(t)), f = t - k;
+          const a = stops[k], b = stops[k + 1];
+          return 'rgb(' + a.map((x, j) => Math.round(x + (b[j] - x) * f)).join(',') + ')';
+        };
+        const rows = s.specRows.slice();
+        while (rows.length < 24) rows.push(new Array(31).fill(40));
+        return rows.map((r) => ({ cells: r.map((v) => ({ bg: col(v) })) }));
+      })(),
+      specHint: (s.tick % 90) > 50 ? 'A bright stripe that stays in one band, like the one near 1.6 kHz now, is often feedback starting or a boomy note. Pull that band down on the Wing.' : 'Brighter means louder. Watch for a bright stripe that stays in one band: that\u2019s usually feedback starting or a boomy note.',
+      ...(() => { const rv = this.riVals(); return { ...rv, singleName: s.mode === 1 ? 'Desk reference \u00b7 ' + rv.riRefName : 'Room mic \u00b7 ' + rv.riMicName }; })(),
+      barColor: s.mode === 1 ? '#F5C518' : '#6CB4F5',
+      bands: src.map((v, i) => ({ h: Math.round(px(v)), p: Math.round(px(s.mode === 1 ? v : s.peaks[i])), label: show[i] || '' })),
+      roomLine: line(s.room),
+      deskLine: line(s.desk),
+      roomArea: '0,220 ' + line(s.room) + ' 310,220',
+      summary: summary,
+      spl: s.avg.toFixed(1),
+      splColor: over ? '#FF7A45' : '#F5C518',
+      leq: '88.9',
+      peak: s.peak.toFixed(1),
+      up: () => this.rtaSetLevel() >= 2 && this.setState({ limit: Math.min(110, limit + 1) }),
+      down: () => this.rtaSetLevel() >= 2 && this.setState({ limit: Math.max(70, limit - 1) }),
+      redOn: s.redOn,
+      toggleRed: () => this.rtaSetLevel() >= 2 && this.setState({ redOn: !s.redOn }),
+      freezeLabel: s.frozen ? 'Resume' : 'Freeze',
+      toggleFreeze: () => this.setState({ frozen: !s.frozen }),
+      snapLabel: s.snapLabel,
+      snap: () => this.setState({ snapLabel: 'Saved ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }),
+      ...this.lkVals()
+    };
+  }
+}
+</script>
+</body>
+</html>

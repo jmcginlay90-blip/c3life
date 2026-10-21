@@ -1,0 +1,99 @@
+# On every push: the C3 Life server's tests on a Windows computer (GitHub's Windows Server runner), and on Linux to
+# compare, then the installer on Windows. These computers have no Wing, Dante, Tio or Lightkey: the tests use the
+# pretend ones, and real hardware is still checked with HARDWARE-CHECK.md on the HP.
+name: Windows
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  server-tests:
+    name: Server tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # Listen turns the Dante audio into MP3 with ffmpeg; on the HP the installer asks for it
+      - name: Install ffmpeg (Windows)
+        if: runner.os == 'Windows'
+        run: choco install ffmpeg -y --no-progress
+      - name: Install ffmpeg (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update -q && sudo apt-get install -y -q ffmpeg
+      - name: Run every server test
+        working-directory: server
+        run: python -m unittest -v
+        timeout-minutes: 30
+
+  installer:
+    name: Installer (Windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Make the booth user (as in the set-up guide, step 2)
+        shell: pwsh
+        run: |
+          $pw = ConvertTo-SecureString ("C3-" + [guid]::NewGuid().ToString()) -AsPlainText -Force
+          New-LocalUser -Name booth -Password $pw -FullName 'Booth' | Out-Null
+      - name: Run Install-C3Life.ps1
+        shell: pwsh
+        run: |
+          Set-ExecutionPolicy -Scope Process Bypass -Force
+          # Port 80 is already taken on GitHub's Windows computer, so this run uses 8080
+          .\Install-C3Life.ps1 -Yes -NoKiosk -NoSubtitles -Languages '' -Port 8080
+      - name: What is on port 8080 after the install
+        shell: pwsh
+        run: |
+          # the lists in config.json must stay lists (an empty one once came out as null)
+          python -c "import json; d = json.load(open(r'C:\C3Life\server\config.json', encoding='utf-8-sig')); bad = [k for k in ('allowed_networks', 'remote_networks', 'remote_support_roles') if not isinstance(d.get(k), list)]; print('config.json lists:', {k: d.get(k) for k in ('allowed_networks', 'remote_networks', 'remote_support_roles')}); assert not bad, bad"
+          Get-ScheduledTask | Where-Object TaskName -like '*C3*' | Format-Table TaskName, State -AutoSize | Out-String | Write-Host
+          foreach ($c in @(Get-NetTCPConnection -LocalPort 8080 -State Listen -ErrorAction SilentlyContinue)) {
+            $w = Get-CimInstance Win32_Process -Filter "ProcessId=$($c.OwningProcess)"
+            Write-Host "Listening on 8080: $($w.ProcessId) $($w.CommandLine)"
+          }
+          # The booth user never signs in here, so stop whatever the scheduled task started and run C3 Life directly
+          Get-ScheduledTask | Where-Object TaskName -like '*C3*' | Stop-ScheduledTask -ErrorAction SilentlyContinue
+          Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*c3life_server.py*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
+      - name: Start C3 Life and ask it how it is
+        shell: pwsh
+        run: |
+          $py = (Get-Command python).Source
+          # After 60 s Python writes where every thread is, so a hang shows where it is stuck
+          $code = "import faulthandler, sys; faulthandler.dump_traceback_later(60, exit=True); sys.path.insert(0, r'C:\C3Life\server'); import c3life_server; c3life_server.main(['--config', r'C:\C3Life\server\config.json', '--log', r'C:\C3Life\logs\ci-server.log'])"
+          $p = Start-Process $py -ArgumentList '-c', "`"$code`"" -PassThru -RedirectStandardOutput C:\C3Life\logs\ci-out.txt -RedirectStandardError C:\C3Life\logs\ci-err.txt
+          $ok = $false
+          foreach ($i in 1..20) {
+            Start-Sleep 2
+            try { $h = Invoke-RestMethod http://127.0.0.1:8080/api/health -TimeoutSec 3; $ok = $h.ok; if ($ok) { break } } catch { Write-Host "  not yet: $($_.Exception.Message)" }
+          }
+          if (-not $ok) {
+            Start-Sleep 25
+            Write-Host '--- C3 Life output'; Get-Content C:\C3Life\logs\ci-out.txt -ErrorAction SilentlyContinue
+            Write-Host '--- C3 Life errors'; Get-Content C:\C3Life\logs\ci-err.txt -ErrorAction SilentlyContinue
+            Write-Host '--- C3 Life log'; Get-Content C:\C3Life\logs\ci-server.log -ErrorAction SilentlyContinue
+            throw 'C3 Life did not answer on http://127.0.0.1:8080/api/health'
+          }
+          "C3 Life $($h.version) is up, serving the $($h.app) folder"
+          $to = curl.exe -s -o NUL -w "%{redirect_url}" http://127.0.0.1:8080/
+          if ($to -notlike '*Listen.dc.html*') { throw "The address should open Listen, not '$to'" }
+          "The address opens: $to"
+          Invoke-WebRequest http://127.0.0.1:8080/project/Lights.dc.html -UseBasicParsing -TimeoutSec 5 | Out-Null
+          'Lights page served'
+          Stop-Process $p
+      - name: Keep the install logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: install-logs
+          path: C:\C3Life\logs

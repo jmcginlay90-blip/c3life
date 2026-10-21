@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>C3 Life – Ready to run pop-up</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet" data-look>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Safari / iPad: no zoom when typing, no double-tap zoom, no text-select or callout while dragging */
+html{-webkit-text-size-adjust:100%;touch-action:manipulation}
+input,select,textarea{font-size:16px!important}
+button,a,summary,label,[role=slider]{-webkit-tap-highlight-color:transparent}
+[role=slider],.fader,.pan{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+body{margin:0}
+
+/* Floating message sits above the RTA bar. On iPad/laptop it is centred over the page. */
+.ap-float{left:12px;right:12px;bottom:124px}
+@media (min-width:700px){.ap-float{left:50%;right:auto;transform:translateX(-50%);width:min(520px, calc(100% - 40px));bottom:64px}}
+
+/* On iPad/laptop, pop-ups are a centred card instead of a full-width sheet. */
+@media (min-width:700px){[role="dialog"][style*="bottom:0"]{left:50% !important;right:auto !important;transform:translateX(-50%);width:min(560px, calc(100% - 40px));bottom:16px !important;border-radius:16px !important;border:1px solid #333B47}}
+/* look:start — the WING look (like WING Edit): near-black, outlined panels, condensed headings, yellow for active, blue for selected.
+   Settings › Look › Classic puts the old look back on this device (html[data-look=classic]). */
+:root{--wk-bg:#0A0B0D;--wk-panel:#121418;--wk-panel2:#181B20;--wk-line:#2E333A;--wk-yellow:#F5C518;--wk-blue:#2F6CC4;--wk-cond:'Barlow Condensed','IBM Plex Sans',system-ui,sans-serif}
+html:not([data-look=classic]) body{background:var(--wk-bg)}
+html:not([data-look=classic]) .app{background:var(--wk-bg) !important}
+html:not([data-look=classic]) .card{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .lbl{font-family:var(--wk-cond);font-size:13px;font-weight:600;letter-spacing:.07em;color:#D4D9E0}
+html:not([data-look=classic]) h1{font-family:var(--wk-cond);font-weight:600 !important;text-transform:uppercase;letter-spacing:.05em;font-size:21px !important;line-height:1.2;color:var(--wk-yellow);border:1.5px solid var(--wk-yellow);border-radius:3px;padding:2px 12px;display:inline-block}
+html:not([data-look=classic]) .btn,html:not([data-look=classic]) .lk,html:not([data-look=classic]) .mxb,html:not([data-look=classic]) .mxbk,html:not([data-look=classic]) .mute,html:not([data-look=classic]) .pbtn{font-family:var(--wk-cond);font-size:15px;letter-spacing:.02em;border-radius:4px}
+html:not([data-look=classic]) .btn.pri{background:var(--wk-yellow);border-color:var(--wk-yellow);color:#111}
+html:not([data-look=classic]) .seg{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .seg a{font-family:var(--wk-cond);font-size:15px;letter-spacing:.03em;border-radius:4px}
+html:not([data-look=classic]) .seg a.on,html:not([data-look=classic]) .lk.on{background:var(--wk-blue);color:#fff}
+html:not([data-look=classic]) .tab.on{color:var(--wk-yellow);border-top-color:var(--wk-yellow)}
+html:not([data-look=classic]) .topmenu{background:#000;border-bottom-color:var(--wk-line)}
+html:not([data-look=classic]) .topmenu summary{font-family:var(--wk-cond);font-size:16px;letter-spacing:.03em}
+html:not([data-look=classic]) .topmenu .mcur{color:var(--wk-yellow)}
+html:not([data-look=classic]) .topmenu .mlist{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .topmenu .mlist a{font-family:var(--wk-cond);font-size:16px;border-radius:4px}
+html:not([data-look=classic]) .topmenu .mlist a.on{background:var(--wk-panel2);color:var(--wk-yellow);box-shadow:inset 3px 0 0 var(--wk-yellow)}
+html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic]) input[type=radio],html:not([data-look=classic]) input[type=range]{accent-color:var(--wk-yellow)}
+.wkside{display:none}
+/* iPad landscape and laptops: a sidebar like WING Edit's (HOME, MIXER, ...) instead of the menu at the top */
+@media (min-width:1000px){
+  html:not([data-look=classic]) .wkside{display:flex;flex-direction:column;gap:2px;position:fixed;left:0;top:0;bottom:0;width:132px !important;max-width:132px !important;margin:0 !important;padding:8px 6px 12px;box-sizing:border-box;background:#000;border-right:1px solid var(--wk-line);overflow-y:auto;z-index:30}
+  html:not([data-look=classic]) .wkside .wkbrand{font:700 24px var(--wk-cond);letter-spacing:.06em;color:var(--wk-yellow);padding:6px 8px 12px}
+  html:not([data-look=classic]) .wkside a{display:flex;align-items:center;gap:9px;min-height:46px;padding:0 8px;border-radius:4px;color:#D4D9E0;text-decoration:none;font:600 15px var(--wk-cond);text-transform:uppercase;letter-spacing:.04em}
+  html:not([data-look=classic]) .wkside a:hover{background:var(--wk-panel2)}
+  html:not([data-look=classic]) .wkside a.on{background:var(--wk-panel2);color:var(--wk-yellow);box-shadow:inset 3px 0 0 var(--wk-yellow)}
+  html:not([data-look=classic]) .wkside svg{flex:none}
+  html:not([data-look=classic]) .app{padding-left:132px;box-sizing:border-box !important}
+  html:not([data-look=classic]) .app > .topmenu{display:none}
+}
+/* look:end */
+</style>
+</helmet>
+<div style="width:100%;height:100vh;height:100dvh;position:relative;font-family:'IBM Plex Sans',system-ui,sans-serif;color:#ECEEF1;pointer-events:none">
+  <!-- Only when an Admin has turned on automatic actions (Plan). Normally nothing on the run sheet runs by itself. -->
+  <sc-if value="{{autoOn}}" hint-placeholder-val="{{ false }}">
+  <sc-if value="{{open}}" hint-placeholder-val="{{ true }}">
+    <div style="position:absolute;inset:0;background:rgba(5,7,10,.6);pointer-events:auto"></div>
+    <div role="dialog" aria-modal="true" aria-label="Ready to run {{name}}" style="position:absolute;left:0;right:0;bottom:0;pointer-events:auto;background:#161A21;border-top:2px solid {{edge}};border-radius:18px 18px 0 0;padding:16px 16px 20px;display:flex;flex-direction:column;gap:12px;box-shadow:0 -10px 30px rgba(0,0,0,.5);max-height:640px;overflow-y:auto">
+      <div style="width:40px;height:4px;border-radius:2px;background:#333B47;align-self:center"></div>
+      <div style="display:flex;align-items:flex-start;gap:10px">
+        <div style="flex:1">
+          <div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#A3ACB8;font-weight:500">{{why}}</div>
+          <div style="font-size:20px;font-weight:600;margin-top:2px">{{title}}</div>
+        </div>
+        <span style="font-size:12px;font-weight:600;border-radius:6px;padding:3px 8px;background:{{badgeBg}};color:#0D1015">{{badge}}</span>
+      </div>
+
+      <div style="display:flex;flex-direction:column;background:#0F1318;border:1px solid #262C36;border-radius:12px;padding:4px 12px">
+        <sc-for list="{{steps}}" as="st" hint-placeholder-count="6">
+          <div style="display:flex;align-items:center;gap:10px;min-height:42px;border-top:1px solid #1E232C">
+            <span style="width:9px;height:9px;border-radius:50%;flex:none;background:{{st.dot}}"></span>
+            <span style="flex:1;min-width:0;font-size:13px">{{st.text}}</span>
+            <span style="font-size:11px;color:{{st.dot}};text-align:right">{{st.state}}</span>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:10px;font-size:13px;background:#0F1318;border:1px solid {{checkBorder}};border-radius:12px;padding:10px 12px">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{{checkColor}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
+        <span style="flex:1">{{checkText}}</span>
+        <sc-if value="{{someMissing}}" hint-placeholder-val="{{ true }}">
+          <button onClick="{{checkNow}}" style="min-height:36px;padding:0 12px;border-radius:9px;border:1px solid #333B47;background:#1E232C;color:#ECEEF1;font:500 13px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer">Check now</button>
+        </sc-if>
+      </div>
+
+      <button onClick="{{run}}" style="min-height:52px;border-radius:12px;border:0;background:#F5C518;color:#1A1204;font:600 16px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer">{{runLabel}}</button>
+      <div style="display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:8px">
+        <sc-if value="{{someMissing}}" hint-placeholder-val="{{ true }}">
+          <button onClick="{{wait}}" style="min-height:48px;border-radius:12px;border:1px solid #333B47;background:#1E232C;color:#ECEEF1;font:500 14px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer">Wait until all connected</button>
+        </sc-if>
+        <sc-if value="{{allOk}}" hint-placeholder-val="{{ false }}">
+          <button onClick="{{later}}" style="min-height:48px;border-radius:12px;border:1px solid #333B47;background:#1E232C;color:#ECEEF1;font:500 14px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer">Remind me in 1 min</button>
+        </sc-if>
+        <button onClick="{{skip}}" style="min-height:48px;border-radius:12px;border:1px solid #333B47;background:#1E232C;color:#ECEEF1;font:500 14px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer">Skip this time</button>
+      </div>
+      <button onClick="{{demoConnect}}" style="min-height:40px;border-radius:10px;border:1px dashed #333B47;background:transparent;color:#A3ACB8;font:500 12px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer">{{demoLabel}}</button>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{waiting}}" hint-placeholder-val="{{ false }}">
+    <button class="ap-float" onClick="{{reopen}}" style="position:absolute;pointer-events:auto;display:flex;align-items:center;gap:10px;min-height:52px;padding:8px 14px;border-radius:14px;border:1px solid #FF7A45;background:#1E232C;color:#ECEEF1;font:500 13px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer;text-align:left;box-shadow:0 8px 24px rgba(0,0,0,.45)">
+      <span style="width:9px;height:9px;border-radius:50%;background:#FF7A45;flex:none"></span>
+      <span style="flex:1">{{name}} is waiting for {{missingNames}}<br><span style="font-size:12px;color:#A3ACB8">Checking again in {{countdown}}</span></span>
+      <span style="color:#6CB4F5;font-size:13px">Open</span>
+    </button>
+  </sc-if>
+
+  <sc-if value="{{toast}}" hint-placeholder-val="{{ false }}">
+    <div role="status" class="ap-float" style="position:absolute;display:flex;align-items:center;gap:10px;min-height:48px;padding:8px 14px;border-radius:14px;background:#6CB4F5;color:#08131C;font:600 14px 'IBM Plex Sans',system-ui,sans-serif">{{toastText}}</div>
+  </sc-if>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { mode: 'open', macConnected: false, left: 300, toastText: '', reason: 'item' };
+  }
+  componentDidMount() {
+    this.timer = setInterval(() => {
+      const s = this.state;
+      if (s.macConnected) return;
+      if (s.left <= 1) this.setState({ left: 300 });
+      else this.setState({ left: s.left - 1 });
+    }, 1000);
+  }
+  componentWillUnmount() { clearInterval(this.timer); clearTimeout(this.t); }
+  flash(text) {
+    this.setState({ mode: 'toast', toastText: text });
+    clearTimeout(this.t); this.t = setTimeout(() => this.setState({ mode: 'closed' }), 2600);
+  }
+  renderVals() {
+    const s = this.state;
+    const steps = [
+      { text: 'Music · fade out over 10s', dev: 'Mac mini', ok: true },
+      { text: 'Foyer · switch to Live service', dev: 'Wing', ok: true },
+      { text: 'Lights · Worship warm', dev: 'Events Mac', left: true },
+      { text: 'Wing · unmute DCA 1 · Band', dev: 'Wing', ok: true },
+      { text: 'Playback · Play', dev: 'MacBook Pro', ok: s.macConnected },
+      { text: 'ProPresenter · next slide', dev: 'Mac mini', ok: true }
+    ];
+    const missing = steps.filter((x) => !x.ok && !x.left);
+    const ready = steps.filter((x) => x.ok).length;
+    const allOk = missing.length === 0;
+    const mm = Math.floor(s.left / 60), ss = String(s.left % 60).padStart(2, '0');
+    return {
+      autoOn: (() => { try { return localStorage.getItem('booth.auto') === 'on'; } catch (e) { return false; } })(),
+      open: s.mode === 'open',
+      waiting: s.mode === 'waiting',
+      toast: s.mode === 'toast',
+      toastText: s.toastText,
+      name: 'Worship start',
+      why: 'Song 1 went live · automatic macro',
+      title: 'Run "Worship start"?',
+      badge: allOk ? 'All ready' : missing.length + ' not connected',
+      badgeBg: allOk ? '#6CB4F5' : '#FF7A45',
+      edge: allOk ? '#6CB4F5' : '#FF7A45',
+      steps: steps.map((x) => ({
+        text: x.text,
+        dot: x.left ? '#A3ACB8' : (x.ok ? '#6CB4F5' : '#FF7A45'),
+        state: x.left ? 'Left out · skipped' : (x.ok ? x.dev + ' · ready' : x.dev + ' · not connected')
+      })),
+      someMissing: !allOk, allOk: allOk,
+      missingNames: missing.map((x) => x.dev).join(', ') || 'nothing',
+      checkText: allOk ? 'Everything needed is connected.' : 'Checking connections every 5 minutes · next check in ' + mm + ':' + ss,
+      checkColor: allOk ? '#6CB4F5' : '#FF7A45',
+      checkBorder: allOk ? '#262C36' : '#5A3A2A',
+      countdown: mm + ':' + ss,
+      runLabel: allOk ? 'Run now · all ' + ready + ' steps' : 'Run now · ' + ready + ' of ' + (steps.length - 1) + ' steps (skip Playback)',
+      run: () => this.flash('Worship start ran · Undo on the Macros screen for 60s'),
+      wait: () => this.setState({ mode: 'waiting' }),
+      later: () => this.flash('Reminding you in 1 minute'),
+      skip: () => this.flash('Skipped · noted in the log'),
+      reopen: () => this.setState({ mode: 'open' }),
+      checkNow: () => this.setState({ left: 300 }),
+      demoLabel: s.macConnected ? 'Demo: MacBook Pro disconnects' : 'Demo: MacBook Pro reconnects',
+      demoConnect: () => this.setState({ macConnected: !s.macConnected, mode: 'open' })
+    };
+  }
+}
+</script>
+</body>
+</html>

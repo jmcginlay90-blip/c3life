@@ -1,0 +1,81 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="theme-color" content="#0D1015"><title>C3 Life</title><style>body{margin:0;background:#0D1015}</style></head><body><div id="app"></div><script>try{if(localStorage.getItem('booth.look')==='classic')document.documentElement.setAttribute('data-look','classic');}catch(e){}</script>
+<style>html[data-nochat] a[href="Chat.dc.html"]{display:none !important}</style>
+<script>
+/* Team chat on or off for the person signed in (Users & PINs; Listeners don't have it unless an Admin turns it on). */
+(function(){
+  function get(k){try{return JSON.parse(localStorage.getItem(k)||'null');}catch(e){return null;}}
+  function chatOk(){var u=get('booth.user');if(!u)return true;var l=get('booth.users'),me=null;if(Array.isArray(l))for(var i=0;i<l.length;i++)if(l[i].name===u.name)me=l[i];if(me&&typeof me.chat==='boolean')return me.chat;return (u.role||u.name)!=='Listener';}
+  function foyerName(){var c=get('booth.foyer');return c&&typeof c.name==='string'&&c.name.trim()?c.name.trim():'Foyer';}
+  /* menus and tabs that say "Foyer" use the foyer's own name */
+  function names(){var n=foyerName(),a=document.querySelectorAll('a[href="FoyerTeam.dc.html"],a[href="Foyer.dc.html"]');for(var i=0;i<a.length;i++){var k=a[i].childNodes;for(var j=k.length-1;j>=0;j--){var t=k[j];if(t.nodeType===3&&t.nodeValue.trim()){if(t.nodeValue.trim()==='Foyer'&&n!=='Foyer')t.nodeValue=t.nodeValue.replace('Foyer',n);break;}}}}
+  function apply(){var no=!chatOk(),h=document.documentElement;if(no!==h.hasAttribute('data-nochat')){if(no)h.setAttribute('data-nochat','');else h.removeAttribute('data-nochat');}names();}
+  apply();setInterval(apply,1000);
+  try{window.addEventListener('storage',apply);}catch(e){}
+  try{new MutationObserver(names).observe(document.getElementById('app')||document.body,{childList:true,subtree:true});}catch(e){}
+})();
+</script>
+<script>
+class DCLogic { constructor(p){ this.props=p||{}; this.state={}; } setState(p){ const v = typeof p==='function'? p(this.state):p; this.state=Object.assign({}, this.state, v); queueMicrotask(()=> this.__rerender ? this.__rerender() : window.__render()); } }
+let comp=null, tpl=null, errors=[]; let defs={}, insts=[], hosts=[];
+window.onerror=(m)=>{errors.push(String(m));};
+window.__errors=()=>errors;
+function look(expr, scope){ expr=expr.trim(); if(expr==='true')return true; if(expr==='false')return false; return expr.split('.').reduce((o,k)=>o==null?undefined:o[k], scope); }
+const RX=/\{\{([^}]+)\}\}/g;
+function interp(str, scope){ const m=str.match(/^\{\{([^}]+)\}\}$/); if(m) return look(m[1],scope); return str.replace(RX,(_,e)=>{const v=look(e,scope); return v==null?'':v;}); }
+function walk(node, scope, out){
+  if(node.nodeType===3){ out.appendChild(document.createTextNode(String(interp(node.textContent,scope)??''))); return; }
+  if(node.nodeType!==1) return;
+  const tag=node.tagName.toLowerCase();
+  if(tag==='sc-if'){ if(look(node.getAttribute('value').replace(/[{}]/g,''),scope)) node.childNodes.forEach(c=>walk(c,scope,out)); return; }
+  if(tag==='sc-for'){ const list=look(node.getAttribute('list').replace(/[{}]/g,''),scope)||[]; const as=node.getAttribute('as'); list.forEach(it=>{const s=Object.assign(Object.create(scope),{[as]:it}); node.childNodes.forEach(c=>walk(c,s,out));}); return; }
+  if(tag==='dc-import'){ const h=document.createElement('div'); h.className='dcimp'; h.dataset.name=node.getAttribute('name'); hosts.push(h); out.appendChild(h); return; }
+  const el = node.namespaceURI==='http://www.w3.org/2000/svg' ? document.createElementNS(node.namespaceURI, node.tagName) : document.createElement(tag);
+  for(const a of node.attributes){
+    const v=interp(a.value,scope);
+    if(/^on[A-Z]/.test(a.name)||/^on/.test(a.name)&&a.value.includes('{{')){ if(typeof v==='function'){ let ev=a.name.slice(2).toLowerCase(); if(ev==='change'&&(tag==='input'&&!['checkbox','radio'].includes(node.getAttribute('type'))||tag==='textarea')) ev='input'; el.addEventListener(ev,v);} continue; }
+    if(['disabled','checked','selected','hidden'].includes(a.name)&&a.value.includes('{{')){ if(v) el.setAttribute(a.name,''); continue; }
+    if(a.name==='value'&&(tag==='input'||tag==='select'||tag==='textarea')){ el.__val=v; }
+    el.setAttribute(a.name, v==null?'':v);
+  }
+  node.childNodes.forEach(c=>walk(c,scope,el));
+  if(el.__val!==undefined) setTimeout(()=>{el.value=el.__val;});
+  out.appendChild(el);
+}
+// On the C3 Life server the app is real, so the mock-up's "Demo: ..." buttons (which fake a state) are hidden.
+function hideDemos(root){ if(!window.__onServer) return; root.querySelectorAll('button').forEach(b=>{ if(/^\s*Demo:/.test(b.textContent)) b.style.display='none'; }); }
+fetch('/api/health').then(r=>r.ok?r.json():null).then(h=>{ if(h&&h.service==='c3life'){ window.__onServer=true; hideDemos(document.getElementById('app'));
+  // Remote support: say so on every screen, so nobody forgets they're changing the booth from outside
+  if(h.remote && !/Listen\.dc\.html/.test(location.search)){ const b=document.createElement('div'); b.id='remote-badge'; b.setAttribute('role','status'); b.textContent='Remote support \u00b7 connected from outside the building'; b.style.cssText='position:fixed;left:50%;bottom:56px;transform:translateX(-50%);z-index:50;pointer-events:none;background:#B48CF2;color:#0D1015;font:600 12px IBM Plex Sans,system-ui,sans-serif;border-radius:999px;padding:5px 12px;box-shadow:0 4px 14px rgba(0,0,0,.4);white-space:nowrap'; document.body.appendChild(b); } } }).catch(()=>{});
+function renderChild(inst){ try{ const v=inst.renderVals(); const f=document.createDocumentFragment(); const saved=hosts; hosts=[]; inst.__def.tpl.childNodes.forEach(c=>walk(c,v,f)); hosts=saved; inst.__host.replaceChildren(f); hideDemos(inst.__host);}catch(e){errors.push(e.stack);} }
+window.__render=()=>{ if(!comp) return; const app=document.getElementById('app'); const act=document.activeElement; const id=act&&act.id; const al=act&&act.getAttribute&&act.getAttribute('aria-label'); hosts=[]; const openD=[...app.querySelectorAll('details')].map(d=>d.open); const scr=[...app.querySelectorAll('main')].map(m=>m.scrollTop); const scl=[...app.querySelectorAll('.strips')].map(m=>m.scrollLeft); const sct=[...app.querySelectorAll('.subs')].map(m=>({t:m.scrollTop,end:m.scrollHeight-m.scrollTop-m.clientHeight<40})); try{ const vals=comp.renderVals(); const frag=document.createDocumentFragment(); tpl.childNodes.forEach(c=>walk(c,vals,frag)); app.replaceChildren(frag);}catch(e){errors.push(e.stack);} app.querySelectorAll('details').forEach((d,i)=>{ if(openD[i]) d.open=true; }); app.querySelectorAll('main').forEach((m,i)=>{ if(scr[i]) m.scrollTop=scr[i]; }); app.querySelectorAll('.strips').forEach((m,i)=>{ if(scl[i]) m.scrollLeft=scl[i]; }); app.querySelectorAll('.subs').forEach((m,i)=>{ const v=sct[i]; if(!v) return; m.scrollTop = v.end ? m.scrollHeight : v.t; }); hideDemos(app);
+  hosts.forEach((h,k)=>{ const d=defs[h.dataset.name]; if(!d) return; let inst=insts[k]; const fresh=!inst||inst.__def!==d; if(fresh){ inst=new d.C({}); inst.__def=d; insts[k]=inst; } inst.__host=h; inst.__rerender=()=>renderChild(inst); renderChild(inst); if(fresh&&inst.componentDidMount) inst.componentDidMount(); });
+  if(id){const n=document.getElementById(id); n&&n.focus({preventScroll:true});} else if(al && act!==document.body){ const n=[...app.querySelectorAll('[aria-label]')].find(x=>x.getAttribute('aria-label')===al); n&&n.focus({preventScroll:true}); } };
+async function compile(name){ const txt=await (await fetch('/project/'+name)).text(); const doc=new DOMParser().parseFromString(txt,'text/html'); const x=doc.querySelector('x-dc'); const helm=x.querySelector('helmet'); let css=''; if(helm){ css=helm.innerHTML; helm.remove(); } const sc=doc.querySelector('script[data-dc-script]').textContent; const C=new Function('DCLogic', sc+'; return Component;')(DCLogic); return {tpl:x, C, css}; }
+let loadId=0;
+function app_reset(){ document.getElementById('app').replaceChildren(); }
+async function load(name){
+  const my=++loadId;
+  if(comp&&comp.componentWillUnmount) comp.componentWillUnmount(); insts.forEach(i=>i&&i.componentWillUnmount&&i.componentWillUnmount()); insts=[];
+  const res=await fetch('/project/'+name); const txt=await res.text(); if(my!==loadId) return;
+  if(res.status===403){ // from outside the building: only Listen (and, for remote support, signing in)
+    const a=document.getElementById('app'); a.innerHTML='<div style="min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;text-align:center;background:#0D1015;color:#ECEEF1;font:400 15px IBM Plex Sans,system-ui,sans-serif"><div style="font-size:20px;font-weight:600">This page is for the booth</div><div style="color:#A3ACB8;max-width:340px;line-height:1.5">From outside the building you can use Listen. Admins helping from home: sign in first.</div><a href="player.html?p=Listen.dc.html" style="color:#0D1015;background:#4FD18B;border-radius:10px;padding:12px 18px;text-decoration:none;font-weight:600">Open Listen</a><a href="player.html?p=User.dc.html" style="color:#6CB4F5">Sign in (Admins)</a></div>';
+    return;
+  }
+  const doc=new DOMParser().parseFromString(txt,'text/html');
+  const x=doc.querySelector('x-dc'); const helm=x.querySelector('helmet');
+  document.querySelectorAll('.helm').forEach(n=>n.remove());
+  if(helm){ const d=document.createElement('div'); d.className='helm'; d.innerHTML=helm.innerHTML; document.head.appendChild(d); helm.remove(); }
+  const nd={};
+  for(const n of new Set([...x.querySelectorAll('dc-import')].map(e=>e.getAttribute('name')))){ try{ nd[n]=await compile(n+'.dc.html'); }catch(e){errors.push('import '+n+': '+e);} if(my!==loadId) return; }
+  tpl=x; defs=nd; Object.values(nd).forEach(v=>{ const d=document.createElement('div'); d.className='helm'; d.innerHTML=v.css; document.head.appendChild(d); });
+  const sc=doc.querySelector('script[data-dc-script]').textContent;
+  const C=new Function('DCLogic', sc+'; return Component;')(DCLogic);
+  app_reset(); comp=new C({}); window.__comp=comp; window.__page=name;
+  window.__render(); if(comp.componentDidMount) comp.componentDidMount(); window.__render();
+}
+document.addEventListener('click',e=>{const a=e.target.closest('a'); if(!a)return; const h=(a.getAttribute('href')||'').split('#')[0]; if(h.endsWith('.dc.html')){e.preventDefault(); load(h);} else if(h.startsWith('http')) e.preventDefault();});
+window.__load=load;
+// Opened from the app's address ("/" adds start=1): Listen, unless someone is already signed in on this device,
+// who goes to their own first screen (as after signing in).
+load((function(){var q=new URLSearchParams(location.search),p=q.get('p')||'Main.dc.html';if(q.get('start')==='1'){try{var u=JSON.parse(localStorage.getItem('booth.user')||'null'),x=JSON.parse(localStorage.getItem('booth.session')||'null');if(u&&x&&x.token&&(!x.expires||x.expires*1000>Date.now()))p=u.role==='Foyer team'?'FoyerTeam.dc.html':(u.role==='Musician'?'MyMix.dc.html':(u.role==='Listener'?'Listen.dc.html':'Main.dc.html'));}catch(e){}}return p;})());
+</script></body></html>

@@ -1,0 +1,556 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>C3 Life – Bible Scripture</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet" data-look>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Safari / iPad: no zoom when typing, no double-tap zoom, no text-select or callout while dragging */
+html{-webkit-text-size-adjust:100%;touch-action:manipulation}
+input,select,textarea{font-size:16px!important}
+button,a,summary,label,[role=slider]{-webkit-tap-highlight-color:transparent}
+[role=slider],.fader,.pan{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+body{margin:0;background:#0D1015}
+a{color:#6CB4F5}a:hover{color:#9CCBF8}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:62px;color:#A3ACB8;text-decoration:none;font-size:12px;font-weight:500;border-top:2px solid transparent}
+.tab:hover{color:#ECEEF1}
+.tab.on{color:#F5C518;border-top-color:#F5C518}
+.card{background:#161A21;border:1px solid #262C36;border-radius:14px;padding:14px}
+.lbl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#A3ACB8;font-weight:500}
+.mono{font-family:'IBM Plex Mono',ui-monospace,monospace}
+.btn{min-height:48px;padding:0 12px;border-radius:10px;border:1px solid #333B47;background:#1E232C;color:#ECEEF1;font:500 14px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer}
+.btn:hover{background:#252B35}
+.btn.pri{background:#F5C518;border-color:#F5C518;color:#1A1204}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.sec{min-width:44px;min-height:36px;border-radius:8px;border:1px solid #333B47;background:#0F1318;color:#A3ACB8;font:500 12px 'IBM Plex Mono',ui-monospace,monospace;display:flex;align-items:center;justify-content:center}
+.sec.on{background:#6CB4F5;border-color:#6CB4F5;color:#08131C}
+
+/* Fills any screen. Wider than 700px (iPad, laptop, web) the content sits in a centred column. */
+@media (min-width:700px){
+  .app > *:not(.bn):not([style*="position:absolute"]){width:100%;max-width:760px;margin-left:auto;margin-right:auto;box-sizing:border-box}
+}
+
+.app > .rtabar{max-width:none !important;margin-left:0 !important;margin-right:0 !important}
+
+/* Easy to use: every link, tick box and control is at least 40-44px tall, so it is easy to hit with a thumb. */
+a[style*="min-height:28px"]{min-height:44px !important}
+a[style*="font-size:12px"][style*="text-decoration:none"],a[style*="font-size:13px"][style*="text-decoration:none"]{display:inline-flex;align-items:center;min-height:40px}
+label:has(> input[type=checkbox]),label:has(> input[type=radio]){min-height:44px}
+input[type=checkbox],input[type=radio]{width:22px;height:22px;flex:none;accent-color:#F5C518}
+input[type=range]{min-height:40px}
+select{min-height:44px}
+button.sw::after,button.cell::after{content:'';position:absolute;inset:-7px -4px}
+.cell{position:relative}
+input[type=checkbox][aria-label]{width:32px;height:32px}
+
+/* Menu: a drop-down list at the top of every screen. Tap Menu to open it, tap again (or pick a page) to close. */
+.topmenu{position:relative;z-index:20;flex:none;background:#11151B;border-bottom:1px solid #262C36}
+.topmenu summary{list-style:none;display:flex;align-items:center;gap:10px;min-height:52px;padding:0 16px;cursor:pointer;color:#ECEEF1;font:600 15px 'IBM Plex Sans',system-ui,sans-serif;max-width:760px;margin:0 auto;box-sizing:border-box}
+.topmenu summary::-webkit-details-marker{display:none}
+.topmenu .mlabel{font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:#A3ACB8}
+.topmenu .mcur{flex:1;color:#F5C518}
+.topmenu .chev{transition:transform .15s}
+.topmenu details[open] .chev{transform:rotate(180deg)}
+.topmenu .mlist{position:absolute;left:8px;right:8px;top:calc(100% + 4px);background:#161A21;border:1px solid #333B47;border-radius:14px;box-shadow:0 14px 34px rgba(0,0,0,.55);padding:6px;display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.topmenu .mlist a{display:flex;align-items:center;gap:10px;min-height:52px;padding:0 12px;border-radius:10px;color:#ECEEF1;text-decoration:none;font:500 15px 'IBM Plex Sans',system-ui,sans-serif}
+.topmenu .mlist a:hover{background:#1E232C}
+.topmenu .mlist a.on{background:#262C36;color:#F5C518}
+@media (min-width:700px){.topmenu .mlist{left:calc(50% - 372px);right:auto;width:440px}}
+@media (min-width:700px) and (max-width:800px){.topmenu .mlist{left:16px}}
+.bsel{min-height:44px;border-radius:10px;border:1px solid #333B47;background:#0F1318;color:#ECEEF1;font:500 14px 'IBM Plex Sans',system-ui,sans-serif;padding:0 8px;box-sizing:border-box;min-width:0}
+/* wide:start — iPad landscape and laptops: use the width */
+@media (min-width:1000px){
+  .app > *:not(.bn):not([style*="position:absolute"]){max-width:1240px}
+  .topmenu summary{max-width:1240px}
+  .app main.wide2{display:grid !important;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:14px 18px !important}
+  .app main.wide2 > *{min-width:0}
+  .app main.wide2 > :not(section):not(.card):not(details):not(.wcol){grid-column:1 / -1}
+  .app main.wide2 > .wfull{grid-column:1 / -1}
+  .app main.wide1{max-width:980px !important}
+  .app:has(main.wide1) > *:not(.bn):not([style*="position:absolute"]){max-width:980px}
+  .app:has(main.wide1) .topmenu summary{max-width:980px}
+}
+@media (min-width:1500px){ .app main.wide2.wide3{grid-template-columns:repeat(3,minmax(0,1fr))} }
+/* wide:end */
+/* look:start — the WING look (like WING Edit): near-black, outlined panels, condensed headings, yellow for active, blue for selected.
+   Settings › Look › Classic puts the old look back on this device (html[data-look=classic]). */
+:root{--wk-bg:#0A0B0D;--wk-panel:#121418;--wk-panel2:#181B20;--wk-line:#2E333A;--wk-yellow:#F5C518;--wk-blue:#2F6CC4;--wk-cond:'Barlow Condensed','IBM Plex Sans',system-ui,sans-serif}
+html:not([data-look=classic]) body{background:var(--wk-bg)}
+html:not([data-look=classic]) .app{background:var(--wk-bg) !important}
+html:not([data-look=classic]) .card{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .lbl{font-family:var(--wk-cond);font-size:13px;font-weight:600;letter-spacing:.07em;color:#D4D9E0}
+html:not([data-look=classic]) h1{font-family:var(--wk-cond);font-weight:600 !important;text-transform:uppercase;letter-spacing:.05em;font-size:21px !important;line-height:1.2;color:var(--wk-yellow);border:1.5px solid var(--wk-yellow);border-radius:3px;padding:2px 12px;display:inline-block}
+html:not([data-look=classic]) .btn,html:not([data-look=classic]) .lk,html:not([data-look=classic]) .mxb,html:not([data-look=classic]) .mxbk,html:not([data-look=classic]) .mute,html:not([data-look=classic]) .pbtn{font-family:var(--wk-cond);font-size:15px;letter-spacing:.02em;border-radius:4px}
+html:not([data-look=classic]) .btn.pri{background:var(--wk-yellow);border-color:var(--wk-yellow);color:#111}
+html:not([data-look=classic]) .seg{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .seg a{font-family:var(--wk-cond);font-size:15px;letter-spacing:.03em;border-radius:4px}
+html:not([data-look=classic]) .seg a.on,html:not([data-look=classic]) .lk.on{background:var(--wk-blue);color:#fff}
+html:not([data-look=classic]) .tab.on{color:var(--wk-yellow);border-top-color:var(--wk-yellow)}
+html:not([data-look=classic]) .topmenu{background:#000;border-bottom-color:var(--wk-line)}
+html:not([data-look=classic]) .topmenu summary{font-family:var(--wk-cond);font-size:16px;letter-spacing:.03em}
+html:not([data-look=classic]) .topmenu .mcur{color:var(--wk-yellow)}
+html:not([data-look=classic]) .topmenu .mlist{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .topmenu .mlist a{font-family:var(--wk-cond);font-size:16px;border-radius:4px}
+html:not([data-look=classic]) .topmenu .mlist a.on{background:var(--wk-panel2);color:var(--wk-yellow);box-shadow:inset 3px 0 0 var(--wk-yellow)}
+html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic]) input[type=radio],html:not([data-look=classic]) input[type=range]{accent-color:var(--wk-yellow)}
+.wkside{display:none}
+/* iPad landscape and laptops: a sidebar like WING Edit's (HOME, MIXER, ...) instead of the menu at the top */
+@media (min-width:1000px){
+  html:not([data-look=classic]) .wkside{display:flex;flex-direction:column;gap:2px;position:fixed;left:0;top:0;bottom:0;width:132px !important;max-width:132px !important;margin:0 !important;padding:8px 6px 12px;box-sizing:border-box;background:#000;border-right:1px solid var(--wk-line);overflow-y:auto;z-index:30}
+  html:not([data-look=classic]) .wkside .wkbrand{font:700 24px var(--wk-cond);letter-spacing:.06em;color:var(--wk-yellow);padding:6px 8px 12px}
+  html:not([data-look=classic]) .wkside a{display:flex;align-items:center;gap:9px;min-height:46px;padding:0 8px;border-radius:4px;color:#D4D9E0;text-decoration:none;font:600 15px var(--wk-cond);text-transform:uppercase;letter-spacing:.04em}
+  html:not([data-look=classic]) .wkside a:hover{background:var(--wk-panel2)}
+  html:not([data-look=classic]) .wkside a.on{background:var(--wk-panel2);color:var(--wk-yellow);box-shadow:inset 3px 0 0 var(--wk-yellow)}
+  html:not([data-look=classic]) .wkside svg{flex:none}
+  html:not([data-look=classic]) .app{padding-left:132px;box-sizing:border-box !important}
+  html:not([data-look=classic]) .app > .topmenu{display:none}
+}
+/* look:end */
+</style>
+</helmet>
+<div class="app has-bn" style="width:100%;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;background:#0D1015;color:#ECEEF1;font-family:'IBM Plex Sans',system-ui,sans-serif;overflow:hidden">
+  
+  
+  
+  
+  <nav class="wkside" aria-label="Main menu (side)"><div class="wkbrand" aria-hidden="true">C3 LIFE</div><a href="Main.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Home</a>
+        <a href="Wing.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4v16M12 4v16M18 4v16"/><path d="M4 14h4M10 8h4M16 16h4"/></svg>Mixer</a>
+        <a href="RTA.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V12M9 20V6M14 20V10M19 20V4"/></svg>RTA</a>
+        <a href="Show.dc.html" class="on" aria-current="page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M10 8l5 2-5 2z"/><path d="M8 20h8"/></svg>Show</a>
+        <a href="Lights.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>Lights</a>
+        <a href="Plan.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h1M4 12h1M4 18h1"/></svg>Plan</a>
+        <a href="Chat.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>Chat</a>
+        <a href="Listen.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="15" width="4" height="6" rx="1.5"/><rect x="17" y="15" width="4" height="6" rx="1.5"/><path d="M10 9.5a2.5 2.5 0 0 1 4 0"/></svg>Listen</a>
+        <a href="Help.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2.5 2-2.5 3.5M12 17h.01"/></svg>Help</a>
+        <a href="Report.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4h11l-1.5 4L16 12H5"/></svg>Report an issue</a></nav>
+  <nav class="bn topmenu" aria-label="Main menu">
+    <details>
+      <summary aria-label="Menu. You are on Bible Scripture"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span class="mlabel">Menu</span><span class="mcur">Bible Scripture</span><svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+      <div class="mlist">
+        <a href="Main.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Home</a>
+        <a href="Wing.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4v16M12 4v16M18 4v16"/><path d="M4 14h4M10 8h4M16 16h4"/></svg>Mixer</a>
+        <a href="RTA.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V12M9 20V6M14 20V10M19 20V4"/></svg>RTA</a>
+        <a href="Show.dc.html" class="on" aria-current="page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M10 8l5 2-5 2z"/><path d="M8 20h8"/></svg>Show</a>
+        <a href="Lights.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>Lights</a>
+        <a href="Plan.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h1M4 12h1M4 18h1"/></svg>Plan</a>
+        <a href="Chat.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>Chat</a>
+        <a href="Listen.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="15" width="4" height="6" rx="1.5"/><rect x="17" y="15" width="4" height="6" rx="1.5"/><path d="M10 9.5a2.5 2.5 0 0 1 4 0"/></svg>Listen</a>
+        <a href="Help.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2.5 2-2.5 3.5M12 17h.01"/></svg>Help</a>
+        <a href="Report.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4h11l-1.5 4L16 12H5"/></svg>Report an issue</a>
+      </div>
+    </details>
+  </nav>
+  <header style="padding:22px 16px 12px;display:flex;flex-direction:column;gap:12px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;padding:0 4px">
+      <h1 style="margin:0;font-size:26px;font-weight:600">Bible Scripture</h1>
+      <div style="font-size:12px;color:#A3ACB8">Into ProPresenter</div>
+    </div>
+    <nav style="display:flex;gap:4px;background:#161A21;border:1px solid #262C36;border-radius:12px;padding:4px" aria-label="Show sections">
+      <a href="Show.dc.html" style="flex:1;display:flex;align-items:center;justify-content:center;min-height:44px;border-radius:9px;color:#A3ACB8;text-decoration:none;font-size:13px;font-weight:500">Show</a>
+      <a href="Music.dc.html" style="flex:1;display:flex;align-items:center;justify-content:center;min-height:44px;border-radius:9px;color:#A3ACB8;text-decoration:none;font-size:13px;font-weight:500">Music</a>
+      <a href="Foyer.dc.html" style="flex:1;display:flex;align-items:center;justify-content:center;min-height:44px;border-radius:9px;color:#A3ACB8;text-decoration:none;font-size:13px;font-weight:500">Foyer</a>
+      <a href="NetMidi.dc.html" style="flex:1;display:flex;align-items:center;justify-content:center;min-height:44px;border-radius:9px;color:#A3ACB8;text-decoration:none;font-size:13px;font-weight:500">MIDI</a>
+      <a href="Midi.dc.html" style="flex:1;display:flex;align-items:center;justify-content:center;min-height:44px;border-radius:9px;color:#A3ACB8;text-decoration:none;font-size:13px;font-weight:500">Buttons</a>
+      <a href="Bible.dc.html" style="flex:1;display:flex;align-items:center;justify-content:center;min-height:44px;border-radius:9px;background:#262C36;color:#ECEEF1;text-decoration:none;font-size:13px;font-weight:500">Bible</a>
+    </nav>
+  </header>
+
+  <main class=" wide2" style="flex:1;overflow-y:auto;padding:0 16px 16px;display:flex;flex-direction:column;gap:12px">
+    <section class="card" aria-label="Find a passage" style="display:flex;flex-direction:column;gap:10px">
+      <div class="lbl">Find a passage</div>
+        <sc-if value="{{bsNotReady}}" hint-placeholder-val="{{ false }}"><div style="font-size:13px;color:#A3ACB8">{{bsWait}}</div></sc-if>
+        <sc-if value="{{bsReady}}" hint-placeholder-val="{{ true }}">
+          <label for="bs-ref" style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#A3ACB8">Passage
+            <input id="bs-ref" type="text" value="{{bsRef}}" onInput="{{bsSetRef}}" onChange="{{bsSetRef}}" onKeyDown="{{bsKeyRef}}" placeholder="e.g. John 3:16 or Psalm 23" autocomplete="off" autocapitalize="words" spellcheck="false" style="width:100%;min-height:48px;border-radius:10px;border:1px solid #333B47;background:#0F1318;color:#ECEEF1;font:500 17px 'IBM Plex Sans',system-ui,sans-serif;padding:0 12px;box-sizing:border-box">
+          </label>
+          <div style="display:flex;gap:6px;flex-wrap:wrap" aria-label="Examples">
+            <sc-for list="{{bsExamples}}" as="x" hint-placeholder-count="3"><button class="btn" style="min-height:36px;font-size:13px;padding:0 10px" onClick="{{x.go}}">{{x.text}}</button></sc-for>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(190px, 1fr));gap:8px">
+            <label for="bs-ver" style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#A3ACB8;min-width:0">Version
+              <select id="bs-ver" value="{{bsVer}}" onChange="{{bsSetVer}}" class="bsel" style="width:100%">
+                <sc-for list="{{bsVers}}" as="v" hint-placeholder-count="5"><option value="{{v.code}}">{{v.label}}</option></sc-for>
+              </select>
+            </label>
+            <label for="bs-look" style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#A3ACB8;min-width:0">Look (ProPresenter)
+              <select id="bs-look" value="{{bsLook}}" onChange="{{bsSetLook}}" class="bsel" style="width:100%">
+                <sc-for list="{{bsLooks}}" as="l" hint-placeholder-count="2"><option value="{{l.uuid}}">{{l.name}}</option></sc-for>
+              </select>
+            </label>
+          </div>
+          <sc-if value="{{bsHasVerWhy}}" hint-placeholder-val="{{ false }}"><div style="font-size:12px;color:#F5C518">{{bsVerWhy}}</div></sc-if>
+          <sc-if value="{{bsHasPP}}" hint-placeholder-val="{{ false }}"><div style="font-size:12px;color:#F5C518">{{bsPPReason}}</div></sc-if>
+          <button class="btn pri" onClick="{{bsLookupFn}}" disabled="{{bsLookBusy}}">{{bsLookLabel}}</button>
+          <sc-if value="{{bsHasErr}}" hint-placeholder-val="{{ false }}"><div role="alert" style="font-size:13px;color:#FF7A45;line-height:1.45">{{bsErr}}</div></sc-if>
+        </sc-if>
+    </section>
+    <section class="card" aria-label="Preview" style="display:flex;flex-direction:column;gap:10px">
+      <div class="lbl">Preview</div>
+      <sc-if value="{{bsNoP}}" hint-placeholder-val="{{ false }}"><div style="font-size:13px;color:#A3ACB8;line-height:1.5">Type a passage and tap Preview. You'll see each slide here before anything goes into ProPresenter.</div></sc-if>
+        <sc-if value="{{bsHasP}}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+            <div style="font-size:16px;font-weight:600">{{bsTitle}}</div>
+            <div class="mono" style="font-size:12px;color:#A3ACB8;white-space:nowrap">{{bsCount}}</div>
+          </div>
+          <div role="img" aria-label="Preview: {{bsSlideRef}}. {{bsSlideText}}" style="position:relative;background:#000;border-radius:10px;aspect-ratio:16 / 9;overflow:hidden;border:1px solid #333B47;container-type:inline-size">
+            <div style="position:absolute;top:6px;left:6px;z-index:2;font-size:11px;font-weight:600;color:#08131C;background:#6CB4F5;border-radius:4px;padding:1px 6px">PREVIEW</div>
+            <sc-if value="{{bsFull}}" hint-placeholder-val="{{ true }}">
+              <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3cqw;padding:7cqw 8cqw;text-align:center;box-sizing:border-box">
+                <div style="color:#FFFFFF;font:400 4.6cqw/1.35 Georgia,'Times New Roman',serif">{{bsSlideText}}</div>
+                <div style="color:#F5C46B;font:500 3.2cqw 'IBM Plex Sans',system-ui,sans-serif">{{bsSlideRef}}</div>
+              </div>
+            </sc-if>
+            <sc-if value="{{bsLower}}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#3A4250;font-size:3.4cqw;background:linear-gradient(135deg,#1B2430,#2A3442)">[Camera / livestream]</div>
+              <div style="position:absolute;left:0;right:0;bottom:0;padding:2.4cqw 5cqw 3cqw;background:linear-gradient(rgba(0,0,0,0),rgba(0,0,0,.88) 35%);display:flex;flex-direction:column;gap:.8cqw">
+                <div style="color:#F5C46B;font:600 2.8cqw 'IBM Plex Sans',system-ui,sans-serif">{{bsSlideRef}}</div>
+                <div style="color:#FFFFFF;font:400 3.3cqw/1.3 'IBM Plex Sans',system-ui,sans-serif">{{bsSlideText}}</div>
+              </div>
+            </sc-if>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <button class="btn" style="min-width:56px" onClick="{{bsPrev}}" disabled="{{bsNoPrev}}" aria-label="Previous slide">&#8249;</button>
+            <div style="flex:1;display:flex;gap:6px;justify-content:center;flex-wrap:wrap">
+              <sc-for list="{{bsDots}}" as="d" hint-placeholder-count="3"><button onClick="{{d.go}}" aria-label="{{d.label}}" style="width:28px;height:28px;border:0;background:transparent;padding:0;cursor:pointer;display:flex;align-items:center;justify-content:center"><span style="width:10px;height:10px;border-radius:5px;background:{{d.bg}}"></span></button></sc-for>
+            </div>
+            <button class="btn" style="min-width:56px" onClick="{{bsNext}}" disabled="{{bsNoNext}}" aria-label="Next slide">&#8250;</button>
+          </div>
+          <div style="font-size:12px;color:#A3ACB8;line-height:1.45">Look: {{bsLookName}}. ProPresenter's look sets the real font, colours and background.</div>
+          <details>
+            <summary style="cursor:pointer;font-size:13px;color:#6CB4F5;min-height:40px;display:flex;align-items:center">All the verses</summary>
+            <div style="display:flex;flex-direction:column;gap:6px;padding:4px 0 6px">
+              <sc-for list="{{bsVerses}}" as="v" hint-placeholder-count="2"><div style="font-size:14px;line-height:1.5"><span class="mono" style="font-size:11px;color:#A3ACB8;margin-right:6px">{{v.n}}</span>{{v.text}}</div></sc-for>
+            </div>
+          </details>
+          <div style="font-size:11px;color:#A3ACB8;line-height:1.45">{{bsCopy}}</div>
+        </sc-if>
+        <sc-if value="{{bsHasP}}" hint-placeholder-val="{{ false }}">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(190px, 1fr));gap:8px">
+            <label for="bs-pl" style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#A3ACB8;min-width:0">Playlist
+              <select id="bs-pl" value="{{bsPl}}" onChange="{{bsSetPl}}" class="bsel" style="width:100%">
+                <sc-for list="{{bsPls}}" as="x" hint-placeholder-count="2"><option value="{{x.uuid}}">{{x.name}}</option></sc-for>
+              </select>
+            </label>
+            <label for="bs-after" style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#A3ACB8;min-width:0">Where
+              <select id="bs-after" value="{{bsAfter}}" onChange="{{bsSetAfter}}" class="bsel" style="width:100%">
+                <sc-for list="{{bsAfterOpts}}" as="o" hint-placeholder-count="4"><option value="{{o.v}}">{{o.label}}</option></sc-for>
+              </select>
+            </label>
+          </div>
+          <sc-if value="{{bsAsking}}" hint-placeholder-val="{{ false }}">
+            <div role="dialog" aria-label="{{bsAskTitle}}" style="display:flex;flex-direction:column;gap:8px;background:#0F1318;border:1px solid #F5C518;border-radius:12px;padding:12px">
+              <div style="font-size:15px;font-weight:600">{{bsAskTitle}}</div>
+              <div style="font-size:13px;color:#C9CFD7;line-height:1.45">{{bsAskText}}</div>
+              <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px"><button class="btn" onClick="{{bsNoAsk}}">Cancel</button><button class="btn pri" onClick="{{bsDoAdd}}">{{bsAddLabel}}</button></div>
+            </div>
+          </sc-if>
+          <sc-if value="{{bsNotAsking}}" hint-placeholder-val="{{ true }}"><button class="btn pri" onClick="{{bsAskAdd}}" disabled="{{bsCantAdd}}">Add to ProPresenter playlist</button></sc-if>
+        </sc-if>
+        <sc-if value="{{bsHasToast}}" hint-placeholder-val="{{ false }}"><div role="status" style="font-size:13px;color:#6CB4F5;line-height:1.45">{{bsToast}}</div></sc-if>
+    </section>
+    <section class="card wfull" aria-label="Added scripture" style="display:flex;flex-direction:column;gap:6px;padding:10px 14px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline"><div class="lbl">In the playlist · show live</div><div style="font-size:12px;color:#A3ACB8">Kept 14 days</div></div>
+      <sc-if value="{{bsOn}}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;align-items:center;gap:10px;background:#2A1F0A;border:1px solid #F5C518;border-radius:10px;padding:8px 10px">
+          <div style="flex:1;min-width:0"><div style="font-size:11px;color:#F5C518;font-weight:600;letter-spacing:.06em">ON SCREEN · {{bsOnCount}}</div><div style="font-size:15px;font-weight:600">{{bsOnText}}</div></div>
+          <button class="btn pri" onClick="{{bsHideFn}}">Hide</button>
+        </div>
+      </sc-if>
+      <sc-if value="{{bsNoList}}" hint-placeholder-val="{{ false }}"><div style="font-size:13px;color:#A3ACB8;padding:6px 0">Nothing added yet.</div></sc-if>
+      <sc-for list="{{bsList}}" as="p" hint-placeholder-count="2">
+        <div style="display:flex;flex-direction:column;gap:8px;padding:10px 0;border-top:1px solid {{p.border}}">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:600">{{p.title}}</div><div style="font-size:12px;color:#A3ACB8">{{p.sub}}</div></div>
+            <button class="btn" onClick="{{p.toggle}}" aria-label="{{p.toggleAria}}">{{p.toggleLabel}}</button>
+          </div>
+          <sc-if value="{{p.open}}" hint-placeholder-val="{{ false }}">
+            <div style="display:grid;grid-template-columns:repeat(3, minmax(0, 1fr));gap:8px">
+              <button class="btn" onClick="{{p.prev}}" disabled="{{p.noPrev}}">Previous</button>
+              <button class="btn pri" onClick="{{p.startFn}}">{{p.startLabel}}</button>
+              <button class="btn" onClick="{{p.next}}" disabled="{{p.noNext}}">Next slide</button>
+            </div>
+            <sc-for list="{{p.slides}}" as="x" hint-placeholder-count="2">
+              <div style="display:flex;align-items:center;gap:10px;border:1px solid {{x.border}};border-radius:10px;padding:8px 10px">
+                <div style="flex:1;min-width:0"><div style="font-size:12px;color:#F5C46B">{{x.ref}}</div><div style="font-size:13px;line-height:1.4">{{x.text}}</div></div>
+                <button class="{{x.cls}}" style="min-width:92px" onClick="{{x.show}}" aria-label="{{x.aria}}">{{x.label}}</button>
+              </div>
+            </sc-for>
+            <sc-if value="{{p.asking}}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;gap:8px;border:1px solid #F5C518;border-radius:10px;padding:10px">
+                <div style="font-size:14px;font-weight:600">Take it off this list?</div>
+                <div style="font-size:12px;color:#C9CFD7">The line “{{p.line}}” stays in the ProPresenter playlist. Delete it there if you don't need it.</div>
+                <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px"><button class="btn" onClick="{{p.noRemove}}">Keep it</button><button class="btn pri" onClick="{{p.remove}}">Take it off</button></div>
+              </div>
+            </sc-if>
+            <button class="btn" style="min-height:40px;font-size:13px" onClick="{{p.askRemove}}">Take off this list</button>
+          </sc-if>
+        </div>
+      </sc-for>
+      <div style="font-size:12px;color:#A3ACB8;padding:2px 0 4px;line-height:1.45">Show sends each slide to ProPresenter through the look's message. Nothing goes on screen by itself.</div>
+    </section>
+  </main>
+
+  <div style="position:absolute;inset:0;z-index:6;pointer-events:none">
+    <dc-import name="MDTalk" hint-size="390px,844px"></dc-import>
+  </div>
+  <div class="rtabar" style="flex:none">
+    <dc-import name="MiniRTA" hint-size="390px,48px"></dc-import>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    let ref = '';
+    try { ref = localStorage.getItem('booth.scripture.ref') || ''; } catch (e) {}
+    this.state = { bs: null, bsRef: ref, bsSlide: 0 };
+  }
+  componentDidMount() {
+    this.bsInit();
+    // keep the list and what's on screen the same as other devices
+    this.poll = setInterval(() => {
+      if (this.bsServer) this.bsApi('/list').then(({ code, j }) => { if (code === 200 && this.state.bs) this.setState({ bs: { ...this.state.bs, passages: j.passages, showing: j.showing } }); }).catch(() => {});
+      else if (this.bsServer === false && this.state.bs) { const m = this.bsDemoMeta(); this.setState({ bs: { ...this.state.bs, passages: m.passages, showing: m.showing } }); }
+    }, 4000);
+    // a passage typed on Home: preview it straight away
+    if (this.state.bsRef) setTimeout(() => { if (this.state.bs) this.bsLookup(); try { localStorage.removeItem('booth.scripture.ref'); } catch (e) {} }, 900);
+  }
+  componentWillUnmount() { clearInterval(this.poll); clearTimeout(this.bsT); }
+  // Bible Scripture: type a passage, pick a version and a look, check the preview, then Add puts a
+  // "Scripture: John 3:16 (NIV)" line in the ProPresenter playlist (it asks first). Show puts each slide on
+  // screen through that look's ProPresenter message. Nothing goes on screen by itself.
+  // On the C3 Life server it uses /api/scripture; in the preview, a few passages kept in the page.
+  bsToken() { try { const x = JSON.parse(localStorage.getItem('booth.session') || 'null'); return x ? x.token : ''; } catch (e) { return ''; } }
+  bsApi(path, method, body) {
+    const h = { 'Content-Type': 'application/json' }; const t = this.bsToken(); if (t) h.Authorization = 'Bearer ' + t;
+    return fetch('/api/scripture' + path, { method: method || 'GET', headers: h, body: body ? JSON.stringify(body) : undefined })
+      .then((r) => r.json().catch(() => ({})).then((j) => ({ code: r.status, j: j || {} })));
+  }
+  bsInit() {
+    const demo = () => { this.bsServer = false; this.bsSet(this.bsDemoMeta()); };
+    try {
+      this.bsApi('').then(({ code, j }) => {
+        if (code === 200 && j.ok) { this.bsServer = true; this.bsSet(j); return; }
+        if (code === 401 || code === 403) { this.bsServer = true; this.setState({ bs: null, bsErr: j.error || 'Sign in to use Bible Scripture.' }); return; }
+        demo();
+      }).catch(demo);
+    } catch (e) { demo(); }
+  }
+  bsSet(meta) {
+    const s = this.state;
+    const ver = s.bsVer || (meta.versions.find((v) => v.code === meta.default && v.ok) ? meta.default : ((meta.versions.find((v) => v.ok) || {}).code || ''));
+    const look = s.bsLook && meta.looks.some((l) => l.uuid === s.bsLook) ? s.bsLook : ((meta.looks[0] || {}).uuid || '');
+    const pl = s.bsPl && meta.playlists.some((p) => p.uuid === s.bsPl) ? s.bsPl : (meta.active_playlist || (meta.playlists[0] || {}).uuid || '');
+    this.setState({ bs: meta, bsVer: ver, bsLook: look, bsPl: pl });
+    if (pl && pl !== s.bsPl) this.bsLoadItems(pl);
+  }
+  bsDemoState() { try { return JSON.parse(localStorage.getItem('booth.scripture') || 'null') || {}; } catch (e) { return {}; } }
+  bsDemoSave(x) { try { localStorage.setItem('booth.scripture', JSON.stringify(x)); } catch (e) {} }
+  bsDemoItems() {
+    const st = this.bsDemoState();
+    return st.items || ['Pre & Post Service', 'Countdown', 'Welcome', 'Joy (feat. Israel Houghton) [Live]', 'Washed', '60 Secs of Prayer', 'Bible Scripture', 'C3 KIDS & YOUTH',
+      'PASTORAL Welcome', 'Offering', 'Bible Scripture', 'We Crown You', 'Reign Above It All', 'Message', 'Salvation Prayer', 'CLOSE'];
+  }
+  bsDemoMeta() {
+    const st = this.bsDemoState();
+    const why = { ESV: 'Needs an ESV API key (api.esv.org).', NLT: 'Needs an NLT API key (api.nlt.to) or API.Bible.' };
+    return {
+      ok: true, demo: true, default: 'NIV', pp: 'ok', pp_reason: '', active_playlist: 'PL18',
+      versions: [['NIV', 'New International Version'], ['ESV', 'English Standard Version'], ['NLT', 'New Living Translation'], ['KJV', 'King James Version'], ['WEBBE', 'World English Bible (British Edition)']]
+        .map(([code, name]) => ({ code: code, name: name, ok: !why[code], why: why[code] || '' })),
+      looks: [{ uuid: 'full', name: 'Scripture - Full screen' }, { uuid: 'lower', name: 'Scripture - Lower third' }],
+      playlists: [{ uuid: 'PL18', name: 'Sundays › 18 October' }, { uuid: 'PLX', name: 'Christmas' }],
+      passages: (st.passages || []).slice().reverse().map((p) => ({ ...p, slide_count: p.slides.length })),
+      showing: st.showing || null
+    };
+  }
+  bsKey(s) { return String(s).toLowerCase().replace('first ', '1').replace('second ', '2').replace('third ', '3').replace(/[^a-z0-9]/g, ''); }
+  bsParse(ref) {
+    // The same rules as the C3 Life server: john3:16, John 3:16-18, 1 Cor. 13:4-7, Ps 23, Rom 8:38-9:1
+    let t = String(ref || '').replace(/([A-Za-z])\./g, '$1 ').replace(/[–—]/g, '-').replace(/\./g, ':').replace(/\s+/g, ' ').trim();
+    const m = t.match(/^([1-3]?\s?[A-Za-z][A-Za-z ]*?)\s?(\d+)(?:\s?:\s?(\d+))?(?:\s?-\s?(\d+)(?:\s?:\s?(\d+))?)?$/);
+    if (!m) return { error: 'Type a book, chapter and verse, e.g. John 3:16 or Psalm 23.' };
+    const D = this.bsDemoData(), k = this.bsKey(m[1]);
+    let book = D.aliases[k];
+    if (!book && k.length >= 2) { const hits = [...new Set(Object.keys(D.aliases).filter((a) => a.indexOf(k) === 0).map((a) => D.aliases[a]))]; if (hits.length === 1) book = hits[0]; }
+    if (!book) return { error: 'Which book is “' + m[1].trim() + '”? Try the full name, e.g. Philippians.' };
+    const c1 = +m[2], v1 = m[3] ? +m[3] : null;
+    let c2 = c1, v2 = v1;
+    if (m[4] && m[5]) { c2 = +m[4]; v2 = +m[5]; } else if (m[4]) { if (v1 !== null) v2 = +m[4]; else c2 = +m[4]; }
+    if (c2 < c1 || (c2 === c1 && v1 !== null && v2 !== null && v2 < v1)) return { error: 'That passage runs backwards.' };
+    return { key: [book, c1, v1 === null ? 'None' : v1, c2, v2 === null ? 'None' : v2].join('.') };
+  }
+  bsLookup(typed) {
+    const s = this.state, ref = String(typed !== undefined ? typed : (s.bsRef || '')).trim(), ver = s.bsVer;
+    if (!ref) return;
+    this.setState({ bsBusy: 'look', bsErr: '', bsP: null, bsSlide: 0, bsAsk: false });
+    if (this.bsServer) {
+      return this.bsApi('/passage?ref=' + encodeURIComponent(ref) + '&v=' + encodeURIComponent(ver)).then(({ code, j }) => {
+        this.setState(code === 200 ? { bsBusy: '', bsP: j } : { bsBusy: '', bsErr: j.error || 'Couldn’t find that passage.' });
+      }).catch(() => this.setState({ bsBusy: '', bsErr: 'The C3 Life server didn’t answer.' }));
+    }
+    const r = this.bsParse(ref);
+    if (r.error) { this.setState({ bsBusy: '', bsErr: r.error }); return; }
+    const v = (this.state.bs.versions.find((x) => x.code === ver) || {});
+    if (!v.ok) { this.setState({ bsBusy: '', bsErr: ver + ' isn’t set up: ' + v.why }); return; }
+    const p = this.bsDemoData().passages[r.key + '.' + ver];
+    if (!p) {
+      this.setState({ bsBusy: '', bsErr: ver === 'NIV' ? 'In this preview, NIV only has John 3:16–17. On the C3 Life server it uses the church’s NIV access.'
+        : 'In this preview only a few passages are kept: ' + this.bsDemoData().examples.join(', ') + '. On the C3 Life server every passage works.' });
+      return;
+    }
+    this.setState({ bsBusy: '', bsP: p });
+  }
+  bsLoadItems(pl) {
+    const pick = (names) => {
+      const i = names.findIndex((n) => /scripture/i.test(n) && !/^Scripture:/.test(n));
+      this.setState({ bsItems: names, bsAfter: String(i > -1 ? i : names.length - 1) });
+    };
+    if (this.bsServer) {
+      return this.bsApi('/playlist?id=' + encodeURIComponent(pl)).then(({ code, j }) => pick(code === 200 ? j.items.map((x) => x.name) : [])).catch(() => pick([]));
+    }
+    pick(pl === 'PL18' ? this.bsDemoItems() : []);
+    return Promise.resolve();
+  }
+  bsAdd() {
+    const s = this.state, p = s.bsP, after = parseInt(s.bsAfter, 10);
+    const look = s.bs.looks.find((l) => l.uuid === s.bsLook) || {}, pl = s.bs.playlists.find((x) => x.uuid === s.bsPl) || {};
+    const done = (list, rec) => {
+      this.setState({ bsAsk: false, bsBusy: '', bsOpen: rec.id, bs: { ...this.state.bs, passages: list } });
+      this.bsToastSay('✓ Added “' + rec.line + '” to ' + pl.name + '. Tap Show when it’s time.');
+      this.bsLoadItems(s.bsPl);
+    };
+    this.setState({ bsBusy: 'add' });
+    if (this.bsServer) {
+      return this.bsApi('/add', 'POST', { ref: p.reference, v: s.bsVer, look: s.bsLook, playlist: s.bsPl, after: isNaN(after) ? null : after }).then(({ code, j }) => {
+        if (code === 200) done(j.passages, j.added); else { this.setState({ bsAsk: false, bsBusy: '' }); this.bsToastSay(j.error || 'Couldn’t add it.'); }
+      }).catch(() => { this.setState({ bsAsk: false, bsBusy: '' }); this.bsToastSay('The C3 Life server didn’t answer.'); });
+    }
+    const st = this.bsDemoState(), items = this.bsDemoItems().slice();
+    const line = 'Scripture: ' + p.reference + ' (' + p.version + ')';
+    items.splice(isNaN(after) ? items.length : after + 1, 0, line);
+    const rec = { id: 'd' + Date.now(), reference: p.reference, version: p.version, slides: p.slides, copyright: p.copyright, look: look, playlist: s.bsPl, line: line, added: Date.now() / 1000, by: 'You' };
+    st.items = s.bsPl === 'PL18' ? items : st.items;
+    st.passages = (st.passages || []).concat([rec]); this.bsDemoSave(st);
+    done(this.bsDemoMeta().passages, rec);
+    return Promise.resolve();
+  }
+  bsShow(id, slide) {
+    if (this.bsServer) {
+      return this.bsApi('/show', 'POST', { id: id, slide: slide }).then(({ code, j }) => {
+        this.setState({ bs: { ...this.state.bs, showing: j.showing || null } });
+        if (code !== 200) this.bsToastSay(j.error || 'Couldn’t show it.');
+      }).catch(() => this.bsToastSay('The C3 Life server didn’t answer.'));
+    }
+    const st = this.bsDemoState(); st.showing = { id: id, slide: slide }; this.bsDemoSave(st);
+    this.setState({ bs: { ...this.state.bs, showing: st.showing } });
+    return Promise.resolve();
+  }
+  bsHide() {
+    if (this.bsServer) {
+      return this.bsApi('/hide', 'POST', {}).then(({ code, j }) => {
+        this.setState({ bs: { ...this.state.bs, showing: code === 200 ? null : this.state.bs.showing } });
+        if (code !== 200) this.bsToastSay(j.error || 'Couldn’t take it off.');
+      });
+    }
+    const st = this.bsDemoState(); delete st.showing; this.bsDemoSave(st);
+    this.setState({ bs: { ...this.state.bs, showing: null } });
+    return Promise.resolve();
+  }
+  bsRemove(id) {
+    if (this.bsServer) {
+      return this.bsApi('/' + encodeURIComponent(id), 'DELETE').then(({ code, j }) => { if (code === 200) this.setState({ bs: { ...this.state.bs, passages: j.passages } }); });
+    }
+    const st = this.bsDemoState(); st.passages = (st.passages || []).filter((p) => p.id !== id);
+    if (st.showing && st.showing.id === id) delete st.showing;
+    this.bsDemoSave(st); this.setState({ bs: this.bsDemoMeta() });
+    return Promise.resolve();
+  }
+  bsToastSay(t) { this.setState({ bsToast: t }); clearTimeout(this.bsT); this.bsT = setTimeout(() => this.setState({ bsToast: '' }), 5000); }
+  bsFormVals() {
+    const s = this.state, m = s.bs, p = s.bsP;
+    const slides = p ? p.slides : [], i = Math.min(s.bsSlide || 0, Math.max(0, slides.length - 1)), cur = slides[i];
+    const look = m ? (m.looks.find((l) => l.uuid === s.bsLook) || {}) : {};
+    const lower = /lower/i.test(look.name || '');
+    const pl = m ? (m.playlists.find((x) => x.uuid === s.bsPl) || {}) : {};
+    const items = s.bsItems || [], after = parseInt(s.bsAfter, 10);
+    const whereText = isNaN(after) ? 'at the end' : (after < 0 ? 'at the start' : 'after “' + (items[after] || '') + '”');
+    return {
+      bsReady: !!m, bsNotReady: !m, bsWait: s.bsErr && !m ? s.bsErr : 'Getting Bible Scripture ready…',
+      bsRef: s.bsRef || '', bsSetRef: (e) => this.setState({ bsRef: e.target.value }),
+      bsKeyRef: (e) => { if (e.key === 'Enter') { const v = e.target.value; this.setState({ bsRef: v }); this.bsLookup(v); } },
+      bsVer: s.bsVer || '', bsVers: m ? m.versions.map((v) => ({ code: v.code, label: v.code + ' · ' + v.name + (v.ok ? '' : ' (not set up)'), off: !v.ok })) : [],
+      bsSetVer: (e) => this.setState({ bsVer: e.target.value, bsP: null, bsErr: '' }),
+      bsVerWhy: m && s.bsVer ? ((m.versions.find((v) => v.code === s.bsVer) || {}).why || '') : '', bsHasVerWhy: !!(m && s.bsVer && (m.versions.find((v) => v.code === s.bsVer) || {}).why),
+      bsLook: s.bsLook || '', bsLooks: m ? m.looks : [], bsSetLook: (e) => this.setState({ bsLook: e.target.value, bsAsk: false }),
+      bsNoLooks: !!m && !m.looks.length, bsPPReason: m ? (m.pp_reason || '') : '', bsHasPP: !!(m && m.pp_reason),
+      bsExamples: (m && m.demo ? ['John 3:16', 'Psalm 23', 'Romans 8:28'] : ['John 3:16', 'Psalm 23', 'Romans 8:28']).map((x) => ({ text: x, go: () => { this.setState({ bsRef: x }); this.bsLookup(x); } })),
+      bsLookupFn: () => this.bsLookup(), bsLookBusy: s.bsBusy === 'look' || !String(s.bsRef || '').trim(), bsLookLabel: s.bsBusy === 'look' ? 'Finding…' : 'Preview',
+      bsErr: m ? (s.bsErr || '') : '', bsHasErr: !!(m && s.bsErr),
+      // preview
+      bsHasP: !!p, bsTitle: p ? p.reference + ' (' + p.version + ')' : '', bsCopy: p ? p.copyright : '',
+      bsSlideRef: cur ? cur.ref : '', bsSlideText: cur ? cur.text : '', bsLower: lower, bsFull: !lower,
+      bsCount: p ? 'Slide ' + (i + 1) + ' of ' + slides.length : '', bsNoPrev: i <= 0, bsNoNext: i >= slides.length - 1,
+      bsPrev: () => this.setState({ bsSlide: Math.max(0, i - 1) }), bsNext: () => this.setState({ bsSlide: Math.min(slides.length - 1, i + 1) }),
+      bsDots: slides.map((x, j) => ({ on: j === i, label: 'Slide ' + (j + 1) + ': ' + x.ref, go: () => this.setState({ bsSlide: j }), bg: j === i ? '#F5C518' : '#333B47' })),
+      bsLookName: look.name || 'No look chosen', bsVerses: p ? p.verses.map((v) => ({ n: v.c + ':' + v.v, text: v.text })) : [],
+      // where it goes
+      bsPl: s.bsPl || '', bsPls: m ? m.playlists : [], bsSetPl: (e) => { this.setState({ bsPl: e.target.value, bsAsk: false }); this.bsLoadItems(e.target.value); },
+      bsAfter: s.bsAfter === undefined ? '' : String(s.bsAfter), bsSetAfter: (e) => this.setState({ bsAfter: e.target.value, bsAsk: false }),
+      bsAfterOpts: [{ v: '-1', label: 'At the start' }].concat(items.map((n, j) => ({ v: String(j), label: 'After ' + n }))).concat([{ v: 'end', label: 'At the end' }]),
+      bsWhere: pl.name ? pl.name + ', ' + whereText : '',
+      bsCantAdd: !p || !s.bsLook || !s.bsPl || s.bsBusy === 'add' || (m && m.pp !== 'ok'),
+      bsAskAdd: () => this.setState({ bsAsk: true }), bsAsking: !!s.bsAsk && !!p, bsNotAsking: !(s.bsAsk && p), bsNoAsk: () => this.setState({ bsAsk: false }),
+      bsAskTitle: p ? 'Add ' + p.reference + ' (' + p.version + ') to ' + (pl.name || 'the playlist') + '?' : '',
+      bsAskText: p ? 'It adds a line called “Scripture: ' + p.reference + ' (' + p.version + ')” ' + whereText + ', using ' + (look.name || 'the look') + '. Nothing goes on screen until you tap Show.' : '',
+      bsDoAdd: () => this.bsAdd(), bsAddLabel: s.bsBusy === 'add' ? 'Adding…' : 'Yes, add it',
+      bsToast: s.bsToast || '', bsHasToast: !!s.bsToast
+    };
+  }
+  bsListVals() {
+    const s = this.state, m = s.bs, sh = m ? m.showing : null;
+    const when = (t) => { try { const d = new Date(t * 1000); return d.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' }) + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } };
+    const list = m ? m.passages : [];
+    const onP = sh ? list.find((p) => p.id === sh.id) : null;
+    return {
+      bsHasList: list.length > 0, bsNoList: !list.length,
+      bsOn: !!onP, bsOnText: onP ? onP.slides[sh.slide].ref : '', bsOnCount: onP ? 'Slide ' + (sh.slide + 1) + ' of ' + onP.slides.length : '',
+      bsHideFn: () => this.bsHide(),
+      bsList: list.map((p) => {
+        const open = s.bsOpen === p.id, on = !!sh && sh.id === p.id, n = on ? sh.slide : -1;
+        return {
+          id: p.id, title: p.reference + ' (' + p.version + ')', sub: (p.look ? p.look.name : '') + ' · ' + p.slides.length + ' slide' + (p.slides.length === 1 ? '' : 's') + ' · added ' + when(p.added) + (p.by ? ' by ' + p.by : ''),
+          border: on ? '#F5C518' : '#222831', open: open, closed: !open, on: on,
+          toggle: () => this.setState({ bsOpen: open ? '' : p.id, bsAskRemove: '' }), toggleLabel: open ? 'Close' : 'Show…',
+          toggleAria: (open ? 'Close ' : 'Show controls for ') + p.reference,
+          slides: p.slides.map((x, j) => ({ ref: x.ref, text: x.text, isOn: j === n, cls: j === n ? 'btn pri' : 'btn', label: j === n ? 'On screen' : 'Show',
+            aria: (j === n ? 'On screen: ' : 'Show ') + x.ref + ', slide ' + (j + 1), border: j === n ? '#F5C518' : '#262C36', show: () => this.bsShow(p.id, j) })),
+          canNext: on && n < p.slides.length - 1, noNext: !(on && n < p.slides.length - 1),
+          next: () => this.bsShow(p.id, n + 1), nextLabel: on ? 'Next slide' : 'Next slide',
+          noPrev: !(on && n > 0), prev: () => this.bsShow(p.id, n - 1),
+          startFn: () => this.bsShow(p.id, 0), startLabel: on ? 'From the start' : 'Show slide 1',
+          askRemove: () => this.setState({ bsAskRemove: p.id }), asking: s.bsAskRemove === p.id, noRemove: () => this.setState({ bsAskRemove: '' }),
+          remove: () => { this.setState({ bsAskRemove: '', bsOpen: '' }); this.bsRemove(p.id); },
+          line: p.line || ''
+        };
+      })
+    };
+  }
+  bsDemoData() {
+    // The preview's own copies: KJV and WEBBE (public domain) for a few passages, and NIV John 3:16–17.
+    return {"passages":{"JHN.3.16.3.17.KJV":{"reference":"John 3:16\u201317","version":"KJV","version_name":"King James Version","verses":[{"c":3,"v":16,"text":"For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life."},{"c":3,"v":17,"text":"For God sent not his Son into the world to condemn the world; but that the world through him might be saved."}],"slides":[{"ref":"John 3:16 (KJV)","text":"\u00b9\u2076 For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life."},{"ref":"John 3:17 (KJV)","text":"\u00b9\u2077 For God sent not his Son into the world to condemn the world; but that the world through him might be saved."}],"copyright":"King James Version (public domain)."},"JHN.3.16.3.17.WEBBE":{"reference":"John 3:16\u201317","version":"WEBBE","version_name":"World English Bible (British Edition)","verses":[{"c":3,"v":16,"text":"For God so loved the world, that he gave his only born Son, that whoever believes in him should not perish, but have eternal life."},{"c":3,"v":17,"text":"For God didn\u2019t send his Son into the world to judge the world, but that the world should be saved through him."}],"slides":[{"ref":"John 3:16 (WEBBE)","text":"\u00b9\u2076 For God so loved the world, that he gave his only born Son, that whoever believes in him should not perish, but have eternal life."},{"ref":"John 3:17 (WEBBE)","text":"\u00b9\u2077 For God didn\u2019t send his Son into the world to judge the world, but that the world should be saved through him."}],"copyright":"World English Bible British Edition (public domain)."},"JHN.3.16.3.16.KJV":{"reference":"John 3:16","version":"KJV","version_name":"King James Version","verses":[{"c":3,"v":16,"text":"For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life."}],"slides":[{"ref":"John 3:16 (KJV)","text":"For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life."}],"copyright":"King James Version (public domain)."},"JHN.3.16.3.16.WEBBE":{"reference":"John 3:16","version":"WEBBE","version_name":"World English Bible (British Edition)","verses":[{"c":3,"v":16,"text":"For God so loved the world, that he gave his only born Son, that whoever believes in him should not perish, but have eternal life."}],"slides":[{"ref":"John 3:16 (WEBBE)","text":"For God so loved the world, that he gave his only born Son, that whoever believes in him should not perish, but have eternal life."}],"copyright":"World English Bible British Edition (public domain)."},"PSA.23.None.23.None.KJV":{"reference":"Psalm 23:1\u20136","version":"KJV","version_name":"King James Version","verses":[{"c":23,"v":1,"text":"A Psalm of David. The LORD is my shepherd; I shall not want."},{"c":23,"v":2,"text":"He maketh me to lie down in green pastures: he leadeth me beside the still waters."},{"c":23,"v":3,"text":"He restoreth my soul: he leadeth me in the paths of righteousness for his name\u2019s sake."},{"c":23,"v":4,"text":"Yea, though I walk through the valley of the shadow of death, I will fear no evil: for thou art with me; thy rod and thy staff they comfort me."},{"c":23,"v":5,"text":"Thou preparest a table before me in the presence of mine enemies: thou anointest my head with oil; my cup runneth over."},{"c":23,"v":6,"text":"Surely goodness and mercy shall follow me all the days of my life: and I will dwell in the house of the LORD for ever."}],"slides":[{"ref":"Psalm 23:1\u20132 (KJV)","text":"\u00b9 A Psalm of David. The LORD is my shepherd; I shall not want. \u00b2 He maketh me to lie down in green pastures: he leadeth me beside the still waters."},{"ref":"Psalm 23:3 (KJV)","text":"\u00b3 He restoreth my soul: he leadeth me in the paths of righteousness for his name\u2019s sake."},{"ref":"Psalm 23:4 (KJV)","text":"\u2074 Yea, though I walk through the valley of the shadow of death, I will fear no evil: for thou art with me; thy rod and thy staff they comfort me."},{"ref":"Psalm 23:5 (KJV)","text":"\u2075 Thou preparest a table before me in the presence of mine enemies: thou anointest my head with oil; my cup runneth over."},{"ref":"Psalm 23:6 (KJV)","text":"\u2076 Surely goodness and mercy shall follow me all the days of my life: and I will dwell in the house of the LORD for ever."}],"copyright":"King James Version (public domain)."},"PSA.23.None.23.None.WEBBE":{"reference":"Psalm 23:1\u20136","version":"WEBBE","version_name":"World English Bible (British Edition)","verses":[{"c":23,"v":1,"text":"A Psalm by David. The LORD is my shepherd; I shall lack nothing."},{"c":23,"v":2,"text":"He makes me lie down in green pastures. He leads me beside still waters."},{"c":23,"v":3,"text":"He restores my soul. He guides me in the paths of righteousness for his name\u2019s sake."},{"c":23,"v":4,"text":"Even though I walk through the valley of the shadow of death, I will fear no evil, for you are with me. Your rod and your staff, they comfort me."},{"c":23,"v":5,"text":"You prepare a table before me in the presence of my enemies. You anoint my head with oil. My cup runs over."},{"c":23,"v":6,"text":"Surely goodness and loving kindness shall follow me all the days of my life, and I will dwell in the LORD\u2019s house forever."}],"slides":[{"ref":"Psalm 23:1\u20132 (WEBBE)","text":"\u00b9 A Psalm by David. The LORD is my shepherd; I shall lack nothing. \u00b2 He makes me lie down in green pastures. He leads me beside still waters."},{"ref":"Psalm 23:3 (WEBBE)","text":"\u00b3 He restores my soul. He guides me in the paths of righteousness for his name\u2019s sake."},{"ref":"Psalm 23:4 (WEBBE)","text":"\u2074 Even though I walk through the valley of the shadow of death, I will fear no evil, for you are with me. Your rod and your staff, they comfort me."},{"ref":"Psalm 23:5 (WEBBE)","text":"\u2075 You prepare a table before me in the presence of my enemies. You anoint my head with oil. My cup runs over."},{"ref":"Psalm 23:6 (WEBBE)","text":"\u2076 Surely goodness and loving kindness shall follow me all the days of my life, and I will dwell in the LORD\u2019s house forever."}],"copyright":"World English Bible British Edition (public domain)."},"ROM.8.28.8.28.KJV":{"reference":"Romans 8:28","version":"KJV","version_name":"King James Version","verses":[{"c":8,"v":28,"text":"And we know that all things work together for good to them that love God, to them who are the called according to his purpose."}],"slides":[{"ref":"Romans 8:28 (KJV)","text":"And we know that all things work together for good to them that love God, to them who are the called according to his purpose."}],"copyright":"King James Version (public domain)."},"ROM.8.28.8.28.WEBBE":{"reference":"Romans 8:28","version":"WEBBE","version_name":"World English Bible (British Edition)","verses":[{"c":8,"v":28,"text":"We know that all things work together for good for those who love God, for those who are called according to his purpose."}],"slides":[{"ref":"Romans 8:28 (WEBBE)","text":"We know that all things work together for good for those who love God, for those who are called according to his purpose."}],"copyright":"World English Bible British Edition (public domain)."},"1CO.13.4.13.7.KJV":{"reference":"1 Corinthians 13:4\u20137","version":"KJV","version_name":"King James Version","verses":[{"c":13,"v":4,"text":"Charity suffereth long, and is kind; charity envieth not; charity vaunteth not itself, is not puffed up,"},{"c":13,"v":5,"text":"Doth not behave itself unseemly, seeketh not her own, is not easily provoked, thinketh no evil;"},{"c":13,"v":6,"text":"Rejoiceth not in iniquity, but rejoiceth in the truth;"},{"c":13,"v":7,"text":"Beareth all things, believeth all things, hopeth all things, endureth all things."}],"slides":[{"ref":"1 Corinthians 13:4\u20135 (KJV)","text":"\u2074 Charity suffereth long, and is kind; charity envieth not; charity vaunteth not itself, is not puffed up, \u2075 Doth not behave itself unseemly, seeketh not her own, is not easily provoked, thinketh no evil;"},{"ref":"1 Corinthians 13:6\u20137 (KJV)","text":"\u2076 Rejoiceth not in iniquity, but rejoiceth in the truth; \u2077 Beareth all things, believeth all things, hopeth all things, endureth all things."}],"copyright":"King James Version (public domain)."},"1CO.13.4.13.7.WEBBE":{"reference":"1 Corinthians 13:4\u20137","version":"WEBBE","version_name":"World English Bible (British Edition)","verses":[{"c":13,"v":4,"text":"Love is patient and is kind. Love doesn\u2019t envy. Love doesn\u2019t brag, is not proud,"},{"c":13,"v":5,"text":"doesn\u2019t behave itself inappropriately, doesn\u2019t seek its own way, is not provoked, takes no account of evil;"},{"c":13,"v":6,"text":"doesn\u2019t rejoice in unrighteousness, but rejoices with the truth;"},{"c":13,"v":7,"text":"bears all things, believes all things, hopes all things, and endures all things."}],"slides":[{"ref":"1 Corinthians 13:4\u20135 (WEBBE)","text":"\u2074 Love is patient and is kind. Love doesn\u2019t envy. Love doesn\u2019t brag, is not proud, \u2075 doesn\u2019t behave itself inappropriately, doesn\u2019t seek its own way, is not provoked, takes no account of evil;"},{"ref":"1 Corinthians 13:6\u20137 (WEBBE)","text":"\u2076 doesn\u2019t rejoice in unrighteousness, but rejoices with the truth; \u2077 bears all things, believes all things, hopes all things, and endures all things."}],"copyright":"World English Bible British Edition (public domain)."},"PHP.4.13.4.13.KJV":{"reference":"Philippians 4:13","version":"KJV","version_name":"King James Version","verses":[{"c":4,"v":13,"text":"I can do all things through Christ which strengtheneth me."}],"slides":[{"ref":"Philippians 4:13 (KJV)","text":"I can do all things through Christ which strengtheneth me."}],"copyright":"King James Version (public domain)."},"PHP.4.13.4.13.WEBBE":{"reference":"Philippians 4:13","version":"WEBBE","version_name":"World English Bible (British Edition)","verses":[{"c":4,"v":13,"text":"I can do all things through Christ who strengthens me."}],"slides":[{"ref":"Philippians 4:13 (WEBBE)","text":"I can do all things through Christ who strengthens me."}],"copyright":"World English Bible British Edition (public domain)."},"JER.29.11.29.11.KJV":{"reference":"Jeremiah 29:11","version":"KJV","version_name":"King James Version","verses":[{"c":29,"v":11,"text":"For I know the thoughts that I think toward you, saith the LORD, thoughts of peace, and not of evil, to give you an expected end."}],"slides":[{"ref":"Jeremiah 29:11 (KJV)","text":"For I know the thoughts that I think toward you, saith the LORD, thoughts of peace, and not of evil, to give you an expected end."}],"copyright":"King James Version (public domain)."},"JER.29.11.29.11.WEBBE":{"reference":"Jeremiah 29:11","version":"WEBBE","version_name":"World English Bible (British Edition)","verses":[{"c":29,"v":11,"text":"For I know the thoughts that I think towards you,\u201d says the LORD, \u201cthoughts of peace, and not of evil, to give you hope and a future."}],"slides":[{"ref":"Jeremiah 29:11 (WEBBE)","text":"For I know the thoughts that I think towards you,\u201d says the LORD, \u201cthoughts of peace, and not of evil, to give you hope and a future."}],"copyright":"World English Bible British Edition (public domain)."},"ISA.40.31.40.31.KJV":{"reference":"Isaiah 40:31","version":"KJV","version_name":"King James Version","verses":[{"c":40,"v":31,"text":"But they that wait upon the LORD shall renew their strength; they shall mount up with wings as eagles; they shall run, and not be weary; and they shall walk, and not faint."}],"slides":[{"ref":"Isaiah 40:31 (KJV)","text":"But they that wait upon the LORD shall renew their strength; they shall mount up with wings as eagles; they shall run, and not be weary; and they shall walk, and not faint."}],"copyright":"King James Version (public domain)."},"ISA.40.31.40.31.WEBBE":{"reference":"Isaiah 40:31","version":"WEBBE","version_name":"World English Bible (British Edition)","verses":[{"c":40,"v":31,"text":"but those who wait for the LORD will renew their strength. They will mount up with wings like eagles. They will run, and not be weary. They will walk, and not faint."}],"slides":[{"ref":"Isaiah 40:31 (WEBBE)","text":"but those who wait for the LORD will renew their strength. They will mount up with wings like eagles. They will run, and not be weary. They will walk, and not faint."}],"copyright":"World English Bible British Edition (public domain)."},"MAT.28.19.28.20.KJV":{"reference":"Matthew 28:19\u201320","version":"KJV","version_name":"King James Version","verses":[{"c":28,"v":19,"text":"Go ye therefore, and teach all nations, baptizing them in the name of the Father, and of the Son, and of the Holy Ghost:"},{"c":28,"v":20,"text":"Teaching them to observe all things whatsoever I have commanded you: and, lo, I am with you alway, even unto the end of the world. Amen."}],"slides":[{"ref":"Matthew 28:19 (KJV)","text":"\u00b9\u2079 Go ye therefore, and teach all nations, baptizing them in the name of the Father, and of the Son, and of the Holy Ghost:"},{"ref":"Matthew 28:20 (KJV)","text":"\u00b2\u2070 Teaching them to observe all things whatsoever I have commanded you: and, lo, I am with you alway, even unto the end of the world. Amen."}],"copyright":"King James Version (public domain)."},"MAT.28.19.28.20.WEBBE":{"reference":"Matthew 28:19\u201320","version":"WEBBE","version_name":"World English Bible (British Edition)","verses":[{"c":28,"v":19,"text":"Go and make disciples of all nations, baptising them in the name of the Father and of the Son and of the Holy Spirit,"},{"c":28,"v":20,"text":"teaching them to observe all things that I commanded you. Behold, I am with you always, even to the end of the age.\u201d Amen."}],"slides":[{"ref":"Matthew 28:19 (WEBBE)","text":"\u00b9\u2079 Go and make disciples of all nations, baptising them in the name of the Father and of the Son and of the Holy Spirit,"},{"ref":"Matthew 28:20 (WEBBE)","text":"\u00b2\u2070 teaching them to observe all things that I commanded you. Behold, I am with you always, even to the end of the age.\u201d Amen."}],"copyright":"World English Bible British Edition (public domain)."},"JOS.1.9.1.9.KJV":{"reference":"Joshua 1:9","version":"KJV","version_name":"King James Version","verses":[{"c":1,"v":9,"text":"Have not I commanded thee? Be strong and of a good courage; be not afraid, neither be thou dismayed: for the LORD thy God is with thee whithersoever thou goest."}],"slides":[{"ref":"Joshua 1:9 (KJV)","text":"Have not I commanded thee? Be strong and of a good courage; be not afraid, neither be thou dismayed: for the LORD thy God is with thee whithersoever thou goest."}],"copyright":"King James Version (public domain)."},"JOS.1.9.1.9.WEBBE":{"reference":"Joshua 1:9","version":"WEBBE","version_name":"World English Bible (British Edition)","verses":[{"c":1,"v":9,"text":"Haven\u2019t I commanded you? Be strong and courageous. Don\u2019t be afraid. Don\u2019t be dismayed, for the LORD your God is with you wherever you go.\u201d"}],"slides":[{"ref":"Joshua 1:9 (WEBBE)","text":"Haven\u2019t I commanded you? Be strong and courageous. Don\u2019t be afraid. Don\u2019t be dismayed, for the LORD your God is with you wherever you go.\u201d"}],"copyright":"World English Bible British Edition (public domain)."},"PRO.3.5.3.6.KJV":{"reference":"Proverbs 3:5\u20136","version":"KJV","version_name":"King James Version","verses":[{"c":3,"v":5,"text":"Trust in the LORD with all thine heart; and lean not unto thine own understanding."},{"c":3,"v":6,"text":"In all thy ways acknowledge him, and he shall direct thy paths."}],"slides":[{"ref":"Proverbs 3:5\u20136 (KJV)","text":"\u2075 Trust in the LORD with all thine heart; and lean not unto thine own understanding. \u2076 In all thy ways acknowledge him, and he shall direct thy paths."}],"copyright":"King James Version (public domain)."},"PRO.3.5.3.6.WEBBE":{"reference":"Proverbs 3:5\u20136","version":"WEBBE","version_name":"World English Bible (British Edition)","verses":[{"c":3,"v":5,"text":"Trust in the LORD with all your heart, and don\u2019t lean on your own understanding."},{"c":3,"v":6,"text":"In all your ways acknowledge him, and he will make your paths straight."}],"slides":[{"ref":"Proverbs 3:5\u20136 (WEBBE)","text":"\u2075 Trust in the LORD with all your heart, and don\u2019t lean on your own understanding. \u2076 In all your ways acknowledge him, and he will make your paths straight."}],"copyright":"World English Bible British Edition (public domain)."},"ROM.8.38.9.1.KJV":{"reference":"Romans 8:38\u20139:1","version":"KJV","version_name":"King James Version","verses":[{"c":8,"v":38,"text":"For I am persuaded, that neither death, nor life, nor angels, nor principalities, nor powers, nor things present, nor things to come,"},{"c":8,"v":39,"text":"Nor height, nor depth, nor any other creature, shall be able to separate us from the love of God, which is in Christ Jesus our Lord."},{"c":9,"v":1,"text":"I say the truth in Christ, I lie not, my conscience also bearing me witness in the Holy Ghost,"}],"slides":[{"ref":"Romans 8:38 (KJV)","text":"\u00b3\u2078 For I am persuaded, that neither death, nor life, nor angels, nor principalities, nor powers, nor things present, nor things to come,"},{"ref":"Romans 8:39 (KJV)","text":"\u00b3\u2079 Nor height, nor depth, nor any other creature, shall be able to separate us from the love of God, which is in Christ Jesus our Lord."},{"ref":"Romans 9:1 (KJV)","text":"\u00b9 I say the truth in Christ, I lie not, my conscience also bearing me witness in the Holy Ghost,"}],"copyright":"King James Version (public domain)."},"ROM.8.38.9.1.WEBBE":{"reference":"Romans 8:38\u20139:1","version":"WEBBE","version_name":"World English Bible (British Edition)","verses":[{"c":8,"v":38,"text":"For I am persuaded that neither death, nor life, nor angels, nor principalities, nor things present, nor things to come, nor powers,"},{"c":8,"v":39,"text":"nor height, nor depth, nor any other created thing will be able to separate us from God\u2019s love which is in Christ Jesus our Lord."},{"c":9,"v":1,"text":"I tell the truth in Christ. I am not lying, my conscience testifying with me in the Holy Spirit"}],"slides":[{"ref":"Romans 8:38 (WEBBE)","text":"\u00b3\u2078 For I am persuaded that neither death, nor life, nor angels, nor principalities, nor things present, nor things to come, nor powers,"},{"ref":"Romans 8:39 (WEBBE)","text":"\u00b3\u2079 nor height, nor depth, nor any other created thing will be able to separate us from God\u2019s love which is in Christ Jesus our Lord."},{"ref":"Romans 9:1 (WEBBE)","text":"\u00b9 I tell the truth in Christ. I am not lying, my conscience testifying with me in the Holy Spirit"}],"copyright":"World English Bible British Edition (public domain)."},"JHN.3.16.3.17.NIV":{"reference":"John 3:16\u201317","version":"NIV","version_name":"New International Version","verses":[{"c":3,"v":16,"text":"For God so loved the world that he gave his one and only Son, that whoever believes in him shall not perish but have eternal life."},{"c":3,"v":17,"text":"For God did not send his Son into the world to condemn the world, but to save the world through him."}],"slides":[{"ref":"John 3:16 (NIV)","text":"\u00b9\u2076 For God so loved the world that he gave his one and only Son, that whoever believes in him shall not perish but have eternal life."},{"ref":"John 3:17 (NIV)","text":"\u00b9\u2077 For God did not send his Son into the world to condemn the world, but to save the world through him."}],"copyright":"Scripture quotations taken from The Holy Bible, New International Version\u00ae NIV\u00ae. Copyright \u00a9 1973, 1978, 1984, 2011 by Biblica, Inc.\u2122 Used by permission. All rights reserved worldwide."},"JHN.3.16.3.16.NIV":{"reference":"John 3:16","version":"NIV","version_name":"New International Version","verses":[{"c":3,"v":16,"text":"For God so loved the world that he gave his one and only Son, that whoever believes in him shall not perish but have eternal life."}],"slides":[{"ref":"John 3:16 (NIV)","text":"For God so loved the world that he gave his one and only Son, that whoever believes in him shall not perish but have eternal life."}],"copyright":"Scripture quotations taken from The Holy Bible, New International Version\u00ae NIV\u00ae. Copyright \u00a9 1973, 1978, 1984, 2011 by Biblica, Inc.\u2122 Used by permission. All rights reserved worldwide."}},"aliases":{"genesis":"GEN","gen":"GEN","ge":"GEN","gn":"GEN","exodus":"EXO","exod":"EXO","ex":"EXO","exo":"EXO","leviticus":"LEV","lev":"LEV","le":"LEV","lv":"LEV","numbers":"NUM","num":"NUM","nu":"NUM","nm":"NUM","nb":"NUM","deuteronomy":"DEU","deut":"DEU","deu":"DEU","dt":"DEU","joshua":"JOS","josh":"JOS","jos":"JOS","jsh":"JOS","judges":"JDG","judg":"JDG","jdg":"JDG","jg":"JDG","jdgs":"JDG","ruth":"RUT","rth":"RUT","ru":"RUT","1samuel":"1SA","1sam":"1SA","1sa":"1SA","1sm":"1SA","1s":"1SA","isamuel":"1SA","2samuel":"2SA","2sam":"2SA","2sa":"2SA","2sm":"2SA","2s":"2SA","iisamuel":"2SA","1kings":"1KI","1kgs":"1KI","1ki":"1KI","1kin":"1KI","1k":"1KI","ikings":"1KI","2kings":"2KI","2kgs":"2KI","2ki":"2KI","2kin":"2KI","2k":"2KI","iikings":"2KI","1chronicles":"1CH","1chr":"1CH","1ch":"1CH","1chron":"1CH","2chronicles":"2CH","2chr":"2CH","2ch":"2CH","2chron":"2CH","ezra":"EZR","ezr":"EZR","nehemiah":"NEH","neh":"NEH","ne":"NEH","esther":"EST","esth":"EST","est":"EST","es":"EST","job":"JOB","jb":"JOB","psalms":"PSA","ps":"PSA","psa":"PSA","psalm":"PSA","pss":"PSA","psm":"PSA","pslm":"PSA","proverbs":"PRO","prov":"PRO","pro":"PRO","prv":"PRO","pr":"PRO","ecclesiastes":"ECC","eccl":"ECC","ecc":"ECC","eccles":"ECC","qoh":"ECC","songofsongs":"SNG","song":"SNG","sos":"SNG","songofsolomon":"SNG","canticles":"SNG","sng":"SNG","isaiah":"ISA","isa":"ISA","is":"ISA","jeremiah":"JER","jer":"JER","je":"JER","jr":"JER","lamentations":"LAM","lam":"LAM","la":"LAM","ezekiel":"EZK","ezek":"EZK","eze":"EZK","ezk":"EZK","daniel":"DAN","dan":"DAN","da":"DAN","dn":"DAN","hosea":"HOS","hos":"HOS","ho":"HOS","joel":"JOL","jl":"JOL","amos":"AMO","am":"AMO","obadiah":"OBA","obad":"OBA","ob":"OBA","oba":"OBA","jonah":"JON","jnh":"JON","jon":"JON","micah":"MIC","mic":"MIC","mc":"MIC","nahum":"NAM","nah":"NAM","na":"NAM","nam":"NAM","habakkuk":"HAB","hab":"HAB","hb":"HAB","zephaniah":"ZEP","zeph":"ZEP","zep":"ZEP","zp":"ZEP","haggai":"HAG","hag":"HAG","hg":"HAG","zechariah":"ZEC","zech":"ZEC","zec":"ZEC","zc":"ZEC","malachi":"MAL","mal":"MAL","ml":"MAL","matthew":"MAT","matt":"MAT","mat":"MAT","mt":"MAT","mark":"MRK","mrk":"MRK","mar":"MRK","mk":"MRK","mr":"MRK","luke":"LUK","luk":"LUK","lk":"LUK","john":"JHN","jn":"JHN","jhn":"JHN","joh":"JHN","acts":"ACT","act":"ACT","ac":"ACT","romans":"ROM","rom":"ROM","ro":"ROM","rm":"ROM","1corinthians":"1CO","1cor":"1CO","1co":"1CO","icorinthians":"1CO","2corinthians":"2CO","2cor":"2CO","2co":"2CO","iicorinthians":"2CO","galatians":"GAL","gal":"GAL","ga":"GAL","ephesians":"EPH","eph":"EPH","ephes":"EPH","philippians":"PHP","phil":"PHP","php":"PHP","pp":"PHP","colossians":"COL","col":"COL","co":"COL","1thessalonians":"1TH","1thess":"1TH","1th":"1TH","1thes":"1TH","2thessalonians":"2TH","2thess":"2TH","2th":"2TH","2thes":"2TH","1timothy":"1TI","1tim":"1TI","1ti":"1TI","2timothy":"2TI","2tim":"2TI","2ti":"2TI","titus":"TIT","tit":"TIT","ti":"TIT","philemon":"PHM","phlm":"PHM","phm":"PHM","philem":"PHM","hebrews":"HEB","heb":"HEB","james":"JAS","jas":"JAS","jm":"JAS","jam":"JAS","1peter":"1PE","1pet":"1PE","1pe":"1PE","1pt":"1PE","2peter":"2PE","2pet":"2PE","2pe":"2PE","2pt":"2PE","1john":"1JN","1jn":"1JN","1jo":"1JN","1jhn":"1JN","2john":"2JN","2jn":"2JN","2jo":"2JN","2jhn":"2JN","3john":"3JN","3jn":"3JN","3jo":"3JN","3jhn":"3JN","jude":"JUD","jud":"JUD","revelation":"REV","rev":"REV","re":"REV","rv":"REV","revelations":"REV"},"names":{"GEN":"Genesis","EXO":"Exodus","LEV":"Leviticus","NUM":"Numbers","DEU":"Deuteronomy","JOS":"Joshua","JDG":"Judges","RUT":"Ruth","1SA":"1 Samuel","2SA":"2 Samuel","1KI":"1 Kings","2KI":"2 Kings","1CH":"1 Chronicles","2CH":"2 Chronicles","EZR":"Ezra","NEH":"Nehemiah","EST":"Esther","JOB":"Job","PSA":"Psalms","PRO":"Proverbs","ECC":"Ecclesiastes","SNG":"Song of Songs","ISA":"Isaiah","JER":"Jeremiah","LAM":"Lamentations","EZK":"Ezekiel","DAN":"Daniel","HOS":"Hosea","JOL":"Joel","AMO":"Amos","OBA":"Obadiah","JON":"Jonah","MIC":"Micah","NAM":"Nahum","HAB":"Habakkuk","ZEP":"Zephaniah","HAG":"Haggai","ZEC":"Zechariah","MAL":"Malachi","MAT":"Matthew","MRK":"Mark","LUK":"Luke","JHN":"John","ACT":"Acts","ROM":"Romans","1CO":"1 Corinthians","2CO":"2 Corinthians","GAL":"Galatians","EPH":"Ephesians","PHP":"Philippians","COL":"Colossians","1TH":"1 Thessalonians","2TH":"2 Thessalonians","1TI":"1 Timothy","2TI":"2 Timothy","TIT":"Titus","PHM":"Philemon","HEB":"Hebrews","JAS":"James","1PE":"1 Peter","2PE":"2 Peter","1JN":"1 John","2JN":"2 John","3JN":"3 John","JUD":"Jude","REV":"Revelation"},"examples":["John 3:16-17","John 3:16","Psalm 23","Romans 8:28","1 Corinthians 13:4-7","Philippians 4:13","Jeremiah 29:11","Isaiah 40:31","Matthew 28:19-20","Joshua 1:9","Proverbs 3:5-6","Romans 8:38-9:1"]};
+  }
+  renderVals() {
+    return { ...this.bsFormVals(), ...this.bsListVals(), bsNoP: !this.state.bsP };
+  }
+}
+</script>
+</body>
+</html>

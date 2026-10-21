@@ -1,0 +1,647 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>C3 Life – Dante routing</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet" data-look>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Safari / iPad: no zoom when typing, no double-tap zoom, no text-select or callout while dragging */
+html{-webkit-text-size-adjust:100%;touch-action:manipulation}
+input,select,textarea{font-size:16px!important}
+button,a,summary,label,[role=slider]{-webkit-tap-highlight-color:transparent}
+[role=slider],.fader,.pan{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+body{margin:0;background:#0D1015}
+a{color:#6CB4F5}a:hover{color:#9CCBF8}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:62px;color:#A3ACB8;text-decoration:none;font-size:12px;font-weight:500;border-top:2px solid transparent}
+.tab:hover{color:#ECEEF1}
+.tab.on{color:#F5C518;border-top-color:#F5C518}
+.card{background:#161A21;border:1px solid #262C36;border-radius:14px;padding:14px}
+.lbl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#A3ACB8;font-weight:500}
+.mono{font-family:'IBM Plex Mono',ui-monospace,monospace}
+.seg{display:flex;gap:4px;background:#161A21;border:1px solid #262C36;border-radius:12px;padding:4px}
+.seg a{flex:1;display:flex;align-items:center;justify-content:center;min-height:44px;border-radius:9px;color:#A3ACB8;text-decoration:none;font-size:14px;font-weight:500}
+.seg a.on{background:#262C36;color:#ECEEF1}
+.cell{width:32px;height:32px;border-radius:6px;border:1px solid #333B47;background:#0F1318;cursor:pointer;padding:0}
+.cell.on{background:#6CB4F5;border-color:#6CB4F5}
+.cell:disabled{cursor:not-allowed;opacity:.55}
+.btn{min-height:44px;padding:0 14px;border-radius:10px;border:1px solid #333B47;background:#1E232C;color:#ECEEF1;font:500 14px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.pri{background:#F5C518;border-color:#F5C518;color:#1A1204}
+select{width:100%;min-height:44px;border-radius:10px;border:1px solid #333B47;background:#0F1318;color:#ECEEF1;font:400 14px 'IBM Plex Sans',system-ui,sans-serif;padding:0 8px}
+
+/* Fills any screen. Wider than 700px (iPad, laptop, web) the content sits in a centred column. */
+@media (min-width:700px){
+  .app > *:not(.bn):not([style*="position:absolute"]){width:100%;max-width:760px;margin-left:auto;margin-right:auto;box-sizing:border-box}
+}
+
+.app > .rtabar{max-width:none !important;margin-left:0 !important;margin-right:0 !important}
+
+/* Easy to use: every link, tick box and control is at least 40-44px tall, so it is easy to hit with a thumb. */
+a[style*="min-height:28px"]{min-height:44px !important}
+a[style*="font-size:12px"][style*="text-decoration:none"],a[style*="font-size:13px"][style*="text-decoration:none"]{display:inline-flex;align-items:center;min-height:40px}
+label:has(> input[type=checkbox]),label:has(> input[type=radio]){min-height:44px}
+input[type=checkbox],input[type=radio]{width:22px;height:22px;flex:none;accent-color:#F5C518}
+input[type=range]{min-height:40px}
+select{min-height:44px}
+button.sw::after,button.cell::after{content:'';position:absolute;inset:-7px -4px}
+.cell{position:relative}
+input[type=checkbox][aria-label]{width:32px;height:32px}
+
+/* Menu: a drop-down list at the top of every screen. Tap Menu to open it, tap again (or pick a page) to close. */
+.topmenu{position:relative;z-index:20;flex:none;background:#11151B;border-bottom:1px solid #262C36}
+.topmenu summary{list-style:none;display:flex;align-items:center;gap:10px;min-height:52px;padding:0 16px;cursor:pointer;color:#ECEEF1;font:600 15px 'IBM Plex Sans',system-ui,sans-serif;max-width:760px;margin:0 auto;box-sizing:border-box}
+.topmenu summary::-webkit-details-marker{display:none}
+.topmenu .mlabel{font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:#A3ACB8}
+.topmenu .mcur{flex:1;color:#F5C518}
+.topmenu .chev{transition:transform .15s}
+.topmenu details[open] .chev{transform:rotate(180deg)}
+.topmenu .mlist{position:absolute;left:8px;right:8px;top:calc(100% + 4px);background:#161A21;border:1px solid #333B47;border-radius:14px;box-shadow:0 14px 34px rgba(0,0,0,.55);padding:6px;display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.topmenu .mlist a{display:flex;align-items:center;gap:10px;min-height:52px;padding:0 12px;border-radius:10px;color:#ECEEF1;text-decoration:none;font:500 15px 'IBM Plex Sans',system-ui,sans-serif}
+.topmenu .mlist a:hover{background:#1E232C}
+.topmenu .mlist a.on{background:#262C36;color:#F5C518}
+@media (min-width:700px){.topmenu .mlist{left:calc(50% - 372px);right:auto;width:440px}}
+@media (min-width:700px) and (max-width:800px){.topmenu .mlist{left:16px}}
+/* wide:start — iPad landscape and laptops: use the width */
+@media (min-width:1000px){
+  .app > *:not(.bn):not([style*="position:absolute"]){max-width:1240px}
+  .topmenu summary{max-width:1240px}
+  .app main.wide2{display:grid !important;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:14px 18px !important}
+  .app main.wide2 > *{min-width:0}
+  .app main.wide2 > :not(section):not(.card):not(details):not(.wcol){grid-column:1 / -1}
+  .app main.wide2 > .wfull{grid-column:1 / -1}
+  .app main.wide1{max-width:980px !important}
+  .app:has(main.wide1) > *:not(.bn):not([style*="position:absolute"]){max-width:980px}
+  .app:has(main.wide1) .topmenu summary{max-width:980px}
+}
+@media (min-width:1500px){ .app main.wide2.wide3{grid-template-columns:repeat(3,minmax(0,1fr))} }
+/* wide:end */
+/* look:start — the WING look (like WING Edit): near-black, outlined panels, condensed headings, yellow for active, blue for selected.
+   Settings › Look › Classic puts the old look back on this device (html[data-look=classic]). */
+:root{--wk-bg:#0A0B0D;--wk-panel:#121418;--wk-panel2:#181B20;--wk-line:#2E333A;--wk-yellow:#F5C518;--wk-blue:#2F6CC4;--wk-cond:'Barlow Condensed','IBM Plex Sans',system-ui,sans-serif}
+html:not([data-look=classic]) body{background:var(--wk-bg)}
+html:not([data-look=classic]) .app{background:var(--wk-bg) !important}
+html:not([data-look=classic]) .card{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .lbl{font-family:var(--wk-cond);font-size:13px;font-weight:600;letter-spacing:.07em;color:#D4D9E0}
+html:not([data-look=classic]) h1{font-family:var(--wk-cond);font-weight:600 !important;text-transform:uppercase;letter-spacing:.05em;font-size:21px !important;line-height:1.2;color:var(--wk-yellow);border:1.5px solid var(--wk-yellow);border-radius:3px;padding:2px 12px;display:inline-block}
+html:not([data-look=classic]) .btn,html:not([data-look=classic]) .lk,html:not([data-look=classic]) .mxb,html:not([data-look=classic]) .mxbk,html:not([data-look=classic]) .mute,html:not([data-look=classic]) .pbtn{font-family:var(--wk-cond);font-size:15px;letter-spacing:.02em;border-radius:4px}
+html:not([data-look=classic]) .btn.pri{background:var(--wk-yellow);border-color:var(--wk-yellow);color:#111}
+html:not([data-look=classic]) .seg{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .seg a{font-family:var(--wk-cond);font-size:15px;letter-spacing:.03em;border-radius:4px}
+html:not([data-look=classic]) .seg a.on,html:not([data-look=classic]) .lk.on{background:var(--wk-blue);color:#fff}
+html:not([data-look=classic]) .tab.on{color:var(--wk-yellow);border-top-color:var(--wk-yellow)}
+html:not([data-look=classic]) .topmenu{background:#000;border-bottom-color:var(--wk-line)}
+html:not([data-look=classic]) .topmenu summary{font-family:var(--wk-cond);font-size:16px;letter-spacing:.03em}
+html:not([data-look=classic]) .topmenu .mcur{color:var(--wk-yellow)}
+html:not([data-look=classic]) .topmenu .mlist{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .topmenu .mlist a{font-family:var(--wk-cond);font-size:16px;border-radius:4px}
+html:not([data-look=classic]) .topmenu .mlist a.on{background:var(--wk-panel2);color:var(--wk-yellow);box-shadow:inset 3px 0 0 var(--wk-yellow)}
+html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic]) input[type=radio],html:not([data-look=classic]) input[type=range]{accent-color:var(--wk-yellow)}
+.wkside{display:none}
+/* iPad landscape and laptops: a sidebar like WING Edit's (HOME, MIXER, ...) instead of the menu at the top */
+@media (min-width:1000px){
+  html:not([data-look=classic]) .wkside{display:flex;flex-direction:column;gap:2px;position:fixed;left:0;top:0;bottom:0;width:132px !important;max-width:132px !important;margin:0 !important;padding:8px 6px 12px;box-sizing:border-box;background:#000;border-right:1px solid var(--wk-line);overflow-y:auto;z-index:30}
+  html:not([data-look=classic]) .wkside .wkbrand{font:700 24px var(--wk-cond);letter-spacing:.06em;color:var(--wk-yellow);padding:6px 8px 12px}
+  html:not([data-look=classic]) .wkside a{display:flex;align-items:center;gap:9px;min-height:46px;padding:0 8px;border-radius:4px;color:#D4D9E0;text-decoration:none;font:600 15px var(--wk-cond);text-transform:uppercase;letter-spacing:.04em}
+  html:not([data-look=classic]) .wkside a:hover{background:var(--wk-panel2)}
+  html:not([data-look=classic]) .wkside a.on{background:var(--wk-panel2);color:var(--wk-yellow);box-shadow:inset 3px 0 0 var(--wk-yellow)}
+  html:not([data-look=classic]) .wkside svg{flex:none}
+  html:not([data-look=classic]) .app{padding-left:132px;box-sizing:border-box !important}
+  html:not([data-look=classic]) .app > .topmenu{display:none}
+}
+/* look:end */
+</style>
+</helmet>
+<div class="app has-bn" style="width:100%;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;background:#0D1015;color:#ECEEF1;font-family:'IBM Plex Sans',system-ui,sans-serif;overflow:hidden">
+  
+  
+  
+  
+  <nav class="wkside" aria-label="Main menu (side)"><div class="wkbrand" aria-hidden="true">C3 LIFE</div><a href="Main.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Home</a>
+        <a href="Wing.dc.html" class="on" aria-current="page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4v16M12 4v16M18 4v16"/><path d="M4 14h4M10 8h4M16 16h4"/></svg>Mixer</a>
+        <a href="RTA.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V12M9 20V6M14 20V10M19 20V4"/></svg>RTA</a>
+        <a href="Show.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M10 8l5 2-5 2z"/><path d="M8 20h8"/></svg>Show</a>
+        <a href="Lights.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>Lights</a>
+        <a href="Plan.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h1M4 12h1M4 18h1"/></svg>Plan</a>
+        <a href="Chat.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>Chat</a>
+        <a href="Listen.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="15" width="4" height="6" rx="1.5"/><rect x="17" y="15" width="4" height="6" rx="1.5"/><path d="M10 9.5a2.5 2.5 0 0 1 4 0"/></svg>Listen</a>
+        <a href="Help.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2.5 2-2.5 3.5M12 17h.01"/></svg>Help</a>
+        <a href="Report.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4h11l-1.5 4L16 12H5"/></svg>Report an issue</a></nav>
+  <nav class="bn topmenu" aria-label="Main menu">
+    <details>
+      <summary aria-label="Menu. You are on Dante routing"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span class="mlabel">Menu</span><span class="mcur">Mixer › Dante</span><svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+      <div class="mlist">
+        <a href="Main.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Home</a>
+        <a href="Wing.dc.html" class="on" aria-current="page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4v16M12 4v16M18 4v16"/><path d="M4 14h4M10 8h4M16 16h4"/></svg>Mixer</a>
+        <a href="RTA.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V12M9 20V6M14 20V10M19 20V4"/></svg>RTA</a>
+        <a href="Show.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M10 8l5 2-5 2z"/><path d="M8 20h8"/></svg>Show</a>
+        <a href="Lights.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>Lights</a>
+        <a href="Plan.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h1M4 12h1M4 18h1"/></svg>Plan</a>
+        <a href="Chat.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>Chat</a>
+        <a href="Listen.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="15" width="4" height="6" rx="1.5"/><rect x="17" y="15" width="4" height="6" rx="1.5"/><path d="M10 9.5a2.5 2.5 0 0 1 4 0"/></svg>Listen</a>
+        <a href="Help.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2.5 2-2.5 3.5M12 17h.01"/></svg>Help</a>
+        <a href="Report.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4h11l-1.5 4L16 12H5"/></svg>Report an issue</a>
+      </div>
+    </details>
+  </nav>
+  <header style="padding:22px 16px 12px;display:flex;flex-direction:column;gap:12px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;padding:0 4px">
+      <h1 style="margin:0;font-size:26px;font-weight:600">Mixer</h1>
+      <div style="font-size:12px;color:#A3ACB8;text-align:right">Dante · {{devCount}} devices<br>Names from Dante</div>
+    </div>
+    <nav class="seg" aria-label="Mixer sections">
+      <a href="Wing.dc.html">Channels</a>
+      <a href="Patch.dc.html">Patch</a>
+      <a href="Dante.dc.html" class="on">Dante</a>
+      <a href="Mics.dc.html">Mics</a>
+      <a href="Cues.dc.html">Cues</a>
+    </nav>
+  </header>
+
+  <main class=" wide2" style="flex:1;overflow-y:auto;padding:0 16px 16px;display:flex;flex-direction:column;gap:12px">
+    <section class="card" style="display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:600">Read from the Dante network</div><div style="font-size:12px;color:#A3ACB8;line-height:1.45">{{netLine}}</div></div>
+        <button class="btn" style="flex:none" onClick="{{readAgain}}">Read now</button>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:14px"><input type="checkbox" checked="{{autoRead}}" onChange="{{toggleAutoRead}}"> Read by itself every 10 seconds</label>
+      <div style="font-size:12px;color:#A3ACB8;line-height:1.45">Devices, channels and routes come from the network itself. A change made in Dante Controller shows here too. Every change from the app asks you to confirm first.</div>
+      <button class="btn" style="min-height:40px;border-style:dashed;color:#A3ACB8;font-size:13px" onClick="{{demoOutside}}">Demo: someone changes a route in Dante Controller</button>
+      <sc-if value="{{hasNote}}" hint-placeholder-val="{{ false }}"><div role="status" style="font-size:13px;color:#6CB4F5;line-height:1.45">{{note}}</div></sc-if>
+    </section>
+
+    <section class="card" style="display:flex;flex-direction:column;gap:2px;padding:8px 14px">
+      <div class="lbl" style="padding:4px 0 6px">Devices on the network</div>
+      <sc-for list="{{devices}}" as="d" hint-placeholder-count="4">
+        <div style="display:flex;align-items:center;gap:10px;min-height:44px;border-top:1px solid #222831">
+          <span style="width:8px;height:8px;border-radius:50%;background:#6CB4F5;flex:none"></span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:14px;font-weight:500">{{d.name}}</div>
+            <div style="font-size:12px;color:#A3ACB8">{{d.info}}</div>
+          </div>
+          <div class="mono" style="font-size:12px;color:#A3ACB8">{{d.io}}</div>
+        </div>
+      </sc-for>
+    </section>
+
+    <section class="card" role="region" aria-label="Names on Dante" style="display:flex;flex-direction:column;gap:10px">
+      <div class="lbl">Names on Dante</div>
+      <div style="font-size:12px;color:#A3ACB8;line-height:1.45">Rename a device (for example WING-ABC123 to Wing) or a channel (for example 01 to RTA Mic). Routes find their source by name, so C3 Life lists the routes that use the old name and routes them again with the new one, straight after.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#A3ACB8">Device
+          <select aria-label="Device to rename" value="{{dnDev}}" onChange="{{dnPickDev}}"><sc-for list="{{dnDevs}}" as="o" hint-placeholder-count="4"><option value="{{o}}">{{o}}</option></sc-for></select>
+        </label>
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#A3ACB8">Rename
+          <select aria-label="What to rename" value="{{dnKind}}" onChange="{{dnPickKind}}"><sc-for list="{{dnKinds}}" as="o" hint-placeholder-count="3"><option value="{{o.v}}">{{o.l}}</option></sc-for></select>
+        </label>
+      </div>
+      <div><sc-if value="{{dnIsCh}}" hint-placeholder-val="{{ false }}">
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#A3ACB8">Channel
+          <select aria-label="Channel to rename" value="{{dnNum}}" onChange="{{dnPickNum}}"><sc-for list="{{dnNums}}" as="o" hint-placeholder-count="8"><option value="{{o.v}}">{{o.l}}</option></sc-for></select>
+        </label>
+      </sc-if></div>
+      <label for="dn-new" style="font-size:12px;color:#A3ACB8">New name (now {{dnOld}})</label>
+      <div style="display:flex;gap:8px">
+        <input id="dn-new" type="text" maxlength="31" value="{{dnNew}}" onChange="{{dnSetNew}}" autocomplete="off" autocapitalize="none" spellcheck="false" style="flex:1;min-width:0;min-height:44px;border-radius:10px;border:1px solid #333B47;background:#0F1318;color:#ECEEF1;font:400 15px 'IBM Plex Sans',system-ui,sans-serif;padding:0 12px;box-sizing:border-box">
+        <button class="btn" onClick="{{dnCheck}}" disabled="{{dnCantCheck}}">Check</button>
+      </div>
+      <div style="font-size:12px;color:#A3ACB8">{{dnRule}}</div>
+      <div><sc-if value="{{dnHas}}" hint-placeholder-val="{{ false }}">
+        <div role="dialog" aria-label="{{dnTitle}}" style="display:flex;flex-direction:column;gap:8px;background:#0F1318;border:1px solid {{dnEdge}};border-radius:12px;padding:12px">
+          <div style="font-size:15px;font-weight:600">{{dnTitle}}</div>
+          <sc-for list="{{dnLines}}" as="l" hint-placeholder-count="3">
+            <div style="display:flex;gap:8px;font-size:13px;line-height:1.45"><span class="mono" style="width:14px;flex:none;color:{{l.c}}">{{l.mark}}</span><span style="color:{{l.tc}}">{{l.t}}</span></div>
+          </sc-for>
+          <div style="font-size:12px;color:#A3ACB8;line-height:1.45">{{dnNote}}</div>
+          <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px">
+            <button class="btn" onClick="{{dnNo}}">{{dnNoLabel}}</button>
+            <div><sc-if value="{{dnCanYes}}" hint-placeholder-val="{{ true }}"><button class="btn pri" style="width:100%" onClick="{{dnYes}}" disabled="{{dnBusy}}">{{dnYesLabel}}</button></sc-if></div>
+          </div>
+        </div>
+      </sc-if></div>
+    </section>
+
+    <section class="card" style="display:flex;align-items:center;gap:12px;padding:12px 14px">
+      <div style="flex:1">
+        <div style="font-size:15px;font-weight:600">{{lockTitle}}</div>
+        <div style="font-size:12px;color:#A3ACB8">{{lockHint}}</div>
+      </div>
+      <button class="btn" onClick="{{toggleLock}}">{{lockBtn}}</button>
+    </section>
+
+    <section class="card" style="display:flex;flex-direction:column;gap:10px">
+      <div style="display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:8px">
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#A3ACB8">From (transmitter)
+          <select value="{{txDev}}" onChange="{{pickTx}}">
+            <sc-for list="{{devNames}}" as="n" hint-placeholder-count="4"><option value="{{n}}">{{n}}</option></sc-for>
+          </select>
+        </label>
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#A3ACB8">To (receiver)
+          <select value="{{rxDev}}" onChange="{{pickRx}}">
+            <sc-for list="{{devNames}}" as="n" hint-placeholder-count="4"><option value="{{n}}">{{n}}</option></sc-for>
+          </select>
+        </label>
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#A3ACB8">Tx channels
+          <select value="{{txBank}}" onChange="{{pickTxBank}}">
+            <sc-for list="{{txBanks}}" as="b" hint-placeholder-count="2"><option value="{{b.v}}">{{b.l}}</option></sc-for>
+          </select>
+        </label>
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#A3ACB8">Rx channels
+          <select value="{{rxBank}}" onChange="{{pickRxBank}}">
+            <sc-for list="{{rxBanks}}" as="b" hint-placeholder-count="2"><option value="{{b.v}}">{{b.l}}</option></sc-for>
+          </select>
+        </label>
+      </div>
+
+      <div style="display:flex;gap:3px;padding-left:52px">
+        <sc-for list="{{cols}}" as="c" hint-placeholder-count="8">
+          <div class="mono" style="width:32px;text-align:center;font-size:11px;color:#A3ACB8">{{c}}</div>
+        </sc-for>
+      </div>
+      <sc-for list="{{grid}}" as="row" hint-placeholder-count="8">
+        <div style="display:flex;gap:3px;align-items:center">
+          <div class="mono" style="width:49px;font-size:12px;color:#A3ACB8">Rx {{row.n}}</div>
+          <sc-for list="{{row.cells}}" as="cell" hint-placeholder-count="8">
+            <sc-if value="{{cell.on}}" hint-placeholder-val="{{ false }}">
+              <button class="cell on" disabled="{{locked}}" onClick="{{cell.toggle}}" aria-label="Clear {{cell.label}}"></button>
+            </sc-if>
+            <sc-if value="{{cell.off}}" hint-placeholder-val="{{ true }}">
+              <button class="cell" disabled="{{locked}}" onClick="{{cell.toggle}}" aria-label="Route {{cell.label}}"></button>
+            </sc-if>
+          </sc-for>
+        </div>
+      </sc-for>
+      <div style="font-size:12px;color:#A3ACB8">Columns: {{txDev}} Tx · Rows: {{rxDev}} Rx. Each receive channel takes one source. Tap a square to see the channel names before anything changes.</div>
+
+      <div style="display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:8px">
+        <button class="btn pri" disabled="{{locked}}" onClick="{{oneToOne}}">Patch 1-to-1</button>
+        <button class="btn" disabled="{{locked}}" onClick="{{clearBank}}">Clear these 8</button>
+      </div>
+      <div style="font-size:12px;color:#A3ACB8">{{status}}</div>
+    </section>
+
+    <section class="card" style="display:flex;flex-direction:column;gap:8px">
+      <div class="lbl">Routing presets</div>
+      <div style="display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:8px">
+        <button class="btn" disabled="{{locked}}" onClick="{{recallSunday}}">Sunday service</button>
+        <button class="btn" disabled="{{locked}}" onClick="{{recallRehearsal}}">Rehearsal</button>
+      </div>
+      <button class="btn" onClick="{{savePreset}}">Save current routing as preset</button>
+      <div style="font-size:12px;color:#A3ACB8">Clock master and latency stay in Dante Controller.</div>
+    </section>
+
+    <section class="card" style="display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <div style="font-size:15px;font-weight:600">Tio1608-D gain and phantom</div>
+        <span style="font-size:12px;font-weight:500;color:#0B2414;background:#4FD18B;border-radius:6px;padding:4px 8px;flex:none">C3 Life or R Remote</span>
+      </div>
+      <div style="font-size:13px;color:#C9CFD7;line-height:1.45">The Wing can't change the Tio's gain or phantom power, but <b>C3 Life can</b>: on Mixer, tap a channel fed by the Tio, then Input. It uses the same Yamaha commands as R Remote: gain (−6 to +66 dB), +48 V phantom and the low cut on each input. Set the Tio's address on Mixer's Tio1608-D card; it starts as Watch only. Yamaha's free <b>R Remote</b> app still works alongside it, on the C3 Life server.</div>
+      <details class="tioset">
+        <summary style="min-height:44px;display:flex;align-items:center;font-size:14px;font-weight:600;cursor:pointer;color:#6CB4F5">One-time setup at the booth</summary>
+        <ol style="margin:4px 0 0;padding-left:20px;font-size:13px;line-height:1.55;color:#C9CFD7;display:flex;flex-direction:column;gap:4px">
+          <li>On the C3 Life server, install <b>Dante Controller</b>, <b>Dante Virtual Soundcard</b> and <b>R Remote V6</b>. R Remote needs Dante Controller.</li>
+          <li>On the Tio's back panel (with the power off): turn <b>Quick Config off</b>. Quick Config is for Yamaha TF desks, and it would wipe the Dante routing every time the Tio is switched on.</li>
+          <li>Set DIP switches 7 and 8 to <b>Resume</b>, not Refresh, so the Tio keeps its gain and phantom settings after a power cut. Refresh waits for a Yamaha desk to send them.</li>
+          <li>Set DIP switches 5 and 6 to <b>Static IP manual</b>, then give it 192.168.10.41 in R Remote.</li>
+          <li>Plug the switch into the Tio's <b>PRIMARY</b> port. Gain control only works through PRIMARY.</li>
+          <li>Give it a unique UNIT ID (1 is fine, as there's only one Tio).</li>
+        </ol>
+      </details>
+      <div style="font-size:12px;color:#A3ACB8;line-height:1.45">R Remote V6 supports Windows 10 and 11, including Windows 10 IoT Enterprise LTSC on the C3 Life server. V7 adds newer macOS, but Yamaha doesn't list the Tio for it, so test before relying on it.</div>
+      <button class="btn" onClick="{{rr.open}}" disabled="{{rr.busy}}">{{rr.label}}</button>
+      <sc-if value="{{rr.msg}}" hint-placeholder-val="{{ false }}"><div role="status" style="font-size:13px;color:{{rr.col}};line-height:1.45">{{rr.msg}}</div></sc-if>
+    </section>
+  </main>
+
+  <sc-if value="{{hasPending}}" hint-placeholder-val="{{ false }}">
+    <div style="padding:12px 16px;background:#1E232C;border-top:1px solid #F5C518;display:flex;flex-direction:column;gap:10px">
+      <div style="font-size:15px;font-weight:600">Change the Dante routing?</div>
+      <div style="font-size:13px;color:#C9CFD7;line-height:1.45">{{pendingText}}</div>
+      <sc-for list="{{pendingLines}}" as="pl" hint-placeholder-count="1">
+        <div style="background:#0F1318;border-radius:8px;padding:8px 10px;font-size:13px;line-height:1.45"><b>{{pl.who}}</b><br><span style="color:#A3ACB8">{{pl.now}}</span><br><span style="color:#F5C518">{{pl.after}}</span></div>
+      </sc-for>
+      <sc-if value="{{hasMore}}" hint-placeholder-val="{{ false }}"><div style="font-size:12px;color:#A3ACB8">{{moreLines}}</div></sc-if>
+      <div style="font-size:12px;color:#FF8A80">This changes live audio straight away.</div>
+      <sc-if value="{{notSending}}" hint-placeholder-val="{{ true }}">
+        <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px">
+          <button class="btn" onClick="{{cancel}}">Cancel</button>
+          <button class="btn pri" onClick="{{confirm}}">Yes, change the routing</button>
+        </div>
+      </sc-if>
+      <sc-if value="{{sending}}" hint-placeholder-val="{{ false }}"><div role="status" style="font-size:14px;color:#A3ACB8">Sending to the Dante devices and waiting for them to confirm…</div></sc-if>
+    </div>
+  </sc-if>
+
+  <div style="position:absolute;inset:0;z-index:6;pointer-events:none">
+    <dc-import name="MDTalk" hint-size="390px,844px"></dc-import>
+  </div>
+  <div class="rtabar" style="flex:none">
+    <dc-import name="MiniRTA" hint-size="390px,48px"></dc-import>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    // Found by Dante discovery on the booth network (the real app reads these, it doesn't type them in).
+    this.devs = [
+      { name: 'WING Dante card', info: '192.168.10.40 \u00b7 clock leader \u00b7 48 kHz', tx: 64, rx: 64 },
+      { name: 'Tio1608-D', info: '192.168.10.41 \u00b7 follower \u00b7 48 kHz', tx: 8, rx: 8 },
+      { name: 'C3 Life server \u00b7 DVS', info: 'Dante Virtual Soundcard on the C3 Life server \u00b7 192.168.10.10 \u00b7 RTA, MD log and Listen', tx: 2, rx: 16 },
+      { name: 'Mac mini DVS', info: 'Dante Virtual Soundcard \u00b7 192.168.10.30 \u00b7 recording', tx: 16, rx: 16 }
+    ];
+    this.devNames0 = this.devs.map((d) => d.name);
+    const subs = {};
+    this.devs.forEach((d) => { subs[d.name] = {}; });
+    for (let c = 1; c <= 8; c++) subs['WING Dante card'][c] = { dev: 'Tio1608-D', ch: c };
+    subs['Tio1608-D'][1] = { dev: 'WING Dante card', ch: 1 };
+    subs['Tio1608-D'][2] = { dev: 'WING Dante card', ch: 2 };
+    subs['C3 Life server \u00b7 DVS'][1] = { dev: 'WING Dante card', ch: 8 };
+    subs['C3 Life server \u00b7 DVS'][2] = { dev: 'WING Dante card', ch: 33 };
+    subs['C3 Life server \u00b7 DVS'][3] = { dev: 'WING Dante card', ch: 12 };
+    // Listen sources (Listen settings \u203a Sources): Main L/R, Stream L/R, Foyer, speech
+    [[4, 33], [5, 34], [6, 35], [7, 36], [8, 37], [9, 38]].forEach(([d, w]) => { subs['C3 Life server \u00b7 DVS'][d] = { dev: 'WING Dante card', ch: w }; });
+    // devices renamed here in the preview keep their new names
+    try { const ren = JSON.parse(localStorage.getItem('booth.dantedevs') || 'null'); if (Array.isArray(ren) && ren.length === this.devs.length) this.devs = this.devs.map((d, i) => ({ ...d, name: ren[i] })); } catch (e) {}
+    let saved = null; try { saved = JSON.parse(localStorage.getItem('booth.dante') || 'null'); } catch (e) {}
+    this.state = { subs: saved || subs, tx: this.dnNow('Tio1608-D'), rx: this.dnNow('WING Dante card'), txBank: 0, rxBank: 0, locked: true, pending: null, sending: false, readAt: '09:58', autoRead: true, note: '', status: 'Showing ' + this.dnNow('Tio1608-D') + ' \u2192 ' + this.dnNow('WING Dante card') };
+  }
+  dev(n) { return this.devs.find((d) => d.name === n); }
+  banks(n) { const out = []; for (let i = 0; i < Math.ceil(n / 8); i++) out.push({ v: i, l: (i * 8 + 1) + '–' + Math.min(n, i * 8 + 8) }); return out; }
+  // Channel names: the Tio inputs and Wing card receive channels feed Wing channels, so they use the Wing's names.
+  txName(dev, ch) {
+    const nm = this.dnDemoNames()[dev]; if (nm && nm.tx && nm.tx[ch]) return nm.tx[ch];
+    dev = this.dnOrig(dev);
+    if (dev === 'Tio1608-D') return 'In ' + ch + ' \u00b7 ' + this.chName(ch);
+    if (dev === 'WING Dante card') return ({ 1: 'Wedge 1', 2: 'Wedge 2', 8: 'RTA Mic', 33: 'FOH L', 34: 'FOH R', 35: 'Stream L', 36: 'Stream R', 37: 'Foyer', 38: 'Speech' })[ch] || 'Wing out ' + ch;
+    if (dev === 'C3 Life server \u00b7 DVS') return ['Room mic', 'FOH mix', 'MD mic'][ch - 1] || 'Out ' + ch;
+    return 'Mac out ' + ch;
+  }
+  rxName(dev, ch) {
+    const nm = this.dnDemoNames()[dev]; if (nm && nm.rx && nm.rx[ch]) return nm.rx[ch];
+    dev = this.dnOrig(dev);
+    if (dev === 'WING Dante card') return 'Ch ' + String(ch).padStart(2, '0') + ' ' + this.chName(ch);
+    if (dev === 'Tio1608-D') return 'Out ' + ch;
+    if (dev === 'C3 Life server \u00b7 DVS') return ['Room mic', 'FOH mix', 'MD mic'][ch - 1] || this.listenName(ch) || 'In ' + ch;
+    return 'Mac in ' + ch;
+  }
+  // DVS channels 4 onwards feed Listen: name them after the Listen source that uses them.
+  listenName(ch) {
+    let c = null; try { c = JSON.parse(localStorage.getItem('booth.listen') || 'null'); } catch (e) {}
+    const srcs = (c && c.sources) || [{ name: 'Main mix', ch: [4, 5] }, { name: 'Stream mix', ch: [6, 7] }, { name: 'Foyer', ch: [8] }, { name: 'Pastor and speech mics', ch: [9] }];
+    const x = srcs.find((y) => y.ch.indexOf(ch) >= 0);
+    return x ? 'Listen: ' + x.name + (x.ch.length === 2 ? (x.ch[0] === ch ? ' L' : ' R') : '') : '';
+  }
+  srcText(src) { return src ? src.dev + ' Tx ' + src.ch + ' (' + this.txName(src.dev, src.ch) + ')' : 'nothing'; }
+  apply(changes, text) {
+    const subs = JSON.parse(JSON.stringify(this.state.subs));
+    changes.forEach(([rxDev, rc, src]) => { if (src) subs[rxDev][rc] = src; else delete subs[rxDev][rc]; });
+    this.setState({ sending: true });
+    clearTimeout(this.sendT);
+    // Sent to the devices; the screen only changes once they confirm.
+    this.sendT = setTimeout(() => {
+      try { localStorage.setItem('booth.dante', JSON.stringify(subs)); } catch (e) {}
+      this.setState({ subs: subs, pending: null, sending: false, status: '\u2713 ' + text + ' The device confirmed the change.' });
+    }, 800);
+  }
+  ask(changes, text) { this.setState({ pending: { changes: changes, text: text }, sending: false }); }
+  componentDidMount() {
+    // Reading never changes anything, so it runs by itself: every 10 seconds the app reads the routes from the devices.
+    const read = () => {
+      if (!this.state.autoRead) return;
+      const d = new Date(); const hhmmss = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') + ':' + String(d.getSeconds()).padStart(2, '0');
+      let subs = null; try { subs = JSON.parse(localStorage.getItem('booth.dante') || 'null'); } catch (e) {}
+      this.setState({ readAt: hhmmss, ...(subs && !this.state.pending ? { subs } : {}) });
+    };
+    read(); this.readTimer = setInterval(read, 10000);
+    this.dnLoad(); this.dnT = setInterval(() => this.dnLoad(), 15000);
+  }
+  // ---- names on Dante: rename a device or a channel; on the C3 Life server for real, here in the preview ----
+  dnTok() { try { const x = JSON.parse(localStorage.getItem('booth.session') || 'null'); return x ? x.token : ''; } catch (e) { return ''; } }
+  dnApi(path, method, body) {
+    const t = this.dnTok(), h = t ? { Authorization: 'Bearer ' + t } : {};
+    if (body) h['Content-Type'] = 'application/json';
+    return fetch(path, { method: method || 'GET', headers: h, body: body ? JSON.stringify(body) : undefined })
+      .then((r) => r.json().catch(() => ({})).then((j) => ({ code: r.status, j: j })));
+  }
+  dnLoad() {
+    if (this.dnDemo) return;
+    this.dnApi('/api/dante/devices').then(({ code, j }) => {
+      if (code === 404) { this.dnDemo = true; return; }
+      if (code === 200 && j.ok) this.setState({ dnLive: j.devices });
+    }).catch(() => {});
+  }
+  // The preview's devices, with any names given here.
+  dnDemoNames() { try { return JSON.parse(localStorage.getItem('booth.dantenames') || '{}') || {}; } catch (e) { return {}; } }
+  dnList() {
+    if (this.state.dnLive) return this.state.dnLive;
+    const nm = this.dnDemoNames();
+    return this.devs.map((d) => {
+      const o = nm[d.name] || {}, ch = (k, c, f) => { const out = {}; for (let i = 1; i <= c; i++) out[String(i)] = (o[k] || {})[i] || f(d.name, i); return out; };
+      return { name: d.name, tx: ch('tx', d.tx, (a, b) => this.txName(a, b)), rx: ch('rx', d.rx, (a, b) => this.rxName(a, b)), is: '' };
+    });
+  }
+  dnNow(orig) { const i = (this.devNames0 || []).indexOf(orig); return i > -1 ? this.devs[i].name : orig; }
+  dnOrig(dev) { const i = this.devs.findIndex((d) => d.name === dev); return i > -1 && this.devNames0 ? this.devNames0[i] : dev; }
+  dnAdmin() { let u = null; try { u = JSON.parse(localStorage.getItem('booth.user') || 'null'); } catch (e) {} return !!u && (u.role || u.name) === 'Admin'; }
+  dnTarget() {
+    const s = this.state, list = this.dnList(), dev = list.find((d) => d.name === s.dnDev) || list[0];
+    if (!dev) return null;
+    const kind = s.dnKind || 'device', num = parseInt(s.dnNum || '1', 10);
+    return { dev, kind, num, old: kind === 'device' ? dev.name : (dev[kind] || {})[String(num)] || '' };
+  }
+  dnDemoCheck(t, nw) {
+    if (t.kind === 'device') {
+      if (!/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,29}[A-Za-z0-9])?$/.test(nw)) return { ok: false, error: 'A Dante device name is 1 to 31 letters, numbers or hyphens (no spaces), and can’t start or end with a hyphen.' };
+      if (this.dnList().some((d) => d.name !== t.dev.name && d.name.toLowerCase() === nw.toLowerCase())) return { ok: false, error: 'Another Dante device is already called ' + nw + '.' };
+    } else if (!nw.trim() || nw.length > 31 || /[=.@]/.test(nw)) return { ok: false, error: 'A Dante channel name is 1 to 31 characters, without = . or @.' };
+    const routes = [];
+    if (t.kind !== 'rx') Object.keys(this.state.subs).forEach((rx) => Object.keys(this.state.subs[rx]).forEach((rc) => { const x = this.state.subs[rx][rc]; if (x.dev === t.dev.name && (t.kind === 'device' || x.ch === t.num)) routes.push({ text: rx + ' · ' + rc + ' ← ' + x.dev + ' · ' + (t.dev.tx[String(x.ch)] || x.ch) }); }));
+    const text = t.kind === 'device' ? 'Rename the Dante device ' + t.dev.name + ' to ' + nw : 'Rename ' + t.dev.name + '’s ' + (t.kind === 'tx' ? 'transmit' : 'receive') + ' channel ' + t.num + ' from ' + t.old + ' to ' + nw;
+    return { ok: true, text, routes, notes: t.kind === 'rx' ? ['Routes don’t use receive channel names, so nothing else changes.'] : [], id: 'demo' };
+  }
+  dnDemoDo(t, nw) {
+    const nm = this.dnDemoNames();
+    if (t.kind === 'device') {
+      const old = t.dev.name, subs = JSON.parse(JSON.stringify(this.state.subs));
+      this.devs = this.devs.map((d) => (d.name === old ? { ...d, name: nw } : d));
+      subs[nw] = subs[old]; delete subs[old];
+      Object.keys(subs).forEach((rx) => Object.keys(subs[rx]).forEach((rc) => { if (subs[rx][rc].dev === old) subs[rx][rc] = { ...subs[rx][rc], dev: nw }; }));
+      if (nm[old]) { nm[nw] = nm[old]; delete nm[old]; }
+      try { localStorage.setItem('booth.dante', JSON.stringify(subs)); localStorage.setItem('booth.dantenames', JSON.stringify(nm)); localStorage.setItem('booth.dantedevs', JSON.stringify(this.devs.map((d) => d.name))); } catch (e) {}
+      this.setState({ subs, dnDev: nw, tx: this.state.tx === old ? nw : this.state.tx, rx: this.state.rx === old ? nw : this.state.rx });
+    } else {
+      nm[t.dev.name] = nm[t.dev.name] || {}; nm[t.dev.name][t.kind] = nm[t.dev.name][t.kind] || {}; nm[t.dev.name][t.kind][t.num] = nw;
+      try { localStorage.setItem('booth.dantenames', JSON.stringify(nm)); } catch (e) {}
+    }
+  }
+  dnVals() {
+    const s = this.state, list = this.dnList(), t = this.dnTarget(), admin = this.dnAdmin();
+    const kinds = [{ v: 'device', l: 'Device name' }, { v: 'tx', l: 'A transmit channel' }, { v: 'rx', l: 'A receive channel' }];
+    const nw = s.dnNew || '';
+    const out = {
+      dnDevs: list.map((d) => d.name), dnDev: t ? t.dev.name : '', dnKinds: kinds, dnKind: t ? t.kind : 'device', dnIsCh: !!t && t.kind !== 'device',
+      dnNums: t && t.kind !== 'device' ? Object.keys(t.dev[t.kind] || {}).map((n) => ({ v: n, l: n + ' · ' + t.dev[t.kind][n] })) : [], dnNum: t ? String(t.num) : '1',
+      dnOld: t ? t.old : '', dnNew: nw,
+      dnRule: t && t.kind === 'device' ? 'Letters, numbers and hyphens, no spaces, up to 31.' : 'Up to 31 characters, without = . or @.',
+      dnPickDev: (e) => this.setState({ dnDev: e.target.value, dnNum: '1', dnNew: '', dn: null }),
+      dnPickKind: (e) => this.setState({ dnKind: e.target.value, dnNum: '1', dnNew: '', dn: null }),
+      dnPickNum: (e) => this.setState({ dnNum: e.target.value, dnNew: '', dn: null }),
+      dnSetNew: (e) => this.setState({ dnNew: e.target.value, dn: null }),
+      dnCantCheck: !t || !nw.trim() || nw.trim() === t.old,
+      dnCheck: () => {
+        const body = t.kind === 'device' ? { device: t.dev.name, new: nw.trim() } : { device: t.dev.name, kind: t.kind, number: t.num, new: nw.trim() };
+        if (!s.dnLive) { this.setState({ dn: { phase: 'check', body, c: this.dnDemoCheck(t, nw.trim()) } }); return; }
+        this.setState({ dn: { phase: 'checking', body } });
+        this.dnApi('/api/dante/rename/check', 'POST', body).then(({ j }) => this.setState({ dn: { phase: 'check', body, c: j || { ok: false, error: 'No answer.' } } }));
+      },
+      dnHas: !!s.dn, dnTitle: '', dnLines: [], dnNote: '', dnEdge: '#333B47', dnCanYes: false, dnBusy: false, dnYesLabel: 'Yes, rename', dnNoLabel: 'Cancel',
+      dnNo: () => this.setState({ dn: null }),
+      dnYes: () => {
+        const d = s.dn;
+        if (!s.dnLive) { this.dnDemoDo(t, d.body.new); this.setState({ dnNew: '', dn: { ...d, phase: 'done', results: [{ text: d.c.text, ok: true }].concat(d.c.routes.map((r) => ({ text: 'Route again: ' + r.text, ok: true }))) } }); return; }
+        this.setState({ dn: { ...d, phase: 'doing' } });
+        this.dnApi('/api/dante/rename', 'POST', { ...d.body, id: d.c.id }).then(({ code, j }) => {
+          if (code === 409 && j && j.check) { this.setState({ dn: { ...d, phase: 'check', c: j.check, msg: j.error } }); return; }
+          this.setState({ dnNew: '', dn: { ...d, phase: 'done', results: (j && j.results) || [{ text: (j && j.error) || 'Not renamed.', ok: false, error: '' }] } });
+          this.dnLoad();
+        });
+      }
+    };
+    const dn = s.dn;
+    if (!dn) return out;
+    const BLUE = '#6CB4F5', AMBER = '#F5C518', ORANGE = '#FF7A45', GREY = '#A3ACB8';
+    if (dn.phase === 'checking') return { ...out, dnTitle: 'Checking Dante…' };
+    if (dn.phase === 'done') {
+      const ok = dn.results.every((r) => r.ok);
+      return { ...out, dnTitle: ok ? 'Renamed' : 'Stopped', dnEdge: ok ? BLUE : ORANGE, dnNoLabel: 'Close',
+        dnLines: dn.results.map((r) => ({ mark: r.ok ? '✓' : '!', c: r.ok ? BLUE : ORANGE, t: r.text + (r.ok || !r.error ? '' : ' · ' + r.error), tc: r.ok ? '#ECEEF1' : ORANGE })),
+        dnNote: ok ? '' : 'Check the routes in Dante Controller.' };
+    }
+    const c = dn.c || {};
+    if (!c.ok) return { ...out, dnTitle: 'Can’t rename it to that', dnEdge: ORANGE, dnNoLabel: 'Close', dnLines: [{ mark: '!', c: ORANGE, t: c.error || 'Not understood.', tc: ORANGE }] };
+    const lines = (dn.msg ? [{ mark: '!', c: AMBER, t: dn.msg, tc: AMBER }] : []).concat([{ mark: '→', c: AMBER, t: c.text, tc: '#ECEEF1' }],
+      c.routes.map((r) => ({ mark: '↻', c: AMBER, t: 'Route again: ' + r.text, tc: '#ECEEF1' })), (c.notes || []).map((t2) => ({ mark: '✓', c: GREY, t: t2, tc: GREY })));
+    return { ...out, dnTitle: c.routes.length ? 'Rename it, and route ' + c.routes.length + (c.routes.length === 1 ? ' route' : ' routes') + ' again?' : 'Rename it?',
+      dnLines: lines, dnEdge: AMBER, dnCanYes: admin, dnBusy: dn.phase === 'doing', dnYesLabel: dn.phase === 'doing' ? 'Renaming…' : 'Yes, rename',
+      dnNote: (c.routes.length ? 'Those routes stop for a moment while they’re routed again, so don’t do this during a service. ' : '') + (admin ? (s.dnLive ? 'This hasn’t been tried on our Dante network yet: check the routes in Dante Controller afterwards.' : '(Preview: nothing real changes.)') : 'Only an Admin can rename on Dante.') };
+  }
+  componentWillUnmount() { clearTimeout(this.sendT); clearInterval(this.readTimer); clearInterval(this.dnT); }
+  // Channel, bus and DCA names come from the Wing. Every screen reads this one list, so they always match the desk.
+  wnDefaults() {
+    return {
+      ch: { 1: 'Lead Vox', 2: 'BV 1', 3: 'BV 2', 4: 'Acoustic', 5: 'Keys', 6: 'Bass DI', 7: 'Kick', 8: 'RTA Mic', 9: 'Snare', 10: 'Playback L/R', 11: 'Band Leader', 12: 'MD Talkback', 13: 'Drummer TB', 14: 'Spare', 15: 'Pastor HH', 16: 'Pastor Lapel' },
+      aux: { 2: 'Walk-in', 3: 'MD Wireless', 4: 'Click' },
+      bus: { 1: 'Wedges', 2: 'IEM Band', 4: 'IEM Keys', 5: 'Stream L/R' },
+      dca: { 1: 'Band', 2: 'Vocals', 3: 'Speech', 4: 'PB' },
+      mtx: { 1: 'Foyer' },
+      at: '09:58'
+    };
+  }
+  wn() { try { const w = JSON.parse(localStorage.getItem('booth.wingnames') || 'null'); if (w && w.ch) return w; } catch (e) {} return this.wnDefaults(); }
+  chName(n) { return this.wn().ch[n] || 'Ch ' + String(n).padStart(2, '0'); }
+  chLabel(n) { return 'Ch ' + String(n).padStart(2, '0') + ' · ' + this.chName(n); }
+  wnSave(kind, n, name, by) {
+    const w = this.wn(); w[kind] = { ...w[kind], [n]: name };
+    const d = new Date(); w.at = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); w.by = by || '';
+    try { localStorage.setItem('booth.wingnames', JSON.stringify(w)); } catch (e) {}
+    return w;
+  }
+
+  renderVals() {
+    const s = this.state;
+    const txD = this.dev(s.tx), rxD = this.dev(s.rx);
+    const txCh = [], rxCh = [];
+    for (let i = 1; i <= 8; i++) {
+      const t = s.txBank * 8 + i, r = s.rxBank * 8 + i;
+      if (t <= txD.tx) txCh.push(t);
+      if (r <= rxD.rx) rxCh.push(r);
+    }
+    const rxSubs = s.subs[s.rx];
+    const same = (a, ch) => a && a.dev === s.tx && a.ch === ch;
+    const p = s.pending;
+    // Opens R Remote on the C3 Life server (C3 Life runs there too). Opening an app changes nothing on the Tio, so no confirm is needed.
+    const rs = this.state.rr || '';
+    const rr = {
+      busy: rs === 'opening',
+      label: rs === 'opening' ? 'Opening R Remote\u2026' : 'Open R Remote on the C3 Life server',
+      msg: rs === 'opening' ? 'Opening R Remote on the C3 Life server\u2026' : rs === 'open' ? '\u2713 R Remote is open on the C3 Life server\u2019s screen. Change gain and phantom power there.' : '',
+      col: rs === 'open' ? '#4FD18B' : '#A3ACB8',
+      open: () => { this.setState({ rr: 'opening' }); clearTimeout(this.rrT); this.rrT = setTimeout(() => this.setState({ rr: 'open' }), 900); }
+    };
+    return {
+      rr,
+      devCount: this.devs.length,
+      devices: this.devs.map((d) => ({ name: d.name, info: d.info, io: d.tx + '×' + d.rx })),
+      netLine: 'Found ' + this.devs.length + ' Dante devices \u00b7 ' + (s.autoRead ? 'reads by itself every 10 seconds \u00b7 last read ' : 'automatic reading is off \u00b7 last read ') + s.readAt,
+      autoRead: s.autoRead, toggleAutoRead: () => this.setState({ autoRead: !s.autoRead }),
+      readAgain: () => { const d = new Date(); const hhmmss = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') + ':' + String(d.getSeconds()).padStart(2, '0'); this.setState({ readAt: hhmmss, note: 'Read the routes from every device again. Nothing had changed.' }); },
+      demoOutside: () => {
+        const subs = JSON.parse(JSON.stringify(s.subs));
+        const had = subs['WING Dante card'][5];
+        subs['WING Dante card'][5] = had && had.ch === 6 ? { dev: 'Tio1608-D', ch: 5 } : { dev: 'Tio1608-D', ch: 6 };
+        try { localStorage.setItem('booth.dante', JSON.stringify(subs)); } catch (e) {}
+        this.setState({ subs, note: 'A route was changed in Dante Controller: ' + this.rxName('WING Dante card', 5) + ' now gets ' + this.srcText(subs['WING Dante card'][5]) + '. The app picked it up from the network.' });
+      },
+      hasNote: !!s.note, note: s.note,
+      devNames: this.devs.map((d) => d.name),
+      ...this.dnVals(),
+      txDev: s.tx, rxDev: s.rx,
+      pickTx: (e) => this.setState({ tx: e.target.value, txBank: 0 }),
+      pickRx: (e) => this.setState({ rx: e.target.value, rxBank: 0 }),
+      txBanks: this.banks(txD.tx), rxBanks: this.banks(rxD.rx),
+      txBank: s.txBank, rxBank: s.rxBank,
+      pickTxBank: (e) => this.setState({ txBank: Number(e.target.value) }),
+      pickRxBank: (e) => this.setState({ rxBank: Number(e.target.value) }),
+      cols: txCh,
+      grid: rxCh.map((rc) => ({
+        n: rc,
+        cells: txCh.map((tc) => {
+          const on = same(rxSubs[rc], tc);
+          const label = s.tx + ' Tx ' + tc + ' (' + this.txName(s.tx, tc) + ') to ' + s.rx + ' Rx ' + rc + ' (' + this.rxName(s.rx, rc) + ')';
+          return {
+            on: on, off: !on, label: label,
+            toggle: () => this.ask([[s.rx, rc, on ? null : { dev: s.tx, ch: tc }]], (on ? 'Clear ' : 'Route ') + label + '.')
+          };
+        })
+      })),
+      locked: s.locked,
+      lockTitle: s.locked ? 'Dante routing locked' : 'Dante routing unlocked',
+      lockHint: s.locked ? 'Unlock to patch' : 'Every change asks to confirm',
+      lockBtn: s.locked ? 'Unlock' : 'Lock',
+      toggleLock: () => this.setState({ locked: !s.locked, pending: null }),
+      oneToOne: () => {
+        const n = Math.min(txCh.length, rxCh.length);
+        const ch = [];
+        for (let i = 0; i < n; i++) ch.push([s.rx, rxCh[i], { dev: s.tx, ch: txCh[i] }]);
+        this.ask(ch, 'Patch ' + s.tx + ' Tx ' + txCh[0] + '–' + txCh[n - 1] + ' to ' + s.rx + ' Rx ' + rxCh[0] + '–' + rxCh[n - 1] + '.');
+      },
+      clearBank: () => this.ask(rxCh.map((rc) => [s.rx, rc, null]), 'Clear ' + s.rx + ' Rx ' + rxCh[0] + '–' + rxCh[rxCh.length - 1] + '.'),
+      recallSunday: () => this.ask([], 'Recall preset "Sunday service" on all ' + this.devs.length + ' devices.'),
+      recallRehearsal: () => this.ask([], 'Recall preset "Rehearsal" on all ' + this.devs.length + ' devices.'),
+      savePreset: () => this.setState({ status: 'Preset saved ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }),
+      status: s.status,
+      hasPending: !!p,
+      pendingText: p ? p.text : '',
+      pendingLines: p ? p.changes.slice(0, 4).map(([rxDev, rc, src]) => ({
+        who: rxDev + ' Rx ' + rc + ' \u00b7 ' + this.rxName(rxDev, rc),
+        now: 'Now: ' + this.srcText(s.subs[rxDev][rc]),
+        after: 'After: ' + this.srcText(src)
+      })) : [],
+      moreLines: p && p.changes.length > 4 ? '+ ' + (p.changes.length - 4) + ' more channels' : '',
+      hasMore: !!p && p.changes.length > 4,
+      sending: !!s.sending, notSending: !s.sending,
+      confirm: () => this.apply(p.changes, p.changes.length ? p.text.replace(/[?.]$/, '') + '.' : 'Preset recalled on all devices.'),
+      cancel: () => this.setState({ pending: null })
+    };
+  }
+}
+</script>
+</body>
+</html>

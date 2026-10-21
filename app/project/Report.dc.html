@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>C3 Life – Report an issue</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet" data-look>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Safari / iPad: no zoom when typing, no double-tap zoom, no text-select or callout while dragging */
+html{-webkit-text-size-adjust:100%;touch-action:manipulation}
+input,select,textarea{font-size:16px!important}
+button,a,summary,label,[role=slider]{-webkit-tap-highlight-color:transparent}
+[role=slider],.fader,.pan{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+body{margin:0;background:#0D1015}
+a{color:#6CB4F5}a:hover{color:#9CCBF8}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:62px;color:#A3ACB8;text-decoration:none;font-size:12px;font-weight:500;border-top:2px solid transparent}
+.tab:hover{color:#ECEEF1}
+.tab.on{color:#F5C518;border-top-color:#F5C518}
+.card{background:#161A21;border:1px solid #262C36;border-radius:14px;padding:14px}
+.lbl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#A3ACB8;font-weight:500}
+.mono{font-family:'IBM Plex Mono',ui-monospace,monospace}
+.seg{display:flex;gap:4px;background:#161A21;border:1px solid #262C36;border-radius:12px;padding:4px}
+.seg button{flex:1;min-height:44px;border-radius:9px;border:0;background:transparent;color:#A3ACB8;font:500 14px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer}
+.seg button.on{background:#262C36;color:#ECEEF1}
+.cq{display:flex;flex-wrap:wrap;gap:8px}.cqb{flex:1 1 150px;text-align:left}
+.btn{min-height:48px;padding:0 16px;border-radius:12px;border:1px solid #333B47;background:#1E232C;color:#ECEEF1;font:500 15px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer}
+.btn.pri{background:#F5C518;border-color:#F5C518;color:#1A1204;font-weight:600}
+.q{width:100%;display:flex;align-items:center;gap:10px;min-height:56px;padding:6px 2px;border:0;border-top:1px solid #222831;background:transparent;color:#ECEEF1;font:500 15px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer;text-align:left}
+.ans{display:flex;flex-direction:column;gap:8px;padding:0 2px 14px 2px;font-size:14px;line-height:1.5;color:#C9CFD7}
+.ans ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+.go{align-self:flex-start;display:inline-flex;align-items:center;min-height:40px;padding:0 14px;border-radius:20px;border:1px solid #333B47;background:#1E232C;color:#6CB4F5;text-decoration:none;font-size:13px;font-weight:500}
+input[type=search]{width:100%;min-height:48px;border-radius:12px;border:1px solid #333B47;background:#0F1318;color:#ECEEF1;font:400 15px 'IBM Plex Sans',system-ui,sans-serif;padding:0 14px;box-sizing:border-box}
+.key{display:flex;align-items:center;gap:10px;font-size:13px;min-height:30px}
+.sw{width:14px;height:14px;border-radius:4px;flex:none}
+.cmd{font:500 13px 'IBM Plex Mono',ui-monospace,monospace;background:#0F1318;border:1px solid #333B47;border-radius:8px;padding:8px 10px;color:#ECEEF1;white-space:pre-wrap;word-break:break-word}
+.prow{display:flex;gap:10px;padding:8px 0;border-top:1px solid #222831;align-items:baseline}
+
+/* Fills any screen. Wider than 700px (iPad, laptop, web) the content sits in a centred column. */
+@media (min-width:700px){
+  .app > *:not(.bn):not([style*="position:absolute"]){width:100%;max-width:760px;margin-left:auto;margin-right:auto;box-sizing:border-box}
+}
+
+.app > .rtabar{max-width:none !important;margin-left:0 !important;margin-right:0 !important}
+
+/* Easy to use: every link, tick box and control is at least 40-44px tall, so it is easy to hit with a thumb. */
+a[style*="min-height:28px"]{min-height:44px !important}
+a[style*="font-size:12px"][style*="text-decoration:none"],a[style*="font-size:13px"][style*="text-decoration:none"]{display:inline-flex;align-items:center;min-height:40px}
+label:has(> input[type=checkbox]),label:has(> input[type=radio]){min-height:44px}
+input[type=checkbox],input[type=radio]{width:22px;height:22px;flex:none;accent-color:#F5C518}
+input[type=range]{min-height:40px}
+select{min-height:44px}
+button.sw::after,button.cell::after{content:'';position:absolute;inset:-7px -4px}
+.cell{position:relative}
+input[type=checkbox][aria-label]{width:32px;height:32px}
+
+/* Menu: a drop-down list at the top of every screen. Tap Menu to open it, tap again (or pick a page) to close. */
+.topmenu{position:relative;z-index:20;flex:none;background:#11151B;border-bottom:1px solid #262C36}
+.topmenu summary{list-style:none;display:flex;align-items:center;gap:10px;min-height:52px;padding:0 16px;cursor:pointer;color:#ECEEF1;font:600 15px 'IBM Plex Sans',system-ui,sans-serif;max-width:760px;margin:0 auto;box-sizing:border-box}
+.topmenu summary::-webkit-details-marker{display:none}
+.topmenu .mlabel{font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:#A3ACB8}
+.topmenu .mcur{flex:1;color:#F5C518}
+.topmenu .chev{transition:transform .15s}
+.topmenu details[open] .chev{transform:rotate(180deg)}
+.topmenu .mlist{position:absolute;left:8px;right:8px;top:calc(100% + 4px);background:#161A21;border:1px solid #333B47;border-radius:14px;box-shadow:0 14px 34px rgba(0,0,0,.55);padding:6px;display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.topmenu .mlist a{display:flex;align-items:center;gap:10px;min-height:52px;padding:0 12px;border-radius:10px;color:#ECEEF1;text-decoration:none;font:500 15px 'IBM Plex Sans',system-ui,sans-serif}
+.topmenu .mlist a:hover{background:#1E232C}
+.topmenu .mlist a.on{background:#262C36;color:#F5C518}
+@media (min-width:700px){.topmenu .mlist{left:calc(50% - 372px);right:auto;width:440px}}
+@media (min-width:700px) and (max-width:800px){.topmenu .mlist{left:16px}}
+.cqin{width:100%;min-height:44px;border-radius:10px;border:1px solid #333B47;background:#0F1318;color:#ECEEF1;font:500 15px 'IBM Plex Sans',system-ui,sans-serif;padding:0 10px;box-sizing:border-box;min-width:0}
+.cqsw{min-width:64px;min-height:44px;border-radius:22px;border:1px solid #333B47;background:#1E232C;color:#A3ACB8;font:600 13px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer}
+.cqsw[aria-pressed=true]{background:#B48CF2;border-color:#B48CF2;color:#0D1015}
+.fl{display:flex;flex-direction:column;gap:4px;font-size:12px;color:#A3ACB8}
+/* wide:start — iPad landscape and laptops: use the width */
+@media (min-width:1000px){
+  .app > *:not(.bn):not([style*="position:absolute"]){max-width:1240px}
+  .topmenu summary{max-width:1240px}
+  .app main.wide2{display:grid !important;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:14px 18px !important}
+  .app main.wide2 > *{min-width:0}
+  .app main.wide2 > :not(section):not(.card):not(details):not(.wcol){grid-column:1 / -1}
+  .app main.wide2 > .wfull{grid-column:1 / -1}
+  .app main.wide1{max-width:980px !important}
+  .app:has(main.wide1) > *:not(.bn):not([style*="position:absolute"]){max-width:980px}
+  .app:has(main.wide1) .topmenu summary{max-width:980px}
+}
+@media (min-width:1500px){ .app main.wide2.wide3{grid-template-columns:repeat(3,minmax(0,1fr))} }
+/* wide:end */
+/* look:start — the WING look (like WING Edit): near-black, outlined panels, condensed headings, yellow for active, blue for selected.
+   Settings › Look › Classic puts the old look back on this device (html[data-look=classic]). */
+:root{--wk-bg:#0A0B0D;--wk-panel:#121418;--wk-panel2:#181B20;--wk-line:#2E333A;--wk-yellow:#F5C518;--wk-blue:#2F6CC4;--wk-cond:'Barlow Condensed','IBM Plex Sans',system-ui,sans-serif}
+html:not([data-look=classic]) body{background:var(--wk-bg)}
+html:not([data-look=classic]) .app{background:var(--wk-bg) !important}
+html:not([data-look=classic]) .card{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .lbl{font-family:var(--wk-cond);font-size:13px;font-weight:600;letter-spacing:.07em;color:#D4D9E0}
+html:not([data-look=classic]) h1{font-family:var(--wk-cond);font-weight:600 !important;text-transform:uppercase;letter-spacing:.05em;font-size:21px !important;line-height:1.2;color:var(--wk-yellow);border:1.5px solid var(--wk-yellow);border-radius:3px;padding:2px 12px;display:inline-block}
+html:not([data-look=classic]) .btn,html:not([data-look=classic]) .lk,html:not([data-look=classic]) .mxb,html:not([data-look=classic]) .mxbk,html:not([data-look=classic]) .mute,html:not([data-look=classic]) .pbtn{font-family:var(--wk-cond);font-size:15px;letter-spacing:.02em;border-radius:4px}
+html:not([data-look=classic]) .btn.pri{background:var(--wk-yellow);border-color:var(--wk-yellow);color:#111}
+html:not([data-look=classic]) .seg{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .seg a{font-family:var(--wk-cond);font-size:15px;letter-spacing:.03em;border-radius:4px}
+html:not([data-look=classic]) .seg a.on,html:not([data-look=classic]) .lk.on{background:var(--wk-blue);color:#fff}
+html:not([data-look=classic]) .tab.on{color:var(--wk-yellow);border-top-color:var(--wk-yellow)}
+html:not([data-look=classic]) .topmenu{background:#000;border-bottom-color:var(--wk-line)}
+html:not([data-look=classic]) .topmenu summary{font-family:var(--wk-cond);font-size:16px;letter-spacing:.03em}
+html:not([data-look=classic]) .topmenu .mcur{color:var(--wk-yellow)}
+html:not([data-look=classic]) .topmenu .mlist{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .topmenu .mlist a{font-family:var(--wk-cond);font-size:16px;border-radius:4px}
+html:not([data-look=classic]) .topmenu .mlist a.on{background:var(--wk-panel2);color:var(--wk-yellow);box-shadow:inset 3px 0 0 var(--wk-yellow)}
+html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic]) input[type=radio],html:not([data-look=classic]) input[type=range]{accent-color:var(--wk-yellow)}
+.wkside{display:none}
+/* iPad landscape and laptops: a sidebar like WING Edit's (HOME, MIXER, ...) instead of the menu at the top */
+@media (min-width:1000px){
+  html:not([data-look=classic]) .wkside{display:flex;flex-direction:column;gap:2px;position:fixed;left:0;top:0;bottom:0;width:132px !important;max-width:132px !important;margin:0 !important;padding:8px 6px 12px;box-sizing:border-box;background:#000;border-right:1px solid var(--wk-line);overflow-y:auto;z-index:30}
+  html:not([data-look=classic]) .wkside .wkbrand{font:700 24px var(--wk-cond);letter-spacing:.06em;color:var(--wk-yellow);padding:6px 8px 12px}
+  html:not([data-look=classic]) .wkside a{display:flex;align-items:center;gap:9px;min-height:46px;padding:0 8px;border-radius:4px;color:#D4D9E0;text-decoration:none;font:600 15px var(--wk-cond);text-transform:uppercase;letter-spacing:.04em}
+  html:not([data-look=classic]) .wkside a:hover{background:var(--wk-panel2)}
+  html:not([data-look=classic]) .wkside a.on{background:var(--wk-panel2);color:var(--wk-yellow);box-shadow:inset 3px 0 0 var(--wk-yellow)}
+  html:not([data-look=classic]) .wkside svg{flex:none}
+  html:not([data-look=classic]) .app{padding-left:132px;box-sizing:border-box !important}
+  html:not([data-look=classic]) .app > .topmenu{display:none}
+}
+/* look:end */
+</style>
+</helmet>
+<div class="app has-bn" style="width:100%;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;background:#0D1015;color:#ECEEF1;font-family:'IBM Plex Sans',system-ui,sans-serif;overflow:hidden">
+  
+  
+  
+  
+  <nav class="wkside" aria-label="Main menu (side)"><div class="wkbrand" aria-hidden="true">C3 LIFE</div><a href="Main.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Home</a>
+        <a href="Wing.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4v16M12 4v16M18 4v16"/><path d="M4 14h4M10 8h4M16 16h4"/></svg>Mixer</a>
+        <a href="RTA.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V12M9 20V6M14 20V10M19 20V4"/></svg>RTA</a>
+        <a href="Show.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M10 8l5 2-5 2z"/><path d="M8 20h8"/></svg>Show</a>
+        <a href="Lights.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>Lights</a>
+        <a href="Plan.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h1M4 12h1M4 18h1"/></svg>Plan</a>
+        <a href="Chat.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>Chat</a>
+        <a href="Listen.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="15" width="4" height="6" rx="1.5"/><rect x="17" y="15" width="4" height="6" rx="1.5"/><path d="M10 9.5a2.5 2.5 0 0 1 4 0"/></svg>Listen</a>
+        <a href="Help.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2.5 2-2.5 3.5M12 17h.01"/></svg>Help</a>
+        <a href="Report.dc.html" class="on" aria-current="page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4h11l-1.5 4L16 12H5"/></svg>Report an issue</a></nav>
+  <nav class="bn topmenu" aria-label="Main menu">
+    <details>
+      <summary aria-label="Menu. You are on Report an issue"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span class="mlabel">Menu</span><span class="mcur">Report an issue</span><svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+      <div class="mlist">
+        <a href="Main.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Home</a>
+        <a href="Wing.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4v16M12 4v16M18 4v16"/><path d="M4 14h4M10 8h4M16 16h4"/></svg>Mixer</a>
+        <a href="RTA.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V12M9 20V6M14 20V10M19 20V4"/></svg>RTA</a>
+        <a href="Show.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M10 8l5 2-5 2z"/><path d="M8 20h8"/></svg>Show</a>
+        <a href="Lights.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>Lights</a>
+        <a href="Plan.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h1M4 12h1M4 18h1"/></svg>Plan</a>
+        <a href="Chat.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>Chat</a>
+        <a href="Listen.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="15" width="4" height="6" rx="1.5"/><rect x="17" y="15" width="4" height="6" rx="1.5"/><path d="M10 9.5a2.5 2.5 0 0 1 4 0"/></svg>Listen</a>
+        <a href="Help.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2.5 2-2.5 3.5M12 17h.01"/></svg>Help</a>
+        <a href="Report.dc.html" class="on" aria-current="page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4h11l-1.5 4L16 12H5"/></svg>Report an issue</a>
+        
+      </div>
+    </details>
+  </nav>
+  <header style="padding:22px 16px 12px;display:flex;flex-direction:column;gap:6px">
+    <h1 style="margin:0;font-size:26px;font-weight:600;padding:0 4px">Report an issue</h1>
+    <div style="font-size:13px;color:#A3ACB8;padding:0 4px;line-height:1.45">Something not working? Tell us what happened, and add photos if they help.</div>
+  </header>
+
+  <main class=" wide2" style="flex:1;overflow-y:auto;padding:0 16px 16px;display:flex;flex-direction:column;gap:12px">
+    <section class="card" aria-label="New report" style="display:flex;flex-direction:column;gap:10px">
+      <label for="rp-subject" class="fl">Subject
+        <input id="rp-subject" type="text" class="cqin" value="{{subject}}" onInput="{{setSubject}}" onChange="{{setSubject}}" maxlength="120" placeholder="e.g. Pastor's mic crackles">
+      </label>
+      <label for="rp-text" class="fl">What happened
+        <textarea id="rp-text" class="cqin" rows="5" onInput="{{setText}}" onChange="{{setText}}" maxlength="5000" placeholder="What you saw or heard, when, and what you'd tried" style="padding:10px;min-height:120px;resize:vertical;font-family:inherit">{{text}}</textarea>
+      </label>
+      <label for="rp-who" class="fl">Who is reporting
+        <input id="rp-who" type="text" class="cqin" value="{{who}}" onInput="{{setWho}}" onChange="{{setWho}}" maxlength="80" placeholder="Your name" autocomplete="name">
+      </label>
+      <div class="fl">Photos
+        <sc-if value="{{hasPhotos}}" hint-placeholder-val="{{ false }}">
+          <div style="display:grid;grid-template-columns:repeat(4, minmax(0, 1fr));gap:6px">
+            <sc-for list="{{photos}}" as="ph" hint-placeholder-count="2">
+              <div style="position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;background:#0F1318;border:1px solid #333B47">
+                <img src="{{ph.src}}" alt="{{ph.alt}}" style="width:100%;height:100%;object-fit:cover;display:block">
+                <button onClick="{{ph.remove}}" aria-label="{{ph.aria}}" style="position:absolute;top:2px;right:2px;width:32px;height:32px;border-radius:16px;border:0;background:rgba(0,0,0,.7);color:#FFFFFF;font-size:16px;cursor:pointer">&#215;</button>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+        <sc-if value="{{canAdd}}" hint-placeholder-val="{{ true }}">
+          <label class="btn" style="position:relative;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;overflow:hidden">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Add photos
+            <input id="rp-photos" type="file" accept="image/*" multiple onChange="{{pick}}" aria-label="Add photos" style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer">
+          </label>
+        </sc-if>
+        <div style="font-size:12px;color:#A3ACB8">{{photoCount}}. They're made smaller on this phone before they're sent.</div>
+      </div>
+      <label style="display:flex;align-items:center;gap:10px;font-size:14px"><input type="checkbox" checked="{{other}}" onChange="{{toggleOther}}"><span>Send this one to a different address</span></label>
+      <sc-if value="{{other}}" hint-placeholder-val="{{ false }}">
+        <label for="rp-to" class="fl">Email address
+          <input id="rp-to" type="email" class="cqin" value="{{to}}" onInput="{{setTo}}" onChange="{{setTo}}" maxlength="200" placeholder="name@example.org" autocomplete="email">
+        </label>
+      </sc-if>
+      <sc-if value="{{hasErr}}" hint-placeholder-val="{{ false }}"><div role="alert" style="font-size:13px;color:#FF7A45">{{err}}</div></sc-if>
+      <sc-if value="{{hasMsg}}" hint-placeholder-val="{{ false }}"><div role="status" style="font-size:13px;color:#6CB4F5;line-height:1.45">{{msg}}</div></sc-if>
+      <button class="btn pri" onClick="{{sendFn}}" disabled="{{sending}}">{{sendLabel}}</button>
+      <div style="font-size:12px;color:#A3ACB8;line-height:1.45">{{defaultTo}} The C3 Life server keeps it and emails it on its own as soon as there's internet.</div>
+      <button class="btn" onClick="{{shareFn}}">Send from this phone instead</button>
+      <div style="font-size:12px;color:#A3ACB8;line-height:1.45">Uses this phone's own email or messages, over mobile data if the booth has no internet. Turn off Wi-Fi first if it won't send.</div>
+    </section>
+    <section class="card" aria-label="Your reports" style="display:flex;flex-direction:column;gap:4px;padding:10px 14px">
+      <div class="lbl" style="padding-bottom:4px">Your reports from this phone</div>
+      <sc-if value="{{noMine}}" hint-placeholder-val="{{ false }}"><div style="font-size:13px;color:#A3ACB8">None yet.</div></sc-if>
+      <sc-for list="{{mine}}" as="r" hint-placeholder-count="2">
+        <div style="padding:8px 0;border-top:1px solid #222831">
+          <div style="font-size:14px;font-weight:600">{{r.subject}}</div>
+          <div style="font-size:12px;color:#A3ACB8">{{r.sub}}</div>
+          <div style="font-size:12px;color:{{r.color}}">{{r.status}}</div>
+          <sc-if value="{{r.hasMonday}}" hint-placeholder-val="{{ false }}"><div style="font-size:12px;color:#A3ACB8">{{r.monday}}</div></sc-if>
+        </div>
+      </sc-for>
+    </section>
+    <sc-if value="{{isAdmin}}" hint-placeholder-val="{{ false }}">
+      <section class="card" aria-label="Report settings" style="display:flex;flex-direction:column;gap:10px">
+        <div class="lbl">Where reports go (Admin)</div>
+        <div style="font-size:13px;color:{{emailColor}};line-height:1.45">{{emailState}}</div>
+        <label for="rp-adm-to" class="fl">Send reports to
+          <input id="rp-adm-to" type="email" class="cqin" value="{{admTo}}" onInput="{{setAdmTo}}" onChange="{{setAdmTo}}" maxlength="200" placeholder="tech@yourchurch.org">
+        </label>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600">Also add them to a monday.com board</div><div style="font-size:12px;color:#A3ACB8;line-height:1.45">{{mondayState}}</div></div>
+          <button class="cqsw" onClick="{{toggleMonday}}" aria-pressed="{{admMonday}}" aria-label="monday.com {{mondayLabel}}">{{mondayLabel}}</button>
+        </div>
+        <sc-if value="{{admMonday}}" hint-placeholder-val="{{ false }}">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));gap:8px">
+            <label for="rp-board" class="fl">Board id
+              <input id="rp-board" type="text" inputmode="numeric" class="cqin" value="{{admBoard}}" onInput="{{setAdmBoard}}" onChange="{{setAdmBoard}}" placeholder="the number in its web address">
+            </label>
+            <label for="rp-group" class="fl">Group id (optional)
+              <input id="rp-group" type="text" class="cqin" value="{{admGroup}}" onInput="{{setAdmGroup}}" onChange="{{setAdmGroup}}" placeholder="e.g. topics">
+            </label>
+          </div>
+        </sc-if>
+        <sc-if value="{{hasAdmErr}}" hint-placeholder-val="{{ false }}"><div role="alert" style="font-size:13px;color:#FF7A45">{{admErr}}</div></sc-if>
+        <sc-if value="{{hasAdmMsg}}" hint-placeholder-val="{{ false }}"><div role="status" style="font-size:13px;color:#6CB4F5">{{admMsg}}</div></sc-if>
+        <button class="btn pri" onClick="{{saveAdminFn}}">Save</button>
+        <sc-if value="{{hasAll}}" hint-placeholder-val="{{ false }}">
+          <div class="lbl" style="padding-top:6px">Latest reports, from everyone</div>
+          <sc-for list="{{all}}" as="r" hint-placeholder-count="2">
+            <div style="padding:6px 0;border-top:1px solid #222831"><div style="font-size:13px;font-weight:600">{{r.subject}}</div><div style="font-size:12px;color:#A3ACB8">{{r.sub}}</div><div style="font-size:12px;color:{{r.color}}">{{r.status}}</div></div>
+          </sc-for>
+        </sc-if>
+      </section>
+    </sc-if>
+  </main>
+
+  <div style="position:absolute;inset:0;z-index:6;pointer-events:none">
+    <dc-import name="MDTalk" hint-size="390px,844px"></dc-import>
+  </div>
+  <div class="rtabar" style="flex:none">
+    <dc-import name="MiniRTA" hint-size="390px,48px"></dc-import>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    const u = this.user();
+    this.state = { subject: '', text: '', who: u && u.name && u.role !== 'Guest' && u.role !== 'Listener' ? u.name : '', photos: [], other: false, to: '',
+      sending: false, msg: '', err: '', mine: this.mine(), adm: null, admTo: '', admBoard: '', admGroup: '', admMonday: false, admMsg: '', admErr: '', all: [] };
+  }
+  componentDidMount() {
+    this.check();
+    this.timer = setInterval(() => this.check(), 15000);  // how my reports are getting on
+    if (this.isAdmin()) this.loadAdmin();
+  }
+  componentWillUnmount() { clearInterval(this.timer); }
+  user() { try { return JSON.parse(localStorage.getItem('booth.user') || 'null'); } catch (e) { return null; } }
+  isAdmin() { const u = this.user(); return !!u && (u.role || u.name) === 'Admin'; }
+  token() { try { const x = JSON.parse(localStorage.getItem('booth.session') || 'null'); return x ? x.token : ''; } catch (e) { return ''; } }
+  api(path, method, body) {
+    const h = { 'Content-Type': 'application/json' }; const t = this.token(); if (t) h.Authorization = 'Bearer ' + t;
+    return fetch('/api/reports' + path, { method: method || 'GET', headers: h, body: body ? JSON.stringify(body) : undefined }).then((r) => r.json().catch(() => ({})).then((j) => ({ code: r.status, j: j || {} })));
+  }
+  mine() { try { return JSON.parse(localStorage.getItem('booth.reports') || '[]'); } catch (e) { return []; } }
+  saveMine(l) { try { localStorage.setItem('booth.reports', JSON.stringify(l.slice(0, 20))); } catch (e) {} this.setState({ mine: l.slice(0, 20) }); }
+  check() {
+    const l = this.mine(), ids = l.filter((x) => !x.local && x.email !== 'sent').map((x) => x.id);
+    if (!ids.length) return;
+    this.api('/mine?ids=' + ids.join(',')).then(({ code, j }) => {
+      if (code !== 200) return;
+      const by = {}; j.reports.forEach((r) => { by[r.id] = r; });
+      this.saveMine(this.mine().map((x) => (by[x.id] ? { ...x, ...by[x.id] } : x)));
+    }).catch(() => {});
+  }
+  // photos: made smaller on the phone first (1600 pixels across at most), so they send quickly
+  addPhotos(files) {
+    // one at a time, so they stay in the order picked
+    const room = 4 - this.state.photos.length, list = [...files].slice(0, Math.max(0, room));
+    if (files.length > room) this.setState({ err: 'Up to 4 photos.' });
+    const one = (f) => new Promise((res) => {
+      const url = URL.createObjectURL(f), img = new Image();
+      img.onload = () => {
+        const k = Math.min(1, 1600 / Math.max(img.width, img.height)), c = document.createElement('canvas');
+        c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        URL.revokeObjectURL(url);
+        res({ name: f.name || 'photo.jpg', data: c.toDataURL('image/jpeg', 0.82) });
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); this.setState({ err: 'That file isn\u2019t a picture this phone can open.' }); res(null); };
+      img.src = url;
+    });
+    list.reduce((chain, f) => chain.then(() => one(f).then((ph) => { if (ph) this.setState({ photos: this.state.photos.concat([ph]).slice(0, 4) }); })), Promise.resolve());
+  }
+  problem() {
+    const s = this.state;
+    if (!s.subject.trim()) return 'Give it a subject.';
+    if (!s.text.trim()) return 'Say what happened.';
+    if (!s.who.trim()) return 'Say who is reporting.';
+    if (s.other && !/^[^@\s,;<>]+@[^@\s,;<>]+\.[A-Za-z]{2,}$/.test(s.to.trim())) return 'That email address doesn’t look right.';
+    return '';
+  }
+  body() {
+    const s = this.state, d = new Date();
+    return { subject: s.subject.trim(), text: s.text.trim(), who: s.who.trim(), to: s.other ? s.to.trim() : '', page: document.referrer ? document.referrer.split('p=')[1] || '' : '',
+      device: (navigator.userAgent.match(/iPhone|iPad|Android|Macintosh|Windows/) || ['Browser'])[0] + ' · ' + innerWidth + '×' + innerHeight,
+      photos: s.photos.map((p) => ({ type: 'image/jpeg', data: p.data.split(',')[1] })), at: d.toLocaleString() };
+  }
+  send() {
+    const err = this.problem(); if (err) { this.setState({ err: err, msg: '' }); return; }
+    const b = this.body();
+    this.setState({ sending: true, err: '', msg: '' });
+    const done = (rec, msg) => { this.saveMine([rec].concat(this.mine())); this.setState({ sending: false, subject: '', text: '', photos: [], other: false, to: '', msg: msg }); };
+    this.api('', 'POST', b).then(({ code, j }) => {
+      if (code === 200) done({ ...j.report }, '✓ Sent to the C3 Life server. It emails it ' + (b.to ? 'to ' + b.to + ' ' : '') + 'as soon as there’s internet.');
+      else if (code === 404 || code === 405 || code === 501) done({ id: 'p' + Date.now(), subject: b.subject, who: b.who, at: new Date().toLocaleString(), email: 'preview', local: true }, '✓ Kept in this preview. On the C3 Life server it’s emailed as soon as there’s internet.');
+      else this.setState({ sending: false, err: j.error || 'Couldn’t send it.' });
+    }).catch(() => done({ id: 'p' + Date.now(), subject: b.subject, who: b.who, at: new Date().toLocaleString(), email: 'preview', local: true }, '✓ Kept in this preview. On the C3 Life server it’s emailed as soon as there’s internet.'));
+  }
+  // send it from this phone (its own email app, over mobile data), with the photos when the phone allows
+  shareFromPhone() {
+    const err = this.problem(); if (err) { this.setState({ err: err, msg: '' }); return; }
+    const b = this.body(), s = this.state;
+    const text = b.text + '\n\nReported by: ' + b.who + '\nWhen: ' + b.at + '\nDevice: ' + b.device;
+    const files = s.photos.map((p, i) => { const bin = atob(p.data.split(',')[1]), arr = new Uint8Array(bin.length); for (let k = 0; k < bin.length; k++) arr[k] = bin.charCodeAt(k); return new File([arr], 'photo-' + (i + 1) + '.jpg', { type: 'image/jpeg' }); });
+    const to = b.to || ((this.state.adm || {}).to) || '';
+    try {
+      if (navigator.share && (!files.length || (navigator.canShare && navigator.canShare({ files: files })))) {
+        navigator.share({ title: 'C3 Life issue: ' + b.subject, text: (to ? 'To: ' + to + '\n\n' : '') + text, files: files.length ? files : undefined })
+          .then(() => this.setState({ msg: '✓ Passed to this phone to send.', err: '' })).catch(() => {});
+        return;
+      }
+    } catch (e) {}
+    location.href = 'mailto:' + encodeURIComponent(to) + '?subject=' + encodeURIComponent('C3 Life issue: ' + b.subject) + '&body=' + encodeURIComponent(text + (files.length ? '\n\n(Add the photos to this email yourself.)' : ''));
+  }
+  loadAdmin() {
+    this.api('').then(({ code, j }) => {
+      if (code !== 200) return;
+      const st = j.settings;
+      this.setState({ adm: st, admTo: st.to, admBoard: st.monday_board, admGroup: st.monday_group, admMonday: st.monday, all: j.reports });
+    }).catch(() => {});
+  }
+  saveAdmin() {
+    const s = this.state;
+    this.api('/settings', 'PUT', { to: s.admTo.trim(), monday: s.admMonday, monday_board: s.admBoard.trim(), monday_group: s.admGroup.trim() }).then(({ code, j }) => {
+      if (code === 200) { this.setState({ adm: j, admMsg: '✓ Saved. New reports go to ' + j.to + '.', admErr: '' }); } else this.setState({ admErr: j.error || 'Couldn’t save.', admMsg: '' });
+    }).catch(() => this.setState({ admErr: 'The C3 Life server didn’t answer.', admMsg: '' }));
+  }
+  status(r) {
+    if (r.email === 'preview') return ['Kept in the preview', '#A3ACB8'];
+    if (r.email === 'sent') return ['✓ Emailed ' + (r.email_at || '') + (r.to ? ' to ' + r.to : ''), '#6CB4F5'];
+    if (r.email === 'failed') return ['Couldn’t email it: ' + (r.email_error || ''), '#FF7A45'];
+    return ['Waiting for internet' + (r.email_error ? ' · ' + r.email_error : ''), '#F5C518'];
+  }
+  renderVals() {
+    const s = this.state, adm = s.adm, admin = this.isAdmin();
+    const row = (r) => { const [t, c] = this.status(r); return { subject: r.subject, sub: (r.who || '') + ' · ' + (r.at || ''), status: t, color: c, monday: r.monday === 'added' ? '✓ On the monday.com board' : (r.monday ? 'monday.com: ' + r.monday : ''), hasMonday: !!r.monday }; };
+    return {
+      subject: s.subject, setSubject: (e) => this.setState({ subject: e.target.value, err: '' }),
+      text: s.text, setText: (e) => this.setState({ text: e.target.value, err: '' }),
+      who: s.who, setWho: (e) => this.setState({ who: e.target.value, err: '' }),
+      photos: s.photos.map((p, i) => ({ src: p.data, alt: 'Photo ' + (i + 1), remove: () => this.setState({ photos: s.photos.filter((x, j) => j !== i) }), aria: 'Remove photo ' + (i + 1) })),
+      hasPhotos: s.photos.length > 0, canAdd: s.photos.length < 4, photoCount: s.photos.length + ' of 4 photos',
+      pick: (e) => { this.addPhotos(e.target.files || []); e.target.value = ''; },
+      other: s.other, toggleOther: () => this.setState({ other: !s.other }), to: s.to, setTo: (e) => this.setState({ to: e.target.value, err: '' }),
+      defaultTo: adm && adm.to ? 'It goes to ' + adm.to + '.' : 'It goes to the C3 Life support address.',
+      sendFn: () => this.send(), sending: s.sending, sendLabel: s.sending ? 'Sending…' : 'Send report', shareFn: () => this.shareFromPhone(),
+      msg: s.msg, hasMsg: !!s.msg, err: s.err, hasErr: !!s.err,
+      mine: s.mine.map(row), hasMine: s.mine.length > 0, noMine: !s.mine.length,
+      // Admin
+      isAdmin: admin && !!adm, admTo: s.admTo, setAdmTo: (e) => this.setState({ admTo: e.target.value }),
+      admMonday: s.admMonday, toggleMonday: () => this.setState({ admMonday: !s.admMonday }), mondayLabel: s.admMonday ? 'On' : 'Off',
+      admBoard: s.admBoard, setAdmBoard: (e) => this.setState({ admBoard: e.target.value }), admGroup: s.admGroup, setAdmGroup: (e) => this.setState({ admGroup: e.target.value }),
+      saveAdminFn: () => this.saveAdmin(), admMsg: s.admMsg, hasAdmMsg: !!s.admMsg, admErr: s.admErr, hasAdmErr: !!s.admErr,
+      emailState: adm ? (adm.email_ready ? 'Email is set up (' + adm.smtp + ', from ' + adm.from_addr + ').' : 'Email isn’t set up yet: run Install-C3Life.ps1 -SmtpHost … (Help › Set up issue reports). Reports wait until it is.') : '',
+      emailColor: adm && adm.email_ready ? '#6CB4F5' : '#F5C518',
+      mondayState: adm ? (adm.monday_ready ? 'monday.com is connected.' : 'monday.com needs a token first: Install-C3Life.ps1 -MondayToken …') : '',
+      all: s.all.slice(0, 10).map(row), hasAll: s.all.length > 0
+    };
+  }
+}
+</script>
+</body>
+</html>

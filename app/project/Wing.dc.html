@@ -1,0 +1,1580 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>C3 Life – Wing mixer</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet" data-look>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Safari / iPad: no zoom when typing, no double-tap zoom, no text-select or callout while dragging */
+html{-webkit-text-size-adjust:100%;touch-action:manipulation}
+input,select,textarea{font-size:16px!important}
+button,a,summary,label,[role=slider]{-webkit-tap-highlight-color:transparent}
+[role=slider],.fader,.pan{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+body{margin:0;background:#0D1015}
+a{color:#6CB4F5}a:hover{color:#9CCBF8}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:62px;color:#A3ACB8;text-decoration:none;font-size:12px;font-weight:500;border-top:2px solid transparent}
+.tab:hover{color:#ECEEF1}
+.tab.on{color:#F5C518;border-top-color:#F5C518}
+.card{background:#161A21;border:1px solid #262C36;border-radius:14px;padding:14px}
+.lbl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#A3ACB8;font-weight:500}
+.mono{font-family:'IBM Plex Mono',ui-monospace,monospace}
+.seg{display:flex;gap:4px;background:#161A21;border:1px solid #262C36;border-radius:12px;padding:4px}
+.seg a{flex:1;display:flex;align-items:center;justify-content:center;min-height:44px;border-radius:9px;color:#A3ACB8;text-decoration:none;font-size:14px;font-weight:500}
+.seg a.on{background:#262C36;color:#ECEEF1}
+.mute{width:64px;min-height:44px;border-radius:10px;border:1px solid #333B47;background:#1E232C;color:#ECEEF1;font:500 13px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer}
+.mute.hot{background:#FF7A45;border-color:#FF7A45;color:#1A0A03}
+input[type=range]{width:100%;accent-color:#F5C518;height:28px}
+input[type=range]:disabled{opacity:.35;cursor:not-allowed}
+.mute:disabled{opacity:.4;cursor:not-allowed}
+.lk{flex:1;min-height:44px;border-radius:9px;border:0;background:transparent;color:#A3ACB8;font:500 13px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer}
+.lk.on{background:#262C36;color:#ECEEF1}
+.lkb{width:36px;height:36px;border-radius:8px;border:1px solid #333B47;background:transparent;color:#A3ACB8;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;flex:none}
+.lkb.on{background:#F5C518;border-color:#F5C518;color:#1A1204}
+.btn{min-height:44px;padding:0 16px;border-radius:10px;border:1px solid #333B47;background:#1E232C;color:#ECEEF1;font:500 14px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer}
+.btn.pri{background:#F5C518;border-color:#F5C518;color:#1A1204}
+input[type=checkbox]{width:20px;height:20px;accent-color:#F5C518;flex:none}
+
+/* Fills any screen. Wider than 700px (iPad, laptop, web) the content sits in a centred column. */
+@media (min-width:700px){
+  .app > *:not(.bn):not([style*="position:absolute"]){width:100%;max-width:760px;margin-left:auto;margin-right:auto;box-sizing:border-box}
+}
+
+.app > .rtabar{max-width:none !important;margin-left:0 !important;margin-right:0 !important}
+
+/* Easy to use: every link, tick box and control is at least 40-44px tall, so it is easy to hit with a thumb. */
+a[style*="min-height:28px"]{min-height:44px !important}
+a[style*="font-size:12px"][style*="text-decoration:none"],a[style*="font-size:13px"][style*="text-decoration:none"]{display:inline-flex;align-items:center;min-height:40px}
+label:has(> input[type=checkbox]),label:has(> input[type=radio]){min-height:44px}
+input[type=checkbox],input[type=radio]{width:22px;height:22px;flex:none;accent-color:#F5C518}
+input[type=range]{min-height:40px}
+select{min-height:44px}
+button.sw::after,button.cell::after{content:'';position:absolute;inset:-7px -4px}
+.cell{position:relative}
+input[type=checkbox][aria-label]{width:32px;height:32px}
+
+/* Menu: a drop-down list at the top of every screen. Tap Menu to open it, tap again (or pick a page) to close. */
+.topmenu{position:relative;z-index:20;flex:none;background:#11151B;border-bottom:1px solid #262C36}
+.topmenu summary{list-style:none;display:flex;align-items:center;gap:10px;min-height:52px;padding:0 16px;cursor:pointer;color:#ECEEF1;font:600 15px 'IBM Plex Sans',system-ui,sans-serif;max-width:760px;margin:0 auto;box-sizing:border-box}
+.topmenu summary::-webkit-details-marker{display:none}
+.topmenu .mlabel{font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:#A3ACB8}
+.topmenu .mcur{flex:1;color:#F5C518}
+.topmenu .chev{transition:transform .15s}
+.topmenu details[open] .chev{transform:rotate(180deg)}
+.topmenu .mlist{position:absolute;left:8px;right:8px;top:calc(100% + 4px);background:#161A21;border:1px solid #333B47;border-radius:14px;box-shadow:0 14px 34px rgba(0,0,0,.55);padding:6px;display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.topmenu .mlist a{display:flex;align-items:center;gap:10px;min-height:52px;padding:0 12px;border-radius:10px;color:#ECEEF1;text-decoration:none;font:500 15px 'IBM Plex Sans',system-ui,sans-serif}
+.topmenu .mlist a:hover{background:#1E232C}
+.topmenu .mlist a.on{background:#262C36;color:#F5C518}
+@media (min-width:700px){.topmenu .mlist{left:calc(50% - 372px);right:auto;width:440px}}
+@media (min-width:700px) and (max-width:800px){.topmenu .mlist{left:16px}}
+
+.ren{width:36px;height:36px;margin:-6px 0 -6px 2px;border-radius:8px;border:0;background:none;color:#A3ACB8;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;padding:0}
+.ren:hover{background:#1E232C;color:#ECEEF1}
+.send{min-height:48px;border-radius:10px;border:1px solid #F5C518;background:#F5C518;color:#1A1204;font:600 14px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer}
+.lk:disabled{opacity:.45;cursor:not-allowed}
+
+/* Strips: like a desk (and Mixing Station). One strip per channel: name, pan, MUTE, level, fader with scale and meter. */
+.mx{display:flex;flex-direction:column;gap:6px;background:#0B0E12;border:1px solid #262C36;border-radius:14px;padding:6px}
+.mxtop{display:flex;align-items:center;gap:6px;min-height:40px;padding:0 4px}
+.mxst{flex:1;min-width:0;font-size:12px;color:#A3ACB8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mxb{min-height:40px;min-width:44px;padding:0 10px;border-radius:9px;border:1px solid #333B47;background:#1E232C;color:#ECEEF1;font:500 13px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer}
+.mxb:disabled{opacity:.35;cursor:default}
+.mxb.on{background:#2F6E3E;border-color:#4FD18B}
+.mxb.red{background:#B23A31;border-color:#E07A6A;color:#fff}
+.mxstrips{display:flex;gap:3px;overflow:hidden}
+.mxs{flex:none;display:flex;flex-direction:column;gap:3px;min-height:0}
+.mxn{min-height:40px;border-radius:7px;border:0;font:500 13px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer;padding:0 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mxn[aria-pressed="true"]{outline:2px solid #ECEEF1;outline-offset:-2px}
+.mxpan{height:22px;border-radius:5px;background:#2A2F37;position:relative;cursor:ew-resize;touch-action:none}
+.mxpan i{position:absolute;top:3px;bottom:3px;width:3px;margin-left:-1px;background:#ECEEF1;border-radius:2px}
+.mxpan b{position:absolute;left:50%;top:50%;width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:50%;background:#ECEEF1}
+.mxpan0{height:22px}
+.mxm{min-height:40px;border-radius:7px;border:1px solid #5A1E1A;background:#3A1512;color:#E9C9C4;font:500 13px 'IBM Plex Sans',system-ui,sans-serif;letter-spacing:.02em;cursor:pointer;padding:0}
+.mxm.hot{background:#C9302C;border-color:#FF7A6E;color:#fff}
+.mxm:disabled{opacity:.45;cursor:default}
+.mxdb{font-size:11px;color:#C9CFD7;text-align:center;height:14px;line-height:14px}
+.mxf{position:relative;flex:1;min-height:120px;background:linear-gradient(#141A24,#0E131A);border-radius:6px;cursor:ns-resize;touch-action:none}
+.mxf[aria-disabled="true"]{cursor:default}
+.mxf[aria-disabled="true"] .mxcap{filter:brightness(.6)}
+.mxf:focus-visible{outline:2px solid #4AA8FF;outline-offset:1px}
+.mxtk{position:absolute;left:0;right:0;height:0;pointer-events:none}
+.mxtk span{position:absolute;left:1px;transform:translateY(-50%);font:400 11px 'IBM Plex Mono',ui-monospace,monospace;letter-spacing:-.04em;color:#8A93A0}
+.mxtk em{position:absolute;left:44%;width:12%;border-top:1px solid #4A5260}
+.mxtrack{position:absolute;left:50%;top:10px;bottom:10px;width:3px;margin-left:-1.5px;background:#05070A;border-radius:2px}
+.mxmeter{position:absolute;right:3px;top:10px;bottom:10px;width:4px;background:#0A2A12;border-radius:2px;overflow:hidden}
+.mxmeter{background:linear-gradient(to top,#2FBF57 0%,#2FBF57 62%,#D6C23A 72%,#E08A2E 82%,#E5483B 90%)}
+.mxmeter div{position:absolute;left:0;right:0;top:0;background:#0A1A10}
+.mxmeter.l{right:9px}
+.mxcap{position:absolute;left:50%;width:62%;max-width:34px;height:30px;margin-left:-31%;transform:translateY(50%);border-radius:3px;pointer-events:none;
+  background:repeating-linear-gradient(#9AA0A8 0 2px,#6E747C 2px 4px);box-shadow:0 2px 4px rgba(0,0,0,.6)}
+@media (min-width:0){.mxcap{margin-left:0;transform:translate(-50%,50%)}}
+.mxcap::after{content:'';position:absolute;left:0;right:0;top:50%;height:2px;margin-top:-1px;background:#fff}
+.mxbot{font-size:11px;text-align:center;color:#C9CFD7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;height:16px}
+.mxbanks{display:flex;gap:4px;overflow-x:auto;padding-bottom:2px}
+.mxbk{flex:none;min-width:84px;min-height:46px;border-radius:9px;border:1px solid #333B47;background:#1E232C;color:#ECEEF1;font:500 14px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer;padding:0 12px;position:relative}
+.mxbk.on{border:2px solid #4FD18B}
+.mxed{flex:none;min-width:44px;min-height:46px;border-radius:9px;border:1px dashed #333B47;background:transparent;color:#A3ACB8;font:500 13px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer}
+/* channel EQ graph: drag a point, or pick a band and use − + */
+.eqg{position:relative;height:150px;background:#0B0E12;border:1px solid #262C36;border-radius:10px;touch-action:none;overflow:hidden}
+.eqg svg{position:absolute;inset:0;width:100%;height:100%}
+.eqlab{position:absolute;bottom:2px;transform:translateX(-50%);font:400 11px 'IBM Plex Mono',ui-monospace,monospace;color:#8A93A0;pointer-events:none}
+.eqp{position:absolute;width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;background:rgba(108,180,245,.25);border:2px solid #6CB4F5;color:#ECEEF1;font:600 12px 'IBM Plex Sans',system-ui,sans-serif;display:flex;align-items:center;justify-content:center;cursor:grab;touch-action:none;box-sizing:border-box}
+.eqp.on{background:#6CB4F5;color:#0B0E12}
+.eqp:focus-visible{outline:2px solid #ECEEF1;outline-offset:2px}
+/* gate and compressor: what it's doing over the last 8 seconds (like FabFilter Pro-C), its curve, and knobs */
+.dyng{position:relative;display:flex;gap:4px;height:170px;background:#0B0E12;border:1px solid #262C36;border-radius:10px;padding:4px;box-sizing:border-box}
+.dynx{flex:none;width:30%;max-width:140px;height:100%;background:#10141A;border-radius:6px}
+.dynh{flex:1;min-width:0;height:100%;background:linear-gradient(#141A24,#0E131A);border-radius:6px}
+.dynm{flex:none;display:flex;gap:3px;height:100%}
+.dynmb{position:relative;width:9px;height:100%;background:#151A21;border-radius:3px;overflow:hidden}
+.dynmb div{position:absolute;left:0;right:0}
+.dynmb span{position:absolute;bottom:1px;left:0;right:0;text-align:center;font:600 7px 'IBM Plex Sans',system-ui,sans-serif;color:#0B0E12;display:none}
+.dynlab{position:absolute;right:42px;transform:translateY(-50%);font:400 11px 'IBM Plex Mono',ui-monospace,monospace;color:#C9CFD7;background:rgba(11,14,18,.7);padding:0 3px;border-radius:3px;pointer-events:none}
+.dkey{display:inline-block;width:10px;height:3px;border-radius:2px;margin-right:4px;vertical-align:middle}
+.knobs{display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:6px}
+.knob{display:flex;flex-direction:column;align-items:center;gap:0;padding:4px 2px 6px;background:#0F1318;border:1px solid #262C36;border-radius:10px;cursor:ns-resize;touch-action:none;-webkit-user-select:none;user-select:none}
+.knob svg{width:56px;height:56px}
+.knob[aria-disabled="true"]{opacity:.55;cursor:default}
+.knob:focus-visible{outline:2px solid #4AA8FF;outline-offset:1px}
+/* wide:start — iPad landscape and laptops: use the width */
+@media (min-width:1000px){
+  .app > *:not(.bn):not([style*="position:absolute"]){max-width:1240px}
+  .topmenu summary{max-width:1240px}
+  .app main.wide2{display:grid !important;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:14px 18px !important}
+  .app main.wide2 > *{min-width:0}
+  .app main.wide2 > :not(section):not(.card):not(details):not(.wcol){grid-column:1 / -1}
+  .app main.wide2 > .wfull{grid-column:1 / -1}
+  .app main.wide1{max-width:980px !important}
+  .app:has(main.wide1) > *:not(.bn):not([style*="position:absolute"]){max-width:980px}
+  .app:has(main.wide1) .topmenu summary{max-width:980px}
+}
+@media (min-width:1500px){ .app main.wide2.wide3{grid-template-columns:repeat(3,minmax(0,1fr))} }
+/* wide:end */
+/* look:start — the WING look (like WING Edit): near-black, outlined panels, condensed headings, yellow for active, blue for selected.
+   Settings › Look › Classic puts the old look back on this device (html[data-look=classic]). */
+:root{--wk-bg:#0A0B0D;--wk-panel:#121418;--wk-panel2:#181B20;--wk-line:#2E333A;--wk-yellow:#F5C518;--wk-blue:#2F6CC4;--wk-cond:'Barlow Condensed','IBM Plex Sans',system-ui,sans-serif}
+html:not([data-look=classic]) body{background:var(--wk-bg)}
+html:not([data-look=classic]) .app{background:var(--wk-bg) !important}
+html:not([data-look=classic]) .card{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .lbl{font-family:var(--wk-cond);font-size:13px;font-weight:600;letter-spacing:.07em;color:#D4D9E0}
+html:not([data-look=classic]) h1{font-family:var(--wk-cond);font-weight:600 !important;text-transform:uppercase;letter-spacing:.05em;font-size:21px !important;line-height:1.2;color:var(--wk-yellow);border:1.5px solid var(--wk-yellow);border-radius:3px;padding:2px 12px;display:inline-block}
+html:not([data-look=classic]) .btn,html:not([data-look=classic]) .lk,html:not([data-look=classic]) .mxb,html:not([data-look=classic]) .mxbk,html:not([data-look=classic]) .mute,html:not([data-look=classic]) .pbtn{font-family:var(--wk-cond);font-size:15px;letter-spacing:.02em;border-radius:4px}
+html:not([data-look=classic]) .btn.pri{background:var(--wk-yellow);border-color:var(--wk-yellow);color:#111}
+html:not([data-look=classic]) .seg{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .seg a{font-family:var(--wk-cond);font-size:15px;letter-spacing:.03em;border-radius:4px}
+html:not([data-look=classic]) .seg a.on,html:not([data-look=classic]) .lk.on{background:var(--wk-blue);color:#fff}
+html:not([data-look=classic]) .tab.on{color:var(--wk-yellow);border-top-color:var(--wk-yellow)}
+html:not([data-look=classic]) .topmenu{background:#000;border-bottom-color:var(--wk-line)}
+html:not([data-look=classic]) .topmenu summary{font-family:var(--wk-cond);font-size:16px;letter-spacing:.03em}
+html:not([data-look=classic]) .topmenu .mcur{color:var(--wk-yellow)}
+html:not([data-look=classic]) .topmenu .mlist{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .topmenu .mlist a{font-family:var(--wk-cond);font-size:16px;border-radius:4px}
+html:not([data-look=classic]) .topmenu .mlist a.on{background:var(--wk-panel2);color:var(--wk-yellow);box-shadow:inset 3px 0 0 var(--wk-yellow)}
+html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic]) input[type=radio],html:not([data-look=classic]) input[type=range]{accent-color:var(--wk-yellow)}
+.wkside{display:none}
+/* iPad landscape and laptops: a sidebar like WING Edit's (HOME, MIXER, ...) instead of the menu at the top */
+@media (min-width:1000px){
+  html:not([data-look=classic]) .wkside{display:flex;flex-direction:column;gap:2px;position:fixed;left:0;top:0;bottom:0;width:132px !important;max-width:132px !important;margin:0 !important;padding:8px 6px 12px;box-sizing:border-box;background:#000;border-right:1px solid var(--wk-line);overflow-y:auto;z-index:30}
+  html:not([data-look=classic]) .wkside .wkbrand{font:700 24px var(--wk-cond);letter-spacing:.06em;color:var(--wk-yellow);padding:6px 8px 12px}
+  html:not([data-look=classic]) .wkside a{display:flex;align-items:center;gap:9px;min-height:46px;padding:0 8px;border-radius:4px;color:#D4D9E0;text-decoration:none;font:600 15px var(--wk-cond);text-transform:uppercase;letter-spacing:.04em}
+  html:not([data-look=classic]) .wkside a:hover{background:var(--wk-panel2)}
+  html:not([data-look=classic]) .wkside a.on{background:var(--wk-panel2);color:var(--wk-yellow);box-shadow:inset 3px 0 0 var(--wk-yellow)}
+  html:not([data-look=classic]) .wkside svg{flex:none}
+  html:not([data-look=classic]) .app{padding-left:132px;box-sizing:border-box !important}
+  html:not([data-look=classic]) .app > .topmenu{display:none}
+}
+/* look:end */
+</style>
+</helmet>
+<div class="app has-bn" style="width:100%;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;background:#0D1015;color:#ECEEF1;font-family:'IBM Plex Sans',system-ui,sans-serif;overflow:hidden">
+  
+  
+  
+  
+  <nav class="wkside" aria-label="Main menu (side)"><div class="wkbrand" aria-hidden="true">C3 LIFE</div><a href="Main.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Home</a>
+        <a href="Wing.dc.html" class="on" aria-current="page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4v16M12 4v16M18 4v16"/><path d="M4 14h4M10 8h4M16 16h4"/></svg>Mixer</a>
+        <a href="RTA.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V12M9 20V6M14 20V10M19 20V4"/></svg>RTA</a>
+        <a href="Show.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M10 8l5 2-5 2z"/><path d="M8 20h8"/></svg>Show</a>
+        <a href="Lights.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>Lights</a>
+        <a href="Plan.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h1M4 12h1M4 18h1"/></svg>Plan</a>
+        <a href="Chat.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>Chat</a>
+        <a href="Listen.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="15" width="4" height="6" rx="1.5"/><rect x="17" y="15" width="4" height="6" rx="1.5"/><path d="M10 9.5a2.5 2.5 0 0 1 4 0"/></svg>Listen</a>
+        <a href="Help.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2.5 2-2.5 3.5M12 17h.01"/></svg>Help</a>
+        <a href="Report.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4h11l-1.5 4L16 12H5"/></svg>Report an issue</a></nav>
+  <nav class="bn topmenu" aria-label="Main menu">
+    <details>
+      <summary aria-label="Menu. You are on Wing mixer"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span class="mlabel">Menu</span><span class="mcur">Wing mixer</span><svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+      <div class="mlist">
+        <a href="Main.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Home</a>
+        <a href="Wing.dc.html" class="on" aria-current="page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4v16M12 4v16M18 4v16"/><path d="M4 14h4M10 8h4M16 16h4"/></svg>Mixer</a>
+        <a href="RTA.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V12M9 20V6M14 20V10M19 20V4"/></svg>RTA</a>
+        <a href="Show.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M10 8l5 2-5 2z"/><path d="M8 20h8"/></svg>Show</a>
+        <a href="Lights.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>Lights</a>
+        <a href="Plan.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h1M4 12h1M4 18h1"/></svg>Plan</a>
+        <a href="Chat.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>Chat</a>
+        <a href="Listen.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="15" width="4" height="6" rx="1.5"/><rect x="17" y="15" width="4" height="6" rx="1.5"/><path d="M10 9.5a2.5 2.5 0 0 1 4 0"/></svg>Listen</a>
+        <a href="Help.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2.5 2-2.5 3.5M12 17h.01"/></svg>Help</a>
+        <a href="Report.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4h11l-1.5 4L16 12H5"/></svg>Report an issue</a>
+      </div>
+    </details>
+  </nav>
+  <header style="padding:22px 16px 12px;display:flex;flex-direction:column;gap:12px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;padding:0 4px">
+      <h1 style="margin:0;font-size:26px;font-weight:600">Mixer</h1>
+      <div style="font-size:12px;color:#A3ACB8;text-align:right">{{hdrTop}}<br>{{hdrSub}}</div>
+    </div>
+    <nav class="seg" aria-label="Mixer sections">
+      <a href="Wing.dc.html" class="on">Channels</a>
+      <a href="Patch.dc.html">Patch</a>
+      <a href="Dante.dc.html">Dante</a>
+      <a href="Mics.dc.html">Mics</a>
+      <a href="Cues.dc.html">Cues</a>
+    </nav>
+  </header>
+
+  <main class=" wide2" style="flex:1;overflow-y:auto;padding:0 16px 16px;display:flex;flex-direction:column;gap:8px">
+    <sc-if value="{{sv.on}}" hint-placeholder-val="{{ true }}">
+    <section class="mx wfull" aria-label="Mixer strips">
+      <div class="mxtop">
+        <span style="width:8px;height:8px;border-radius:50%;flex:none;background:{{w.dot}}"></span>
+        <span class="mxst">{{sv.status}}</span>
+        <button class="mxb" onClick="{{sv.prev}}" disabled="{{sv.noPrev}}" aria-label="Previous strips">‹</button>
+        <span style="font-size:12px;color:#A3ACB8;white-space:nowrap">{{sv.pageText}}</span>
+        <button class="mxb" onClick="{{sv.next}}" disabled="{{sv.noNext}}" aria-label="Next strips">›</button>
+      </div>
+      <div class="mxstrips" style="height:{{sv.h}}px">
+        <sc-for list="{{sv.strips}}" as="st" hint-placeholder-count="8">
+          <div class="mxs" style="width:{{sv.w}}px">
+            <button class="mxn" style="background:{{st.colHex}};color:{{st.ink}}" onClick="{{st.pick}}" aria-pressed="{{st.picked}}" aria-label="{{st.name}}: gain, phantom power and more">{{st.short}}</button>
+            <sc-if value="{{st.hasPan}}" hint-placeholder-val="{{ true }}">
+              <div class="mxpan" role="slider" tabindex="0" aria-label="Pan {{st.name}}" aria-valuemin="-100" aria-valuemax="100" aria-valuenow="{{st.pan}}" aria-valuetext="{{st.panText}}" aria-disabled="{{st.faderOff}}" onPointerDown="{{st.panDown}}" onPointerMove="{{st.panMove}}" onPointerUp="{{st.panUp}}" onKeyDown="{{st.panKey}}" onDoubleClick="{{st.panCentre}}"><b></b><i style="left:{{st.panPct}}%"></i></div>
+            </sc-if>
+            <sc-if value="{{st.noPan}}" hint-placeholder-val="{{ false }}"><div class="mxpan0"></div></sc-if>
+            <button class="{{st.muteCls}}" onClick="{{st.mute}}" disabled="{{st.mxMuteOff}}" aria-pressed="{{st.muted}}" aria-label="{{st.muteAria}}">MUTE</button>
+            <div class="mxdb mono">{{st.db}}</div>
+            <div class="mxf" role="slider" tabindex="0" aria-label="Fader {{st.name}}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{st.lv}}" aria-valuetext="{{st.db}} dB" aria-disabled="{{st.faderOff}}" onPointerDown="{{st.down}}" onPointerMove="{{st.move}}" onPointerUp="{{st.up}}" onPointerCancel="{{st.up}}" onKeyDown="{{st.key}}">
+              <sc-for list="{{sv.ticks}}" as="tk" hint-placeholder-count="8">
+                <div class="mxtk" style="bottom:{{tk.at}}"><span>{{tk.t}}</span><em></em></div>
+              </sc-for>
+              <div class="mxtrack"></div>
+              <sc-if value="{{st.stereo}}" hint-placeholder-val="{{ false }}"><div class="mxmeter l" aria-hidden="true"><div style="height:{{st.meterOffL}}%"></div></div></sc-if>
+              <div class="mxmeter" aria-hidden="true"><div style="height:{{st.meterOff}}%"></div></div>
+              <div class="mxcap" style="bottom:{{st.capAt}}"></div>
+            </div>
+            <div class="mxbot">{{st.bot}}</div>
+          </div>
+        </sc-for>
+        <sc-if value="{{sv.none}}" hint-placeholder-val="{{ false }}"><div style="flex:1;align-self:center;text-align:center;font-size:13px;color:#A3ACB8;padding:20px">{{sv.noneText}}</div></sc-if>
+      </div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap">
+        <button class="{{sv.fineCls}}" onClick="{{sv.toggleFine}}" aria-pressed="{{sv.fine}}" style="flex:1">Fine</button>
+        <button class="{{sv.meCls}}" onClick="{{sv.toggleMe}}" aria-pressed="{{sv.me}}" style="flex:1">Mute enable</button>
+        <button class="mxb" onClick="{{sv.toggleLayout}}" aria-expanded="{{sv.layoutOpen}}" style="flex:1">Layout…</button>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#A3ACB8">Faders show
+        <select value="{{sv.sofSel}}" onChange="{{sv.setSof}}" aria-label="Faders show" style="flex:1;min-width:0;min-height:44px;border-radius:9px;border:1px solid {{sv.sofBorder}};background:#1E232C;color:#ECEEF1;font:500 14px 'IBM Plex Sans',system-ui,sans-serif;padding:0 8px">
+          <sc-for list="{{sv.sofOpts}}" as="so" hint-placeholder-count="4"><option value="{{so.v}}">{{so.name}}</option></sc-for>
+        </select>
+      </label>
+      <sc-if value="{{sv.sofOn}}" hint-placeholder-val="{{ false }}"><div role="status" style="font-size:12px;color:#F5D33C;line-height:1.45;padding:0 4px">{{sv.sofNote}}</div></sc-if>
+      <div class="mxbanks" role="group" aria-label="Layers">
+        <sc-for list="{{sv.banks}}" as="bk" hint-placeholder-count="6">
+          <button class="{{bk.cls}}" onClick="{{bk.pick}}" aria-pressed="{{bk.on}}">{{bk.name}}</button>
+        </sc-for>
+        <button class="mxed" onClick="{{sv.newLayer}}" aria-label="Make a new layer">+ Layer</button>
+      </div>
+      <sc-if value="{{sv.layoutOpen}}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:8px;background:#161A21;border:1px solid #262C36;border-radius:12px;padding:10px">
+          <div class="lbl">Strip width on this {{sv.device}}</div>
+          <div style="display:flex;gap:4px" role="group" aria-label="Strip width">
+            <sc-for list="{{sv.widths}}" as="wd" hint-placeholder-count="3"><button class="{{wd.cls}}" style="flex:1" onClick="{{wd.pick}}" aria-pressed="{{wd.on}}">{{wd.name}}</button></sc-for>
+          </div>
+          <div style="font-size:12px;color:#A3ACB8;line-height:1.45">{{sv.fitText}} Turn a phone sideways, or use an iPad or laptop, for more at once.</div>
+          <button class="mxb" onClick="{{sv.toList}}">Show as a list instead</button>
+          <sc-if value="{{sv.canEditLayer}}" hint-placeholder-val="{{ false }}"><button class="mxb" onClick="{{sv.editLayer}}">Change the {{sv.layerName}} layer…</button></sc-if>
+        </div>
+      </sc-if>
+      <sc-if value="{{ly.open}}" hint-placeholder-val="{{ false }}">
+        <div role="dialog" aria-label="{{ly.title}}" style="display:flex;flex-direction:column;gap:8px;background:#161A21;border:1px solid #F5C518;border-radius:12px;padding:10px">
+          <div style="font-size:15px;font-weight:600">{{ly.title}}</div>
+          <label for="ly-name" style="font-size:13px;color:#A3ACB8">Name</label>
+          <input id="ly-name" type="text" maxlength="16" value="{{ly.name}}" onInput="{{ly.setName}}" onChange="{{ly.setName}}" autocomplete="off" placeholder="Instruments" style="min-height:44px;border-radius:10px;border:1px solid #333B47;background:#0F1318;color:#ECEEF1;font:500 16px 'IBM Plex Sans',system-ui,sans-serif;padding:0 12px">
+          <div style="font-size:13px;color:#A3ACB8">Tick what goes on it ({{ly.count}} chosen). They show in the order you tick them.</div>
+          <div style="max-height:300px;overflow-y:auto;display:flex;flex-direction:column;border:1px solid #262C36;border-radius:10px;padding:2px 8px">
+            <sc-for list="{{ly.items}}" as="it" hint-placeholder-count="6">
+              <label style="display:flex;align-items:center;gap:10px;min-height:44px;font-size:14px;border-bottom:1px solid #1E232C"><input type="checkbox" checked="{{it.on}}" onChange="{{it.toggle}}"><span style="width:10px;height:10px;border-radius:2px;background:{{it.col}};flex:none"></span><span style="flex:1;min-width:0">{{it.label}}</span><span class="mono" style="font-size:12px;color:#A3ACB8">{{it.pos}}</span></label>
+            </sc-for>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 2fr;gap:8px">
+            <button class="btn" onClick="{{ly.cancel}}">Cancel</button>
+            <sc-if value="{{ly.canDelete}}" hint-placeholder-val="{{ false }}"><button class="btn" onClick="{{ly.del}}">Delete</button></sc-if>
+            <sc-if value="{{ly.noDelete}}" hint-placeholder-val="{{ true }}"><span></span></sc-if>
+            <button class="btn pri" onClick="{{ly.save}}" disabled="{{ly.bad}}">Save layer</button>
+          </div>
+        </div>
+      </sc-if>
+      <sc-if value="{{sv.hasSel}}" hint-placeholder-val="{{ false }}">
+        <div aria-label="{{sv.sel.name}} settings" style="display:flex;flex-direction:column;gap:10px;background:#161A21;border:1px solid #6CB4F5;border-radius:12px;padding:10px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="width:12px;height:12px;border-radius:3px;background:{{sv.sel.colHex}};flex:none"></span>
+            <div style="flex:1;min-width:0;font-size:15px;font-weight:600">{{sv.sel.label}} · {{sv.sel.name}}</div>
+            <button class="mxb" onClick="{{sv.sel.rename}}" disabled="{{sv.sel.ctlOff}}" aria-label="Rename {{sv.sel.name}}">Rename</button>
+            <button class="{{sv.sel.lockCls}}" onClick="{{sv.sel.toggleLock}}" aria-pressed="{{sv.sel.ownLock}}" aria-label="Lock {{sv.sel.name}} fader"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></button>
+            <button class="mxb" onClick="{{sv.unpick}}" aria-label="Close">✕</button>
+          </div>
+          <sc-if value="{{sv.selCh}}" hint-placeholder-val="{{ true }}">
+          <div role="tablist" aria-label="{{sv.sel.name}} sections" style="display:flex;gap:4px;background:#0F1318;border:1px solid #262C36;border-radius:12px;padding:4px">
+            <sc-for list="{{pt.tabs}}" as="tb" hint-placeholder-count="4"><button role="tab" class="{{tb.cls}}" aria-selected="{{tb.on}}" onClick="{{tb.pick}}">{{tb.name}}</button></sc-for>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+          <sc-if value="{{pt.isInput}}" hint-placeholder-val="{{ true }}">
+          <div style="font-size:13px;color:#A3ACB8;line-height:1.45">{{sv.sel.srcText}}</div>
+          <sc-if value="{{sv.sel.hasPre}}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;align-items:center;gap:6px" role="group" aria-label="Gain for {{sv.sel.name}}">
+              <div style="flex:1;min-width:0"><div class="lbl">Gain</div><div class="mono" style="font-size:18px;white-space:nowrap">{{sv.sel.gainText}}</div></div>
+              <sc-for list="{{sv.sel.gainSteps}}" as="gs" hint-placeholder-count="4">
+                <button class="btn" style="min-width:52px;padding:0 6px;font-size:13px" onClick="{{gs.run}}" disabled="{{sv.sel.preOff}}" aria-label="{{gs.aria}}">{{gs.label}}</button>
+              </sc-for>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:500">48 V phantom power</div><div style="font-size:12px;color:{{sv.sel.phCol}}">{{sv.sel.phText}}</div></div>
+              <button class="{{sv.sel.phCls}}" onClick="{{sv.sel.phAskFn}}" disabled="{{sv.sel.preOff}}" aria-label="{{sv.sel.phAria}}">{{sv.sel.phBtn}}</button>
+            </div>
+            <sc-if value="{{sv.sel.phAsking}}" hint-placeholder-val="{{ false }}">
+              <div role="dialog" aria-label="{{sv.sel.phQ}}" style="display:flex;flex-direction:column;gap:8px;border:1px solid #F5C518;border-radius:10px;padding:10px">
+                <div style="font-size:15px;font-weight:600">{{sv.sel.phQ}}</div>
+                <div style="font-size:13px;line-height:1.45;color:#C9CFD7">{{sv.sel.phWarn}}</div>
+                <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px"><button class="btn" onClick="{{sv.sel.phNo}}">Cancel</button><button class="btn pri" onClick="{{sv.sel.phYes}}">{{sv.sel.phYesText}}</button></div>
+              </div>
+            </sc-if>
+          </sc-if>
+          </div>
+          <sc-if value="{{pt.reading}}" hint-placeholder-val="{{ false }}"><div role="status" style="font-size:13px;color:#A3ACB8">Reading this channel from the Wing…</div></sc-if>
+          <sc-for list="{{pt.toggles}}" as="tg" hint-placeholder-count="1">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:500">{{tg.label}}</div><div style="font-size:12px;color:{{tg.col}};line-height:1.4">{{tg.sub}}</div></div>
+              <button class="{{tg.cls}}" onClick="{{tg.toggle}}" disabled="{{tg.off}}" aria-pressed="{{tg.on}}" aria-label="{{tg.aria}}">{{tg.btn}}</button>
+            </div>
+          </sc-for>
+          <sc-if value="{{pt.hasNote}}" hint-placeholder-val="{{ false }}"><div style="font-size:13px;color:#F5C518;line-height:1.45">{{pt.note}}</div></sc-if>
+          <sc-if value="{{pt.hasGraph}}" hint-placeholder-val="{{ false }}">
+            <div class="eqg" aria-label="{{pt.graphAria}}" role="img">
+              <svg viewBox="0 0 300 120" preserveAspectRatio="none" aria-hidden="true">
+                <line x1="0" y1="60" x2="300" y2="60" stroke="#333B47" stroke-width="1"></line>
+                <line x1="{{pt.x100}}" y1="0" x2="{{pt.x100}}" y2="120" stroke="#222831" stroke-width="1"></line>
+                <line x1="{{pt.x1k}}" y1="0" x2="{{pt.x1k}}" y2="120" stroke="#222831" stroke-width="1"></line>
+                <line x1="{{pt.x10k}}" y1="0" x2="{{pt.x10k}}" y2="120" stroke="#222831" stroke-width="1"></line>
+                <path d="{{pt.rtaPath}}" fill="rgba(108,180,245,.22)" stroke="rgba(108,180,245,.55)" stroke-width="1" vector-effect="non-scaling-stroke"></path>
+                <path d="{{pt.curve}}" fill="none" stroke="{{pt.curveCol}}" stroke-width="2" vector-effect="non-scaling-stroke"></path>
+              </svg>
+              <span class="eqlab" style="left:{{pt.l100}}%">100</span><span class="eqlab" style="left:{{pt.l1k}}%">1k</span><span class="eqlab" style="left:{{pt.l10k}}%">10k</span>
+              <sc-for list="{{pt.points}}" as="pp" hint-placeholder-count="6">
+                <div class="{{pp.cls}}" style="left:{{pp.x}}%;top:{{pp.y}}%" role="slider" tabindex="0" aria-label="{{pp.aria}}" aria-valuetext="{{pp.text}}" onPointerDown="{{pp.down}}" onPointerMove="{{pp.move}}" onPointerUp="{{pp.up}}" onPointerCancel="{{pp.up}}" onKeyDown="{{pp.key}}">{{pp.t}}</div>
+              </sc-for>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:500">RTA</div><div style="font-size:12px;color:#A3ACB8;line-height:1.4">{{pt.rtaSub}}</div></div>
+                <button class="{{pt.rtaCls}}" onClick="{{pt.rtaToggle}}" aria-pressed="{{pt.rtaOn}}" aria-label="RTA for {{sv.sel.name}}">{{pt.rtaBtn}}</button>
+              </div>
+              <div style="display:flex;gap:4px" role="group" aria-label="RTA reads">
+                <sc-for list="{{pt.rtaTaps}}" as="rt" hint-placeholder-count="2"><button class="{{rt.cls}}" style="flex:1" onClick="{{rt.pick}}" aria-pressed="{{rt.on}}" disabled="{{rt.off}}">{{rt.name}}</button></sc-for>
+              </div>
+            </div>
+            <div style="display:flex;gap:4px" role="group" aria-label="EQ bands">
+              <sc-for list="{{pt.bands}}" as="bd" hint-placeholder-count="6"><button class="{{bd.cls}}" style="flex:1;min-width:0;padding:0 2px" onClick="{{bd.pick}}" aria-pressed="{{bd.on}}">{{bd.name}}</button></sc-for>
+            </div>
+          </sc-if>
+          <div style="display:flex;flex-direction:column;gap:8px">
+          <sc-if value="{{pt.hasDyn}}" hint-placeholder-val="{{ false }}">
+            <div class="dyng" role="img" aria-label="{{pt.dynAria}}">
+              <svg class="dynx" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                <line x1="0" y1="100" x2="100" y2="0" stroke="#2A2F37" stroke-width="1" vector-effect="non-scaling-stroke"></line>
+                <line x1="{{pt.thrX}}" y1="0" x2="{{pt.thrX}}" y2="100" stroke="#4A5260" stroke-dasharray="3 3" stroke-width="1" vector-effect="non-scaling-stroke"></line>
+                <path d="{{pt.xfer}}" fill="none" stroke="#9BCB3C" stroke-width="2" vector-effect="non-scaling-stroke"></path>
+                <circle cx="{{pt.dotX}}" cy="{{pt.dotY}}" r="3.5" fill="#F5D33C"></circle>
+              </svg>
+              <svg class="dynh" viewBox="0 0 300 120" preserveAspectRatio="none" aria-hidden="true">
+                <line x1="0" y1="{{pt.thrY}}" x2="300" y2="{{pt.thrY}}" stroke="#6A7380" stroke-dasharray="4 4" stroke-width="1" vector-effect="non-scaling-stroke"></line>
+                <path d="{{pt.inPath}}" fill="rgba(200,206,214,.18)" stroke="rgba(200,206,214,.45)" stroke-width="1" vector-effect="non-scaling-stroke"></path>
+                <path d="{{pt.outPath}}" fill="none" stroke="#ECEEF1" stroke-width="1.2" vector-effect="non-scaling-stroke"></path>
+                <path d="{{pt.grPath}}" fill="none" stroke="#FF5A4E" stroke-width="2" vector-effect="non-scaling-stroke"></path>
+              </svg>
+              <div class="dynm" aria-hidden="true">
+                <sc-for list="{{pt.meters}}" as="mt" hint-placeholder-count="3"><div class="dynmb"><div style="{{mt.css}}"></div><span>{{mt.t}}</span></div></sc-for>
+              </div>
+              <span class="dynlab" style="top:{{pt.thrYp}}%">{{pt.thrLabel}}</span>
+            </div>
+            <div style="display:flex;gap:10px;font-size:11px;color:#A3ACB8;flex-wrap:wrap" aria-hidden="true"><span><i class="dkey" style="background:rgba(200,206,214,.45)"></i>In</span><span><i class="dkey" style="background:#ECEEF1"></i>Out</span><span><i class="dkey" style="background:#FF5A4E"></i>Turned down by</span><span><i class="dkey" style="background:#9BCB3C"></i>Curve</span><span style="margin-left:auto">{{pt.grNow}}</span></div>
+            <div class="knobs">
+              <sc-for list="{{pt.knobs}}" as="kb" hint-placeholder-count="5">
+                <div class="knob" role="slider" tabindex="0" aria-label="{{kb.aria}}" aria-valuetext="{{kb.text}}" aria-disabled="{{kb.off}}" onPointerDown="{{kb.down}}" onPointerMove="{{kb.move}}" onPointerUp="{{kb.up}}" onPointerCancel="{{kb.up}}" onKeyDown="{{kb.key}}">
+                  <svg viewBox="0 0 60 60" aria-hidden="true"><circle cx="30" cy="30" r="21" fill="#1A1F27" stroke="#0B0E12" stroke-width="2"></circle><path d="{{kb.track}}" fill="none" stroke="#2A2F37" stroke-width="4" stroke-linecap="round"></path><path d="{{kb.arc}}" fill="none" stroke="{{kb.col}}" stroke-width="4" stroke-linecap="round"></path><line x1="30" y1="30" x2="{{kb.px}}" y2="{{kb.py}}" stroke="#ECEEF1" stroke-width="2.5" stroke-linecap="round"></line></svg>
+                  <div class="mono" style="font-size:13px;text-align:center">{{kb.text}}</div>
+                  <div class="lbl" style="text-align:center;font-size:10px">{{kb.label}}</div>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+          </div>
+          <sc-for list="{{pt.rows}}" as="rw" hint-placeholder-count="3">
+            <div style="display:flex;align-items:center;gap:6px" role="group" aria-label="{{rw.label}}">
+              <div style="flex:1;min-width:0"><div class="lbl">{{rw.label}}</div><div class="mono" style="font-size:18px">{{rw.value}}</div></div>
+              <button class="btn" style="min-width:52px;padding:0 6px" onClick="{{rw.dec}}" disabled="{{rw.off}}" aria-label="{{rw.decAria}}">−</button>
+              <button class="btn" style="min-width:52px;padding:0 6px" onClick="{{rw.inc}}" disabled="{{rw.off}}" aria-label="{{rw.incAria}}">+</button>
+            </div>
+          </sc-for>
+          <sc-if value="{{pt.hasSay}}" hint-placeholder-val="{{ false }}"><div style="font-size:13px;color:#C9CFD7;line-height:1.45;background:#0F1318;border-radius:10px;padding:8px 10px">{{pt.say}}</div></sc-if>
+          </sc-if>
+          </sc-if>
+          <sc-if value="{{sv.selRenaming}}" hint-placeholder-val="{{ false }}">
+            <sc-if value="{{renEdit}}" hint-placeholder-val="{{ true }}">
+              <label for="ren-input" style="font-size:13px;color:#A3ACB8">New name for {{renWhat}} (now “{{renOld}}”)</label>
+              <input id="ren-input" type="text" maxlength="16" value="{{renDraft}}" onChange="{{setRenDraft}}" onInput="{{setRenDraft}}" autocomplete="off" style="min-height:48px;border-radius:10px;border:1px solid #333B47;background:#0F1318;color:#ECEEF1;font:500 16px 'IBM Plex Sans',system-ui,sans-serif;padding:0 12px;box-sizing:border-box;width:100%">
+              <div style="font-size:12px;color:#A3ACB8">{{renHint}}</div>
+              <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px"><button class="lk" style="min-height:48px" onClick="{{renCancel}}">Cancel</button><button class="lk on" style="min-height:48px" onClick="{{renNext}}" disabled="{{renBad}}">Next</button></div>
+            </sc-if>
+            <sc-if value="{{renConfirm}}" hint-placeholder-val="{{ false }}">
+              <div style="font-size:15px;font-weight:600">Change it on the Wing?</div>
+              <div style="font-size:14px;line-height:1.45">{{renWhat}}: “{{renOld}}” → “{{renDraft}}”</div>
+              <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px"><button class="lk" style="min-height:48px" onClick="{{renBack}}">Back</button><button class="send" onClick="{{renSend}}">Yes, change it on the Wing</button></div>
+            </sc-if>
+            <sc-if value="{{renSending}}" hint-placeholder-val="{{ false }}"><div role="status" style="font-size:14px;color:#A3ACB8">Sending to the Wing and waiting for it to confirm…</div></sc-if>
+          </sc-if>
+          <sc-if value="{{sv.sel.ctlOff}}" hint-placeholder-val="{{ false }}"><div style="font-size:12px;color:#A3ACB8">{{sv.sel.ctlOffText}}</div></sc-if>
+          <sc-if value="{{sv.sel.preOnlyOff}}" hint-placeholder-val="{{ false }}"><div style="font-size:12px;color:#A3ACB8">Gain and phantom power: {{sv.sel.preOffText}}</div></sc-if>
+        </div>
+      </sc-if>
+      <sc-if value="{{hasRenToast}}" hint-placeholder-val="{{ false }}"><div role="status" style="font-size:13px;color:#6CB4F5;line-height:1.45;padding:0 4px">{{renToast}}</div></sc-if>
+    </section>
+    </sc-if>
+    <section class="card" aria-label="Wing connection" style="display:flex;flex-direction:column;gap:10px;border-color:{{w.border}}">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="width:10px;height:10px;border-radius:50%;flex:none;background:{{w.dot}}"></span>
+        <div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:600">{{w.title}}</div><div style="font-size:12px;color:#A3ACB8;line-height:1.45">{{w.sub}}</div></div>
+      </div>
+      <sc-if value="{{w.admin}}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;gap:4px;background:#0F1318;border:1px solid #262C36;border-radius:12px;padding:4px" role="group" aria-label="What the app may do with the Wing">
+          <sc-for list="{{w.modes}}" as="wm" hint-placeholder-count="3">
+            <button class="{{wm.cls}}" onClick="{{wm.pick}}" aria-pressed="{{wm.on}}">{{wm.name}}</button>
+          </sc-for>
+        </div>
+        <sc-if value="{{w.asking}}" hint-placeholder-val="{{ false }}">
+          <div role="dialog" aria-label="Let the app control the Wing?" style="display:flex;flex-direction:column;gap:8px;border:1px solid #F5C518;border-radius:10px;padding:10px">
+            <div style="font-size:15px;font-weight:600">Let the app control the Wing?</div>
+            <div style="font-size:13px;line-height:1.45;color:#C9CFD7">Faders, mutes and gain moved on any phone, iPad or laptop with Mixer control will move the real desk, and slide cues will too. Phantom power and renames still ask first. Watch only switches it back at any time.</div>
+            <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px"><button class="btn" onClick="{{w.noAsk}}">Cancel</button><button class="btn pri" onClick="{{w.yesAsk}}">Yes, let it control the Wing</button></div>
+          </div>
+        </sc-if>
+        <details>
+          <summary style="cursor:pointer;font-size:13px;color:#6CB4F5;min-height:40px;display:flex;align-items:center">The Wing’s address: {{w.ipShown}}</summary>
+          <div style="display:flex;flex-direction:column;gap:8px;padding-top:4px">
+            <label for="wing-ip" style="font-size:13px;color:#A3ACB8">IP address (on the Wing: Setup › Network)</label>
+            <div style="display:flex;gap:8px">
+              <input id="wing-ip" type="text" inputmode="decimal" value="{{w.ipDraft}}" onInput="{{w.setIp}}" onChange="{{w.setIp}}" placeholder="192.168.10.20" autocomplete="off" style="flex:1;min-width:0;min-height:44px;border-radius:10px;border:1px solid #333B47;background:#0F1318;color:#ECEEF1;font:500 16px 'IBM Plex Mono',ui-monospace,monospace;padding:0 12px;box-sizing:border-box">
+              <button class="btn pri" onClick="{{w.saveIp}}" disabled="{{w.ipBad}}">Save</button>
+            </div>
+            <button class="btn" onClick="{{w.find}}">Find the Wing on the network</button>
+            <sc-for list="{{w.found}}" as="fw" hint-placeholder-count="0">
+              <button class="btn" style="text-align:left" onClick="{{fw.use}}">Use {{fw.name}} at {{fw.ip}} (firmware {{fw.firmware}})</button>
+            </sc-for>
+          </div>
+        </details>
+      </sc-if>
+      <sc-if value="{{w.hasToast}}" hint-placeholder-val="{{ false }}"><div role="status" style="font-size:13px;color:{{w.toastCol}};line-height:1.45">{{w.toast}}</div></sc-if>
+    </section>
+    <section class="card" style="display:flex;flex-direction:column;gap:10px;border-color:{{lockBorder}}">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="color:{{lockColor}};display:flex"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span>
+        <div style="flex:1"><div style="font-size:15px;font-weight:600">{{lockTitle}}</div><div style="font-size:12px;color:#A3ACB8">{{lockSub}}</div></div>
+      </div>
+      <div style="display:flex;gap:4px;background:#0F1318;border:1px solid #262C36;border-radius:12px;padding:4px" role="group" aria-label="Fader lock">
+        <sc-for list="{{lockModes}}" as="lm" hint-placeholder-count="3">
+          <button class="{{lm.cls}}" onClick="{{lm.pick}}" aria-pressed="{{lm.on}}">{{lm.name}}</button>
+        </sc-for>
+      </div>
+      <sc-if value="{{fohMode}}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;background:#0F1318;border:1px solid #262C36;border-radius:12px;padding:4px 12px">
+          <div class="lbl" style="padding:8px 0 4px">FOH devices · can move faders</div>
+          <sc-for list="{{fohDevs}}" as="fd" hint-placeholder-count="3">
+            <div style="display:flex;align-items:center;gap:10px;min-height:48px;border-top:1px solid #222831">
+              <span style="width:8px;height:8px;border-radius:50%;flex:none;background:{{fd.dot}}"></span>
+              <div style="flex:1;min-width:0"><div style="font-size:14px">{{fd.name}}</div><div style="font-size:12px;color:#A3ACB8">{{fd.sub}}</div></div>
+              <button class="lk" style="flex:none;min-height:40px;padding:0 12px" onClick="{{fd.toggle}}" aria-label="{{fd.btn}} {{fd.name}}">{{fd.btn}}</button>
+            </div>
+          </sc-for>
+          <div style="font-size:12px;color:#A3ACB8;padding:6px 0 8px;line-height:1.45">FOH sound can use the phone and the iPad at the same time. Both stay in step: move a fader on one and the other follows.</div>
+        </div>
+      </sc-if>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px"><input type="checkbox" checked="{{guard}}" onChange="{{toggleGuard}}"> Ask before any jump bigger than 6 dB</label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px"><input type="checkbox" checked="{{lockMutes}}" onChange="{{toggleLockMutes}}"> Lock mutes as well</label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px"><input type="checkbox" checked="{{mixesOpen}}" onChange="{{toggleMixes}}"> Musicians can change their own monitor mix</label>
+    </section>
+    <sc-if value="{{mc.on}}" hint-placeholder-val="{{ false }}">
+    <section class="card" aria-label="Musician mixes on the Wing" style="display:flex;flex-direction:column;gap:8px">
+      <div style="font-size:15px;font-weight:600">Musician mixes on the Wing</div>
+      <div style="font-size:12px;color:#A3ACB8;line-height:1.45">For My mix to work, each musician bus needs its sends set to Pre (so your faders don't change their mix) and pan link off (so they can pan for themselves). Monitor mixes: {{mc.busList}}.</div>
+      <sc-if value="{{mc.idle}}" hint-placeholder-val="{{ true }}"><button class="btn" onClick="{{mc.check}}">Check musician buses</button></sc-if>
+      <sc-for list="{{mc.rows}}" as="r" hint-placeholder-count="0">
+        <div style="display:flex;gap:8px;align-items:flex-start;font-size:13px;line-height:1.45"><span style="color:{{r.col}};font-weight:600;flex:none">{{r.mark}}</span><span><b>{{r.bus}}</b> · {{r.text}}</span></div>
+      </sc-for>
+      <sc-if value="{{mc.found}}" hint-placeholder-val="{{ false }}"><button class="btn pri" onClick="{{mc.ask}}" disabled="{{mc.fixOff}}">Fix these on the Wing…</button></sc-if>
+      <sc-if value="{{mc.asking}}" hint-placeholder-val="{{ false }}">
+        <div role="dialog" aria-label="Change these sends on the Wing?" style="display:flex;flex-direction:column;gap:8px">
+          <div style="font-size:13px;line-height:1.45;background:#1E232C;border-radius:10px;padding:10px">Change {{mc.count}} sends on the Wing to Pre with pan link off? Musicians' mixes stay at the same level; only how they're sent changes. The main speakers and stream aren't touched.</div>
+          <div style="display:flex;gap:8px"><button class="btn" style="flex:1" onClick="{{mc.cancel}}">Cancel</button><button class="btn pri" style="flex:1" onClick="{{mc.fix}}">Yes, change them on the Wing</button></div>
+        </div>
+      </sc-if>
+      <sc-if value="{{mc.hasMsg}}" hint-placeholder-val="{{ false }}"><div role="status" style="font-size:13px;color:{{mc.msgCol}}">{{mc.msg}}</div></sc-if>
+    </section>
+    </sc-if>
+    <sc-if value="{{demoOnly}}" hint-placeholder-val="{{ true }}">
+    <section class="card" style="display:flex;flex-direction:column;gap:8px">
+      <div style="font-size:15px;font-weight:600">Musician mixes on the Wing</div>
+      <div style="font-size:12px;color:#A3ACB8;line-height:1.45">For My mix to work, each musician bus needs its sends set to Pre (so your faders don't change their mix) and pan link off (so they can pan for themselves). This checks every musician bus.</div>
+      <sc-if value="{{ms.idle}}" hint-placeholder="">
+        <button class="btn" onClick="{{ms.check}}">Check musician buses</button>
+      </sc-if>
+      <sc-if value="{{ms.list}}" hint-placeholder="">
+        <sc-for each="{{ms.rows}}" as="r" hint-placeholder="">
+          <div style="display:flex;gap:8px;align-items:flex-start;font-size:13px;line-height:1.45"><span style="color:{{r.col}};font-weight:600;flex:none">{{r.mark}}</span><span><b>{{r.bus}}</b> · {{r.text}}</span></div>
+        </sc-for>
+      </sc-if>
+      <sc-if value="{{ms.found}}" hint-placeholder="">
+        <button class="btn pri" onClick="{{ms.ask}}">Fix these on the Wing…</button>
+      </sc-if>
+      <sc-if value="{{ms.asking}}" hint-placeholder="">
+        <div style="font-size:13px;line-height:1.45;background:#1E232C;border-radius:10px;padding:10px">Change these sends on the Wing? Musicians' mixes stay at the same level; only how they're sent changes. The main speakers and stream aren't touched.</div>
+        <div style="display:flex;gap:8px"><button class="btn" style="flex:1" onClick="{{ms.cancel}}">Cancel</button><button class="btn pri" style="flex:1" onClick="{{ms.fix}}">Yes, change them on the Wing</button></div>
+      </sc-if>
+      <sc-if value="{{ms.msg}}" hint-placeholder="">
+        <div style="font-size:13px;color:{{ms.msgCol}}">{{ms.msg}}</div>
+      </sc-if>
+    </section>
+    </sc-if>
+    <section class="card" style="display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:600">Names come from the Wing</div><div style="font-size:12px;color:#A3ACB8;line-height:1.45">{{namesLine}}</div></div>
+        <button class="lk" style="flex:none;min-height:44px;padding:0 12px" onClick="{{readNames}}">Read now</button>
+      </div>
+      <sc-if value="{{demoOnly}}" hint-placeholder-val="{{ true }}"><label style="display:flex;align-items:center;gap:8px;font-size:14px"><input type="checkbox" checked="{{autoRead}}" onChange="{{toggleAutoRead}}"> Read names by itself</label></sc-if>
+      <div style="font-size:12px;color:#A3ACB8;line-height:1.45">Rename on the desk and every screen follows. Rename here with the pencil and it only changes on the Wing after you confirm.</div>
+      <button class="lk" style="min-height:40px;border-style:dashed;color:#A3ACB8;font-size:13px" onClick="{{demoDesk}}">Demo: someone renames Ch 05 on the Wing</button>
+      <sc-if value="{{hasRenToast}}" hint-placeholder-val="{{ false }}"><div role="status" style="font-size:13px;color:#6CB4F5;line-height:1.45">{{renToast}}</div></sc-if>
+    </section>
+    <section class="card" aria-label="Tio1608-D connection" style="display:flex;flex-direction:column;gap:10px;border-color:{{tio.border}}">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="width:10px;height:10px;border-radius:50%;flex:none;background:{{tio.dot}}"></span>
+        <div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:600">{{tio.title}}</div><div style="font-size:12px;color:#A3ACB8;line-height:1.45">{{tio.sub}}</div></div>
+      </div>
+      <sc-if value="{{tio.admin}}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;gap:4px;background:#0F1318;border:1px solid #262C36;border-radius:12px;padding:4px" role="group" aria-label="What the app may do with the Tio">
+          <sc-for list="{{tio.modes}}" as="tm" hint-placeholder-count="3"><button class="{{tm.cls}}" onClick="{{tm.pick}}" aria-pressed="{{tm.on}}">{{tm.name}}</button></sc-for>
+        </div>
+        <sc-if value="{{tio.asking}}" hint-placeholder-val="{{ false }}">
+          <div role="dialog" aria-label="Let the app control the Tio?" style="display:flex;flex-direction:column;gap:8px;border:1px solid #F5C518;border-radius:10px;padding:10px">
+            <div style="font-size:15px;font-weight:600">Let the app control the Tio?</div>
+            <div style="font-size:13px;line-height:1.45;color:#C9CFD7">Gain and low cut changed in the app will change the Tio1608-D, as R Remote does. The Tio’s gain comes before everything, including every musician’s mix. Phantom power still asks first.</div>
+            <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px"><button class="btn" onClick="{{tio.noAsk}}">Cancel</button><button class="btn pri" onClick="{{tio.yesAsk}}">Yes, let it control the Tio</button></div>
+          </div>
+        </sc-if>
+        <details>
+          <summary style="cursor:pointer;font-size:13px;color:#6CB4F5;min-height:40px;display:flex;align-items:center">The Tio’s address: {{tio.ipShown}} · input 1 is Wing card input {{tio.cardFrom}}</summary>
+          <div style="display:flex;flex-direction:column;gap:8px;padding-top:4px">
+            <label for="tio-ip" style="font-size:13px;color:#A3ACB8">IP address (Dante Controller › Device Info, or the Dante screen)</label>
+            <div style="display:flex;gap:8px">
+              <input id="tio-ip" type="text" inputmode="decimal" value="{{tio.ipDraft}}" onInput="{{tio.setIp}}" onChange="{{tio.setIp}}" placeholder="192.168.10.41" autocomplete="off" style="flex:1;min-width:0;min-height:44px;border-radius:10px;border:1px solid #333B47;background:#0F1318;color:#ECEEF1;font:500 16px 'IBM Plex Mono',ui-monospace,monospace;padding:0 12px;box-sizing:border-box">
+              <button class="btn pri" onClick="{{tio.saveIp}}" disabled="{{tio.ipBad}}">Save</button>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px" role="group" aria-label="Tio input 1 arrives on Wing card input">
+              <div style="flex:1;min-width:0;font-size:13px;color:#C9CFD7;line-height:1.4">Tio input 1 arrives on Wing card input <b>{{tio.cardFrom}}</b> (inputs 1–16 follow on). Check the routing on the Dante screen.</div>
+              <button class="btn" style="min-width:48px" onClick="{{tio.cardDown}}" aria-label="Card input down">−</button><button class="btn" style="min-width:48px" onClick="{{tio.cardUp}}" aria-label="Card input up">+</button>
+            </div>
+          </div>
+        </details>
+      </sc-if>
+      <sc-if value="{{tio.hasToast}}" hint-placeholder-val="{{ false }}"><div role="status" style="font-size:13px;color:{{tio.toastCol}};line-height:1.45">{{tio.toast}}</div></sc-if>
+    </section>
+    <sc-if value="{{sv.listOn}}" hint-placeholder-val="{{ false }}"><button class="btn wfull" onClick="{{sv.toStrips}}">Show as strips, like a desk</button></sc-if>
+    <sc-if value="{{w.showKinds}}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;flex-direction:column;gap:6px" class="wfull">
+        <div style="display:flex;gap:4px;background:#161A21;border:1px solid #262C36;border-radius:12px;padding:4px;overflow-x:auto" role="group" aria-label="Show">
+          <sc-for list="{{w.kinds}}" as="kd" hint-placeholder-count="6">
+            <button class="{{kd.cls}}" style="min-width:64px" onClick="{{kd.pick}}" aria-pressed="{{kd.on}}">{{kd.name}}</button>
+          </sc-for>
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px"><input type="checkbox" checked="{{w.namedOnly}}" onChange="{{w.toggleNamed}}"> Only ones with a name on the Wing</label>
+      </div>
+    </sc-if>
+    <sc-for list="{{listChannels}}" as="ch" hint-placeholder-count="8">
+      <div class="card" style="padding:10px 12px;display:flex;align-items:center;gap:12px;border-left:4px solid {{ch.colHex}}">
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline">
+            <div style="font-size:14px;font-weight:500;display:flex;align-items:center;gap:6px"><span class="mono" style="color:#A3ACB8;font-size:12px">{{ch.num}}</span> {{ch.name}}<button class="ren" onClick="{{ch.rename}}" disabled="{{ch.ctlOff}}" aria-label="Rename {{ch.name}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/></svg></button><sc-if value="{{ch.faderLocked}}" hint-placeholder-val="{{ false }}"><span style="color:#F5C518;display:flex" aria-label="locked"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span></sc-if></div>
+            <div class="mono" style="font-size:12px;color:#A3ACB8">{{ch.db}} dB</div>
+          </div>
+          <div style="height:4px;border-radius:2px;background:#0F1318;overflow:hidden">
+            <div style="height:4px;border-radius:2px;background:#6CB4F5;width:{{ch.meter}}%"></div>
+          </div>
+          <input type="range" min="0" max="100" value="{{ch.level}}" onChange="{{ch.setLevel}}" disabled="{{ch.faderOff}}" aria-label="Fader {{ch.name}}">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:center">
+          <sc-if value="{{ch.muted}}" hint-placeholder-val="{{ false }}">
+            <button class="mute hot" onClick="{{ch.toggle}}" disabled="{{ch.muteOff}}" aria-label="Unmute {{ch.name}}">Muted</button>
+          </sc-if>
+          <sc-if value="{{ch.live}}" hint-placeholder-val="{{ true }}">
+            <button class="mute" onClick="{{ch.toggle}}" disabled="{{ch.muteOff}}" aria-label="Mute {{ch.name}}">Mute</button>
+          </sc-if>
+          <sc-if value="{{ch.hasPreBtn}}" hint-placeholder-val="{{ true }}"><button class="{{ch.preCls}}" onClick="{{ch.togglePre}}" aria-expanded="{{ch.preOpen}}" aria-label="Gain and phantom power for {{ch.name}}" style="font-size:11px;font-weight:600">48V</button></sc-if>
+          <button class="{{ch.lockCls}}" onClick="{{ch.toggleLock}}" aria-pressed="{{ch.ownLock}}" aria-label="Lock {{ch.name}} fader"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></button>
+        </div>
+      </div>
+      <sc-if value="{{ch.preOpen}}" hint-placeholder-val="{{ false }}">
+        <div class="card" aria-label="Gain and phantom power for {{ch.name}}" style="display:flex;flex-direction:column;gap:10px;border-color:#6CB4F5;margin-top:-4px">
+          <div style="font-size:13px;color:#A3ACB8;line-height:1.45">{{ch.srcText}}</div>
+          <sc-if value="{{ch.hasPre}}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;align-items:center;gap:6px" role="group" aria-label="Gain for {{ch.name}}">
+              <div style="flex:1;min-width:0"><div class="lbl">Gain</div><div class="mono" style="font-size:18px;white-space:nowrap">{{ch.gainText}}</div></div>
+              <sc-for list="{{ch.gainSteps}}" as="gs" hint-placeholder-count="4">
+                <button class="btn" style="min-width:52px;padding:0 6px;font-size:13px" onClick="{{gs.run}}" disabled="{{ch.preOff}}" aria-label="{{gs.aria}}">{{gs.label}}</button>
+              </sc-for>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:500">48 V phantom power</div><div style="font-size:12px;color:{{ch.phCol}}">{{ch.phText}}</div></div>
+              <button class="{{ch.phCls}}" onClick="{{ch.phAskFn}}" disabled="{{ch.preOff}}" aria-label="{{ch.phAria}}">{{ch.phBtn}}</button>
+            </div>
+            <sc-if value="{{ch.phAsking}}" hint-placeholder-val="{{ false }}">
+              <div role="dialog" aria-label="{{ch.phQ}}" style="display:flex;flex-direction:column;gap:8px;border:1px solid #F5C518;border-radius:10px;padding:10px">
+                <div style="font-size:15px;font-weight:600">{{ch.phQ}}</div>
+                <div style="font-size:13px;line-height:1.45;color:#C9CFD7">{{ch.phWarn}}</div>
+                <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px"><button class="btn" onClick="{{ch.phNo}}">Cancel</button><button class="btn pri" onClick="{{ch.phYes}}">{{ch.phYesText}}</button></div>
+              </div>
+            </sc-if>
+          </sc-if>
+          <sc-if value="{{ch.ctlOff}}" hint-placeholder-val="{{ false }}"><div style="font-size:12px;color:#A3ACB8">{{ch.ctlOffText}}</div></sc-if>
+        </div>
+      </sc-if>
+      <sc-if value="{{ch.renaming}}" hint-placeholder-val="{{ false }}">
+        <div class="card" style="display:flex;flex-direction:column;gap:8px;border-color:#F5C518;margin-top:-4px">
+          <sc-if value="{{renEdit}}" hint-placeholder-val="{{ true }}">
+            <label for="ren-input" style="font-size:13px;color:#A3ACB8">New name for {{renWhat}} (now “{{renOld}}”)</label>
+            <input id="ren-input" type="text" maxlength="16" value="{{renDraft}}" onChange="{{setRenDraft}}" autocomplete="off" style="min-height:48px;border-radius:10px;border:1px solid #333B47;background:#0F1318;color:#ECEEF1;font:500 16px 'IBM Plex Sans',system-ui,sans-serif;padding:0 12px;box-sizing:border-box;width:100%">
+            <div style="font-size:12px;color:#A3ACB8">{{renHint}}</div>
+            <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px">
+              <button class="lk" style="min-height:48px" onClick="{{renCancel}}">Cancel</button>
+              <button class="lk on" style="min-height:48px" onClick="{{renNext}}" disabled="{{renBad}}">Next</button>
+            </div>
+          </sc-if>
+          <sc-if value="{{renConfirm}}" hint-placeholder-val="{{ false }}">
+            <div style="font-size:15px;font-weight:600">Change it on the Wing?</div>
+            <div style="font-size:14px;line-height:1.45">{{renWhat}}: “{{renOld}}” → “{{renDraft}}”</div>
+            <div style="font-size:12px;color:#A3ACB8;line-height:1.45">The Wing’s screen and every phone, iPad and laptop will show the new name. Nothing else on the channel changes.</div>
+            <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px">
+              <button class="lk" style="min-height:48px" onClick="{{renBack}}">Back</button>
+              <button class="send" onClick="{{renSend}}">Yes, change it on the Wing</button>
+            </div>
+          </sc-if>
+          <sc-if value="{{renSending}}" hint-placeholder-val="{{ false }}"><div role="status" style="font-size:14px;color:#A3ACB8">Sending to the Wing and waiting for it to confirm…</div></sc-if>
+        </div>
+      </sc-if>
+    </sc-for>
+  </main>
+
+  <sc-if value="{{hasPending}}" hint-placeholder-val="{{ false }}">
+    <div style="padding:12px 16px;background:#1E232C;border-top:2px solid #F5C518;display:flex;flex-direction:column;gap:10px">
+      <div style="font-size:14px">Move <strong>{{pendingName}}</strong> from {{pendingFrom}} to {{pendingTo}}? That's a big jump.</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn pri" style="flex:1" onClick="{{confirm}}">Yes, move it</button>
+        <button class="btn" style="flex:1" onClick="{{cancel}}">Cancel</button>
+      </div>
+    </div>
+  </sc-if>
+  <div style="position:absolute;inset:0;z-index:6;pointer-events:none">
+    <dc-import name="MDTalk" hint-size="390px,844px"></dc-import>
+  </div>
+  <div style="position:absolute;inset:0;z-index:7;pointer-events:none">
+    <dc-import name="CueBar" hint-size="390px,844px"></dc-import>
+  </div>
+  <div class="rtabar" style="flex:none">
+    <dc-import name="MiniRTA" hint-size="390px,48px"></dc-import>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    const nums = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    this.state = {
+      mode: 0, guard: true, lockMutes: false, pending: null, foh: { ipad: true, phone: true, here: false },
+      ren: '', renDraft: '', renStep: '', renToast: '', names: null, autoRead: true, checkedAt: '',
+      chans: nums.map((n, i) => ({ n, level: [78, 72, 72, 70, 68, 74, 73, 0, 71, 66][i], muted: n === 8, meter: 40, lock: i === 0,
+        gain: [32, 28, 28, 24, 12, 18, 36, 40, 34, 0][i], vph: n === 6 || n === 8, src: n === 7 ? 'CRD/1' : n === 9 ? 'CRD/2' : n <= 8 ? 'LCL/' + n : 'USB/1',
+        pan: [0, -30, 30, -20, 0, 0, 0, 0, 0, 0][i], col: [2, 3, 3, 8, 8, 9, 9, 1, 9, 12][i] })),
+      // the live Wing (on the C3 Life server)
+      live: false, wing: null, wMeters: {}, wKind: 'ch', wNamed: true, wIpDraft: null, wAsk: false, wFound: [], wToast: '', wToastBad: false,
+      pre: '', phAsk: '', wLock: {}, demoMode: 'watch', demoIp: '192.168.10.20',
+      // strips view (per device): layer, page, fine, mute enable, strip width, custom layers
+      view: this.pref('booth.mixview', 'strips'), fine: false, me: this.pref('booth.muteenable', '1') === '1', swidth: this.pref('booth.stripwidth', 'auto'),
+      layer: 'k:ch', page: 0, sel: '', layoutOpen: false, ly: null, demoK: null, vw: window.innerWidth, vh: window.innerHeight,
+      tio: null, tioAsk: false, tioIp: null, tioToast: '', tioBad: false,
+      tioDemo: { mode: 'control', ip: '192.168.10.41', card: 1, inputs: Object.fromEntries(Array.from({ length: 16 }, (_, i) => [i + 1, { gain: [38, 30][i] || 24, vph: 0, hpf: 1, hpff: [60, 80][i] || 80 }])) }
+    };
+    this.wp = {};
+  }
+  componentDidMount() {
+    const check = () => { if (!this.state.autoRead || this.state.live) return; const d = new Date(); const hhmmss = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') + ':' + String(d.getSeconds()).padStart(2, '0'); this.setState({ checkedAt: hhmmss, names: this.wn() }); };
+    check(); this.readTimer = setInterval(check, 10000);
+    this.mixV = -1; this.mixIn();
+    this.timer = setInterval(() => {
+      if (this.state.live) return;
+      this.mixIn();
+      this.setState({ ...(this.state.autoRead ? { names: this.wn() } : {}), chans: this.state.chans.map((c) => ({ ...c, meter: c.muted ? 0 : Math.round(c.level * (0.55 + Math.random() * 0.4)) })) });
+    }, 180);
+    this.wPoll(); this.wT = setInterval(() => this.wPoll(), 700);
+    this.wMT = setInterval(() => this.wMeterPoll(), 250);
+    this.pT = setInterval(() => this.procPoll(), 700);
+    this.dT = setInterval(() => this.dynTick(), 150);
+    this.sT = setInterval(() => this.sofPoll(), 700);
+    this.onResize = () => this.setState({ vw: window.innerWidth, vh: window.innerHeight });
+    window.addEventListener('resize', this.onResize);
+  }
+  pref(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } }
+  setPref(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  layers() { try { const l = JSON.parse(localStorage.getItem('booth.layers') || 'null'); if (Array.isArray(l)) return l; } catch (e) {} return []; }
+  saveLayers(l) { try { localStorage.setItem('booth.layers', JSON.stringify(l)); } catch (e) {} }
+  componentWillUnmount() { clearInterval(this.timer); clearTimeout(this.renT); clearInterval(this.readTimer); clearInterval(this.wT); clearInterval(this.wMT); clearTimeout(this.wRenT); window.removeEventListener('resize', this.onResize); clearInterval(this.pT); clearInterval(this.dT); clearInterval(this.sT); }
+  // The mixer as every screen sees it (slide cues change it too): channel -> {level, muted}
+  mixIn() {
+    let m = null; try { m = JSON.parse(localStorage.getItem('booth.mix') || 'null'); } catch (e) {}
+    if (!m || !m.ch || m.v === this.mixV) return;
+    this.mixV = m.v;
+    this.state.chans = this.state.chans.map((c) => (m.ch[c.n] ? { ...c, level: m.ch[c.n].level !== undefined ? m.ch[c.n].level : c.level, muted: m.ch[c.n].muted !== undefined ? m.ch[c.n].muted : c.muted } : c));
+  }
+  mixOut(chans) {
+    let m = null; try { m = JSON.parse(localStorage.getItem('booth.mix') || 'null'); } catch (e) {}
+    m = m && m.ch ? m : { v: 0, ch: {} };
+    chans.forEach((c) => { m.ch[c.n] = { ...(m.ch[c.n] || {}), level: c.level, muted: c.muted }; });
+    m.v = (m.v || 0) + 1; this.mixV = m.v;
+    try { localStorage.setItem('booth.mix', JSON.stringify(m)); } catch (e) {}
+  }
+  update(i, patch) {
+    const chans = this.state.chans.map((c, j) => (j === i ? { ...c, ...patch } : c));
+    this.setState({ chans: chans });
+    if ('level' in patch || 'muted' in patch) this.mixOut([chans[i]]);
+  }
+  // Channel, bus and DCA names come from the Wing. Every screen reads this one list, so they always match the desk.
+  wnDefaults() {
+    return {
+      ch: { 1: 'Lead Vox', 2: 'BV 1', 3: 'BV 2', 4: 'Acoustic', 5: 'Keys', 6: 'Bass DI', 7: 'Kick', 8: 'RTA Mic', 9: 'Snare', 10: 'Playback L/R', 11: 'Band Leader', 12: 'MD Talkback', 13: 'Drummer TB', 14: 'Spare', 15: 'Pastor HH', 16: 'Pastor Lapel' },
+      aux: { 2: 'Walk-in', 3: 'MD Wireless', 4: 'Click' },
+      bus: { 1: 'Wedges', 2: 'IEM Band', 4: 'IEM Keys', 5: 'Stream L/R' },
+      dca: { 1: 'Band', 2: 'Vocals', 3: 'Speech', 4: 'PB' },
+      mtx: { 1: 'Foyer' },
+      at: '09:58'
+    };
+  }
+  wn() { try { const w = JSON.parse(localStorage.getItem('booth.wingnames') || 'null'); if (w && w.ch) return w; } catch (e) {} return this.wnDefaults(); }
+  chName(n) { return this.wn().ch[n] || 'Ch ' + String(n).padStart(2, '0'); }
+  chLabel(n) { return 'Ch ' + String(n).padStart(2, '0') + ' · ' + this.chName(n); }
+  wnSave(kind, n, name, by) {
+    const w = this.wn(); w[kind] = { ...w[kind], [n]: name };
+    const d = new Date(); w.at = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); w.by = by || '';
+    try { localStorage.setItem('booth.wingnames', JSON.stringify(w)); } catch (e) {}
+    return w;
+  }
+  // ---- the live Wing: the C3 Life server talks to the desk; every screen asks it ----
+  wTok() { try { const x = JSON.parse(localStorage.getItem('booth.session') || 'null'); return x ? x.token : ''; } catch (e) { return ''; } }
+  wApi(path, method, body) {
+    const t = this.wTok(), h = t ? { Authorization: 'Bearer ' + t } : {};
+    if (body) h['Content-Type'] = 'application/json';
+    return fetch(path, { method: method || 'GET', headers: h, body: body ? JSON.stringify(body) : undefined })
+      .then((r) => r.json().catch(() => ({})).then((j) => ({ code: r.status, j: j })));
+  }
+  wPoll(full) {
+    if (this.wBusy || this.wDemo) return; this.wBusy = true;
+    const w0 = this.state.wing;
+    this.wApi('/api/wing' + (w0 && !full ? '?since=' + w0.version : '')).then(({ code, j }) => {
+      this.wBusy = false;
+      if (code === 404) { this.wDemo = true; clearInterval(this.wT); return; }
+      if (code !== 200 || !j.ok) { if (code === 401 || code === 403) this.setState({ live: true, wing: null, wNoAccess: true }); return; }
+      const w = j.changed === false && w0 ? { ...w0, ...j, strips: w0.strips, inputs: w0.inputs, can_control: w0.can_control } : j;
+      if (j.changed !== false) this.wNames(w);
+      if (this.wRen) {
+        const st = ((w.strips || {})[this.wRen.kind] || {})[this.wRen.n] || {};
+        if (st.name === this.wRen.name) { clearTimeout(this.wRenT); this.setState({ renToast: '✓ The Wing confirmed: ' + this.wRen.what + ' is now “' + this.wRen.name + '” (was “' + this.wRen.was + '”). Every screen has updated.' }); this.wRen = null; }
+      }
+      this.setState({ live: true, wing: w, wNoAccess: false });
+      if (!this.tioBusy && (!this.tioAt || Date.now() - this.tioAt > 1500)) { this.tioBusy = true; this.tioAt = Date.now(); this.wApi('/api/tio').then(({ j }) => { this.tioBusy = false; if (j && j.ok) this.setState({ tio: j }); }).catch(() => { this.tioBusy = false; }); }
+    }).catch(() => { this.wBusy = false; });
+  }
+  wMeterPoll() {
+    const w = this.state.wing;
+    if (!this.state.live || !w || !w.meters || this.wMBusy) return;
+    this.wMBusy = true;
+    this.wApi('/api/wing/meters').then(({ j }) => { this.wMBusy = false; this.setState({ wMeters: j && j.meters ? j.ch || {} : {}, wLR: j && j.meters ? j.lr || {} : {} }); }).catch(() => { this.wMBusy = false; });
+  }
+  wNames(w) {
+    // every screen (cues, My mix, ...) uses the Wing's names
+    const out = { at: '', by: 'the Wing' }, d = new Date();
+    out.at = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+    ['ch', 'aux', 'bus', 'dca', 'mtx', 'main'].forEach((k) => { out[k] = {}; Object.entries((w.strips || {})[k] || {}).forEach(([n, x]) => { if ((x.name || '').trim()) out[k][n] = x.name; }); });
+    if (!Object.keys(out.ch).length) return;
+    try { if (localStorage.getItem('booth.wingnames') !== JSON.stringify(out)) localStorage.setItem('booth.wingnames', JSON.stringify(out)); } catch (e) {}
+  }
+  wVal(kind, n, f) { const p = this.wp[kind + '/' + n + '/' + f]; if (p && p.until > Date.now()) return p.v; const st = ((this.state.wing || {}).strips || {})[kind] || {}; return (st[n] || {})[f]; }
+  wInVal(key, f) { const p = this.wp['in/' + key + '/' + f]; if (p && p.until > Date.now()) return p.v; return (((this.state.wing || {}).inputs || {})[key] || {})[f]; }
+  wSay(t, bad) { this.setState({ wToast: t, wToastBad: !!bad }); }
+  wSet(kind, n, field, value, pkey) {
+    this.wp[pkey || (kind + '/' + n + '/' + field)] = { v: value, until: Date.now() + 2500 };
+    this.setState({ tick: Date.now() });
+    return this.wApi('/api/wing/set', 'POST', { kind: kind, n: n, field: field, value: value }).then(({ j }) => {
+      if (!j.ok) { delete this.wp[pkey || (kind + '/' + n + '/' + field)]; this.wSay(j.error || 'The Wing didn’t take that.', true); }
+      return j.ok;
+    }).catch(() => { this.wSay('Couldn’t reach the C3 Life server.', true); return false; });
+  }
+  wCtl() {
+    const w = this.state.wing;
+    if (!this.state.live) return { ok: true, why: '' };
+    if (!w) return { ok: false, why: 'Your role can’t see the mixer.' };
+    if (w.mode !== 'control') return { ok: false, why: 'Watching the Wing only. An Admin can switch it to Control at the top.' };
+    if (w.status !== 'connected') return { ok: false, why: 'The Wing isn’t answering, so nothing can be sent.' };
+    if (!w.can_control) return { ok: false, why: 'Your role can watch the mixer but not change it (Access levels).' };
+    return { ok: true, why: '' };
+  }
+  // ---- the Tio1608-D: its gain, phantom power and low cut (Yamaha's own protocol, like R Remote) ----
+  tioCtl() {
+    const s = this.state;
+    if (!s.live) return s.tioDemo.mode === 'control' ? { ok: true, why: '' } : { ok: false, why: 'Watching the Tio only. An Admin can switch it to Control on its card.' };
+    const t = s.tio, w = s.wing;
+    if (!t) return { ok: false, why: 'Reading the Tio…' };
+    if (t.mode !== 'control') return { ok: false, why: 'Watching the Tio only. An Admin can switch it to Control on its card.' };
+    if (t.status !== 'connected') return { ok: false, why: 'The Tio isn’t answering, so nothing can be sent.' };
+    if (!w || !w.can_control) return { ok: false, why: 'Your role can watch the mixer but not change it (Access levels).' };
+    return { ok: true, why: '' };
+  }
+  tioIn(k) {
+    const s = this.state, base = s.live ? (((s.tio || {}).inputs || {})[k] || {}) : (s.tioDemo.inputs[k] || {}), out = { ...base };
+    ['gain', 'vph', 'hpf', 'hpff'].forEach((f) => { const p = this.wp['t/' + k + '/' + f]; if (p && p.until > Date.now()) out[f] = p.v; });
+    return out;
+  }
+  tioK(grp, n) {
+    const s = this.state, from = s.live ? ((s.tio || {}).card_from || 1) : s.tioDemo.card;
+    if (grp !== 'CRD' || !n || (s.live && (!s.tio || s.tio.mode === 'off'))) return 0;
+    const k = Number(n) - from + 1;
+    return k >= 1 && k <= 16 ? k : 0;
+  }
+  tioSet(k, f, v) {
+    const s = this.state;
+    if (!s.live) { const d = JSON.parse(JSON.stringify(s.tioDemo)); d.inputs[k] = { ...d.inputs[k], [f]: v }; this.setState({ tioDemo: d }); return Promise.resolve(true); }
+    this.wp['t/' + k + '/' + f] = { v: v, until: Date.now() + 2500 }; this.setState({ tick: Date.now() });
+    return this.wApi('/api/tio/set', 'POST', { n: k, field: f, value: v }).then(({ j }) => { if (!j.ok) { delete this.wp['t/' + k + '/' + f]; this.wSay(j.error || 'The Tio didn’t take that.', true); } return j.ok; })
+      .catch(() => { this.wSay('Couldn’t reach the C3 Life server.', true); return false; });
+  }
+  tioConn() {
+    const s = this.state, admin = this.role() === 'Admin';
+    const t = s.live ? (s.tio || { status: 'loading', mode: 'watch', ip: '', card_from: 1 }) : { status: s.tioDemo.mode === 'off' ? 'off' : 'demo', mode: s.tioDemo.mode, ip: s.tioDemo.ip, card_from: s.tioDemo.card };
+    const doing = t.mode === 'control' ? 'In control: gain, phantom power and low cut here change the Tio, like R Remote.' : 'Watching only: the app reads the Tio but sends nothing.';
+    const v = { demo: ['Tio1608-D (demo)', 'Not connected to a real Tio. On the C3 Life server this shows the Tio’s 16 inputs. ' + doing, '#A3ACB8'],
+      off: ['Tio1608-D link off', 'The app isn’t talking to the Tio. Use R Remote, or an Admin can choose Watch only or Control.', '#A3ACB8'],
+      'no address': ['The Tio’s address isn’t set', 'Type it under The Tio’s address.', '#F5C518'],
+      'no answer': ['No answer from the Tio', 'Tried ' + t.ip + '. Check the Tio is on and on the Dante network (its primary port), and the address is right.', '#FF7A45'],
+      connected: ['Connected to the Tio1608-D', doing + ' · ' + t.ip, t.mode === 'control' ? '#F5C518' : '#4FD18B'],
+      loading: ['Tio1608-D', 'Asking the C3 Life server…', '#A3ACB8'] }[t.status] || ['Tio1608-D', '', '#A3ACB8'];
+    const ipDraft = s.tioIp !== null ? s.tioIp : t.ip;
+    const ipOk = /^(25[0-5]|2[0-4]\d|1?\d?\d)(\.(25[0-5]|2[0-4]\d|1?\d?\d)){3}$/.test(ipDraft.trim());
+    const put = (body, msg) => {
+      if (!s.live) { const d = { ...s.tioDemo, ...(body.mode ? { mode: body.mode } : {}), ...(body.ip !== undefined ? { ip: body.ip } : {}), ...(body.card_from ? { card: body.card_from } : {}) }; this.setState({ tioDemo: d, tioAsk: false, tioIp: null, tioToast: msg, tioBad: false }); return; }
+      this.wApi('/api/tio/settings', 'PUT', body).then(({ j }) => { if (!j.ok) { this.setState({ tioToast: j.error || 'Not changed.', tioBad: true }); return; } this.setState({ tioAsk: false, tioIp: null, tioToast: msg, tioBad: false, tio: { ...(this.state.tio || {}), ...j } }); })
+        .catch(() => this.setState({ tioToast: 'Couldn’t reach the C3 Life server.', tioBad: true }));
+    };
+    const cf = t.card_from || 1;
+    return { title: v[0], sub: v[1], dot: v[2], border: t.mode === 'control' && (t.status === 'connected' || t.status === 'demo') ? '#F5C518' : '#262C36', admin: admin,
+      modes: [['off', 'Off'], ['watch', 'Watch only'], ['control', 'Control']].map(([k, n]) => ({ name: n, on: t.mode === k, cls: t.mode === k ? 'lk on' : 'lk',
+        pick: () => { if (k === t.mode) return; if (k === 'control') this.setState({ tioAsk: true, tioToast: '' }); else put({ mode: k }, k === 'off' ? 'The app has stopped talking to the Tio.' : 'Watching only: nothing is sent to the Tio.'); } })),
+      asking: s.tioAsk, noAsk: () => this.setState({ tioAsk: false }), yesAsk: () => put({ mode: 'control' }, '✓ The app can change the Tio’s gain and phantom power now.'),
+      ipShown: t.ip || 'not set', ipDraft: ipDraft, ipBad: !ipOk || ipDraft.trim() === t.ip, setIp: (e) => this.setState({ tioIp: e.target.value }),
+      saveIp: () => put({ ip: ipDraft.trim(), mode: t.mode === 'off' ? 'watch' : t.mode }, 'Saved. Looking for the Tio at ' + ipDraft.trim() + '…'),
+      cardFrom: cf, cardDown: () => put({ card_from: Math.max(1, cf - 1) }, 'Tio input 1 is Wing card input ' + Math.max(1, cf - 1) + '.'), cardUp: () => put({ card_from: Math.min(49, cf + 1) }, 'Tio input 1 is Wing card input ' + Math.min(49, cf + 1) + '.'),
+      hasToast: !!s.tioToast, toast: s.tioToast, toastCol: s.tioBad ? '#FF7A45' : '#7FD1C1' };
+  }
+  role() { let u = null; try { u = JSON.parse(localStorage.getItem('booth.user') || 'null'); } catch (e) {} return u ? (u.role || u.name) : 'Admin'; }
+  wConn() {
+    const s = this.state, admin = this.role() === 'Admin';
+    const w = s.live ? (s.wing || { status: s.wNoAccess ? 'no access' : 'loading', mode: 'watch', ip: '', console: {} }) : { status: s.demoMode === 'off' ? 'off' : 'demo', mode: s.demoMode, ip: s.demoIp, console: { name: 'Booth Wing', firmware: '3.0.6' }, meters: true };
+    const ip = w.ip || '', fw = (w.console || {}).firmware, nm = (w.console || {}).name || 'the Wing';
+    const doing = w.mode === 'control' ? 'In control: changes here move the desk.' : 'Watching only: the app reads the desk but sends nothing.';
+    const t = {
+      demo: ['Demo mixer', 'Not connected to a real Wing. On the C3 Life server this card shows the live desk: names, colours, faders, mutes, gain, phantom power and meters. ' + doing, '#A3ACB8'],
+      off: ['Wing link off', 'The app isn’t talking to the Wing. An Admin can choose Watch only or Control.', '#A3ACB8'],
+      'no address': ['The Wing’s address isn’t set', 'Type it under The Wing’s address, or tap Find the Wing on the network.', '#F5C518'],
+      'no answer': ['No answer from the Wing', 'Tried ' + ip + '. Check the Wing is on and on the booth network, and that the address is right (on the Wing: Setup › Network).', '#FF7A45'],
+      connected: ['Connected to ' + nm, doing + ' · ' + ip + (fw ? ' · firmware ' + fw : '') + (w.meters ? '' : ' · meters not coming through yet'), w.mode === 'control' ? '#F5C518' : '#4FD18B'],
+      loading: ['Looking for the Wing…', 'Asking the C3 Life server.', '#A3ACB8'],
+      'no access': ['Mixer', 'Your role can’t see the mixer (Access levels).', '#A3ACB8']
+    }[w.status] || ['Wing', '', '#A3ACB8'];
+    const ipDraft = s.wIpDraft !== null ? s.wIpDraft : ip;
+    const ipOk = /^(25[0-5]|2[0-4]\d|1?\d?\d)(\.(25[0-5]|2[0-4]\d|1?\d?\d)){3}$/.test(ipDraft.trim());
+    const put = (body, msg) => {
+      if (!s.live) { this.setState({ demoMode: body.mode || s.demoMode, demoIp: body.ip !== undefined ? body.ip : s.demoIp, wIpDraft: null, wAsk: false, wToast: msg, wToastBad: false }); return; }
+      this.wApi('/api/wing/settings', 'PUT', body).then(({ j }) => {
+        if (!j.ok) { this.wSay(j.error || 'Not changed.', true); return; }
+        this.setState({ wIpDraft: null, wAsk: false, wToast: msg, wToastBad: false }); this.wPoll(true);
+      }).catch(() => this.wSay('Couldn’t reach the C3 Life server.', true));
+    };
+    const kinds = [['ch', 'Channels'], ['dca', 'DCAs'], ['bus', 'Buses'], ['aux', 'Aux'], ['main', 'Main'], ['mtx', 'Matrix']];
+    return {
+      title: t[0], sub: t[1], dot: t[2], border: w.mode === 'control' && w.status === 'connected' ? '#F5C518' : '#262C36',
+      admin: admin && w.status !== 'no access',
+      modes: [['off', 'Off'], ['watch', 'Watch only'], ['control', 'Control']].map(([k, n]) => ({
+        name: n, on: w.mode === k, cls: w.mode === k ? 'lk on' : 'lk',
+        pick: () => { if (k === w.mode) return; if (k === 'control') this.setState({ wAsk: true, wToast: '' }); else put({ mode: k }, k === 'off' ? 'The app has stopped talking to the Wing.' : 'Watching only: nothing is sent to the Wing.'); }
+      })),
+      asking: s.wAsk, noAsk: () => this.setState({ wAsk: false }),
+      yesAsk: () => put({ mode: 'control' }, '✓ The app can control the Wing now. Watch only switches it back.'),
+      ipShown: ip || 'not set', ipDraft: ipDraft, ipBad: !ipOk || ipDraft.trim() === ip,
+      setIp: (e) => this.setState({ wIpDraft: e.target.value }),
+      saveIp: () => put({ ip: ipDraft.trim(), mode: w.mode === 'off' ? 'watch' : w.mode }, 'Saved. Looking for the Wing at ' + ipDraft.trim() + '…'),
+      find: () => {
+        if (!s.live) { this.setState({ wFound: [{ ip: '192.168.10.20', name: 'Booth Wing', firmware: '3.0.6' }], wToast: 'Found 1 Wing.', wToastBad: false }); return; }
+        this.wSay('Looking on the booth network…');
+        this.wApi('/api/wing/find', 'POST', {}).then(({ j }) => {
+          const f = (j && j.found) || [];
+          this.setState({ wFound: f, wToast: f.length ? 'Found ' + f.length + ' Wing' + (f.length > 1 ? 's' : '') + '.' : 'No Wing answered. Check it’s on and on the booth network, or type its address.', wToastBad: !f.length });
+        }).catch(() => this.wSay('Couldn’t reach the C3 Life server.', true));
+      },
+      found: s.wFound.map((f) => ({ ...f, use: () => { this.setState({ wFound: [] }); put({ ip: f.ip, mode: w.mode === 'off' ? 'watch' : w.mode }, 'Saved. Using ' + f.name + ' at ' + f.ip + '.'); } })),
+      hasToast: !!s.wToast, toast: s.wToast, toastCol: s.wToastBad ? '#FF7A45' : '#7FD1C1',
+      showKinds: s.live && !!s.wing,
+      kinds: kinds.map(([k, n]) => ({ name: n, on: s.wKind === k, cls: s.wKind === k ? 'lk on' : 'lk', pick: () => this.setState({ wKind: k, pre: '', ren: '' }) })),
+      namedOnly: s.wNamed, toggleNamed: () => this.setState({ wNamed: !s.wNamed })
+    };
+  }
+  // Checks the musician buses' sends (Pre, pan link off) and fixes them only after Yes.
+  msVals() {
+    const st = this.state.ms || 'idle';
+    const rows = [
+      { bus: 'B1 Wedges', bad: 'Kick and Snare sends are Post, so moving FOH faders changes the wedges.' },
+      { bus: 'B2 IEM Band', ok: 'All sends Pre, pan link off.' },
+      { bus: 'B4 IEM Keys', bad: 'Pan link is on for Lead Vox, Acoustic and Keys, so their pan follows FOH.' }
+    ].map(r => { const good = r.ok || st === 'done'; return { bus: r.bus, mark: good ? '✓' : '!', col: good ? '#4FD18B' : '#F5C518', text: good ? (r.ok || 'Fixed: sends Pre, pan link off.') : r.bad }; });
+    const go = (v, extra) => () => this.setState(Object.assign({ ms: v }, extra || {}));
+    return {
+      idle: st === 'idle', list: st !== 'idle' && st !== 'checking', rows,
+      found: st === 'found', asking: st === 'ask',
+      msg: st === 'checking' ? 'Reading the buses from the Wing…' : st === 'sending' ? 'Sending to the Wing and waiting for it to confirm…' : st === 'done' ? 'Done. The Wing confirmed all 5 changes.' : st === 'found' ? '2 buses need changing.' : '',
+      msgCol: st === 'done' ? '#4FD18B' : '#A3ACB8',
+      check: () => { this.setState({ ms: 'checking' }); setTimeout(() => this.setState({ ms: 'found' }), 900); },
+      ask: go('ask'), cancel: go('found'),
+      fix: () => { this.setState({ ms: 'sending' }); setTimeout(() => this.setState({ ms: 'done' }), 1200); }
+    };
+  }
+  // the Wing's fader law: 0.75 is 0 dB, 1.0 is +10 dB
+  posToDb(p) { p = Math.max(0, Math.min(1, p)); return p >= 0.5 ? p * 40 - 30 : p >= 0.25 ? p * 80 - 50 : p >= 0.0625 ? p * 160 - 70 : p > 0 ? p * 480 - 90 : -144; }
+  dbToPos(d) { return d <= -90 ? 0 : d >= -10 ? Math.min(1, (d + 30) / 40) : d >= -30 ? (d + 50) / 80 : d >= -60 ? (d + 70) / 160 : (d + 90) / 480; }
+  fmtDb(d) { return d <= -90 ? '-∞' : (d > 0 ? '+' : '') + d.toFixed(1); }
+  srcName(grp, n) { return ({ TIO: 'Tio1608-D input ' + n + ' (the stagebox, over Dante). Changed here as in R Remote', LCL: 'Local input ' + n + ' (on the Wing)', A: 'AES50 A input ' + n + ' (stagebox)', B: 'AES50 B input ' + n + ' (stagebox)', C: 'AES50 C input ' + n, USB: 'USB ' + n, CRD: 'Card ' + n, AUX: 'Aux in ' + n, SC: 'StageConnect ' + n, OFF: 'nothing (off)' })[grp] || (grp + ' ' + n); }
+  // One row on the screen, demo or live. r: {id, kind, n, label, name, fdr (dB), muted, meter (%), lock, col, src, key, gain, vph, ...actions}
+  row(r, ctl, globalLock) {
+    const s = this.state;
+    const colours = ['#5B6B7F', '#2F6CC4', '#2B4FA3', '#2BB3B3', '#3FA65A', '#7F9A3A', '#D6C23A', '#E08A2E', '#C43B3B', '#E07A6A', '#B8408E', '#8A5AD0'];
+    const ph = !!r.vph, phOpen = s.phAsk === r.id;
+    const what = r.label + ' ' + r.name;
+    return {
+      num: r.numText, name: r.name,
+      colHex: r.col ? colours[(r.col - 1) % 12] : '#262C36',
+      renaming: s.ren === r.id,
+      rename: () => this.setState({ ren: r.id, renDraft: r.name, renStep: 'edit', renToast: '' }),
+      level: Math.round(this.dbToPos(r.fdr) * 100), db: this.fmtDb(r.fdr), meter: r.meter,
+      muted: !!r.muted, live: !r.muted,
+      faderLocked: globalLock || !!r.lock,
+      faderOff: globalLock || !!r.lock || !ctl.ok,
+      muteLocked: s.lockMutes && (globalLock || !!r.lock),
+      muteOff: (s.lockMutes && (globalLock || !!r.lock)) || !ctl.ok,
+      ownLock: !!r.lock, lockCls: r.lock ? 'lkb on' : 'lkb', toggleLock: r.toggleLock,
+      toggle: r.toggleMute,
+      setLevel: (e) => {
+        const v = Number(e.target.value), d = Math.round(this.posToDb(v / 100) * 10) / 10;
+        const cur = r.fdr <= -90 ? -90 : r.fdr, to = d <= -90 ? -90 : d;
+        if (s.guard && Math.abs(to - cur) > 6) this.setState({ pending: { name: what, from: this.fmtDb(r.fdr) + ' dB', to: this.fmtDb(d) + ' dB', run: () => r.setDb(d) } });
+        else r.setDb(d);
+      },
+      hasPreBtn: r.kind === 'ch', preOpen: s.pre === r.id, preCls: s.pre === r.id ? 'lkb on' : 'lkb',
+      togglePre: () => this.setState({ pre: s.pre === r.id ? '' : r.id, phAsk: '' }),
+      srcText: r.key ? 'Mic input: ' + this.srcName(r.key.split('/')[0], r.key.split('/')[1]) + '.' : (r.srcGrp ? 'Comes from ' + this.srcName(r.srcGrp, r.srcIn) + ', which has no gain or phantom power here.' : 'Reading its input from the Wing…'),
+      hasPre: !!r.key,
+      gainText: r.gain === undefined || r.gain === null ? '—' : (r.gain > 0 ? '+' : '') + Number(r.gain).toFixed(1) + ' dB',
+      gainSteps: [-3, -1, 1, 3].map((g) => ({ label: (g > 0 ? '+' : '−') + Math.abs(g), aria: (g > 0 ? 'Gain up ' : 'Gain down ') + Math.abs(g) + ' dB on ' + what, run: () => { const v = Math.max(r.gMin === undefined ? -3 : r.gMin, Math.min(r.gMax === undefined ? 60 : r.gMax, Math.round(((r.gain || 0) + g) * 10) / 10)); r.setGain(v); } })),
+      phText: ph ? 'On' : 'Off', phCol: ph ? '#F5C518' : '#A3ACB8', phBtn: ph ? 'Turn off…' : 'Turn on…', phCls: 'btn',
+      phAria: (ph ? 'Turn off' : 'Turn on') + ' phantom power for ' + what,
+      phAskFn: () => this.setState({ phAsk: r.id }), phAsking: phOpen, phNo: () => this.setState({ phAsk: '' }),
+      phQ: (ph ? 'Turn off' : 'Turn on') + ' 48 V phantom power for ' + what + '?',
+      phWarn: ph ? 'Condenser mics and active DI boxes on this input stop working. Pull the fader down first, as switching can thump through the speakers.'
+        : 'Pull the fader down first, as switching can thump through the speakers. Phantom power can damage some ribbon mics and kit that isn’t made for it; dynamic and condenser mics and DI boxes are fine.',
+      phYesText: ph ? 'Yes, turn it off' : 'Yes, turn it on',
+      phYes: () => { this.setState({ phAsk: '' }); r.setVph(!ph); },
+      ctlOff: !ctl.ok, ctlOffText: r.preCtl && !r.preCtl.ok ? r.preCtl.why : ctl.why,
+      preOff: r.preCtl ? !r.preCtl.ok : !ctl.ok, preOnlyOff: !!r.preCtl && !r.preCtl.ok && ctl.ok, preOffText: r.preCtl ? r.preCtl.why : '', tioK: r.tioK || 0, tioIn: r.tioIn || null,
+      // strips
+      label: r.label, kind: r.kind, id: r.id, n: r.n,
+      short: r.name, ink: [4, 5, 6, 7, 8, 10].indexOf(r.col) > -1 ? '#0B0E12' : '#FFFFFF', bot: r.label.replace(/ 0(\d)$/, ' $1'),
+      stereo: !!r.stereo,
+      meterOffL: 100 - Math.max(0, Math.min(100, r.stereo ? r.meterL || 0 : 0)),
+      meterOff: 100 - Math.max(0, Math.min(100, (r.stereo ? r.meterR : r.meter) || 0)), lv: Math.round(this.dbToPos(r.fdr) * 100), capAt: 'calc(10px + (100% - 20px) * ' + this.dbToPos(r.fdr).toFixed(4) + ')',
+      muteCls: r.muted ? 'mxm hot' : 'mxm', muteAria: (r.muted ? 'Unmute ' : 'Mute ') + r.name, mute: r.toggleMute,
+      mxMuteOff: (s.lockMutes && (globalLock || !!r.lock)) || !ctl.ok || !s.me,
+      hasPan: r.kind !== 'dca' && r.pan !== undefined, noPan: !(r.kind !== 'dca' && r.pan !== undefined),
+      pan: r.pan || 0, panPct: 50 + (r.pan || 0) / 2, panText: !r.pan ? 'Centre' : (r.pan < 0 ? 'Left ' + -r.pan : 'Right ' + r.pan),
+      picked: s.sel === r.id, pick: () => this.setState({ sel: s.sel === r.id ? '' : r.id, phAsk: '', ren: '', renStep: '' }),
+      ...this.dragFns(r, globalLock || !!r.lock || !ctl.ok)
+    };
+  }
+  // Faders move from where you grab them (no jump on touch). Fine moves a quarter as far.
+  dragFns(r, off) {
+    const pos = this.dbToPos(r.fdr) * 100;
+    const to = (v) => Math.round(this.posToDb(Math.max(0, Math.min(100, v)) / 100) * 10) / 10;
+    const send = (d, last) => { const now = Date.now(); if (last || !this.dragAt || now - this.dragAt > 80) { this.dragAt = now; r.setDb(d); } else if (r.setDbQuiet) r.setDbQuiet(d); };
+    const panTo = (v) => Math.max(-100, Math.min(100, Math.round(v / 5) * 5));
+    return {
+      down: (e) => { if (off) return; try { e.currentTarget.setPointerCapture(e.pointerId); } catch (er) {} this.drag = { id: r.id, y: e.clientY, h: e.currentTarget.getBoundingClientRect().height - 20, start: pos, last: null }; },
+      move: (e) => { const d = this.drag; if (!d || d.id !== r.id || !e.buttons) return; const k = this.state.fine ? 0.25 : 1; const v = d.start + ((d.y - e.clientY) / Math.max(40, d.h)) * 100 * k; const db = to(v); if (db === d.last) return; d.last = db; send(db, false); },
+      up: () => { const d = this.drag; if (!d || d.id !== r.id) return; this.drag = null; if (d.last !== null) send(d.last, true); },
+      key: (e) => { if (off) return; const k = this.state.fine ? 0.25 : 1; const st = { ArrowUp: 1, ArrowDown: -1, PageUp: 5, PageDown: -5 }[e.key]; if (!st) return; e.preventDefault(); send(to(pos + st * k), true); },
+      panDown: (e) => { if (off || !r.setPan) return; try { e.currentTarget.setPointerCapture(e.pointerId); } catch (er) {} this.pdrag = { id: r.id, x: e.clientX, w: e.currentTarget.getBoundingClientRect().width, start: r.pan || 0, last: null }; },
+      panMove: (e) => { const d = this.pdrag; if (!d || d.id !== r.id || !e.buttons) return; const v = panTo(d.start + ((e.clientX - d.x) / Math.max(30, d.w)) * 200); if (v === d.last) return; d.last = v; r.setPan(v); },
+      panUp: () => { this.pdrag = null; },
+      panKey: (e) => { if (off || !r.setPan) return; const st = { ArrowLeft: -5, ArrowRight: 5 }[e.key]; if (!st) return; e.preventDefault(); r.setPan(panTo((r.pan || 0) + st)); },
+      panCentre: () => { if (!off && r.setPan) r.setPan(0); }
+    };
+  }
+  liveRows(ctl, globalLock, kind, named) {
+    const s = this.state, w = s.wing || {}, st = (w.strips || {})[kind] || {};
+    const lab = { ch: 'Ch', aux: 'Aux', bus: 'Bus', main: 'Main', mtx: 'Mtx', dca: 'DCA' }[kind];
+    let nums = Object.keys(st).map(Number).sort((a, b) => a - b);
+    if (named) { const nn = nums.filter((n) => (st[n].name || '').trim()); if (nn.length) nums = nn; }
+    return nums.map((n) => {
+      const x = st[n], id = kind + '/' + n, nm = (x.name || '').trim() || lab + ' ' + String(n).padStart(2, '0');
+      const tk = kind === 'ch' ? this.tioK(x.src_grp, x.src_in) : 0, ti = tk ? this.tioIn(tk) : null;
+      const key = tk ? 'TIO/' + tk : (kind === 'ch' && ['LCL', 'A', 'B', 'C'].indexOf(x.src_grp) > -1 && x.src_in ? x.src_grp + '/' + x.src_in : null);
+      const f = this.wVal(kind, n, 'fdr'), mute = this.wVal(kind, n, 'mute'), m = kind === 'ch' ? s.wMeters[n] : undefined;
+      return this.sofRow(this.row({
+        id, kind, n, label: lab + ' ' + String(n).padStart(2, '0'), numText: String(n).padStart(2, '0'), name: nm, fdr: f === undefined ? -144 : f, muted: !!mute,
+        meter: m === undefined || mute ? 0 : Math.round(this.dbToPos(m) * 100), lock: !!s.wLock[id], col: x.col, pan: x.pan === undefined ? undefined : this.wVal(kind, n, 'pan'),
+        stereo: kind === 'ch' && x.src_grp && x.src_in ? ['ST', 'MS'].indexOf(((w.inputs || {})[x.src_grp + '/' + x.src_in] || {}).mode) > -1 : false,
+        meterL: (() => { const lr = (s.wLR || {})[n]; return !lr || mute ? 0 : Math.round(this.dbToPos(lr[0]) * 100); })(),
+        meterR: (() => { const lr = (s.wLR || {})[n]; return !lr || mute ? 0 : Math.round(this.dbToPos(lr[1]) * 100); })(),
+        key, srcGrp: x.src_grp, srcIn: x.src_in, gain: tk ? ti.gain : (key ? this.wInVal(key, 'g') : null), vph: tk ? !!ti.vph : (key ? !!this.wInVal(key, 'vph') : false),
+        tioK: tk, tioIn: ti, preCtl: tk ? this.tioCtl() : null, gMin: tk ? -6 : -3, gMax: tk ? 66 : 60,
+        toggleLock: () => this.setState({ wLock: { ...s.wLock, [id]: !s.wLock[id] } }),
+        toggleMute: () => this.wSet(kind, n, 'mute', mute ? 0 : 1),
+        setDb: (d) => this.wSet(kind, n, 'fdr', d),
+        setDbQuiet: (d) => { this.wp[kind + '/' + n + '/fdr'] = { v: d, until: Date.now() + 2500 }; this.setState({ tick: Date.now() }); },
+        setPan: (v) => this.wSet(kind, n, 'pan', v),
+        setGain: (g) => (tk ? this.tioSet(tk, 'gain', Math.round(g)) : this.wSet('ch', n, 'gain', g, 'in/' + key + '/g')),
+        setVph: (on) => (tk ? this.tioSet(tk, 'vph', on ? 1 : 0) : this.wSet('ch', n, 'vph', on ? 1 : 0, 'in/' + key + '/vph')).then((ok) => { if (ok) this.wSay((on ? 'Phantom power on' : 'Phantom power off') + ' for ' + nm + (tk ? ' (on the Tio).' : '.')); })
+      }, ctl, globalLock), kind, n, globalLock);
+    });
+  }
+  demoRows(ctl, globalLock) {
+    const s = this.state;
+    const lawDb = (l) => (l <= 0 ? -144 : (l >= 75 ? ((l - 75) / 25) * 10 : -((75 - l) * 1.2)));
+    const toLevel = (d) => (d <= -90 ? 0 : Math.max(0, Math.min(100, d >= 0 ? 75 + (d / 10) * 25 : 75 + d / 1.2)));
+    return s.chans.map((c, i) => {
+      const id = 'ch/' + c.n, nm = this.chName(c.n), tk = this.tioK(c.src.split('/')[0], c.src.split('/')[1]), ti = tk ? this.tioIn(tk) : null;
+      const key = tk ? 'TIO/' + tk : (/^(LCL|A|B|C)\//.test(c.src) ? c.src : null);
+      const r = this.row({
+        id, kind: 'ch', n: c.n, label: 'Ch ' + String(c.n).padStart(2, '0'), numText: String(c.n).padStart(2, '0'), name: nm, fdr: lawDb(c.level), muted: c.muted, meter: c.meter, lock: c.lock, col: s.view === 'strips' ? c.col : 0, pan: c.pan,
+        setPan: (v) => this.update(i, { pan: v }),
+        stereo: c.n === 5 || c.n === 10, meterL: c.meter, meterR: Math.max(0, c.meter - 4 + Math.round(Math.random() * 8)),
+        key, srcGrp: c.src.split('/')[0], srcIn: c.src.split('/')[1], gain: tk ? ti.gain : c.gain, vph: tk ? !!ti.vph : c.vph,
+        tioK: tk, tioIn: ti, preCtl: tk ? this.tioCtl() : null, gMin: tk ? -6 : -3, gMax: tk ? 66 : 60,
+        toggleLock: () => this.update(i, { lock: !c.lock }),
+        toggleMute: () => this.update(i, { muted: !c.muted }),
+        setDb: (d) => this.update(i, { level: toLevel(d) }),
+        setGain: (g) => (tk ? this.tioSet(tk, 'gain', Math.round(g)) : this.update(i, { gain: g })),
+        setVph: (on) => { if (tk) this.tioSet(tk, 'vph', on ? 1 : 0); else this.update(i, { vph: on }); this.wSay((on ? 'Phantom power on' : 'Phantom power off') + ' for ' + nm + (tk ? ' (on the Tio).' : '.')); }
+      }, ctl, globalLock);
+      if (this.state.sof) return this.sofRow(r, 'ch', c.n, globalLock);
+      // the demo mixer draws its own fader law, so keep its positions
+      r.level = c.level; r.db = c.level <= 0 ? '-∞' : (lawDb(c.level) > 0 ? '+' : '') + lawDb(c.level).toFixed(1);
+      r.setLevel = (e) => {
+        const v = Number(e.target.value);
+        const dn = (l) => (l <= 0 ? -90 : lawDb(l));
+        if (s.guard && Math.abs(dn(v) - dn(c.level)) > 6) this.setState({ pending: { name: 'Ch ' + String(c.n).padStart(2, '0') + ' ' + nm, from: r.db + ' dB', to: (v <= 0 ? '-∞' : (lawDb(v) > 0 ? '+' : '') + lawDb(v).toFixed(1)) + ' dB', run: () => this.update(i, { level: v }) } });
+        else this.update(i, { level: v });
+      };
+      return r;
+    });
+  }
+  // ---- one channel's processing: Input (trim, polarity, filters), EQ, Gate, Comp ----
+  procDefault() {
+    return { 'in/set/trim': 0, 'in/set/inv': 0, 'flt/lc': 1, 'flt/lcf': 100, 'flt/hc': 0, 'flt/hcf': 12000, 'gate/on': 0, 'gate/thr': -40, 'gate/range': 40, 'gate/mdl': 'GATE',
+      'eq/on': 1, 'eq/mdl': 'STD', 'eq/lg': 0, 'eq/lf': 80, 'eq/lq': 2, 'eq/1g': -2, 'eq/1f': 250, 'eq/1q': 1.4, 'eq/2g': 0, 'eq/2f': 600, 'eq/2q': 2, 'eq/3g': 2.5, 'eq/3f': 3200, 'eq/3q': 1.2,
+      'eq/4g': 0, 'eq/4f': 6000, 'eq/4q': 2, 'eq/hg': 1.5, 'eq/hf': 11000, 'eq/hq': 2, 'dyn/on': 1, 'dyn/mdl': 'COMP', 'dyn/thr': -18, 'dyn/ratio': 3, 'dyn/gain': 2, 'dyn/att': 15, 'dyn/rel': 150, 'dyn/auto': 0 };
+  }
+  procOf(n) {
+    const s = this.state, base = s.live ? ((s.wProc || {})[n] || {}) : { ...this.procDefault(), ...((s.demoProc || {})[n] || {}) }, out = { ...base };
+    Object.keys(this.wp).forEach((k) => { const m = k.match(/^p\/(\d+)\/(.+)$/); if (m && Number(m[1]) === n && this.wp[k].until > Date.now()) out[m[2]] = this.wp[k].v; });
+    return out;
+  }
+  procSet(n, key, v) {
+    if (this.state.live) { this.wSet('ch', n, key, v, 'p/' + n + '/' + key); return; }
+    const d = { ...(this.state.demoProc || {}) }; d[n] = { ...(d[n] || {}), [key]: v }; this.setState({ demoProc: d });
+  }
+  procPoll() {
+    const s = this.state, n = s.sel && s.sel.indexOf('ch/') === 0 ? Number(s.sel.slice(3)) : 0;
+    if (!s.live || !n || this.pBusy) return;
+    this.pBusy = true;
+    this.wApi('/api/wing/channel?n=' + n).then(({ j }) => { this.pBusy = false; if (j && j.ok) { this.ratios = j.ratios || this.ratios; this.setState({ wProc: { ...(this.state.wProc || {}), [n]: j.proc } }); } }).catch(() => { this.pBusy = false; });
+  }
+  fmtHz(f) { return f < 1000 ? Math.round(f) + ' Hz' : (f / 1000).toFixed(f < 10000 ? 2 : 1).replace(/\.?0+$/, '') + ' kHz'; }
+  // what the EQ does, from the band settings (the RBJ cookbook filters, at 48 kHz)
+  eqDb(p, f) {
+    const fs = 48000, w = 2 * Math.PI * f / fs;
+    const mag = (b0, b1, b2, a0, a1, a2) => { const c = Math.cos(w), c2 = Math.cos(2 * w), sn = Math.sin(w), s2 = Math.sin(2 * w);
+      const nr = b0 + b1 * c + b2 * c2, ni = -(b1 * sn + b2 * s2), dr = a0 + a1 * c + a2 * c2, di = -(a1 * sn + a2 * s2);
+      return 10 * Math.log10((nr * nr + ni * ni) / (dr * dr + di * di)); };
+    const peak = (g, f0, q) => { const A = Math.pow(10, g / 40), w0 = 2 * Math.PI * f0 / fs, al = Math.sin(w0) / (2 * q), cs = Math.cos(w0); return mag(1 + al * A, -2 * cs, 1 - al * A, 1 + al / A, -2 * cs, 1 - al / A); };
+    const shelf = (g, f0, low) => { const A = Math.pow(10, g / 40), w0 = 2 * Math.PI * f0 / fs, cs = Math.cos(w0), al = Math.sin(w0) / 2 * Math.SQRT2, sq = 2 * Math.sqrt(A) * al, k = low ? 1 : -1;
+      return mag(A * ((A + 1) - k * (A - 1) * cs + sq), k * 2 * A * ((A - 1) - k * (A + 1) * cs), A * ((A + 1) - k * (A - 1) * cs - sq), (A + 1) + k * (A - 1) * cs + sq, -k * 2 * ((A - 1) + k * (A + 1) * cs), (A + 1) + k * (A - 1) * cs - sq); };
+    const cut = (f0, hp) => { const w0 = 2 * Math.PI * f0 / fs, cs = Math.cos(w0), al = Math.sin(w0) / (2 * Math.SQRT1_2);
+      return hp ? mag((1 + cs) / 2, -(1 + cs), (1 + cs) / 2, 1 + al, -2 * cs, 1 - al) : mag((1 - cs) / 2, 1 - cs, (1 - cs) / 2, 1 + al, -2 * cs, 1 - al); };
+    let d = 0;
+    if (p['eq/on']) { d += shelf(p['eq/lg'] || 0, p['eq/lf'] || 80, true) + shelf(p['eq/hg'] || 0, p['eq/hf'] || 12000, false); ['1', '2', '3', '4'].forEach((b) => { d += peak(p['eq/' + b + 'g'] || 0, p['eq/' + b + 'f'] || 1000, p['eq/' + b + 'q'] || 2); }); }
+    if (p['flt/lc']) d += cut(p['flt/lcf'] || 100, true);
+    if (p['flt/hc']) d += cut(p['flt/hcf'] || 12000, false);
+    return d;
+  }
+  procVals(sel, ctl) {
+    const s = this.state;
+    if (!sel || sel.kind !== 'ch') return { tabs: [] };
+    const n = sel.n, p = this.procOf(n), tab = s.ptab || 'Input', fine = s.fine, off = !ctl.ok;
+    const has = (k) => p[k] !== undefined && p[k] !== null;
+    const db = (v) => (Math.abs(v) < 0.05 ? '0.0' : (v > 0 ? '+' : '') + Number(v).toFixed(1)) + ' dB';
+    const set = (k, v) => this.procSet(n, k, v);
+    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+    const num = (label, k, a, b, step, fmt, mul) => ({
+      label, value: has(k) ? fmt(p[k]) : '—', off: off || !has(k),
+      dec: () => set(k, Math.round(clamp(mul ? p[k] / step : p[k] - step, a, b) * 100) / 100), inc: () => set(k, Math.round(clamp(mul ? p[k] * step : p[k] + step, a, b) * 100) / 100),
+      decAria: label + ' down on ' + sel.name, incAria: label + ' up on ' + sel.name });
+    const tog = (label, k, sub, onText, offText) => ({ label, sub: sub, on: !!p[k], off: off, col: p[k] ? '#7FD1C1' : '#A3ACB8', cls: p[k] ? 'mxb on' : 'mxb', btn: p[k] ? (onText || 'On') : (offText || 'Off'), toggle: () => set(k, p[k] ? 0 : 1), aria: label + ' for ' + sel.name + ': ' + (p[k] ? 'on' : 'off') });
+    const g1 = fine ? 0.5 : 1, oct = fine ? Math.pow(2, 1 / 12) : Math.pow(2, 1 / 6);
+    const out = { tabs: ['Input', 'EQ', 'Gate', 'Comp'].map((t) => ({ name: t, on: tab === t, cls: tab === t ? 'lk on' : 'lk', pick: () => this.setState({ ptab: t }) })),
+      isInput: tab === 'Input', reading: s.live && !Object.keys((s.wProc || {})[n] || {}).length, toggles: [], rows: [], hasGraph: false, hasNote: false, note: '', hasSay: false, say: '', points: [], bands: [] };
+    if (tab === 'Input') {
+      out.toggles = [tog('Polarity', 'in/set/inv', p['in/set/inv'] ? 'Flipped (polarity reversed)' : 'Normal', 'Flipped', 'Normal'),
+        tog('Low cut', 'flt/lc', p['flt/lc'] ? 'Takes out rumble below ' + this.fmtHz(p['flt/lcf']) : 'Off: everything low gets through'),
+        tog('High cut', 'flt/hc', p['flt/hc'] ? 'Takes out hiss above ' + this.fmtHz(p['flt/hcf']) : 'Off')];
+      out.rows = [num('Trim', 'in/set/trim', -18, 18, g1, db), num('Low cut at', 'flt/lcf', 20, 2000, oct, (v) => this.fmtHz(v), true), num('High cut at', 'flt/hcf', 50, 20000, oct, (v) => this.fmtHz(v), true)];
+      if (sel.tioK) {
+        const k = sel.tioK, ti = this.tioIn(k), tc = this.tioCtl();
+        out.toggles.push({ label: 'Tio low cut', sub: ti.hpf ? 'On the Tio: takes out rumble below ' + this.fmtHz(ti.hpff || 80) : 'Off on the Tio', on: !!ti.hpf, col: ti.hpf ? '#7FD1C1' : '#A3ACB8', cls: ti.hpf ? 'mxb on' : 'mxb', btn: ti.hpf ? 'On' : 'Off', toggle: () => this.tioSet(k, 'hpf', ti.hpf ? 0 : 1), aria: 'Tio low cut for ' + sel.name + ': ' + (ti.hpf ? 'on' : 'off'), off: !tc.ok });
+        out.rows.push({ label: 'Tio low cut at', value: ti.hpff ? this.fmtHz(ti.hpff) : '\u2014', off: !tc.ok || !ti.hpff, dec: () => this.tioSet(k, 'hpff', Math.round(clamp(ti.hpff / oct, 20, 600))), inc: () => this.tioSet(k, 'hpff', Math.round(clamp(ti.hpff * oct, 20, 600))), decAria: 'Tio low cut at down on ' + sel.name, incAria: 'Tio low cut at up on ' + sel.name });
+      }
+    } else if (tab === 'EQ') {
+      const std = !has('eq/mdl') || p['eq/mdl'] === 'STD';
+      out.toggles = [tog('EQ', 'eq/on', p['eq/on'] ? 'On: the curve below is what you hear' : 'Off: the sound goes through unchanged')];
+      if (!std) { out.hasNote = true; out.note = 'This channel uses the Wing’s ' + p['eq/mdl'] + ' EQ model. On and off work here; change its settings on the desk.'; return out; }
+      const band = s.pband || '1', names = { l: 'Low', 1: '1', 2: '2', 3: '3', 4: '4', h: 'High' };
+      const lx = (f) => (Math.log10(f) - Math.log10(20)) / (Math.log10(20000) - Math.log10(20));
+      const yv = (d) => 60 - (clamp(d, -15, 15) / 15) * 54;
+      let path = ''; for (let i = 0; i <= 120; i++) { const f = 20 * Math.pow(1000, i / 120); path += (i ? 'L' : 'M') + (lx(f) * 300).toFixed(1) + ',' + yv(this.eqDb(p, f)).toFixed(1); }
+      out.hasGraph = true; out.curve = path; out.curveCol = p['eq/on'] ? '#F5C518' : '#5B6470';
+      out.x100 = (lx(100) * 300).toFixed(1); out.x1k = (lx(1000) * 300).toFixed(1); out.x10k = (lx(10000) * 300).toFixed(1);
+      out.l100 = (lx(100) * 100).toFixed(1); out.l1k = (lx(1000) * 100).toFixed(1); out.l10k = (lx(10000) * 100).toFixed(1);
+      out.graphAria = 'EQ curve for ' + sel.name;
+      const rta = s.wRta || {}, rtaHere = s.rtaOn && rta.fresh && rta.src === n && (rta.rta || []).length === 120;
+      let rp = ''; if (rtaHere) { rta.rta.forEach((d, i) => { rp += (i ? 'L' : 'M') + (lx(20 * Math.pow(2, i / 12)) * 300).toFixed(1) + ',' + (120 - Math.max(0, Math.min(1, (d + 60) / 60)) * 114).toFixed(1); }); rp += 'L300,120 L0,120 Z'; }
+      const tap = s.rtaTap || 'POSTEQ', tapName = { PREEQ: 'before the EQ', POSTEQ: 'after the EQ', IN: 'at the input', POST: 'after the fader' };
+      const point = (t) => { if (!s.live) { this.setState({ rtaOn: true, rtaTap: t }); return; } this.wApi('/api/wing/rta', 'POST', { n: n, tap: t }).then(({ j }) => { if (!j.ok) this.wSay(j.error || 'The Wing\u2019s RTA didn\u2019t move.', true); else this.setState({ rtaOn: true, rtaTap: t }); }); };
+      out.rtaPath = rp; out.rtaOn = !!s.rtaOn; out.rtaCls = s.rtaOn ? 'mxb on' : 'mxb'; out.rtaBtn = s.rtaOn ? 'On' : 'Off';
+      out.rtaSub = !s.rtaOn ? 'Off. On shows what this channel sounds like, behind the curve' + (s.live ? ' (the Wing\u2019s own RTA screen follows too).' : '.')
+        : rtaHere ? 'Showing ' + sel.label + ' ' + (tapName[rta.tap] || tapName[tap]) + '.' : (s.live && rta.src && rta.src !== n ? 'The Wing\u2019s RTA is on another channel. Tap On again to bring it here.' : 'Waiting for the Wing\u2019s RTA\u2026');
+      out.rtaToggle = () => { if (s.rtaOn && rtaHere) this.setState({ rtaOn: false }); else if (s.live && off) this.wSay('Pointing the Wing\u2019s RTA at a channel needs Control.', true); else point(tap); };
+      out.rtaTaps = [['PREEQ', 'Before EQ'], ['POSTEQ', 'After EQ']].map(([t, nm]) => ({ name: nm, on: tap === t, cls: tap === t ? 'lk on' : 'lk', off: s.live && off, pick: () => (s.rtaOn ? point(t) : this.setState({ rtaTap: t })) }));
+      const fr = (b) => (b === 'l' ? [20, 2000] : b === 'h' ? [50, 20000] : [20, 20000]);
+      out.points = ['l', '1', '2', '3', '4', 'h'].map((b) => {
+        const g = p['eq/' + b + 'g'] || 0, f = p['eq/' + b + 'f'] || 1000;
+        const at = (e) => { const r = e.currentTarget.parentNode.getBoundingClientRect(); const x = clamp((e.clientX - r.left) / r.width, 0, 1), y = clamp((e.clientY - r.top) / r.height, 0, 1);
+          return { f: clamp(Math.round(20 * Math.pow(1000, x)), fr(b)[0], fr(b)[1]), g: Math.round(clamp(((60 - y * 120) / 54) * 15, -15, 15) * 2) / 2 }; };
+        const send = (v, last) => { const now = Date.now(); if (last || !this.eqAt || now - this.eqAt > 100) { this.eqAt = now; set('eq/' + b + 'g', v.g); set('eq/' + b + 'f', v.f); } else { this.wp['p/' + n + '/eq/' + b + 'g'] = { v: v.g, until: now + 2500 }; this.wp['p/' + n + '/eq/' + b + 'f'] = { v: v.f, until: now + 2500 }; this.setState({ tick: now }); } };
+        return { t: { l: 'L', h: 'H' }[b] || names[b], cls: band === b ? 'eqp on' : 'eqp', x: (lx(f) * 100).toFixed(2), y: ((yv(g) / 120) * 100).toFixed(2), aria: 'EQ band ' + names[b] + ' on ' + sel.name, text: db(g) + ' at ' + this.fmtHz(f),
+          down: (e) => { this.setState({ pband: b }); if (off) return; try { e.currentTarget.setPointerCapture(e.pointerId); } catch (er) {} this.eqDrag = { b: b, last: null }; },
+          move: (e) => { const d = this.eqDrag; if (!d || d.b !== b || !e.buttons || off) return; const v = at(e); d.last = v; send(v, false); },
+          up: () => { const d = this.eqDrag; this.eqDrag = null; if (d && d.b === b && d.last) send(d.last, true); },
+          key: (e) => { if (off) return; const k = { ArrowUp: ['g', g1], ArrowDown: ['g', -g1], ArrowRight: ['f', oct], ArrowLeft: ['f', 1 / oct] }[e.key]; if (!k) return; e.preventDefault(); this.setState({ pband: b });
+            if (k[0] === 'g') set('eq/' + b + 'g', clamp(g + k[1], -15, 15)); else set('eq/' + b + 'f', Math.round(clamp(f * k[1], fr(b)[0], fr(b)[1]))); } };
+      });
+      out.bands = ['l', '1', '2', '3', '4', 'h'].map((b) => ({ name: names[b], on: band === b, cls: band === b ? 'lk on' : 'lk', pick: () => this.setState({ pband: b }) }));
+      const bn = names[band];
+      out.rows = [num(bn + ' gain', 'eq/' + band + 'g', -15, 15, g1, db), num(bn + ' frequency', 'eq/' + band + 'f', fr(band)[0], fr(band)[1], oct, (v) => this.fmtHz(v), true)]
+        .concat(band === 'l' || band === 'h' ? [] : [num(bn + ' width (Q)', 'eq/' + band + 'q', 0.44, 10, fine ? 1.1 : 1.25, (v) => Number(v).toFixed(1) + (v < 1 ? ' wide' : v > 4 ? ' narrow' : ''), true)]);
+      const g = p['eq/' + band + 'g'] || 0;
+      out.hasSay = true; out.say = band === 'l' || band === 'h' ? (Math.abs(g) < 0.25 ? bn + ': flat.' : (g > 0 ? 'Boosts' : 'Cuts') + ' everything ' + (band === 'l' ? 'below ' : 'above ') + this.fmtHz(p['eq/' + band + 'f']) + ' by ' + Math.abs(g).toFixed(1) + ' dB.')
+        : (Math.abs(g) < 0.25 ? 'Band ' + bn + ': flat (no change).' : 'Band ' + bn + ' ' + (g > 0 ? 'boosts' : 'cuts') + ' around ' + this.fmtHz(p['eq/' + band + 'f']) + ' by ' + Math.abs(g).toFixed(1) + ' dB.');
+    } else if (tab === 'Gate') {
+      out.toggles = [tog('Gate', 'gate/on', p['gate/on'] ? 'On: quiet sounds are turned down' : 'Off')];
+      if (has('gate/mdl') && p['gate/mdl'] !== 'GATE') { out.hasNote = true; out.note = 'This channel uses the Wing’s ' + p['gate/mdl'] + ' model. On and off work here; change its settings on the desk.'; return out; }
+      Object.assign(out, this.dynView(p, 'Gate', sel));
+      out.knobs = [this.knob('Opens above', 'Gate opens above, on ' + sel.name, p['gate/thr'], -80, 0, db, (v) => set('gate/thr', v), { off: off || !has('gate/thr'), step: g1 }),
+        this.knob('Turns down by', 'Gate turns down by, on ' + sel.name, p['gate/range'], 3, 60, (v) => Number(v).toFixed(0) + ' dB', (v) => set('gate/range', v), { off: off || !has('gate/range'), step: 1, col: '#FF8A5A' })];
+      out.hasSay = true; out.say = 'Opens when the channel is louder than ' + db(p['gate/thr'] || 0).replace(' dB', '') + ' dB. When it closes, it turns the channel down by ' + Number(p['gate/range'] || 0).toFixed(0) + ' dB. Good for drums and noisy mics; leave it off for speech.';
+    } else {
+      out.toggles = [tog('Compressor', 'dyn/on', p['dyn/on'] ? 'On: loud moments are turned down' : 'Off'), tog('Auto attack and release', 'dyn/auto', p['dyn/auto'] ? 'They set themselves to the sound' : 'Set by hand below')];
+      if (has('dyn/mdl') && p['dyn/mdl'] !== 'COMP') { out.hasNote = true; out.note = 'This channel uses the Wing’s ' + p['dyn/mdl'] + ' model. On and off work here; change its settings on the desk.'; out.toggles = out.toggles.slice(0, 1); return out; }
+      const R = this.ratios || [1.1, 1.2, 1.3, 1.5, 1.7, 2, 2.5, 3, 3.5, 4, 5, 6, 8, 10, 20, 50, 100];
+      const ri = R.reduce((bi, r, i) => (Math.abs(r - (p['dyn/ratio'] || 3)) < Math.abs(R[bi] - (p['dyn/ratio'] || 3)) ? i : bi), 0);
+      const rat = { label: 'Ratio', value: has('dyn/ratio') ? R[ri] + ':1' : '—', off: off || !has('dyn/ratio'), dec: () => set('dyn/ratio', R[Math.max(0, ri - 1)]), inc: () => set('dyn/ratio', R[Math.min(R.length - 1, ri + 1)]), decAria: 'Ratio down on ' + sel.name, incAria: 'Ratio up on ' + sel.name };
+      Object.assign(out, this.dynView(p, 'Comp', sel));
+      const rOff = off || !has('dyn/ratio');
+      out.knobs = [this.knob('Threshold', 'Compressor threshold, on ' + sel.name, p['dyn/thr'], -60, 0, db, (v) => set('dyn/thr', v), { off: off || !has('dyn/thr'), step: g1 }),
+        this.knob('Ratio', 'Compressor ratio, on ' + sel.name, R[ri], 1.1, 100, (v) => Number(v) + ':1', (v) => set('dyn/ratio', v), { off: rOff, log: true, snap: (x) => R.reduce((b, r) => (Math.abs(Math.log(r / x)) < Math.abs(Math.log(b / x)) ? r : b), R[0]), next: (v, st) => R[Math.max(0, Math.min(R.length - 1, ri + st))] }),
+        this.knob('Make-up', 'Compressor make-up gain, on ' + sel.name, p['dyn/gain'], -6, 12, db, (v) => set('dyn/gain', v), { off: off || !has('dyn/gain'), step: fine ? 0.5 : 1, col: '#7FD1C1' })]
+        .concat(p['dyn/auto'] ? [] : [this.knob('Attack', 'Compressor attack, on ' + sel.name, p['dyn/att'], 0, 120, (v) => Number(v).toFixed(0) + ' ms', (v) => set('dyn/att', v), { off: off || !has('dyn/att'), step: 1 }),
+          this.knob('Release', 'Compressor release, on ' + sel.name, p['dyn/rel'], 4, 4000, (v) => Number(v).toFixed(0) + ' ms', (v) => set('dyn/rel', v), { off: off || !has('dyn/rel'), log: true, step: 1 })]);
+      void rat;
+      out.hasSay = true; out.say = 'Above ' + db(p['dyn/thr'] || 0) + ', every ' + R[ri] + ' dB louder comes out 1 dB louder (' + R[ri] + ':1), then ' + db(p['dyn/gain'] || 0) + ' of make-up. For speech, about 3:1 starting around −18 dB is a good start.';
+    }
+    return out;
+  }
+  // ---- the open channel over the last 8 seconds (gate and compressor), and the Wing's RTA (EQ) ----
+  dynTick() {
+    const s = this.state, n = s.sel && s.sel.indexOf('ch/') === 0 ? Number(s.sel.slice(3)) : 0, tab = s.ptab || 'Input';
+    if (!n) return;
+    const now = Date.now() / 1000;
+    if (tab === 'Gate' || tab === 'Comp') {
+      if (s.live) {
+        if (this.hBusy) return; this.hBusy = true;
+        const h0 = (this.hist && this.hist.n === n) ? this.hist : { n: n, rows: [] };
+        const since = h0.rows.length ? h0.rows[h0.rows.length - 1][0] : 0;
+        this.wApi('/api/wing/history?n=' + n + '&since=' + since).then(({ j }) => {
+          this.hBusy = false; if (!j || !j.ok) return;
+          const rows = h0.rows.concat(j.hist).filter((r) => r[0] > j.now - 8);
+          this.hist = { n: n, rows: rows, now: j.now, off: Date.now() / 1000 - j.now }; this.setState({ htick: Date.now() });
+        }).catch(() => { this.hBusy = false; });
+        return;
+      }
+      // the preview: a made-up voice, run through this channel's gate and compressor
+      const p = this.procOf(n), h = (this.hist && this.hist.n === n) ? this.hist : { n: n, rows: [], g: 0, c: 0 };
+      for (let k = 0; k < 3; k++) {
+        const t = now - (2 - k) * 0.05, ph = t * 2.3;
+        const word = Math.max(0, Math.sin(ph) * 0.6 + Math.sin(ph * 2.7) * 0.4), burst = Math.random() < 0.04 ? 8 : 0;
+        const inp = word > 0.08 ? -28 + word * 24 + burst + (Math.random() - 0.5) * 3 : -58 + Math.random() * 4;
+        const gTarget = p['gate/on'] && inp < (p['gate/thr'] || -40) ? (p['gate/range'] || 40) : 0;
+        h.g += (gTarget - h.g) * (gTarget > h.g ? 0.15 : 0.6);
+        const over = inp - (p['dyn/thr'] || -18), cTarget = p['dyn/on'] && over > 0 ? over * (1 - 1 / (p['dyn/ratio'] || 3)) : 0;
+        h.c += (cTarget - h.c) * (cTarget > h.c ? 0.7 : 0.18);
+        const out = inp - h.g - h.c + (p['dyn/on'] ? (p['dyn/gain'] || 0) : 0);
+        h.rows.push([t, Math.round(inp * 10) / 10, Math.round(out * 10) / 10, inp, Math.round(h.g * 10) / 10, inp, Math.round(h.c * 10) / 10]);
+      }
+      h.rows = h.rows.filter((r) => r[0] > now - 8); h.now = now; h.off = 0; this.hist = h; this.setState({ htick: Date.now() });
+    } else if (tab === 'EQ' && s.rtaOn) {
+      if (s.live) {
+        if (this.rBusy) return; this.rBusy = true;
+        this.wApi('/api/wing/rta').then(({ j }) => { this.rBusy = false; if (j && j.ok) this.setState({ wRta: j }); }).catch(() => { this.rBusy = false; });
+        return;
+      }
+      const p = this.procOf(n), after = (s.rtaTap || 'POSTEQ') === 'POSTEQ';
+      const bands = Array.from({ length: 120 }, (_, i) => { const f = 20 * Math.pow(2, i / 12); const pink = -26 - 4 * Math.log2(Math.max(1, f / 250)) * (f > 250 ? 1 : -0.4) + (Math.random() - 0.5) * 6; return Math.round((pink + (after ? this.eqDb(p, f) : 0)) * 10) / 10; });
+      this.setState({ wRta: { rta: bands, src: n, tap: s.rtaTap || 'POSTEQ', fresh: true } });
+    }
+  }
+  // a knob: drag up or down (Fine: a quarter as far), or arrow keys
+  knob(label, aria, v, lo, hi, fmt, set, opts) {
+    const o = opts || {}, off = !!o.off, lg = !!o.log;
+    const toK = (x) => (lg ? Math.log(x / lo) / Math.log(hi / lo) : (x - lo) / (hi - lo));
+    const fromK = (k) => { k = Math.max(0, Math.min(1, k)); return lg ? lo * Math.pow(hi / lo, k) : lo + (hi - lo) * k; };
+    const k = Math.max(0, Math.min(1, toK(v === undefined || v === null ? lo : v)));
+    const pt = (kk, r) => { const a = (-135 + 270 * kk) * Math.PI / 180; return [30 + r * Math.sin(a), 30 - r * Math.cos(a)]; };
+    const arc = (k0, k1) => { const [x0, y0] = pt(k0, 25), [x1, y1] = pt(k1, 25); return 'M' + x0.toFixed(2) + ',' + y0.toFixed(2) + ' A25,25 0 ' + ((k1 - k0) * 270 > 180 ? 1 : 0) + ',1 ' + x1.toFixed(2) + ',' + y1.toFixed(2); };
+    const [px, py] = pt(k, 16), step = o.step || ((hi - lo) / 100);
+    const snap = (x) => (o.snap ? o.snap(x) : Math.round(x / step) * step);
+    const send = (x, last) => { const now = Date.now(); if (last || !this.kAt || now - this.kAt > 100) { this.kAt = now; set(x); } };
+    return { label, aria, text: v === undefined || v === null ? '—' : fmt(v), off, col: off ? '#5B6470' : (o.col || '#F5D33C'),
+      track: arc(0, 1), arc: arc(0, Math.max(0.001, k)), px: px.toFixed(2), py: py.toFixed(2),
+      down: (e) => { if (off) return; try { e.currentTarget.setPointerCapture(e.pointerId); } catch (er) {} this.kDrag = { a: aria, y: e.clientY, k: k, last: null }; },
+      move: (e) => { const d = this.kDrag; if (!d || d.a !== aria || !e.buttons) return; const nk = d.k + ((d.y - e.clientY) / 160) * (this.state.fine ? 0.25 : 1); const x = snap(fromK(nk)); if (x === d.last) return; d.last = x; send(x, false); },
+      up: () => { const d = this.kDrag; this.kDrag = null; if (d && d.a === aria && d.last !== null) send(d.last, true); },
+      key: (e) => { if (off) return; const st = { ArrowUp: 1, ArrowRight: 1, ArrowDown: -1, ArrowLeft: -1, PageUp: 5, PageDown: -5 }[e.key]; if (!st) return; e.preventDefault();
+        if (o.next) set(o.next(v, st)); else if (!lg && o.step) set(Math.round(Math.max(lo, Math.min(hi, (v || 0) + st * o.step)) * 100) / 100); else set(snap(fromK(k + st * (this.state.fine ? 0.005 : 0.02)))); } };
+  }
+  dynView(p, tab, sel) {
+    const h = this.hist && this.hist.n === sel.n ? this.hist : { rows: [], now: Date.now() / 1000 };
+    const comp = tab === 'Comp', rows = h.rows, now = h.now || Date.now() / 1000;
+    const Y = (db) => Math.max(0, Math.min(120, (-db / 60) * 120));
+    const X = (t) => 300 - ((now - t) / 8) * 300;
+    const ii = comp ? 5 : 3, gi = comp ? 6 : 4;
+    let inP = '', outP = '', grP = '';
+    rows.forEach((r, i) => { const x = X(r[0]).toFixed(1); inP += (i ? 'L' : 'M') + x + ',' + Y(r[ii] === undefined ? r[1] : r[ii]).toFixed(1); outP += (i ? 'L' : 'M') + x + ',' + Y(r[2]).toFixed(1); grP += (i ? 'L' : 'M') + x + ',' + (Math.min(60, r[gi] || 0) * 2).toFixed(1); });
+    if (rows.length) inP += 'L' + X(rows[rows.length - 1][0]).toFixed(1) + ',120 L' + X(rows[0][0]).toFixed(1) + ',120 Z';
+    const thr = comp ? (p['dyn/thr'] || -18) : (p['gate/thr'] || -40);
+    // the curve: what comes out (up) for what goes in (across), -60 to 0 dB
+    const R = p['dyn/ratio'] || 3, mk = p['dyn/gain'] || 0, rg = p['gate/range'] || 40, on = comp ? p['dyn/on'] : p['gate/on'];
+    const outOf = (x) => (!on ? x : comp ? (x < thr ? x : thr + (x - thr) / R) + mk : (x < thr ? x - rg : x));
+    let xf = ''; for (let i = 0; i <= 60; i++) { const x = -60 + i; xf += (i ? 'L' : 'M') + ((x + 60) / 60 * 100).toFixed(1) + ',' + Math.max(0, Math.min(100, (-outOf(x) / 60) * 100)).toFixed(1); }
+    const last = rows[rows.length - 1] || [0, -60, -60, -60, 0, -60, 0], inNow = last[ii] === undefined ? last[1] : last[ii], gr = last[gi] || 0;
+    const bar = (db, col, top) => (top ? 'top:0;height:' + Math.min(100, (Math.min(60, db) / 30) * 100).toFixed(1) + '%;background:' + col : 'bottom:0;height:' + Math.max(0, Math.min(100, (db + 60) / 60 * 100)).toFixed(1) + '%;background:' + col);
+    return { hasDyn: true, inPath: inP, outPath: outP, grPath: grP, thrY: Y(thr).toFixed(1), thrYp: (Y(thr) / 120 * 100).toFixed(1), thrLabel: (thr > 0 ? '+' : '') + Math.round(thr) + ' dB', thrX: ((thr + 60) / 60 * 100).toFixed(1),
+      xfer: xf, dotX: ((Math.max(-60, Math.min(0, inNow)) + 60) / 60 * 100).toFixed(1), dotY: Math.max(0, Math.min(100, (-outOf(Math.max(-60, Math.min(0, inNow))) / 60) * 100)).toFixed(1),
+      meters: [{ t: 'IN', css: bar(inNow, '#9AA3AF') }, { t: 'OUT', css: bar(last[2], '#4FD18B') }, { t: 'GR', css: bar(gr, '#FF5A4E', true) }],
+      grNow: on ? (gr >= 0.5 ? 'Turning down by ' + gr.toFixed(1) + ' dB now' : 'Not turning down right now') : (comp ? 'Compressor off' : 'Gate off'),
+      dynAria: (comp ? 'Compressor' : 'Gate') + ' on ' + sel.name + ': ' + (on ? (gr >= 0.5 ? 'turning down by ' + gr.toFixed(1) + ' dB' : 'not turning down') : 'off') };
+  }
+  // ---- sends on faders: every channel's send to one bus (a monitor mix, the stream...) on the faders ----
+  busLabel(b) { const st = (((this.state.wing || {}).strips || {}).bus || {})[b] || {}; const nm = this.state.live ? (st.name || '') : (this.wn().bus || {})[b]; return 'Bus ' + b + (nm ? ' ' + nm : ''); }
+  sofPoll() {
+    const s = this.state;
+    if (s.live && s.sof && !this.sBusy) {
+      this.sBusy = true;
+      this.wApi('/api/wing/sends?bus=' + s.sof).then(({ j }) => { this.sBusy = false; if (j && j.ok) this.setState({ wSends: { ...(this.state.wSends || {}), [j.bus]: j.sends } }); }).catch(() => { this.sBusy = false; });
+    }
+    if (s.live && s.mcState === 'reading') this.monCheck();
+  }
+  sendOf(b, n) {
+    const s = this.state, base = s.live ? (((s.wSends || {})[b] || {})[n] || {}) : (((s.demoSends || {})[b] || {})[n] || { on: 1, lvl: [-6, -10, -10, -14, -8, -12, -10, -144, -12, -18][n - 1] === undefined ? -144 : [-6, -10, -10, -14, -8, -12, -10, -144, -12, -18][n - 1], pan: 0, mode: 'PRE', plink: 0 });
+    const out = { ...base };
+    ['lvl', 'on', 'pan'].forEach((f) => { const p = this.wp['s/' + b + '/' + n + '/' + f]; if (p && p.until > Date.now()) out[f] = p.v; });
+    return out;
+  }
+  sendSet(b, n, f, v) {
+    if (!this.state.live) { const d = JSON.parse(JSON.stringify(this.state.demoSends || {})); d[b] = d[b] || {}; d[b][n] = { ...this.sendOf(b, n), [f]: v }; this.setState({ demoSends: d }); return Promise.resolve(true); }
+    this.wp['s/' + b + '/' + n + '/' + f] = { v: v, until: Date.now() + 2500 }; this.setState({ tick: Date.now() });
+    return this.wApi('/api/wing/send', 'POST', { bus: b, n: n, field: f, value: v }).then(({ j }) => { if (!j.ok) { delete this.wp['s/' + b + '/' + n + '/' + f]; this.wSay(j.error || 'The Wing didn’t take that.', true); } return j.ok; })
+      .catch(() => { this.wSay('Couldn’t reach the C3 Life server.', true); return false; });
+  }
+  sofRow(r, kind, n, globalLock) {
+    const b = this.state.sof;
+    if (!b || kind !== 'ch') return r;
+    const x = this.sendOf(b, n), lv = x.lvl === undefined ? -144 : x.lvl, on = x.on === undefined ? 1 : x.on;
+    const dragOff = r.faderOff;
+    const fake = { ...r, fdr: lv, muted: !on, pan: x.plink ? undefined : (x.pan || 0), setDb: (d) => this.sendSet(b, n, 'lvl', d), setDbQuiet: (d) => { this.wp['s/' + b + '/' + n + '/lvl'] = { v: d, until: Date.now() + 2500 }; this.setState({ tick: Date.now() }); }, setPan: (v) => this.sendSet(b, n, 'pan', v), id: r.id, kind: 'ch', n: n, label: r.label, name: r.name, col: r.colN, lock: r.ownLock };
+    const out = { ...r, sof: true, level: Math.round(this.dbToPos(lv) * 100), lv: Math.round(this.dbToPos(lv) * 100), db: this.fmtDb(lv), capAt: 'calc(10px + (100% - 20px) * ' + this.dbToPos(lv).toFixed(4) + ')',
+      muted: !on, live: !!on, muteCls: on ? 'mxm' : 'mxm hot', muteAria: (on ? 'Take ' : 'Put ') + r.name + (on ? ' out of ' : ' into ') + this.busLabel(b),
+      mute: () => this.sendSet(b, n, 'on', on ? 0 : 1), toggle: () => this.sendSet(b, n, 'on', on ? 0 : 1),
+      hasPan: !x.plink, noPan: !!x.plink, pan: x.pan || 0, panPct: 50 + (x.pan || 0) / 2, panText: x.plink ? 'Follows the channel' : (!x.pan ? 'Centre' : (x.pan < 0 ? 'Left ' + -x.pan : 'Right ' + x.pan)),
+      setLevel: (e) => this.sendSet(b, n, 'lvl', Math.round(this.posToDb(Number(e.target.value) / 100) * 10) / 10) };
+    return { ...out, ...this.dragFns(fake, dragOff) };
+  }
+  sofVals() {
+    const s = this.state, buses = [];
+    const st = s.live ? (((s.wing || {}).strips || {}).bus || {}) : {};
+    const mon = (s.mon || {}).buses || [];
+    if (s.live && !s.mon && !this.monAsked) { this.monAsked = true; this.wApi('/api/monitors').then(({ j }) => { if (j && j.ok) this.setState({ mon: j }); }); }
+    for (let b = 1; b <= 16; b++) { const nm = s.live ? (st[b] || {}).name : (this.wn().bus || {})[b]; if (nm || !s.live || mon.indexOf(b) > -1) buses.push(b); }
+    const opts = [{ v: '0', name: 'Main mix (the channel faders)' }].concat((s.live ? buses : [1, 2, 4, 5]).map((b) => ({ v: String(b), name: 'Sends to ' + this.busLabel(b) })));
+    return { sofSel: String(s.sof || 0), sofOpts: opts, sofOn: !!s.sof, sofBorder: s.sof ? '#F5D33C' : '#333B47',
+      setSof: (e) => { const b = Number(e.target.value) || 0; this.setState({ sof: b, layer: b ? 'k:ch' : s.layer, page: 0 }); },
+      sofNote: s.sof ? 'Faders, ON and pan are each channel’s send to ' + this.busLabel(s.sof) + (this.isMon(s.sof) ? ' (a musician’s mix: they hear it straight away).' : '.') + ' Pan shows when pan link is off.' : '' };
+  }
+  isMon(b) { return ((this.state.mon || {}).buses || [1, 2, 4]).indexOf(b) > -1; }
+  // ---- the musician buses, checked on the real Wing ----
+  monCheck() {
+    if (this.mBusy) return; this.mBusy = true;
+    this.wApi('/api/monitors/check').then(({ j }) => { this.mBusy = false; if (!j || !j.ok) return; const done = j.buses.every((c) => c.read >= 40); this.setState({ mcData: j.buses, mcState: done ? (j.buses.some((c) => c.post.length || c.linked.length) ? 'found' : 'clean') : 'reading' }); }).catch(() => { this.mBusy = false; });
+  }
+  monCheckVals() {
+    const s = this.state;
+    if (!s.live) return { on: false };
+    if (!s.mon && !this.monAsked) { this.monAsked = true; this.wApi('/api/monitors').then(({ j }) => { if (j && j.ok) this.setState({ mon: j }); }); }
+    const st = s.mcState || 'idle', data = s.mcData || [], nm = (n) => { const x = ((((s.wing || {}).strips || {}).ch || {})[n] || {}).name; return x || 'Ch ' + String(n).padStart(2, '0'); };
+    const rows = st === 'idle' ? [] : data.map((c) => { const bad = c.post.length || c.linked.length;
+      return { bus: this.busLabel(c.bus), mark: c.read < 40 ? '…' : (bad ? '!' : '✓'), col: c.read < 40 ? '#A3ACB8' : (bad ? '#F5C518' : '#4FD18B'),
+        text: c.read < 40 ? 'Reading from the Wing…' : !bad ? 'All sends Pre, pan link off.' : [c.post.length ? (c.post.map(nm).join(', ') + (c.post.length > 1 ? ' sends are' : ' send is') + ' Post, so moving FOH faders changes this mix.') : '', c.linked.length ? 'Pan link is on for ' + c.linked.map(nm).join(', ') + ', so their pan follows FOH.' : ''].filter(Boolean).join(' ') }; });
+    const count = data.reduce((t, c) => t + c.post.length + c.linked.length, 0);
+    const ctl = this.wCtl();
+    return { on: true, busList: ((s.mon || {}).buses || []).map((b) => this.busLabel(b)).join(', ') || '—', idle: st === 'idle' || st === 'clean' || st === 'done', rows, found: st === 'found', asking: st === 'ask', count, fixOff: !ctl.ok,
+      check: () => { this.setState({ mcState: 'reading', mcMsg: '' }); this.monCheck(); },
+      ask: () => this.setState({ mcState: 'ask' }), cancel: () => this.setState({ mcState: 'found' }),
+      fix: () => { this.setState({ mcState: 'sending' }); this.wApi('/api/monitors/fix', 'POST', {}).then(({ j }) => { this.setState({ mcState: j.ok ? 'reading' : 'found', mcMsg: j.ok ? '✓ Sent ' + j.changed + ' changes to the Wing. Checking again…' : (j.error || 'Not changed.') }); }); },
+      hasMsg: !!s.mcMsg || st === 'clean' || st === 'sending', msg: st === 'sending' ? 'Sending to the Wing…' : (st === 'clean' ? '✓ Every musician bus is Pre with pan link off.' + (s.mcMsg ? ' ' + s.mcMsg.replace(' Checking again…', '') : '') : s.mcMsg), msgCol: st === 'clean' ? '#4FD18B' : '#A3ACB8' };
+  }
+  // demo DCAs, buses, aux, mains and matrices (the preview has no Wing)
+  demoKind(kind, ctl, globalLock) {
+    const s = this.state, counts = { aux: 8, bus: 16, main: 4, mtx: 8, dca: 16 }, lab = { aux: 'Aux', bus: 'Bus', main: 'Main', mtx: 'Mtx', dca: 'DCA' }[kind];
+    const names = { ...(this.wn()[kind] || {}), ...(kind === 'main' ? { 1: 'Main LR' } : {}) };
+    const dk = s.demoK || {}, cur = dk[kind] || {};
+    const put = (n, patch) => { const k2 = { ...(this.state.demoK || {}) }; k2[kind] = { ...(k2[kind] || {}), [n]: { ...((k2[kind] || {})[n] || {}), ...patch } }; this.setState({ demoK: k2 }); };
+    const out = [];
+    for (let n = 1; n <= counts[kind]; n++) {
+      const x = { fdr: names[n] ? 0 : -144, mute: false, pan: 0, ...(cur[n] || {}) }, id = kind + '/' + n, nm = names[n] || lab + ' ' + String(n).padStart(2, '0');
+      out.push(this.row({ id, kind, n, label: lab + ' ' + String(n).padStart(2, '0'), numText: String(n).padStart(2, '0'), name: nm, fdr: x.fdr, muted: x.mute,
+        meter: x.mute || x.fdr <= -90 ? 0 : Math.round(this.dbToPos(x.fdr) * 100 * (0.6 + Math.random() * 0.3)), lock: !!s.wLock[id], col: { dca: 11, bus: 6, aux: 4, main: 1, mtx: 10 }[kind], pan: kind === 'dca' ? undefined : x.pan,
+        toggleLock: () => this.setState({ wLock: { ...s.wLock, [id]: !s.wLock[id] } }), toggleMute: () => put(n, { mute: !x.mute }), setDb: (d) => put(n, { fdr: d }), setPan: (v) => put(n, { pan: v }),
+        setGain: () => {}, setVph: () => {} }, ctl, globalLock));
+    }
+    return out;
+  }
+  rowsFor(kind, ctl, globalLock, named) {
+    if (this.state.live) return this.liveRows(ctl, globalLock, kind, named);
+    return kind === 'ch' ? this.demoRows(ctl, globalLock) : this.demoKind(kind, ctl, globalLock);
+  }
+  stripVals(ctl, globalLock, wc) {
+    const s = this.state, kinds = [['ch', 'Channels'], ['dca', 'DCAs'], ['bus', 'Buses'], ['aux', 'Aux'], ['main', 'Main'], ['mtx', 'Matrix']];
+    const lays = this.layers(), cust = lays.find((l) => 'l:' + l.id === s.layer);
+    const cache = {}, get = (k) => (cache[k] = cache[k] || this.rowsFor(k, ctl, globalLock, false));
+    let rows;
+    if (cust) { rows = cust.items.map((id) => get(id.split('/')[0]).find((r) => r.id === id)).filter(Boolean); }
+    else rows = get(s.layer.slice(2) || 'ch');
+    // as many strips as fit: phone portrait about 8, landscape and iPad 16 or more
+    // the WING look puts a 132 px sidebar on wide screens
+    let classic = false; try { classic = document.documentElement.getAttribute('data-look') === 'classic'; } catch (e) {}
+    const side = s.vw >= 1000 && !classic ? 132 : 0;
+    const box = Math.min(s.vw - side, s.vw >= 1000 ? 1240 : 760) - 32 - 14;
+    const wsel = s.swidth === 'auto' ? (s.vw < 500 ? 'narrow' : 'normal') : s.swidth;
+    const w0 = { narrow: 40, normal: 56, wide: 76 }[wsel];
+    const per = Math.max(1, Math.floor((box + 3) / (w0 + 3)));
+    const w = Math.floor((box + 3) / per) - 3;
+    const pages = Math.max(1, Math.ceil(rows.length / per)), pg = Math.min(s.page, pages - 1);
+    const shown = rows.slice(pg * per, pg * per + per);
+    const sel = s.sel ? [].concat(...Object.values(cache)).find((r) => r.id === s.sel) || (s.sel.split('/')[0] ? get(s.sel.split('/')[0]).find((r) => r.id === s.sel) : null) : null;
+    const dev = s.vw < 700 ? 'phone' : (s.vw < 1100 ? 'iPad' : 'screen');
+    const name = cust ? cust.name : (kinds.find((k) => 'k:' + k[0] === s.layer) || kinds[0])[1];
+    return {
+      on: s.view === 'strips', listOn: s.view !== 'strips', ...this.sofVals(),
+      status: (wc.title || '') + ' \u00b7 ' + name + (s.sof ? ' \u00b7 sends to ' + this.busLabel(s.sof) : ''),
+      strips: shown, w: w, h: Math.max(280, Math.min(720, s.vh - 390)),
+      none: !shown.length, noneText: cust ? 'Nothing on this layer yet. Tap Layout\u2026 then Change the ' + cust.name + ' layer.' : 'Nothing here yet.',
+      ticks: [10, 5, 0, -5, -10, -20, -30, -50].map((d) => ({ t: d > 0 ? String(d) : String(d), at: 'calc(10px + (100% - 20px) * ' + this.dbToPos(d).toFixed(4) + ')' })),
+      pageText: rows.length ? (pg * per + 1) + '\u2013' + Math.min(rows.length, pg * per + per) + ' of ' + rows.length : '',
+      noPrev: pg === 0, noNext: pg >= pages - 1,
+      prev: () => this.setState({ page: Math.max(0, pg - 1) }), next: () => this.setState({ page: Math.min(pages - 1, pg + 1) }),
+      fine: s.fine, fineCls: s.fine ? 'mxb on' : 'mxb', toggleFine: () => this.setState({ fine: !s.fine }),
+      me: s.me, meCls: s.me ? 'mxb red' : 'mxb', toggleMe: () => { this.setPref('booth.muteenable', s.me ? '0' : '1'); this.setState({ me: !s.me }); },
+      layoutOpen: s.layoutOpen, toggleLayout: () => this.setState({ layoutOpen: !s.layoutOpen }),
+      device: dev, fitText: per + ' strips fit across this ' + dev + '.',
+      widths: [['auto', 'Auto'], ['narrow', 'Narrow'], ['normal', 'Normal'], ['wide', 'Wide']].map(([k, n]) => ({ name: n, on: s.swidth === k, cls: s.swidth === k ? 'lk on' : 'lk', pick: () => { this.setPref('booth.stripwidth', k); this.setState({ swidth: k, page: 0 }); } })),
+      toList: () => { this.setPref('booth.mixview', 'list'); this.setState({ view: 'list', layoutOpen: false }); },
+      toStrips: () => { this.setPref('booth.mixview', 'strips'); this.setState({ view: 'strips' }); },
+      banks: kinds.filter(([k]) => s.live || k !== 'mtx').map(([k, n]) => ({ name: n, on: s.layer === 'k:' + k, cls: s.layer === 'k:' + k ? 'mxbk on' : 'mxbk', pick: () => this.setState({ layer: 'k:' + k, page: 0 }) }))
+        .concat(lays.map((l) => ({ name: l.name, on: s.layer === 'l:' + l.id, cls: s.layer === 'l:' + l.id ? 'mxbk on' : 'mxbk', pick: () => this.setState({ layer: 'l:' + l.id, page: 0 }) }))),
+      newLayer: () => this.setState({ ly: { id: '', name: '', items: [] }, layoutOpen: false }),
+      canEditLayer: !!cust, layerName: cust ? cust.name : '',
+      editLayer: () => this.setState({ ly: { id: cust.id, name: cust.name, items: cust.items.slice() }, layoutOpen: false }),
+      hasSel: !!sel, sel: sel || {}, selCh: !!sel && sel.kind === 'ch', selRenaming: !!sel && s.ren === sel.id,
+      unpick: () => this.setState({ sel: '', ren: '', renStep: '' }),
+      _all: (k) => get(k)
+    };
+  }
+  layerVals(sv) {
+    const s = this.state, ly = s.ly;
+    if (!ly) return { open: false };
+    const kinds = this.state.live ? ['ch', 'dca', 'bus', 'aux', 'main', 'mtx'] : ['ch', 'dca', 'bus', 'aux', 'main'];
+    const colours = ['#5B6B7F', '#2F6CC4', '#2B4FA3', '#2BB3B3', '#3FA65A', '#7F9A3A', '#D6C23A', '#E08A2E', '#C43B3B', '#E07A6A', '#B8408E', '#8A5AD0'];
+    const all = [].concat(...kinds.map((k) => sv._all(k)));
+    const name = ly.name.trim();
+    return {
+      open: true, title: ly.id ? 'Change the ' + ly.name + ' layer' : 'New layer', name: ly.name, count: ly.items.length,
+      setName: (e) => this.setState({ ly: { ...this.state.ly, name: e.target.value } }),
+      items: all.map((r) => { const i = ly.items.indexOf(r.id); return { label: r.label + ' \u00b7 ' + r.name, col: r.colHex, on: i > -1, pos: i > -1 ? String(i + 1) : '', toggle: () => { const it = this.state.ly.items.slice(); const j = it.indexOf(r.id); if (j > -1) it.splice(j, 1); else it.push(r.id); this.setState({ ly: { ...this.state.ly, items: it } }); } }; }),
+      bad: !name || !ly.items.length,
+      cancel: () => this.setState({ ly: null }),
+      canDelete: !!ly.id, noDelete: !ly.id,
+      del: () => { this.saveLayers(this.layers().filter((l) => l.id !== ly.id)); this.setState({ ly: null, layer: 'k:ch', page: 0 }); },
+      save: () => {
+        const l = this.layers(), id = ly.id || String(Date.now());
+        const item = { id: id, name: name.slice(0, 16), items: ly.items };
+        const i = l.findIndex((x) => x.id === id); if (i > -1) l[i] = item; else l.push(item);
+        this.saveLayers(l); this.setState({ ly: null, layer: 'l:' + id, page: 0 });
+      }
+    };
+  }
+  renderVals() {
+    const s = this.state;
+    const globalLock = s.mode !== 0;
+    const modes = ['Open', 'FOH phone + iPad', 'Locked'];
+    const p = s.pending;
+    const ctl = this.wCtl();
+    const rows = s.view === 'strips' ? [] : (s.live ? this.liveRows(ctl, globalLock, s.wKind, s.wNamed) : this.demoRows(ctl, globalLock));
+    const wc = this.wConn(), sv = this.stripVals(ctl, globalLock, wc);
+    const w = s.wing;
+    // the row being renamed
+    const rk = s.ren ? s.ren.split('/') : null;
+    const rKind = rk ? rk[0] : 'ch', rN = rk ? Number(rk[1]) : 0;
+    const rLab = { ch: 'Ch', aux: 'Aux', bus: 'Bus', main: 'Main', mtx: 'Mtx', dca: 'DCA' }[rKind] + ' ' + String(rN).padStart(2, '0');
+    const old = !rk ? '' : (s.live ? ((((w || {}).strips || {})[rKind] || {})[rN] || {}).name || '' : this.chName(rN));
+    const draft = s.renDraft.trim();
+    return {
+      tio: this.tioConn(),
+      mc: this.monCheckVals(),
+      w: { ...wc, showKinds: wc.showKinds && s.view !== 'strips' }, demoOnly: !s.live, sv: sv, ly: this.layerVals(sv), pt: this.procVals(sv.hasSel ? sv.sel : null, ctl),
+      hdrTop: s.live ? (w && w.console && w.console.name ? w.console.name : 'Wing') : 'Scene Sunday AM',
+      hdrSub: s.live ? (w && w.status === 'connected' ? (w.mode === 'control' ? 'Live · in control' : 'Live · watching') : 'Not connected') : 'Names synced from Wing',
+      ms: this.msVals(),
+      lockModes: modes.map((n, i) => ({ name: n, on: s.mode === i, cls: s.mode === i ? 'lk on' : 'lk', pick: () => this.setState({ mode: i, pending: null }) })),
+      lockTitle: ['Faders open', 'Faders locked to the FOH phone and iPad', 'Faders locked'][s.mode],
+      lockSub: ['Anyone with Mixer control can move them', 'Only the FOH devices below can move them. Every other phone can watch.', 'Nobody can move them until unlocked (Admin or FOH)'][s.mode],
+      fohMode: s.mode === 1,
+      fohDevs: [['ipad', 'FOH iPad', 'Signed in as FOH sound · landscape or portrait'], ['phone', 'FOH phone', 'Signed in as FOH sound'], ['here', 'This device', 'The phone, iPad or laptop you are using now']].map(([k, n, sub]) => ({
+        name: n, sub, on: !!s.foh[k], dot: s.foh[k] ? '#6CB4F5' : '#A3ACB8', btn: s.foh[k] ? 'Remove' : 'Add',
+        toggle: () => this.setState({ foh: { ...s.foh, [k]: !s.foh[k] } })
+      })),
+      lockColor: globalLock ? '#F5C518' : '#A3ACB8',
+      lockBorder: globalLock ? '#F5C518' : '#262C36',
+      guard: s.guard, toggleGuard: () => this.setState({ guard: !s.guard }),
+      lockMutes: s.lockMutes, toggleLockMutes: () => this.setState({ lockMutes: !s.lockMutes }),
+      mixesOpen: s.live && s.mon ? !s.mon.locked : (() => { try { return localStorage.getItem('booth.mixlock') !== 'locked'; } catch (e) { return true; } })(),
+      toggleMixes: () => {
+        if (s.live && s.mon) {  // on the C3 Life server the lock is kept there, so it really stops changes
+          const d = { ...s.mon, locked: !s.mon.locked };
+          this.wApi('/api/monitors', 'PUT', { buses: d.buses, people: d.people, locked: d.locked }).then(({ j }) => { if (j && j.ok) { this.setState({ mon: { ...j, mine: s.mon.mine } }); try { localStorage.setItem('booth.mixlock', j.locked ? 'locked' : 'open'); } catch (e) {} } else this.wSay((j && j.error) || 'Not changed.', true); });
+          return;
+        }
+        let l = 'open'; try { l = localStorage.getItem('booth.mixlock') === 'locked' ? 'open' : 'locked'; localStorage.setItem('booth.mixlock', l); } catch (e) {} this.setState({ mixTick: Date.now() }); },
+      hasPending: !!p,
+      pendingName: p ? p.name : '', pendingFrom: p ? p.from : '', pendingTo: p ? p.to : '',
+      confirm: () => { p.run(); this.setState({ pending: null }); },
+      cancel: () => this.setState({ pending: null }),
+      ...(() => {
+        const wn = s.names || this.wn();
+        return {
+          namesLine: s.live ? 'Live from the Wing: a name or colour changed on the desk shows on every screen within a moment.'
+            : (s.autoRead ? 'Updates by itself: the Wing tells the app the moment a name changes, and the app checks every 10 seconds' + (s.checkedAt ? ' (last check ' + s.checkedAt + ')' : '') : 'Automatic reading is off. Tap Read now.') + ' · last change ' + wn.at + (wn.by ? ' by ' + wn.by : '') + ' · 16 channels, 3 buses, 4 DCAs, 1 matrix',
+          autoRead: s.autoRead, toggleAutoRead: () => this.setState({ autoRead: !s.autoRead }),
+          readNames: () => {
+            if (s.live) { this.wPoll(true); this.setState({ renToast: 'Read everything from the Wing again.' }); return; }
+            const w2 = this.wn(); const d = new Date(); w2.at = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); try { localStorage.setItem('booth.wingnames', JSON.stringify(w2)); } catch (e) {} this.setState({ names: w2, renToast: 'Names read from the Wing again. Nothing had changed.' });
+          },
+          demoDesk: () => { const now = this.chName(5) === 'Keys' ? 'Piano' : 'Keys'; const was = this.chName(5); this.wnSave('ch', 5, now, 'the Wing desk'); this.setState({ names: this.wn(), renToast: 'Ch 05 was renamed on the Wing: “' + was + '” → “' + now + '”. Every screen now shows it.' }); },
+          hasRenToast: !!s.renToast, renToast: s.renToast,
+          renOld: old, renDraft: s.renDraft, renNum: String(rN).padStart(2, '0'), renWhat: rLab,
+          setRenDraft: (e) => this.setState({ renDraft: e.target.value }),
+          renEdit: s.renStep === 'edit', renConfirm: s.renStep === 'confirm', renSending: s.renStep === 'sending',
+          renBad: !draft || draft === old,
+          renHint: !draft ? 'Type a name.' : (draft === old ? 'That is the same name.' : draft.length + ' of 16 letters'),
+          renNext: () => this.setState({ renStep: 'confirm' }),
+          renBack: () => this.setState({ renStep: 'edit' }),
+          renCancel: () => this.setState({ ren: '', renStep: '', renDraft: '' }),
+          renSend: () => {
+            const nm = draft.slice(0, 16), was = old;
+            this.setState({ renStep: 'sending' });
+            if (s.live) {
+              this.wSet(rKind, rN, 'name', nm).then((ok) => {
+                this.setState({ ren: '', renStep: '', renDraft: '' });
+                if (!ok) return;
+                this.wRen = { kind: rKind, n: rN, name: nm, was: was, what: rLab };
+                this.setState({ renToast: 'Sent to the Wing. Waiting for it to confirm…' });
+                clearTimeout(this.wRenT); this.wRenT = setTimeout(() => { if (this.wRen) { this.wRen = null; this.setState({ renToast: 'The Wing didn’t confirm the new name. Check it on the desk.' }); } }, 5000);
+              });
+              return;
+            }
+            clearTimeout(this.renT);
+            this.renT = setTimeout(() => {
+              let u = null; try { u = JSON.parse(localStorage.getItem('booth.user') || 'null'); } catch (e) {}
+              this.wnSave('ch', rN, nm, u ? u.name : '');
+              this.setState({ ren: '', renStep: '', renDraft: '', names: this.wn(), renToast: '✓ The Wing confirmed: Ch ' + String(rN).padStart(2, '0') + ' is now “' + nm + '” (was “' + was + '”). Every screen has updated.' });
+            }, 900);
+          }
+        };
+      })(),
+      listChannels: rows
+    };
+  }
+}
+</script>
+</body>
+</html>

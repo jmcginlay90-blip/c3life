@@ -1,0 +1,484 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>C3 Life – Change user</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet" data-look>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Safari / iPad: no zoom when typing, no double-tap zoom, no text-select or callout while dragging */
+html{-webkit-text-size-adjust:100%;touch-action:manipulation}
+input,select,textarea{font-size:16px!important}
+button,a,summary,label,[role=slider]{-webkit-tap-highlight-color:transparent}
+[role=slider],.fader,.pan{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+body{margin:0;background:#0D1015}
+a{color:#6CB4F5}a:hover{color:#9CCBF8}
+.card{background:#161A21;border:1px solid #262C36;border-radius:14px;padding:14px}
+.who{width:100%;display:flex;align-items:center;gap:12px;min-height:64px;padding:8px 12px;border-radius:14px;border:1px solid #262C36;background:#161A21;color:#ECEEF1;font:400 14px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer;text-align:left}
+.who.sel{border-color:#F5C518;background:#1E232C}
+.av{width:40px;height:40px;border-radius:50%;font-weight:600;font-size:14px;display:flex;align-items:center;justify-content:center;flex:none;color:#0D1015}
+.key{min-height:56px;border-radius:12px;border:1px solid #333B47;background:#1E232C;color:#ECEEF1;font:500 22px 'IBM Plex Mono',ui-monospace,monospace;cursor:pointer}
+.key:hover{background:#252B35}
+.btn{min-height:48px;padding:0 16px;border-radius:12px;border:1px solid #333B47;background:#1E232C;color:#ECEEF1;font:500 15px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer}
+.btn.pri{background:#F5C518;border-color:#F5C518;color:#1A1204}
+input[type=checkbox]{width:20px;height:20px;accent-color:#F5C518}
+.opt{width:100%;display:flex;align-items:center;gap:12px;min-height:56px;padding:6px 12px;border-radius:12px;border:1px solid #262C36;background:#11151B;color:#ECEEF1;font:400 14px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer;text-align:left}
+.opt.on{border-color:#F5C518;background:#1E232C}
+.rdot{width:18px;height:18px;border-radius:50%;border:2px solid #A3ACB8;box-sizing:border-box;flex:none}
+@media (max-height:600px){.pop .key{min-height:44px;font-size:19px}.pop{gap:8px !important}}
+
+/* Fills any screen. Wider than 700px (iPad, laptop, web) the content sits in a centred column. */
+@media (min-width:700px){
+  .app.has-bn{padding-left:96px;box-sizing:border-box}
+  .app > nav.bn{position:absolute;left:0;top:0;bottom:0;width:96px;flex-direction:column;justify-content:flex-start;border-top:0 !important;border-right:1px solid #262C36;padding-top:12px;z-index:2;overflow-y:auto}
+  .app > nav.bn .tab{flex:none;min-height:66px;border-top:0;border-left:2px solid transparent}
+  .app > nav.bn .tab.on{border-left-color:#F5C518}
+  .app > *:not(.bn):not([style*="position:absolute"]){width:100%;max-width:760px;margin-left:auto;margin-right:auto;box-sizing:border-box}
+}
+
+/* Easy to use: every link, tick box and control is at least 40-44px tall, so it is easy to hit with a thumb. */
+a[style*="min-height:28px"]{min-height:44px !important}
+a[style*="font-size:12px"][style*="text-decoration:none"],a[style*="font-size:13px"][style*="text-decoration:none"]{display:inline-flex;align-items:center;min-height:40px}
+label:has(> input[type=checkbox]),label:has(> input[type=radio]){min-height:44px}
+input[type=checkbox],input[type=radio]{width:22px;height:22px;flex:none;accent-color:#F5C518}
+input[type=range]{min-height:40px}
+select{min-height:44px}
+button.sw::after,button.cell::after{content:'';position:absolute;inset:-7px -4px}
+.cell{position:relative}
+input[type=checkbox][aria-label]{width:32px;height:32px}
+.pw{min-height:48px;border-radius:10px;border:1px solid #333B47;background:#0F1318;color:#ECEEF1;font:400 17px 'IBM Plex Sans',system-ui,sans-serif;padding:0 12px;width:100%;box-sizing:border-box}
+/* wide:start — iPad landscape and laptops: use the width */
+@media (min-width:1000px){
+  .app > *:not(.bn):not([style*="position:absolute"]){max-width:1240px}
+  .topmenu summary{max-width:1240px}
+  .app main.wide2{display:grid !important;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:14px 18px !important}
+  .app main.wide2 > *{min-width:0}
+  .app main.wide2 > :not(section):not(.card):not(details):not(.wcol){grid-column:1 / -1}
+  .app main.wide2 > .wfull{grid-column:1 / -1}
+  .app main.wide1{max-width:980px !important}
+  .app:has(main.wide1) > *:not(.bn):not([style*="position:absolute"]){max-width:980px}
+  .app:has(main.wide1) .topmenu summary{max-width:980px}
+}
+@media (min-width:1500px){ .app main.wide2.wide3{grid-template-columns:repeat(3,minmax(0,1fr))} }
+/* wide:end */
+/* look:start — the WING look (like WING Edit): near-black, outlined panels, condensed headings, yellow for active, blue for selected.
+   Settings › Look › Classic puts the old look back on this device (html[data-look=classic]). */
+:root{--wk-bg:#0A0B0D;--wk-panel:#121418;--wk-panel2:#181B20;--wk-line:#2E333A;--wk-yellow:#F5C518;--wk-blue:#2F6CC4;--wk-cond:'Barlow Condensed','IBM Plex Sans',system-ui,sans-serif}
+html:not([data-look=classic]) body{background:var(--wk-bg)}
+html:not([data-look=classic]) .app{background:var(--wk-bg) !important}
+html:not([data-look=classic]) .card{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .lbl{font-family:var(--wk-cond);font-size:13px;font-weight:600;letter-spacing:.07em;color:#D4D9E0}
+html:not([data-look=classic]) h1{font-family:var(--wk-cond);font-weight:600 !important;text-transform:uppercase;letter-spacing:.05em;font-size:21px !important;line-height:1.2;color:var(--wk-yellow);border:1.5px solid var(--wk-yellow);border-radius:3px;padding:2px 12px;display:inline-block}
+html:not([data-look=classic]) .btn,html:not([data-look=classic]) .lk,html:not([data-look=classic]) .mxb,html:not([data-look=classic]) .mxbk,html:not([data-look=classic]) .mute,html:not([data-look=classic]) .pbtn{font-family:var(--wk-cond);font-size:15px;letter-spacing:.02em;border-radius:4px}
+html:not([data-look=classic]) .btn.pri{background:var(--wk-yellow);border-color:var(--wk-yellow);color:#111}
+html:not([data-look=classic]) .seg{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .seg a{font-family:var(--wk-cond);font-size:15px;letter-spacing:.03em;border-radius:4px}
+html:not([data-look=classic]) .seg a.on,html:not([data-look=classic]) .lk.on{background:var(--wk-blue);color:#fff}
+html:not([data-look=classic]) .tab.on{color:var(--wk-yellow);border-top-color:var(--wk-yellow)}
+html:not([data-look=classic]) .topmenu{background:#000;border-bottom-color:var(--wk-line)}
+html:not([data-look=classic]) .topmenu summary{font-family:var(--wk-cond);font-size:16px;letter-spacing:.03em}
+html:not([data-look=classic]) .topmenu .mcur{color:var(--wk-yellow)}
+html:not([data-look=classic]) .topmenu .mlist{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .topmenu .mlist a{font-family:var(--wk-cond);font-size:16px;border-radius:4px}
+html:not([data-look=classic]) .topmenu .mlist a.on{background:var(--wk-panel2);color:var(--wk-yellow);box-shadow:inset 3px 0 0 var(--wk-yellow)}
+html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic]) input[type=radio],html:not([data-look=classic]) input[type=range]{accent-color:var(--wk-yellow)}
+.wkside{display:none}
+/* iPad landscape and laptops: a sidebar like WING Edit's (HOME, MIXER, ...) instead of the menu at the top */
+@media (min-width:1000px){
+  html:not([data-look=classic]) .wkside{display:flex;flex-direction:column;gap:2px;position:fixed;left:0;top:0;bottom:0;width:132px !important;max-width:132px !important;margin:0 !important;padding:8px 6px 12px;box-sizing:border-box;background:#000;border-right:1px solid var(--wk-line);overflow-y:auto;z-index:30}
+  html:not([data-look=classic]) .wkside .wkbrand{font:700 24px var(--wk-cond);letter-spacing:.06em;color:var(--wk-yellow);padding:6px 8px 12px}
+  html:not([data-look=classic]) .wkside a{display:flex;align-items:center;gap:9px;min-height:46px;padding:0 8px;border-radius:4px;color:#D4D9E0;text-decoration:none;font:600 15px var(--wk-cond);text-transform:uppercase;letter-spacing:.04em}
+  html:not([data-look=classic]) .wkside a:hover{background:var(--wk-panel2)}
+  html:not([data-look=classic]) .wkside a.on{background:var(--wk-panel2);color:var(--wk-yellow);box-shadow:inset 3px 0 0 var(--wk-yellow)}
+  html:not([data-look=classic]) .wkside svg{flex:none}
+  html:not([data-look=classic]) .app{padding-left:132px;box-sizing:border-box !important}
+  html:not([data-look=classic]) .app > .topmenu{display:none}
+}
+/* look:end */
+</style>
+</helmet>
+<div class="app" style="width:100%;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;background:#0D1015;color:#ECEEF1;font-family:'IBM Plex Sans',system-ui,sans-serif;overflow:hidden">
+  <header style="padding:18px 20px 12px;display:flex;flex-direction:column;gap:4px">
+    <a href="Main.dc.html" style="font-size:13px;text-decoration:none;min-height:28px;display:flex;align-items:center">← Home</a>
+    <h1 style="margin:0;font-size:26px;font-weight:600">{{heading}}</h1>
+    <div style="font-size:13px;color:#A3ACB8">{{subheading}}</div>
+  </header>
+
+  <main class=" wide1" style="flex:1;overflow-y:auto;padding:0 16px 16px;display:flex;flex-direction:column;gap:10px">
+    <sc-if value="{{done}}" hint-placeholder-val="{{ false }}">
+      <div role="status" class="card" style="display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;padding:24px 16px;border-color:#6CB4F5">
+        <span class="av" style="width:56px;height:56px;font-size:18px;background:{{selColor}}">{{selInitials}}</span>
+        <div style="font-size:19px;font-weight:600">Signed in as {{selName}}</div>
+        <div style="font-size:13px;color:#A3ACB8">{{selRole}} · {{selCan}}</div>
+        <sc-if value="{{hasLoaded}}" hint-placeholder-val="{{ false }}"><div style="font-size:13px;color:#4FD18B">{{loadedLine}}</div></sc-if>
+        <a href="{{homeHref}}" class="btn pri" style="display:flex;align-items:center;justify-content:center;text-decoration:none;width:100%;box-sizing:border-box">{{homeLabel}}</a>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{choosing}}" hint-placeholder-val="{{ true }}">
+      <sc-for list="{{people}}" as="r" hint-placeholder-count="6">
+        <button class="{{r.cls}}" onClick="{{r.pick}}" aria-pressed="{{r.sel}}">
+          <span class="av" style="background:{{r.color}}">{{r.initials}}</span>
+          <span style="flex:1;min-width:0"><span style="font-size:15px;font-weight:600">{{r.name}}</span><br><span style="font-size:13px;color:#A3ACB8">{{r.role}} · {{r.can}}</span></span>
+          <span style="font-size:12px;color:#6CB4F5">{{r.tag}}</span>
+        </button>
+      </sc-for>
+    </sc-if>
+
+    <section class="card" style="display:flex;flex-direction:column;gap:10px;margin-top:4px">
+      <label style="display:flex;align-items:center;gap:8px;font-size:14px"><input type="checkbox" checked> Remember me on this phone</label>
+      <sc-if value="{{signedIn}}" hint-placeholder-val="{{ true }}"><button class="btn" onClick="{{changeOwn}}">{{changeOwnLabel}}</button></sc-if>
+      <button class="btn" onClick="{{signOut}}">Sign out</button>
+    </section>
+    <section class="card" aria-label="Look" style="display:flex;flex-direction:column;gap:8px">
+      <div class="lbl">Look on this device</div>
+      <div style="display:flex;gap:4px" role="group" aria-label="Look on this device">
+        <sc-for list="{{looks}}" as="lk" hint-placeholder-count="2"><button class="{{lk.cls}}" style="flex:1" onClick="{{lk.pick}}" aria-pressed="{{lk.on}}">{{lk.name}}</button></sc-for>
+      </div>
+      <div style="font-size:12px;color:#A3ACB8;line-height:1.45">WING: black with outlined panels, like WING Edit, with a sidebar on iPads held sideways and laptops. Classic: the earlier look, with the menu at the top. Only this phone, iPad or laptop changes.</div>
+    </section>
+    <div style="font-size:13px;color:#A3ACB8;padding:0 4px;line-height:1.45">Forgot your PIN? Ask the sound desk or an Admin to set a new one.</div>
+    <sc-if value="{{isPreview}}" hint-placeholder-val="{{ true }}"><div style="font-size:13px;color:#A3ACB8;padding:0 4px">Preview: the PIN is 1234 for everyone, and the Admin password is c3life-admin.</div></sc-if>
+  </main>
+  <sc-if value="{{modal}}" hint-placeholder-val="{{ false }}">
+    <div class="ovl" style="position:absolute;inset:0;z-index:50;background:rgba(5,7,10,.72);display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box">
+      <section class="card pop" role="dialog" aria-modal="true" aria-label="{{popTitle}}" style="width:100%;max-width:380px;max-height:100%;overflow-y:auto;display:flex;flex-direction:column;gap:12px;box-sizing:border-box;border-color:#333B47">
+        <div style="display:flex;align-items:center;gap:12px">
+          <span class="av" style="background:{{selColor}}">{{selInitials}}</span>
+          <div style="flex:1;min-width:0"><div style="font-size:17px;font-weight:600">{{popTitle}}</div><div style="font-size:13px;color:#A3ACB8">{{popSub}}</div></div>
+        </div>
+
+        <sc-if value="{{showPad}}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;gap:14px;justify-content:center" aria-label="{{pinLen}} digits entered" role="status">
+            <sc-for list="{{dots}}" as="d" hint-placeholder-count="4">
+              <span style="width:14px;height:14px;border-radius:50%;border:2px solid #A3ACB8;box-sizing:border-box;background:{{d.fill}}"></span>
+            </sc-for>
+          </div>
+          <div style="font-size:12px;color:{{hintColor}};min-height:16px;text-align:center">{{hint}}</div>
+          <div class="pad" style="display:grid;grid-template-columns:repeat(3, minmax(0, 1fr));gap:8px;width:100%">
+            <sc-for list="{{keys}}" as="k" hint-placeholder-count="12">
+              <button class="key" onClick="{{k.press}}" aria-label="{{k.aria}}">{{k.label}}</button>
+            </sc-for>
+          </div>
+          <sc-if value="{{newPinStep}}" hint-placeholder-val="{{ false }}">
+            <button class="btn pri" style="width:100%" onClick="{{confirmNew}}" disabled="{{cantConfirm}}">{{confirmLabel}}</button>
+          </sc-if>
+        </sc-if>
+
+        <sc-if value="{{showPw}}" hint-placeholder-val="{{ false }}">
+          <label for="si-pw" style="font-size:14px;color:#C9CFD7">{{pwLabel}}</label>
+          <input type="password" id="si-pw" class="pw" maxlength="200" autocomplete="{{pwAuto}}" value="{{pwVal}}" onChange="{{setPw}}" aria-describedby="si-pw-hint">
+          <sc-if value="{{pwTwice}}" hint-placeholder-val="{{ false }}">
+            <label for="si-pw2" style="font-size:14px;color:#C9CFD7">Type it again</label>
+            <input type="password" id="si-pw2" class="pw" maxlength="200" autocomplete="new-password" value="{{pw2Val}}" onChange="{{setPw2}}">
+          </sc-if>
+          <div id="si-pw-hint" role="status" style="font-size:13px;color:{{hintColor}};min-height:18px">{{pwHint}}</div>
+          <button class="btn pri" onClick="{{pwGo}}" disabled="{{pwBusy}}">{{pwBtn}}</button>
+        </sc-if>
+
+        <sc-if value="{{noPin}}" hint-placeholder-val="{{ false }}">
+          <button class="btn pri" onClick="{{viewOnly}}">Continue as {{selName}}</button>
+        </sc-if>
+
+        <sc-if value="{{presetStep}}" hint-placeholder-val="{{ false }}">
+          <sc-if value="{{manyMixes}}" hint-placeholder-val="{{ true }}">
+            <div style="font-size:14px;font-weight:600">Which mix do you want to change?</div>
+            <div role="radiogroup" aria-label="Which mix" style="display:flex;flex-direction:column;gap:6px">
+              <sc-for list="{{mixOpts}}" as="x" hint-placeholder-count="3">
+                <button class="{{x.cls}}" role="radio" aria-checked="{{x.on}}" onClick="{{x.pick}}">
+                  <span class="rdot" aria-hidden="true" style="background:{{x.dot}}"></span>
+                  <span style="flex:1;min-width:0"><span style="font-size:15px;font-weight:600">{{x.name}}</span><br><span style="font-size:13px;color:#A3ACB8">{{x.sub}}</span></span>
+                </button>
+              </sc-for>
+            </div>
+          </sc-if>
+          <sc-if value="{{hasPresets}}" hint-placeholder-val="{{ true }}">
+            <div style="font-size:14px;font-weight:600;margin-top:2px">Load one of your saved mixes? (optional)</div>
+            <div role="radiogroup" aria-label="Your saved mixes" style="display:flex;flex-direction:column;gap:6px">
+              <sc-for list="{{presets}}" as="p" hint-placeholder-count="2">
+                <button class="{{p.cls}}" role="radio" aria-checked="{{p.on}}" onClick="{{p.pick}}">
+                  <span class="rdot" aria-hidden="true" style="background:{{p.dot}}"></span>
+                  <span style="flex:1;min-width:0"><span style="font-size:15px;font-weight:600">{{p.name}}</span><br><span style="font-size:13px;color:#A3ACB8">Saved {{p.when}}</span></span>
+                </button>
+              </sc-for>
+            </div>
+            <sc-if value="{{presetPicked}}" hint-placeholder-val="{{ false }}">
+              <div style="font-size:13px;color:#A3ACB8;line-height:1.45">Loading changes {{mixPickName}} on the Wing (that mix only). You can undo it on My mix.</div>
+              <button class="btn" onClick="{{loadPreset}}">Load “{{presetName}}” on {{mixPickName}}</button>
+            </sc-if>
+            <button class="btn pri" onClick="{{skipPreset}}">Open {{mixPickName}} as it is</button>
+          </sc-if>
+          <sc-if value="{{noPresets}}" hint-placeholder-val="{{ false }}">
+            <button class="btn pri" onClick="{{skipPreset}}">Yes, open {{mixPickName}}</button>
+          </sc-if>
+        </sc-if>
+
+        <sc-if value="{{canCancel}}" hint-placeholder-val="{{ true }}">
+          <button class="btn" onClick="{{closePop}}">Cancel</button>
+        </sc-if>
+      </section>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.roleMeta = {
+      'Admin': { color: '#B48CF2', can: 'everything' },
+      'FOH sound': { color: '#F5C518', can: 'mixer, RTA, macros' },
+      'ProPresenter': { color: '#6CB4F5', can: 'slides, playlist, timers' },
+      'Lighting': { color: '#7FD1C1', can: 'lights, events only' },
+      'Foyer team': { color: '#22A05A', can: 'foyer speakers only' },
+      'Musician': { color: '#E58FB5', can: 'their own monitor mix only' },
+      'Viewer': { color: '#C9CFD7', can: 'look only' },
+      'Listener': { color: '#4FD18B', can: 'Listen only' }
+    };
+    this.state = { users: this.loadUsers(), current: -1, sel: -1, pin: '', step: 'choose', wrong: false, newPin: '', newPin2: '', modal: false, preset: -1, mixPick: 0, loaded: '', openedMix: '', serverHere: false, pw: '', pw2: '' };
+  }
+  defaults() {
+    return [
+      { id: 1, name: 'Admin', role: 'Admin', pin: 'c3life-admin', active: true, mustChange: false },
+      { id: 2, name: 'FOH sound', role: 'FOH sound', pin: '1234', active: true, mustChange: false },
+      { id: 3, name: 'ProPresenter', role: 'ProPresenter', pin: '1234', active: true, mustChange: false },
+      { id: 4, name: 'Lighting', role: 'Lighting', pin: '1234', active: true, mustChange: false },
+      { id: 5, name: 'Foyer team', role: 'Foyer team', pin: '1234', active: true, mustChange: false },
+      { id: 6, name: 'Viewer', role: 'Viewer', pin: '', active: true, mustChange: false },
+      { id: 7, name: 'Keys (musician)', role: 'Musician', pin: '1234', active: true, mustChange: false },
+      { id: 8, name: 'Listener', role: 'Listener', pin: '', active: true, mustChange: false }
+    ];
+  }
+  loadUsers() { try { const u = JSON.parse(localStorage.getItem('booth.users') || 'null'); return Array.isArray(u) && u.length ? u : this.defaults(); } catch (e) { return this.defaults(); } }
+  saveUsers(users) { try { localStorage.setItem('booth.users', JSON.stringify(users)); } catch (e) {} }
+  readUser() { try { return JSON.parse(localStorage.getItem('booth.user') || 'null'); } catch (e) { return null; } }
+  componentDidMount() {
+    try { fetch('/api/health').then((r) => (r.ok ? r.json() : null)).then((h) => { this.serverHere = !!(h && h.service === 'c3life'); this.setState({ serverHere: this.serverHere }); }).catch(() => {}); } catch (e) {}
+    const sync = () => {
+      const users = this.loadUsers();
+      const cu = this.readUser();
+      const i = cu ? users.findIndex((u) => u.name === cu.name) : -1;
+      const fallback = cu || this.signedOut() ? i : users.findIndex((u) => u.role === 'FOH sound');
+      const changed = JSON.stringify(users) !== JSON.stringify(this.state.users) || fallback !== this.state.current;
+      if (changed && this.state.step === 'choose' && !this.state.pin && !this.state.modal) this.setState({ users: users, current: fallback, sel: this.state.sel < 0 ? fallback : this.state.sel });
+    };
+    sync();
+    this.poll = setInterval(sync, 1000);
+  }
+  componentWillUnmount() { clearInterval(this.poll); }
+  signedOut() { try { return localStorage.getItem('booth.signedOut') === '1'; } catch (e) { return false; } }
+  initials(n) { const p = n.replace(/[^A-Za-z0-9\s]/g, '').trim().split(/\s+/); return ((p[0] || '?')[0] + (p[1] ? p[1][0] : (p[0] || '?')[1] || '')).toUpperCase(); }
+  // On the C3 Life server, also sign in to C3 Life there, so this person's mixes can sync between their devices.
+  // It only sends the PIN after the C3 Life server has said who it is.
+  serverSignIn(name, pin) {
+    try {
+      fetch('/api/health').then((r) => (r.ok ? r.json() : null)).then((h) => {
+        if (!h || h.service !== 'c3life') { localStorage.removeItem('booth.session'); return null; }
+        return fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, pin }) })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((j) => { if (j && j.token) localStorage.setItem('booth.session', JSON.stringify({ token: j.token, name: j.name })); else localStorage.removeItem('booth.session'); });
+      }).catch(() => {});
+    } catch (e) {}
+  }
+  serverSignOut() {
+    let ses = null; try { ses = JSON.parse(localStorage.getItem('booth.session') || 'null'); localStorage.removeItem('booth.session'); } catch (e) {}
+    if (ses && ses.token) { try { fetch('/api/logout', { method: 'POST', headers: { Authorization: 'Bearer ' + ses.token } }).catch(() => {}); } catch (e) {} }
+  }
+  store(u) {
+    try {
+      if (u) { localStorage.setItem('booth.user', JSON.stringify({ name: u.name, role: u.role, initials: this.initials(u.name), color: this.roleMeta[u.role].color })); localStorage.removeItem('booth.signedOut'); }
+      else { localStorage.removeItem('booth.user'); localStorage.setItem('booth.signedOut', '1'); }
+    } catch (e) {}
+  }
+  // Saved monitor mixes for this person (the same list My mix uses). Musicians get two examples in the mock-up.
+  presetsFor(u) {
+    if (!u) return [];
+    try { const l = JSON.parse(localStorage.getItem('booth.mixes.' + u.name) || 'null'); if (Array.isArray(l)) return l.map((x) => ({ id: x.id, name: x.name, at: x.at })); } catch (e) {}
+    return u.role === 'Musician' ? [{ id: 'demo1', name: 'Sunday AM', at: 'Sun 09:12' }, { id: 'demo2', name: 'Acoustic set', at: 'Wed 19:40' }] : [];
+  }
+  // Bus names come from the Wing (same list every screen reads).
+  busName(n) {
+    let w = null; try { w = JSON.parse(localStorage.getItem('booth.wingnames') || 'null'); } catch (e) {}
+    const d = { 1: 'Wedges', 2: 'IEM Band', 4: 'IEM Keys' };
+    return (w && w.bus && w.bus[n]) || d[n] || 'Bus ' + n;
+  }
+  // Monitor mixes a musician may open: their own first, then any FOH has given them (the same rule as My mix).
+  mixesFor(u) {
+    if (!u || u.role !== 'Musician') return [];
+    const own = 4, all = [1, 2, 4];
+    let extra = null; try { extra = JSON.parse(localStorage.getItem('booth.mixaccess.' + u.name) || 'null'); } catch (e) {}
+    if (!Array.isArray(extra)) extra = [1, 2];
+    return [own].concat(all.filter((b) => b !== own && extra.indexOf(b) >= 0));
+  }
+  isAdmin(u) { return !!u && u.role === 'Admin'; }
+  // Admin passwords: 8 or more characters, with a letter and a number or symbol (the C3 Life server checks the same).
+  goodPassword(p) { return p.length >= 8 && /[A-Za-z]/.test(p) && /[^A-Za-z]/.test(p); }
+  homeOf(u) { return u && u.role === 'Foyer team' ? 'FoyerTeam.dc.html' : (u && u.role === 'Musician' ? 'MyMix.dc.html' : (u && u.role === 'Listener' ? 'Listen.dc.html' : 'Main.dc.html')); }
+  // Go to another screen: in the app (player.html) straight away; in a canvas preview a page may not navigate itself,
+  // so it stays here and the screen shows its link instead. Returns true if it went.
+  goTo(page) { if (typeof window !== 'undefined' && window.__load) { window.__load(page); return true; } return false; }
+  // Signed in: ask which mix and whether to load a saved one, otherwise close the pop-up.
+  finish(u, extra) {
+    this.store(u);
+    const has = this.presetsFor(u).length > 0 || this.mixesFor(u).length > 1;
+    this.setState(Object.assign({ pin: '', pw: '', pw2: '', wrong: false, current: this.state.sel, newPin: '', newPin2: '', preset: -1, mixPick: 0, loaded: '', openedMix: '' }, extra || {}, has ? { step: 'preset', modal: true } : { step: 'done', modal: false }));
+  }
+  renderVals() {
+    const s = this.state;
+    let look = 'wing'; try { look = localStorage.getItem('booth.look') === 'classic' ? 'classic' : 'wing'; } catch (e) {}
+    const looks = [['wing', 'WING'], ['classic', 'Classic']].map(([k, n]) => ({ name: n, on: look === k, cls: look === k ? 'btn pri' : 'btn',
+      pick: () => { try { localStorage.setItem('booth.look', k); } catch (e) {} try { if (k === 'classic') document.documentElement.setAttribute('data-look', 'classic'); else document.documentElement.removeAttribute('data-look'); } catch (e) {} this.setState({ lookTick: Date.now() }); } }));
+    const people = s.users.filter((u) => u.active);
+    const r = s.users[s.sel] || null;
+    const meta = r ? this.roleMeta[r.role] : { color: '#A3ACB8', can: '' };
+    const newStep = s.step === 'new1' || s.step === 'new2';
+    const entry = s.step === 'new1' ? s.newPin : (s.step === 'new2' ? s.newPin2 : s.pin);
+    const press = (d) => {
+      if (newStep) {
+        const key = s.step === 'new1' ? 'newPin' : 'newPin2';
+        let v = s[key];
+        if (d === 'del') v = v.slice(0, -1); else if (d === 'clr') v = ''; else v = (v + d).slice(0, 6);
+        this.setState({ [key]: v, wrong: false });
+        return;
+      }
+      if (!r) return;
+      if (d === 'del') { this.setState({ pin: s.pin.slice(0, -1), wrong: false }); return; }
+      if (d === 'clr') { this.setState({ pin: '', wrong: false }); return; }
+      const pin = (s.pin + d).slice(0, 6);
+      // On the C3 Life server, the C3 Life server checks the PIN (4 digits), so a PIN changed there works on every device.
+      if (this.serverHere) {
+        if (pin.length < 4) { this.setState({ pin: pin, wrong: false }); return; }
+        this.setState({ pin: pin, wrong: false, checking: true });
+        fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: r.name, pin }) })
+          .then((res) => res.json().then((j) => ({ code: res.status, j })))
+          .then(({ code, j }) => {
+            if (code === 200 && j.token) {
+              try { localStorage.setItem('booth.session', JSON.stringify({ token: j.token, name: j.name })); } catch (e) {}
+              this.setState({ checking: false });
+              if (r.mustChange) this.setState({ pin: '', step: 'new1', newPin: '', newPin2: '', wrong: false }); else this.finish(r);
+            } else this.setState({ pin: '', wrong: true, checking: false, lockMsg: code === 429 ? j.error : '' });
+          })
+          .catch(() => this.setState({ pin: '', wrong: true, checking: false, lockMsg: 'Can\u2019t reach the C3 Life server. Try again.' }));
+        return;
+      }
+      if (pin.length < r.pin.length) { this.setState({ pin: pin, wrong: false }); return; }
+      if (pin === r.pin) {
+        this.serverSignIn(r.name, pin);
+        if (r.mustChange) this.setState({ pin: '', step: 'new1', newPin: '', newPin2: '', wrong: false });
+        else this.finish(r);
+      } else this.setState({ pin: '', wrong: true });
+    };
+    const keyList = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'clr', '0', 'del'];
+    const len = newStep ? Math.max(4, entry.length) : (this.serverHere ? 4 : (r && r.pin ? r.pin.length : 4));
+    return {
+      looks,
+      heading: 'Who’s using this phone?',
+      subheading: 'Tap your name, then enter your PIN (Admins: password).',
+      done: s.step === 'done',
+      choosing: s.step !== 'done',
+      modal: !!s.modal,
+      showPad: ((s.step === 'choose' && !!r && !!r.pin) || newStep) && !this.isAdmin(r),
+      isPreview: !s.serverHere,
+      ...(() => {
+        // Admins type a password instead of using the PIN pad.
+        const adm = this.isAdmin(r) && (s.step === 'choose' || newStep) && !!s.modal;
+        const set = newStep;
+        const go = () => {
+          if (set) {
+            if (s.step === 'new1') { if (!this.goodPassword(s.pw)) { this.setState({ wrong: true, pwMsg: 'Use 8 or more characters, with a letter and a number or symbol.' }); return; } this.setState({ step: 'new2', pw2: '', wrong: false, pwMsg: '' }); return; }
+            if (s.pw2 !== s.pw) { this.setState({ step: 'new1', pw: '', pw2: '', wrong: true, pwMsg: 'Those didn\u2019t match. Try again.' }); return; }
+            const users = s.users.map((u, i) => (i === s.sel ? { ...u, pin: s.pw, mustChange: false } : u));
+            this.saveUsers(users); this.finish(users[s.sel], { users: users }); return;
+          }
+          if (!s.pw) { this.setState({ wrong: true, pwMsg: 'Type your password.' }); return; }
+          if (this.serverHere) {
+            this.setState({ checking: true, wrong: false });
+            fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: r.name, password: s.pw }) })
+              .then((res) => res.json().then((j) => ({ code: res.status, j })))
+              .then(({ code, j }) => {
+                if (code === 200 && j.token) { try { localStorage.setItem('booth.session', JSON.stringify({ token: j.token, name: j.name })); } catch (e) {} this.setState({ checking: false }); if (r.mustChange) this.setState({ pw: '', step: 'new1' }); else this.finish(r); }
+                else this.setState({ pw: '', wrong: true, checking: false, pwMsg: code === 429 ? j.error : 'Wrong password. Try again.' });
+              }).catch(() => this.setState({ pw: '', wrong: true, checking: false, pwMsg: 'Can\u2019t reach the C3 Life server. Try again.' }));
+            return;
+          }
+          if (s.pw === r.pin) { if (r.mustChange) this.setState({ pw: '', step: 'new1', wrong: false }); else this.finish(r); }
+          else this.setState({ pw: '', wrong: true, pwMsg: 'Wrong password. Try again.' });
+        };
+        return {
+          showPw: adm, pwTwice: set && s.step === 'new2',
+          pwLabel: set ? 'New password' : 'Password',
+          pwAuto: set ? 'new-password' : 'current-password',
+          pwVal: s.pw, pw2Val: s.pw2,
+          setPw: (e) => this.setState({ pw: e.target.value, wrong: false, pwMsg: '' }), setPw2: (e) => this.setState({ pw2: e.target.value, wrong: false, pwMsg: '' }),
+          pwHint: s.checking ? 'Checking\u2026' : (s.wrong ? (s.pwMsg || 'Wrong password.') : (set ? '8 or more characters, with a letter and a number or symbol.' : (r && r.mustChange ? 'You\u2019ll choose your own password after this.' : ' '))),
+          pwBtn: set ? (s.step === 'new1' ? 'Next' : 'Save my password') : 'Sign in', pwBusy: !!s.checking, pwGo: go
+        };
+      })(),
+      newPinStep: newStep,
+      noPin: s.step === 'choose' && !!r && !r.pin,
+      people: people.map((u) => {
+        const i = s.users.indexOf(u);
+        const m = this.roleMeta[u.role] || { color: '#C9CFD7', can: '' };
+        return {
+          name: u.name, role: u.role, can: m.can, color: m.color, initials: this.initials(u.name),
+          sel: i === s.sel, cls: i === s.sel ? 'who sel' : 'who',
+          tag: i === s.current ? 'Signed in' : (u.mustChange ? 'New PIN needed' : ''),
+          pick: () => this.setState({ sel: i, pin: '', wrong: false, step: 'choose', modal: true })
+        };
+      }),
+      padTitle: newStep ? (s.step === 'new1' ? 'New PIN' : 'Confirm new PIN') : 'PIN for ' + (r ? r.name : ''),
+      pinLen: entry.length,
+      dots: new Array(len).fill(0).map((_, i) => ({ fill: i < entry.length ? '#F5C518' : 'transparent' })),
+      hint: s.checking ? 'Checking\u2026' : s.wrong ? (newStep ? 'Those didn’t match. Try again.' : (s.lockMsg || 'Wrong PIN. Try again.')) : (r && r.mustChange && !newStep ? 'You’ll choose your own PIN after this.' : ' '),
+      hintColor: s.wrong ? '#FF7A45' : '#A3ACB8',
+      keys: keyList.map((k) => ({ label: k === 'del' ? '⌫' : (k === 'clr' ? 'C' : k), aria: k === 'del' ? 'Delete' : (k === 'clr' ? 'Clear' : k), press: () => press(k) })),
+      cantConfirm: s.step === 'new1' ? !/^\d{4,6}$/.test(s.newPin) : s.newPin2.length < 4,
+      confirmLabel: s.step === 'new1' ? 'Next' : 'Save my PIN',
+      confirmNew: () => {
+        if (s.step === 'new1') { this.setState({ step: 'new2', newPin2: '' }); return; }
+        if (s.newPin2 !== s.newPin) { this.setState({ step: 'new1', newPin: '', newPin2: '', wrong: true }); return; }
+        const users = s.users.map((u, i) => (i === s.sel ? { ...u, pin: s.newPin, mustChange: false } : u));
+        this.saveUsers(users);
+        this.finish(users[s.sel], { users: users });
+      },
+      selName: r ? r.name : '', selRole: r ? r.role : '', selCan: meta.can, selColor: meta.color, selInitials: r ? this.initials(r.name) : '?',
+      homeHref: this.homeOf(r),
+      homeLabel: r && r.role === 'Foyer team' ? 'Go to the Foyer screen' : (r && r.role === 'Musician' ? 'Go to My mix' : (r && r.role === 'Listener' ? 'Go to Listen' : 'Go to Home')),
+      viewOnly: () => { this.serverSignIn(r.name, ''); this.finish(r); if (r.role === 'Listener') this.goTo('Listen.dc.html'); },
+      popTitle: s.step === 'preset' ? 'Signed in as ' + (r ? r.name : '') : (newStep ? (this.isAdmin(r) ? 'Choose your own password' : 'Choose your own PIN') : (r ? r.name : '')),
+      popSub: s.step === 'preset' ? 'Choose your mix' : (newStep ? (this.isAdmin(r) ? (s.step === 'new1' ? 'Admins use a password, not a PIN.' : 'Type the same password again.') : (s.step === 'new1' ? 'Enter a new PIN of 4 to 6 digits.' : 'Enter the same PIN again.')) : (r && r.pin ? (this.isAdmin(r) ? 'Enter your password' : 'Enter your PIN') : 'No PIN needed')),
+      presetStep: s.step === 'preset',
+      ...(() => {
+        const list = this.presetsFor(r), cur = s.preset >= 0 ? list[Math.min(s.preset, Math.max(0, list.length - 1))] : null;
+        const mixes = this.mixesFor(r), bus = mixes[Math.min(s.mixPick || 0, Math.max(0, mixes.length - 1))] || 4, busNm = this.busName(bus);
+        const choose = () => { try { localStorage.setItem('booth.mixbus', JSON.stringify({ user: r.name, bus })); } catch (e) {} };
+        return {
+          manyMixes: mixes.length > 1, hasPresets: list.length > 0, noPresets: list.length === 0,
+          mixOpts: mixes.map((b, i) => ({ name: this.busName(b) + (i === 0 ? ' (mine)' : ''), sub: i === 0 ? 'Your own mix' : 'Shared \u2013 everyone on ' + this.busName(b) + ' hears your changes', on: i === (s.mixPick || 0), cls: i === (s.mixPick || 0) ? 'opt on' : 'opt', dot: i === (s.mixPick || 0) ? '#F5C518' : 'transparent', pick: () => this.setState({ mixPick: i }) })),
+          mixPickName: busNm,
+          presets: list.map((p, i) => ({ name: p.name, when: p.at, on: i === s.preset, cls: i === s.preset ? 'opt on' : 'opt', dot: i === s.preset ? '#F5C518' : 'transparent', pick: () => this.setState({ preset: i }) })),
+          presetName: cur ? cur.name : '', presetPicked: s.preset >= 0 && !!cur,
+          // Both go straight to the person's screen, so the choice they made is never left half done.
+          loadPreset: () => { if (!cur) return; choose(); try { localStorage.setItem('booth.mixload', JSON.stringify({ user: r.name, id: cur.id, name: cur.name, bus })); } catch (e) {} this.setState({ step: 'done', modal: false, loaded: cur.name, openedMix: busNm }); this.goTo(this.homeOf(r)); },
+          skipPreset: () => { choose(); this.setState({ step: 'done', modal: false, loaded: '', openedMix: busNm }); this.goTo(this.homeOf(r)); }
+        };
+      })(),
+      loadedLine: (s.openedMix ? 'My mix opens on ' + s.openedMix + '.' : '') + (s.loaded ? ' Your saved mix \u201c' + s.loaded + '\u201d will be loaded.' : ''),
+      hasLoaded: !!(s.loaded || s.openedMix),
+      canCancel: s.step !== 'preset',
+      closePop: () => this.setState({ modal: false, step: 'choose', pin: '', pw: '', pw2: '', wrong: false, newPin: '', newPin2: '' }),
+      signedIn: s.current >= 0,
+      changeOwn: () => this.setState({ sel: s.current, step: 'new1', newPin: '', newPin2: '', pw: '', pw2: '', wrong: false, modal: true }),
+      changeOwnLabel: this.isAdmin(s.users[s.current]) ? 'Change my password' : 'Change my PIN',
+      signOut: () => { this.serverSignOut(); this.store(null); this.setState({ step: 'choose', current: -1, pin: '', modal: false, loaded: '' }); }
+    };
+  }
+}
+</script>
+</body>
+</html>

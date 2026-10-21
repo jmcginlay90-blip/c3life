@@ -1,0 +1,900 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>C3 Life – Running order and log</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet" data-look>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Safari / iPad: no zoom when typing, no double-tap zoom, no text-select or callout while dragging */
+html{-webkit-text-size-adjust:100%;touch-action:manipulation}
+input,select,textarea{font-size:16px!important}
+button,a,summary,label,[role=slider]{-webkit-tap-highlight-color:transparent}
+[role=slider],.fader,.pan{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+body{margin:0;background:#0D1015}
+a{color:#6CB4F5}a:hover{color:#9CCBF8}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:62px;color:#A3ACB8;text-decoration:none;font-size:12px;font-weight:500;border-top:2px solid transparent}
+.tab:hover{color:#ECEEF1}
+.tab.on{color:#F5C518;border-top-color:#F5C518}
+.card{background:#161A21;border:1px solid #262C36;border-radius:14px;padding:14px}
+.lbl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#A3ACB8;font-weight:500}
+.mono{font-family:'IBM Plex Mono',ui-monospace,monospace}
+.seg{display:flex;gap:4px;background:#161A21;border:1px solid #262C36;border-radius:12px;padding:4px}
+.seg button{flex:1;min-height:44px;border-radius:9px;border:0;background:transparent;color:#A3ACB8;font:500 14px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer}
+.seg button.on{background:#262C36;color:#ECEEF1}
+.btn{min-height:44px;padding:0 14px;border-radius:10px;border:1px solid #333B47;background:#1E232C;color:#ECEEF1;font:500 14px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer}
+.btn.pri{background:#F5C518;border-color:#F5C518;color:#1A1204}
+.mv{width:40px;min-height:40px;border-radius:9px;border:1px solid #333B47;background:#1E232C;color:#ECEEF1;font:600 15px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer}
+.badge{font-size:11px;font-weight:600;border-radius:4px;padding:1px 5px;letter-spacing:.03em}
+select{min-height:36px;max-width:150px;border-radius:8px;border:1px solid #333B47;background:#0F1318;color:#ECEEF1;font:400 13px 'IBM Plex Sans',system-ui,sans-serif;padding:0 6px}
+input[type=checkbox]{width:20px;height:20px;accent-color:#F5C518}
+
+/* Fills any screen. Wider than 700px (iPad, laptop, web) the content sits in a centred column. */
+@media (min-width:700px){
+  .app > *:not(.bn):not([style*="position:absolute"]){width:100%;max-width:760px;margin-left:auto;margin-right:auto;box-sizing:border-box}
+}
+
+.app > .rtabar{max-width:none !important;margin-left:0 !important;margin-right:0 !important}
+
+/* Easy to use: every link, tick box and control is at least 40-44px tall, so it is easy to hit with a thumb. */
+a[style*="min-height:28px"]{min-height:44px !important}
+a[style*="font-size:12px"][style*="text-decoration:none"],a[style*="font-size:13px"][style*="text-decoration:none"]{display:inline-flex;align-items:center;min-height:40px}
+label:has(> input[type=checkbox]),label:has(> input[type=radio]){min-height:44px}
+input[type=checkbox],input[type=radio]{width:22px;height:22px;flex:none;accent-color:#F5C518}
+input[type=range]{min-height:40px}
+select{min-height:44px}
+button.sw::after,button.cell::after{content:'';position:absolute;inset:-7px -4px}
+.cell{position:relative}
+input[type=checkbox][aria-label]{width:32px;height:32px}
+
+/* Menu: a drop-down list at the top of every screen. Tap Menu to open it, tap again (or pick a page) to close. */
+.topmenu{position:relative;z-index:20;flex:none;background:#11151B;border-bottom:1px solid #262C36}
+.topmenu summary{list-style:none;display:flex;align-items:center;gap:10px;min-height:52px;padding:0 16px;cursor:pointer;color:#ECEEF1;font:600 15px 'IBM Plex Sans',system-ui,sans-serif;max-width:760px;margin:0 auto;box-sizing:border-box}
+.topmenu summary::-webkit-details-marker{display:none}
+.topmenu .mlabel{font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:#A3ACB8}
+.topmenu .mcur{flex:1;color:#F5C518}
+.topmenu .chev{transition:transform .15s}
+.topmenu details[open] .chev{transform:rotate(180deg)}
+.topmenu .mlist{position:absolute;left:8px;right:8px;top:calc(100% + 4px);background:#161A21;border:1px solid #333B47;border-radius:14px;box-shadow:0 14px 34px rgba(0,0,0,.55);padding:6px;display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.topmenu .mlist a{display:flex;align-items:center;gap:10px;min-height:52px;padding:0 12px;border-radius:10px;color:#ECEEF1;text-decoration:none;font:500 15px 'IBM Plex Sans',system-ui,sans-serif}
+.topmenu .mlist a:hover{background:#1E232C}
+.topmenu .mlist a.on{background:#262C36;color:#F5C518}
+@media (min-width:700px){.topmenu .mlist{left:calc(50% - 372px);right:auto;width:440px}}
+@media (min-width:700px) and (max-width:800px){.topmenu .mlist{left:16px}}
+/* wide:start — iPad landscape and laptops: use the width */
+@media (min-width:1000px){
+  .app > *:not(.bn):not([style*="position:absolute"]){max-width:1240px}
+  .topmenu summary{max-width:1240px}
+  .app main.wide2{display:grid !important;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:14px 18px !important}
+  .app main.wide2 > *{min-width:0}
+  .app main.wide2 > :not(section):not(.card):not(details):not(.wcol){grid-column:1 / -1}
+  .app main.wide2 > .wfull{grid-column:1 / -1}
+  .app main.wide1{max-width:980px !important}
+  .app:has(main.wide1) > *:not(.bn):not([style*="position:absolute"]){max-width:980px}
+  .app:has(main.wide1) .topmenu summary{max-width:980px}
+}
+@media (min-width:1500px){ .app main.wide2.wide3{grid-template-columns:repeat(3,minmax(0,1fr))} }
+/* wide:end */
+/* look:start — the WING look (like WING Edit): near-black, outlined panels, condensed headings, yellow for active, blue for selected.
+   Settings › Look › Classic puts the old look back on this device (html[data-look=classic]). */
+:root{--wk-bg:#0A0B0D;--wk-panel:#121418;--wk-panel2:#181B20;--wk-line:#2E333A;--wk-yellow:#F5C518;--wk-blue:#2F6CC4;--wk-cond:'Barlow Condensed','IBM Plex Sans',system-ui,sans-serif}
+html:not([data-look=classic]) body{background:var(--wk-bg)}
+html:not([data-look=classic]) .app{background:var(--wk-bg) !important}
+html:not([data-look=classic]) .card{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .lbl{font-family:var(--wk-cond);font-size:13px;font-weight:600;letter-spacing:.07em;color:#D4D9E0}
+html:not([data-look=classic]) h1{font-family:var(--wk-cond);font-weight:600 !important;text-transform:uppercase;letter-spacing:.05em;font-size:21px !important;line-height:1.2;color:var(--wk-yellow);border:1.5px solid var(--wk-yellow);border-radius:3px;padding:2px 12px;display:inline-block}
+html:not([data-look=classic]) .btn,html:not([data-look=classic]) .lk,html:not([data-look=classic]) .mxb,html:not([data-look=classic]) .mxbk,html:not([data-look=classic]) .mute,html:not([data-look=classic]) .pbtn{font-family:var(--wk-cond);font-size:15px;letter-spacing:.02em;border-radius:4px}
+html:not([data-look=classic]) .btn.pri{background:var(--wk-yellow);border-color:var(--wk-yellow);color:#111}
+html:not([data-look=classic]) .seg{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .seg a{font-family:var(--wk-cond);font-size:15px;letter-spacing:.03em;border-radius:4px}
+html:not([data-look=classic]) .seg a.on,html:not([data-look=classic]) .lk.on{background:var(--wk-blue);color:#fff}
+html:not([data-look=classic]) .tab.on{color:var(--wk-yellow);border-top-color:var(--wk-yellow)}
+html:not([data-look=classic]) .topmenu{background:#000;border-bottom-color:var(--wk-line)}
+html:not([data-look=classic]) .topmenu summary{font-family:var(--wk-cond);font-size:16px;letter-spacing:.03em}
+html:not([data-look=classic]) .topmenu .mcur{color:var(--wk-yellow)}
+html:not([data-look=classic]) .topmenu .mlist{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .topmenu .mlist a{font-family:var(--wk-cond);font-size:16px;border-radius:4px}
+html:not([data-look=classic]) .topmenu .mlist a.on{background:var(--wk-panel2);color:var(--wk-yellow);box-shadow:inset 3px 0 0 var(--wk-yellow)}
+html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic]) input[type=radio],html:not([data-look=classic]) input[type=range]{accent-color:var(--wk-yellow)}
+.wkside{display:none}
+/* iPad landscape and laptops: a sidebar like WING Edit's (HOME, MIXER, ...) instead of the menu at the top */
+@media (min-width:1000px){
+  html:not([data-look=classic]) .wkside{display:flex;flex-direction:column;gap:2px;position:fixed;left:0;top:0;bottom:0;width:132px !important;max-width:132px !important;margin:0 !important;padding:8px 6px 12px;box-sizing:border-box;background:#000;border-right:1px solid var(--wk-line);overflow-y:auto;z-index:30}
+  html:not([data-look=classic]) .wkside .wkbrand{font:700 24px var(--wk-cond);letter-spacing:.06em;color:var(--wk-yellow);padding:6px 8px 12px}
+  html:not([data-look=classic]) .wkside a{display:flex;align-items:center;gap:9px;min-height:46px;padding:0 8px;border-radius:4px;color:#D4D9E0;text-decoration:none;font:600 15px var(--wk-cond);text-transform:uppercase;letter-spacing:.04em}
+  html:not([data-look=classic]) .wkside a:hover{background:var(--wk-panel2)}
+  html:not([data-look=classic]) .wkside a.on{background:var(--wk-panel2);color:var(--wk-yellow);box-shadow:inset 3px 0 0 var(--wk-yellow)}
+  html:not([data-look=classic]) .wkside svg{flex:none}
+  html:not([data-look=classic]) .app{padding-left:132px;box-sizing:border-box !important}
+  html:not([data-look=classic]) .app > .topmenu{display:none}
+}
+/* look:end */
+</style>
+</helmet>
+<div class="app has-bn" style="width:100%;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;background:#0D1015;color:#ECEEF1;font-family:'IBM Plex Sans',system-ui,sans-serif;overflow:hidden">
+  
+  
+  
+  
+  <nav class="wkside" aria-label="Main menu (side)"><div class="wkbrand" aria-hidden="true">C3 LIFE</div><a href="Main.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Home</a>
+        <a href="Wing.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4v16M12 4v16M18 4v16"/><path d="M4 14h4M10 8h4M16 16h4"/></svg>Mixer</a>
+        <a href="RTA.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V12M9 20V6M14 20V10M19 20V4"/></svg>RTA</a>
+        <a href="Show.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M10 8l5 2-5 2z"/><path d="M8 20h8"/></svg>Show</a>
+        <a href="Lights.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>Lights</a>
+        <a href="Plan.dc.html" class="on" aria-current="page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h1M4 12h1M4 18h1"/></svg>Plan</a>
+        <a href="Chat.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>Chat</a>
+        <a href="Listen.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="15" width="4" height="6" rx="1.5"/><rect x="17" y="15" width="4" height="6" rx="1.5"/><path d="M10 9.5a2.5 2.5 0 0 1 4 0"/></svg>Listen</a>
+        <a href="Help.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2.5 2-2.5 3.5M12 17h.01"/></svg>Help</a>
+        <a href="Report.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4h11l-1.5 4L16 12H5"/></svg>Report an issue</a></nav>
+  <nav class="bn topmenu" aria-label="Main menu">
+    <details>
+      <summary aria-label="Menu. You are on Running order and log"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span class="mlabel">Menu</span><span class="mcur">Running order and log</span><svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+      <div class="mlist">
+        <a href="Main.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Home</a>
+        <a href="Wing.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4v16M12 4v16M18 4v16"/><path d="M4 14h4M10 8h4M16 16h4"/></svg>Mixer</a>
+        <a href="RTA.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V12M9 20V6M14 20V10M19 20V4"/></svg>RTA</a>
+        <a href="Show.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M10 8l5 2-5 2z"/><path d="M8 20h8"/></svg>Show</a>
+        <a href="Lights.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>Lights</a>
+        <a href="Plan.dc.html" class="on" aria-current="page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h1M4 12h1M4 18h1"/></svg>Plan</a>
+        <a href="Chat.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>Chat</a>
+        <a href="Listen.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="15" width="4" height="6" rx="1.5"/><rect x="17" y="15" width="4" height="6" rx="1.5"/><path d="M10 9.5a2.5 2.5 0 0 1 4 0"/></svg>Listen</a>
+        <a href="Help.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2.5 2-2.5 3.5M12 17h.01"/></svg>Help</a>
+        <a href="Report.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4h11l-1.5 4L16 12H5"/></svg>Report an issue</a>
+      </div>
+    </details>
+  </nav>
+  <header style="padding:22px 16px 12px;display:flex;flex-direction:column;gap:12px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;padding:0 4px">
+      <h1 style="margin:0;font-size:26px;font-weight:600">{{svcName}}</h1>
+      <a href="Connect.dc.html" style="font-size:12px;text-align:right;text-decoration:none;color:#A3ACB8">{{netText}}<br><span style="color:#6CB4F5">Internet settings</span></a>
+    </div>
+    <div class="seg" role="group" aria-label="View">
+      <sc-if value="{{isPlan}}" hint-placeholder-val="{{ true }}">
+        <button class="on" onClick="{{showPlan}}">Running order</button>
+        <button onClick="{{showLog}}">Log</button>
+      </sc-if>
+      <sc-if value="{{isLog}}" hint-placeholder-val="{{ false }}">
+        <button onClick="{{showPlan}}">Running order</button>
+        <button class="on" onClick="{{showLog}}">Log</button>
+      </sc-if>
+    </div>
+  </header>
+
+  <main class=" wide2" style="flex:1;overflow-y:auto;padding:0 16px 16px;display:flex;flex-direction:column;gap:8px">
+    <sc-if value="{{isPlan}}" hint-placeholder-val="{{ true }}">
+      <section class="card" style="display:flex;flex-direction:column;gap:8px;border-color:#B48CF2">
+        <label for="svc-pick" class="lbl">Today's service</label>
+        <select id="svc-pick" value="{{svcId}}" onChange="{{pickSvc}}">
+          <sc-for list="{{svcs}}" as="v" hint-placeholder-count="4"><option value="{{v.id}}">{{v.label}}</option></sc-for>
+        </select>
+        <div style="font-size:13px;line-height:1.5;color:#C9CFD7">RTA report marks <b class="mono">{{svcTimes}}</b><br>Saved setup: {{svcSetup}}<br>Running order: {{svcOrder}}</div>
+        <sc-if value="{{svcAsk}}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:8px;background:#0F1318;border:1px solid #F5C518;border-radius:12px;padding:12px">
+            <div style="font-size:15px;font-weight:600">Load the setup for {{svcName}}?</div>
+            <div style="font-size:13px;color:#C9CFD7;line-height:1.45">Loads {{svcSetup}} (desk scene, Dante preset, macros). Then tap Load running order above. Nothing else runs by itself.</div>
+            <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px"><button class="btn" onClick="{{svcKeep}}">Keep current setup</button><button class="btn pri" onClick="{{svcLoad}}">Yes, load {{svcSetupShort}}</button></div>
+          </div>
+        </sc-if>
+        <sc-if value="{{hasSvcToast}}" hint-placeholder-val="{{ false }}"><div role="status" style="font-size:13px;color:#6CB4F5">{{svcToast}}</div></sc-if>
+        <button class="btn" onClick="{{toggleSvcEdit}}" disabled="{{notAdmin}}">{{svcEditLabel}}</button>
+        <sc-if value="{{svcEditing}}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <sc-for list="{{svcRows}}" as="r" hint-placeholder-count="4">
+              <div style="display:flex;flex-direction:column;gap:6px;background:#0F1318;border:1px solid #262C36;border-radius:12px;padding:10px">
+                <label style="font-size:12px;color:#A3ACB8">Name<input type="text" value="{{r.name}}" onChange="{{r.setName}}" aria-label="Service name" style="width:100%;min-height:44px;border-radius:10px;border:1px solid #333B47;background:#0F1318;color:#ECEEF1;font:400 15px 'IBM Plex Sans',system-ui,sans-serif;padding:0 10px;box-sizing:border-box"></label>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                  <label style="font-size:12px;color:#A3ACB8">Starts<input type="time" value="{{r.start}}" onChange="{{r.setStart}}" aria-label="{{r.name}} starts" style="width:100%;min-height:44px;border-radius:10px;border:1px solid #333B47;background:#0F1318;color:#ECEEF1;font:500 15px 'IBM Plex Mono',ui-monospace,monospace;padding:0 8px;box-sizing:border-box"></label>
+                  <label style="font-size:12px;color:#A3ACB8">Ends<input type="time" value="{{r.end}}" onChange="{{r.setEnd}}" aria-label="{{r.name}} ends" style="width:100%;min-height:44px;border-radius:10px;border:1px solid #333B47;background:#0F1318;color:#ECEEF1;font:500 15px 'IBM Plex Mono',ui-monospace,monospace;padding:0 8px;box-sizing:border-box"></label>
+                </div>
+                <label style="font-size:12px;color:#A3ACB8">Saved setup
+                  <select value="{{r.setup}}" onChange="{{r.setSetup}}" aria-label="{{r.name}} saved setup"><option>v12 · Sunday standard</option><option>v11 · Sunday standard</option><option>v10 · Christmas 2025</option><option>v9 · Evening acoustic</option></select>
+                </label>
+                <button class="btn" style="min-height:40px" onClick="{{r.remove}}" disabled="{{r.only}}" aria-label="Remove {{r.name}}">Remove this service</button>
+              </div>
+            </sc-for>
+            <button class="btn" onClick="{{addSvc}}">+ Add a service</button>
+            <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px"><button class="btn" onClick="{{discardSvc}}">Discard</button><button class="btn pri" onClick="{{saveSvc}}" disabled="{{svcSame}}">Save services</button></div>
+          </div>
+        </sc-if>
+      </section>
+      <section class="card" style="display:flex;flex-direction:column;gap:10px;border-color:{{loadBorder}}">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="flex:1">
+            <div style="font-size:15px;font-weight:600">{{loadTitle}}</div>
+            <div style="font-size:12px;color:#A3ACB8">{{loadSub}}</div>
+          </div>
+          <sc-if value="{{notChoosing}}" hint-placeholder-val="{{ true }}"><button class="btn pri" onClick="{{startLoad}}">{{loadBtn}}</button></sc-if>
+        </div>
+        <sc-if value="{{choosing}}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <button class="btn" style="text-align:left;min-height:56px" onClick="{{loadPP}}"><strong>ProPresenter playlist</strong><br><span style="font-size:12px;color:#A3ACB8">Mac mini · works with no internet</span></button>
+            <button class="btn" style="text-align:left;min-height:56px;opacity:{{pcoOpacity}}" onClick="{{loadPCO}}" disabled="{{pcoDisabled}}"><strong>Planning Center</strong><br><span style="font-size:12px;color:#A3ACB8">{{pcoLoadSub}}</span></button>
+            <button class="btn" onClick="{{cancelLoad}}">Cancel</button>
+          </div>
+        </sc-if>
+      </section>
+
+      <section class="card" style="display:flex;flex-direction:column;gap:2px;padding:8px 14px">
+        <div class="lbl" style="padding:4px 0 6px">Sync · app is the hub</div>
+        <div style="display:flex;align-items:center;gap:10px;min-height:44px;border-top:1px solid #222831">
+          <span class="badge" style="background:#B48CF2;color:#0D1015">PP</span>
+          <div style="flex:1"><div style="font-size:14px;font-weight:500">ProPresenter playlist</div><div style="font-size:12px;color:#A3ACB8">Mac mini · local network</div></div>
+          <div style="font-size:12px;color:#6CB4F5">{{ppStatus}}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;min-height:44px;border-top:1px solid #222831">
+          <span class="badge" style="background:#7FD1C1;color:#0D1015">PCO</span>
+          <div style="flex:1"><div style="font-size:14px;font-weight:500">Planning Center plan</div><div style="font-size:12px;color:#A3ACB8">{{pcoSub}}</div></div>
+          <sc-if value="{{pcoWaiting}}" hint-placeholder-val="{{ true }}"><div style="font-size:12px;font-weight:500;color:#1A1204;background:#F5C518;border-radius:6px;padding:3px 7px">{{pcoStatus}}</div></sc-if>
+          <sc-if value="{{pcoOk}}" hint-placeholder-val="{{ false }}"><div style="font-size:12px;color:#6CB4F5">{{pcoStatus}}</div></sc-if>
+        </div>
+        <div style="display:flex;gap:8px;padding:8px 0 4px">
+          <button class="btn" style="flex:1" onClick="{{toggleOnline}}">{{onlineBtn}}</button>
+        </div>
+      </section>
+
+      <section class="card" aria-label="Planning Center account" style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="badge" style="background:#7FD1C1;color:#0D1015">PCO</span>
+          <div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:600">{{pcWho}}</div><div style="font-size:12px;color:#A3ACB8">{{pcSince}}</div></div>
+        </div>
+        <div style="font-size:12px;color:#A3ACB8;line-height:1.45">{{pcTz}}</div>
+        <sc-if value="{{pcTzWarn}}" hint-placeholder-val="{{ false }}"><div style="font-size:12px;color:#F5C518;line-height:1.45">{{pcTzWarnText}}</div></sc-if>
+        <sc-if value="{{pcNotAdmin}}" hint-placeholder-val="{{ true }}"><div style="font-size:12px;color:#A3ACB8">Only an Admin can sign in or out of Planning Center.</div></sc-if>
+        <sc-if value="{{pcAdmin}}" hint-placeholder-val="{{ false }}">
+          <sc-if value="{{pcHasTypes}}" hint-placeholder-val="{{ false }}">
+            <label for="pc-type" style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#A3ACB8">Plans from
+              <select id="pc-type" value="{{pcType}}" onChange="{{pcSetType}}" style="max-width:none;width:100%;min-height:44px">
+                <sc-for list="{{pcTypes}}" as="o" hint-placeholder-count="3"><option value="{{o.v}}">{{o.label}}</option></sc-for>
+              </select>
+            </label>
+          </sc-if>
+          <sc-if value="{{pcIn}}" hint-placeholder-val="{{ true }}">
+            <div style="display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:8px">
+              <button class="btn" onClick="{{pcSwitchFn}}">{{pcSwitchLabel}}</button>
+              <button class="btn" onClick="{{pcAskOutFn}}">Sign out</button>
+            </div>
+          </sc-if>
+          <sc-if value="{{pcAskOut}}" hint-placeholder-val="{{ false }}">
+            <div role="dialog" aria-label="Sign out of Planning Center?" style="display:flex;flex-direction:column;gap:8px;border:1px solid #F5C518;border-radius:10px;padding:10px">
+              <div style="font-size:14px;font-weight:600">Sign out of Planning Center?</div>
+              <div style="font-size:12px;color:#C9CFD7;line-height:1.45">The running order, name tags and Planning Center timers stop updating until someone signs in again.</div>
+              <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px"><button class="btn" onClick="{{pcNoOut}}">Stay signed in</button><button class="btn pri" onClick="{{pcDoOut}}">Sign out</button></div>
+            </div>
+          </sc-if>
+          <sc-if value="{{pcSwitching}}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;gap:8px;background:#0F1318;border:1px solid #262C36;border-radius:12px;padding:10px">
+              <div style="font-size:13px;color:#C9CFD7;line-height:1.45">Sign in with a Planning Center Personal Access Token: api.planningcenteronline.com › Personal Access Tokens › New. It needs access to Services.</div>
+              <label for="pc-app" style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#A3ACB8">Application ID
+                <input id="pc-app" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" value="{{pcApp}}" onInput="{{pcSetApp}}" onChange="{{pcSetApp}}" style="width:100%;min-height:44px;border-radius:10px;border:1px solid #333B47;background:#0F1318;color:#ECEEF1;font:500 14px 'IBM Plex Mono',monospace;padding:0 10px;box-sizing:border-box">
+              </label>
+              <label for="pc-sec" style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#A3ACB8">Secret
+                <input id="pc-sec" type="password" autocomplete="off" value="{{pcSec}}" onInput="{{pcSetSec}}" onChange="{{pcSetSec}}" style="width:100%;min-height:44px;border-radius:10px;border:1px solid #333B47;background:#0F1318;color:#ECEEF1;font:500 14px 'IBM Plex Mono',monospace;padding:0 10px;box-sizing:border-box">
+              </label>
+              <button class="btn pri" onClick="{{pcSignInFn}}" disabled="{{pcBusy}}">{{pcSignLabel}}</button>
+              <div style="font-size:12px;color:#A3ACB8">The token is checked with Planning Center first, then kept on the C3 Life server only.</div>
+            </div>
+          </sc-if>
+        </sc-if>
+        <sc-if value="{{hasPcMsgErr}}" hint-placeholder-val="{{ false }}"><div role="alert" style="font-size:13px;color:#FF7A45">{{pcMsgErr}}</div></sc-if>
+        <sc-if value="{{hasPcMsg}}" hint-placeholder-val="{{ false }}"><div role="status" style="font-size:13px;color:#7FD1C1;line-height:1.45">{{pcMsg}}</div></sc-if>
+      </section>
+      <section class="card" aria-label="Name tags" style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+          <div class="lbl">Name tags · 9 - Ministry</div>
+          <div style="font-size:12px;color:#A3ACB8;text-align:right">{{ntHead}}</div>
+        </div>
+        <sc-if value="{{hasNtErr}}" hint-placeholder-val="{{ false }}"><div style="font-size:13px;color:#F5C518">{{ntErr}}</div></sc-if>
+        <sc-if value="{{ntHas}}" hint-placeholder-val="{{ true }}">
+          <div style="font-size:13px;color:{{ntSubColor}}">{{ntSub}}</div>
+          <sc-if value="{{ntStale}}" hint-placeholder-val="{{ false }}"><div style="font-size:12px;color:#F5C518">Showing the last good read.</div></sc-if>
+          <sc-if value="{{hasNtPP}}" hint-placeholder-val="{{ false }}"><div style="font-size:12px;color:#F5C518">{{ntPPReason}} The names are ready, but they can't be shown until it answers.</div></sc-if>
+          <sc-for list="{{ntRows}}" as="r" hint-placeholder-count="6">
+            <div style="display:flex;flex-direction:column;gap:6px;padding:10px 0 4px;border-top:1px solid #222831">
+              <div style="display:flex;align-items:flex-start;gap:10px">
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:12px;color:#A3ACB8">{{r.item}}</div>
+                  <div style="font-size:16px;font-weight:600;color:{{r.nameColor}}">{{r.name}}</div>
+                  <div style="font-size:12px;color:#A3ACB8">{{r.src}}</div>
+                </div>
+                <span class="badge" style="background:{{r.badgeBg}};color:{{r.badgeFg}};white-space:nowrap">{{r.badge}}</span>
+              </div>
+              <div style="font-size:12px;color:#C9CFD7;line-height:1.4">{{r.how}}</div>
+              <sc-if value="{{r.editing}}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;gap:6px;align-items:center">
+                  <input id="{{r.inputId}}" type="text" value="{{r.editVal}}" onInput="{{r.setVal}}" onChange="{{r.setVal}}" maxlength="80" placeholder="e.g. Ps Sarah Seibert" aria-label="Name for {{r.item}}" style="flex:1;min-width:0;min-height:44px;border-radius:10px;border:1px solid #333B47;background:#0F1318;color:#ECEEF1;font:400 15px 'IBM Plex Sans',system-ui,sans-serif;padding:0 10px;box-sizing:border-box">
+                  <button class="btn" style="min-height:44px" onClick="{{r.cancel}}">Cancel</button>
+                  <button class="btn pri" style="min-height:44px" onClick="{{r.save}}" disabled="{{r.badVal}}">Save</button>
+                </div>
+              </sc-if>
+              <sc-if value="{{r.notEditing}}" hint-placeholder-val="{{ true }}">
+                <div style="display:flex;gap:6px;flex-wrap:wrap">
+                  <sc-if value="{{r.canType}}" hint-placeholder-val="{{ true }}"><button class="btn" style="min-height:40px;font-size:13px" onClick="{{r.openEdit}}" aria-label="{{r.editAria}}">{{r.editLabel}}</button></sc-if>
+                  <sc-if value="{{r.typed}}" hint-placeholder-val="{{ false }}"><button class="btn" style="min-height:40px;font-size:13px" onClick="{{r.unType}}">Use the Planning Center name</button></sc-if>
+                </div>
+              </sc-if>
+            </div>
+          </sc-for>
+          <sc-for list="{{ntLeader}}" as="r" hint-placeholder-count="1">
+            <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0 4px;border-top:1px solid #222831">
+              <div style="flex:1;min-width:0">
+                <div style="font-size:12px;color:#A3ACB8">Meeting leader · not tied to an item</div>
+                <div style="font-size:16px;font-weight:600">{{r.name}}</div>
+                <div style="font-size:12px;color:#C9CFD7">{{r.how}}</div>
+              </div>
+              <span class="badge" style="background:{{r.badgeBg}};color:{{r.badgeFg}};white-space:nowrap">{{r.badge}}</span>
+            </div>
+          </sc-for>
+        </sc-if>
+        <sc-if value="{{hasNtToast}}" hint-placeholder-val="{{ false }}"><div role="status" style="font-size:13px;color:#6CB4F5">{{ntToast}}</div></sc-if>
+        <button class="btn" onClick="{{ntRefresh}}" disabled="{{ntBusy}}">{{ntRefreshLabel}}</button>
+        <sc-if value="{{ntIsDemo}}" hint-placeholder-val="{{ false }}"><button class="btn" style="min-height:40px;font-size:13px" onClick="{{ntDemoGuest}}">{{ntDemoGuestLabel}}</button></sc-if>
+        <sc-if value="{{ntLinksClosed}}" hint-placeholder-val="{{ true }}"><button class="btn" style="min-height:40px;font-size:13px" onClick="{{ntOpenLinks}}" disabled="{{notAdmin}}">{{ntLinksLabel}}</button></sc-if>
+        <sc-if value="{{ntLinksOpen}}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:8px;background:#0F1318;border:1px solid #262C36;border-radius:12px;padding:10px">
+            <div style="font-size:13px;color:#C9CFD7;line-height:1.45">Each 9 - Ministry position uses the first item with this name, every week.</div>
+            <sc-for list="{{ntLinkRows}}" as="l" hint-placeholder-count="8">
+              <label for="{{l.id}}" style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#A3ACB8">{{l.position}}
+                <select id="{{l.id}}" value="{{l.value}}" onChange="{{l.set}}" aria-label="Item for {{l.position}}" style="width:100%">
+                  <sc-for list="{{l.opts}}" as="o" hint-placeholder-count="4"><option value="{{o.v}}">{{o.label}}</option></sc-for>
+                </select>
+              </label>
+            </sc-for>
+            <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px"><button class="btn" onClick="{{ntCloseLinks}}">Cancel</button><button class="btn pri" onClick="{{ntSaveLinks}}" disabled="{{ntLinksSame}}">Save links</button></div>
+            <sc-if value="{{ntAskReset}}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;gap:8px;border:1px solid #F5C518;border-radius:10px;padding:10px">
+                <div style="font-size:14px;font-weight:600">Go back to the standard links?</div>
+                <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px"><button class="btn" onClick="{{ntNoReset}}">Keep these</button><button class="btn pri" onClick="{{ntResetLinks}}">Yes, standard links</button></div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ntDefaultLinks}}" hint-placeholder-val="{{ true }}"><div style="font-size:12px;color:#A3ACB8">These are the standard links.</div></sc-if>
+            <sc-if value="{{ntChangedLinks}}" hint-placeholder-val="{{ false }}"><button class="btn" style="min-height:40px;font-size:13px" onClick="{{ntAskResetFn}}">Back to the standard links</button></sc-if>
+          </div>
+        </sc-if>
+        <div style="font-size:12px;color:#A3ACB8;line-height:1.45">Read from Planning Center every 15 minutes and matched to ProPresenter props with the same name. Nothing goes on screen by itself: tap Show on the Show screen.</div>
+      </section>
+
+      <div style="display:flex;align-items:center;gap:8px;padding:2px 4px">
+        <label style="flex:1;display:flex;align-items:center;gap:8px;font-size:13px"><input type="checkbox" checked="{{autoRun}}" onChange="{{toggleAuto}}" disabled="{{notAdmin}}"><span>Run macros by themselves<br><span style="font-size:12px;color:#A3ACB8">{{autoHint}}</span></span></label>
+        <button class="btn" onClick="{{toggleEdit}}">{{editLabel}}</button>
+      </div>
+
+      <sc-if value="{{notLoaded}}" hint-placeholder-val="{{ false }}">
+        <div class="card" style="text-align:center;padding:28px 16px;color:#A3ACB8;font-size:14px;line-height:1.5">No running order loaded yet.<br>Tap <strong style="color:#ECEEF1">Load running order</strong> above to choose where it comes from.</div>
+      </sc-if>
+      <sc-for list="{{items}}" as="it" hint-placeholder-count="10">
+        <div class="card" style="display:flex;flex-direction:column;gap:8px;padding:10px 12px;border-color:{{it.border}}">
+          <div style="display:flex;gap:10px;align-items:center">
+            <div class="mono" style="width:40px;font-size:13px;color:{{it.timeColor}}">{{it.time}}</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:15px;font-weight:{{it.weight}}">{{it.title}}</div>
+              <div style="display:flex;gap:4px;align-items:center;margin-top:3px;flex-wrap:wrap">
+                <sc-if value="{{it.inPP}}" hint-placeholder-val="{{ true }}"><span class="badge" style="background:#B48CF2;color:#0D1015">PP</span></sc-if>
+                <sc-if value="{{it.inPCO}}" hint-placeholder-val="{{ true }}"><span class="badge" style="background:#7FD1C1;color:#0D1015">PCO</span></sc-if>
+                <sc-if value="{{it.pending}}" hint-placeholder-val="{{ false }}"><span class="badge" style="border:1px solid #F5C518;color:#F5C518">Changed</span></sc-if>
+                <span style="font-size:12px;color:#A3ACB8">{{it.detail}}</span>
+              </div>
+            </div>
+            <sc-if value="{{it.now}}" hint-placeholder-val="{{ false }}"><div style="font-size:12px;font-weight:500;color:#1A1204;background:#F5C518;border-radius:6px;padding:3px 7px">Now</div></sc-if>
+            <sc-if value="{{editing}}" hint-placeholder-val="{{ false }}">
+              <button class="mv" onClick="{{it.up}}" aria-label="Move {{it.title}} up">↑</button>
+              <button class="mv" onClick="{{it.down}}" aria-label="Move {{it.title}} down">↓</button>
+            </sc-if>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <label for="{{it.id}}" style="font-size:12px;color:#A3ACB8;flex:1">Macro for this item</label>
+            <select id="{{it.id}}" value="{{it.macro}}" onChange="{{it.pickMacro}}">
+              <sc-for list="{{macroOpts}}" as="o" hint-placeholder-count="5"><option value="{{o}}">{{o}}</option></sc-for>
+            </select>
+          </div>
+          <sc-if value="{{it.hasMacro}}" hint-placeholder-val="{{ false }}">
+            <button class="{{it.runCls}}" style="min-height:48px" onClick="{{it.run}}" aria-label="{{it.runAria}}">{{it.runLabel}}</button>
+          </sc-if>
+          <sc-if value="{{it.onlyPP}}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;align-items:center;gap:8px;background:#0F1318;border-radius:8px;padding:8px 10px">
+              <div style="flex:1;font-size:12px;color:#C9CFD7">Only in ProPresenter. Add to the Planning Center plan?</div>
+              <button class="btn" style="min-height:36px;font-size:13px" onClick="{{it.addToPCO}}">Add</button>
+            </div>
+          </sc-if>
+        </div>
+      </sc-for>
+      <sc-if value="{{editing}}" hint-placeholder-val="{{ false }}">
+        <button class="btn" onClick="{{addItem}}">+ Add item to running order</button>
+      </sc-if>
+      <div style="font-size:12px;color:#A3ACB8;padding:4px 4px 0;line-height:1.45">Changes made in the app go to ProPresenter straight away and to Planning Center when there's internet. Changes made in ProPresenter or Planning Center appear here too.</div>
+    </sc-if>
+
+    <sc-if value="{{isLog}}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:0 4px">
+        <div class="lbl">Service log · names from Wing</div>
+        <div style="font-size:12px;color:#A3ACB8">{{logCount}} entries</div>
+      </div>
+      <section class="card" style="padding:4px 14px">
+        <sc-for list="{{log}}" as="e" hint-placeholder-count="10">
+          <div style="display:flex;gap:10px;padding:10px 0;border-bottom:1px solid #222831">
+            <div class="mono" style="font-size:12px;color:#A3ACB8;width:64px;flex:none">{{e.t}}</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:14px">{{e.what}}</div>
+              <div style="font-size:12px;color:#A3ACB8">{{e.src}}</div>
+            </div>
+          </div>
+        </sc-for>
+      </section>
+      <div style="display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:8px">
+        <button class="btn">Export CSV</button>
+        <button class="btn">Export PDF</button>
+      </div>
+    </sc-if>
+  </main>
+
+  <div style="position:absolute;inset:0;z-index:6;pointer-events:none">
+    <dc-import name="MDTalk" hint-size="390px,844px"></dc-import>
+  </div>
+  <div style="position:absolute;inset:0;z-index:7;pointer-events:none">
+    <dc-import name="CueBar" hint-size="390px,844px"></dc-import>
+  </div>
+  <div class="rtabar" style="flex:none">
+    <dc-import name="MiniRTA" hint-size="390px,48px"></dc-import>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    let id = 0;
+    const mk = (time, title, detail, macro, opts) => ({ id: 'it' + (id++), time, title, detail, macro, inPP: true, inPCO: true, pending: false, ...(opts || {}) });
+    this.nextId = 100;
+    this.state = {
+      view: 'plan', online: false, editing: false, loadedFrom: '', loadedAt: '', choosing: false, autoRun: (() => { try { return localStorage.getItem('booth.auto') === 'on'; } catch (e) { return false; } })(), ran: {}, admin: false, svcEdit: null, svcAsk: false, svcToast: '', svcTick: 0, queued: 0, nowId: 'it3',
+      items: [
+        mk('9:45', 'Pre-service', 'Walk-in slides', 'Walk-in'),
+        mk('10:00', 'Welcome', 'Host', 'None'),
+        mk('10:03', 'Song 1', 'Title from Planning Center', 'Worship start'),
+        mk('10:08', 'Song 2', 'Title from Planning Center', 'None'),
+        mk('10:14', 'Song 3', 'Title from Planning Center', 'None'),
+        mk('10:19', 'Song 4', 'Title from Planning Center', 'None'),
+        mk('—', 'Offering video', 'Added in ProPresenter', 'None', { inPCO: false }),
+        mk('10:24', 'Announcements', 'Video', 'None'),
+        mk('10:28', 'Message', 'Speaker from Planning Center', 'Message'),
+        mk('11:08', 'Response song', 'Title from Planning Center', 'None'),
+        mk('11:13', 'Close', 'Host', 'End of service')
+      ]
+    };
+  }
+  change(items, pcoChanges) {
+    const s = this.state;
+    const n = pcoChanges || 1;
+    this.setState({ items: items, queued: s.online ? 0 : s.queued + n });
+  }
+  componentDidMount() {
+    const check = () => { let u = null; try { u = JSON.parse(localStorage.getItem('booth.user') || 'null'); } catch (e) {} const a = !!u && (u.role || u.name) === 'Admin'; if (a !== this.state.admin) this.setState({ admin: a }); };
+    check(); this.userPoll = setInterval(check, 800);
+    this.ntLoad();
+    this.pcLoadStatus();
+  }
+  componentWillUnmount() { clearInterval(this.userPoll); clearTimeout(this.ntT); }
+  // Services: each has its own times (the RTA report marks them), saved setup and running order.
+  svcDefaults() {
+    return [
+      { id: 's1', name: 'Sunday 10:00', start: '10:00', end: '12:10', setup: 'v12 · Sunday standard', order: 'Planning Center · Sunday Morning' },
+      { id: 's2', name: 'Sunday evening', start: '18:30', end: '19:45', setup: 'v9 · Evening acoustic', order: 'ProPresenter · Evening playlist' },
+      { id: 's3', name: 'Wednesday midweek', start: '19:30', end: '21:00', setup: 'v9 · Evening acoustic', order: 'Planning Center · Midweek' },
+      { id: 's4', name: 'Christmas Eve', start: '23:00', end: '00:15', setup: 'v10 · Christmas 2025', order: 'Planning Center · Christmas' }
+    ];
+  }
+  svcList() { try { const l = JSON.parse(localStorage.getItem('booth.services') || 'null'); if (Array.isArray(l) && l.length) return l; } catch (e) {} return this.svcDefaults(); }
+  svcCur() { const l = this.svcList(); let id = ''; try { id = localStorage.getItem('booth.service') || ''; } catch (e) {} return l.find((x) => x.id === id) || l[0]; }
+  // Name tags: who leads each item, from Planning Center's 9 - Ministry team, matched to ProPresenter props
+  // named after each person ("Chris Denham"). Anyone without a prop uses the "Name tag" message. Nothing goes
+  // on screen by itself. On the C3 Life server they come from /api/nametags; in the preview, from the real
+  // plan for Sunday 18 October.
+  ntToken() { try { const x = JSON.parse(localStorage.getItem('booth.session') || 'null'); return x ? x.token : ''; } catch (e) { return ''; } }
+  ntApi(path, method, body) {
+    const h = { 'Content-Type': 'application/json' }; const t = this.ntToken(); if (t) h.Authorization = 'Bearer ' + t;
+    return fetch('/api/nametags' + path, { method: method || 'GET', headers: h, body: body ? JSON.stringify(body) : undefined })
+      .then((r) => r.json().catch(() => ({})).then((j) => ({ code: r.status, j: j || {} })));
+  }
+  ntLoad(refresh) {
+    // Server first; if there's no C3 Life server (the preview), the demo.
+    try {
+      return this.ntApi(refresh ? '/refresh' : '', refresh ? 'POST' : 'GET', refresh ? {} : undefined).then(({ code, j }) => {
+        if (code === 200 && j.ok) { this.ntServer = true; this.setState({ nt: j, ntErr: '' }); return; }
+        if (code === 401 || code === 403) { this.ntServer = true; this.setState({ nt: null, ntErr: j.error || 'Sign in to see the name tags.' }); return; }
+        this.ntServer = false; this.setState({ nt: this.ntDemo(), ntErr: '' });
+      }).catch(() => { this.ntServer = false; this.setState({ nt: this.ntDemo(), ntErr: '' }); });
+    } catch (e) { this.ntServer = false; this.setState({ nt: this.ntDemo(), ntErr: '' }); return Promise.resolve(); }
+  }
+  ntDemoRules() {
+    return [['Welcome', 'Welcome'], ['Prayer (post 2nd song)', '60 Secs of Prayer'], ['Communion (post 2nd song)', ''], ['Pastoral Highlight', ''],
+      ['Pastoral', 'PASTORAL Welcome'], ['Offering (3 min Encouragement)', 'Offering'], ['Preach', 'Message'], ['Close', 'CLOSE']];
+  }
+  ntDemoBase() {
+    const P = (name) => ({ kind: 'prop', name: name }), M = { kind: 'message', name: 'Name tag' };
+    const t = (id, item, position, people, text, match, more) => ({ id: id, item_id: id, item: item, position: position, people: people, text: text, source: 'ministry', match: match, ...(more || {}) });
+    return {
+      ok: true, status: 'ok', reason: '', at: '07:15', props: 24, pp_reason: '',
+      plan: { id: '89777937', dates: '18 October 2026', service_type: 'Sunday Morning' },
+      tags: [
+        t('1208528347', 'Welcome', 'Welcome', ['Billy Tagg', 'Sophie Tagg'], 'Billy & Sophie Tagg', M),
+        t('1208528446', '60 Secs of Prayer', 'Prayer (post 2nd song)', ['Sophie Tagg'], 'Sophie Tagg', P('Sophie Tagg')),
+        t('1208528502', 'PASTORAL Welcome', 'Pastoral', ['Billy Tagg'], 'Billy Tagg', P('Billy Tagg')),
+        t('1208528546', 'Offering', 'Offering (3 min Encouragement)', ['Billy Tagg'], 'Billy Tagg', P('Billy Tagg')),
+        t('1208528587', 'Message', 'Preach', ['Joel Burden'], 'Joel Burden', M, { source: 'note', placeholder: 'Guest Preacher' }),
+        t('1208528606', 'CLOSE', 'Close', ['Chris Denham'], 'Chris Denham', P('Chris Denham'))
+      ],
+      leader: t('leader', '', 'Meeting Leader', ['Chris Denham'], 'Chris Denham', P('Chris Denham'), { item_id: '' }),
+      items: ['Pre & Post Service', 'Countdown', 'Welcome', 'Joy (feat. Israel Houghton) [Live]', 'Washed', '60 Secs of Prayer', 'Bible Scripture', 'C3 KIDS & YOUTH',
+        'PASTORAL Welcome', 'PRAYER & WORSHIP NIGHT', 'TEAMS GATHERING', 'Offering', 'We Crown You', 'Reign Above It All', 'Free Worship Allowance', 'Message',
+        'Salvation Prayer', 'CLOSE', 'Possible Final Tag & Chorus'].map((x, i) => ({ id: 'i' + i, title: x })),
+      default_rules: true
+    };
+  }
+  ntDemoState() { try { return JSON.parse(localStorage.getItem('booth.nametags') || 'null') || {}; } catch (e) { return {}; } }
+  ntDemoSave(x) { try { localStorage.setItem('booth.nametags', JSON.stringify(x)); } catch (e) {} }
+  ntDemo() {
+    const d = this.ntDemoBase(), st = this.ntDemoState(), props = { 'billy tagg': 1, 'sophie tagg': 1, 'chris denham': 1 };
+    const links = st.links || {};
+    d.tags.forEach((t) => {
+      if (st.noGuest && t.position === 'Preach') { t.text = ''; t.people = []; t.source = 'missing'; t.match = { kind: 'none', why: 'Needs a name.' }; }
+      if (links[t.position] !== undefined) t.item = links[t.position];
+      const typed = (st.typed || {})[t.item_id];
+      if (typed) { t.text = typed; t.source = 'typed'; t.match = props[typed.toLowerCase().replace(/^(ps|pastor)\.?\s+/, '')] ? { kind: 'prop', name: typed } : { kind: 'message', name: 'Name tag' }; }
+    });
+    d.tags = d.tags.filter((t) => t.item);
+    d.rules = this.ntDemoRules().map(([p, item]) => ({ position: p, item: links[p] !== undefined ? links[p] : item }));
+    d.default_rules = !Object.keys(links).length;
+    d.showing = st.showing || '';
+    return d;
+  }
+  ntAll(d) { return d ? d.tags.concat(d.leader ? [d.leader] : []) : []; }
+  ntToast(text) { this.setState({ ntToast: text }); clearTimeout(this.ntT); this.ntT = setTimeout(() => this.setState({ ntToast: '' }), 4000); }
+  ntTyped(itemId, text) {
+    const clean = String(text || '').replace(/\s+/g, ' ').trim();
+    if (this.ntServer) {
+      return this.ntApi('/name', 'PUT', { item: itemId, text: clean }).then(({ code, j }) => {
+        if (code === 200) { this.setState({ nt: j, ntEdit: '' }); this.ntToast(clean ? '✓ Name tag set to ' + clean : '✓ Back to the Planning Center name'); }
+        else this.ntToast(j.error || 'Couldn’t save that name.');
+      }).catch(() => this.ntToast('The C3 Life server didn’t answer.'));
+    }
+    const st = this.ntDemoState(); st.typed = { ...(st.typed || {}) };
+    if (clean) st.typed[itemId] = clean; else delete st.typed[itemId];
+    this.ntDemoSave(st); this.setState({ nt: this.ntDemo(), ntEdit: '' });
+    this.ntToast(clean ? '✓ Name tag set to ' + clean : '✓ Back to the Planning Center name');
+    return Promise.resolve();
+  }
+  ntEsc(s) { return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+  ntSaveLinks() {
+    const d = this.state.nt, draft = this.state.ntLinks || {};
+    if (this.ntServer) {
+      const rules = (d.rules || []).map((r) => (draft[r.position] === undefined ? r : { position: r.position, item: draft[r.position] ? '^' + this.ntEsc(draft[r.position]) + '$' : '^$' }));
+      return this.ntApi('/rules', 'PUT', { rules: rules }).then(({ code, j }) => {
+        if (code === 200) { this.setState({ nt: j, ntLinks: null }); this.ntToast('✓ Links saved. They’re used every week.'); } else this.ntToast(j.error || 'Couldn’t save the links.');
+      }).catch(() => this.ntToast('The C3 Life server didn’t answer.'));
+    }
+    const st = this.ntDemoState(); st.links = { ...(st.links || {}), ...draft }; this.ntDemoSave(st);
+    this.setState({ nt: this.ntDemo(), ntLinks: null }); this.ntToast('✓ Links saved. They’re used every week.');
+    return Promise.resolve();
+  }
+  ntResetLinks() {
+    if (this.ntServer) {
+      return this.ntApi('/rules', 'PUT', { rules: null }).then(({ code, j }) => { if (code === 200) { this.setState({ nt: j, ntLinks: null, ntAskReset: false }); this.ntToast('✓ Back to the standard links.'); } });
+    }
+    const st = this.ntDemoState(); delete st.links; this.ntDemoSave(st);
+    this.setState({ nt: this.ntDemo(), ntLinks: null, ntAskReset: false }); this.ntToast('✓ Back to the standard links.');
+    return Promise.resolve();
+  }
+  ntPlanVals() {
+    const s = this.state, d = s.nt;
+    const admin = s.admin;
+    const badge = (t) => {
+      const m = t.match || {};
+      if (!t.text) return ['Needs a name', '#FF7A45', '#1A0A03'];
+      if (m.kind === 'prop') return ['✓ Prop', '#6CB4F5', '#08131C'];
+      if (m.kind === 'message') return ['Name tag message', '#B48CF2', '#0D1015'];
+      return ['Can’t show', '#FF7A45', '#1A0A03'];
+    };
+    const row = (t) => {
+      const [b, bg, fg] = badge(t), m = t.match || {};
+      const editing = s.ntEdit === t.id;
+      const src = t.source === 'typed' ? 'Typed in the app' : (t.source === 'note' ? 'From the Hosting note' + (t.placeholder ? ' (9 - Ministry says ' + t.placeholder + ')' : '')
+        : (t.source === 'missing' ? (t.placeholder ? '9 - Ministry says ' + t.placeholder + ', and there’s no Hosting note' : 'No one on ' + t.position + ' in 9 - Ministry') : '9 - Ministry · ' + t.position));
+      const how = !t.text ? 'Type the name below, or add it in Planning Center.' : (m.kind === 'prop' ? 'Shows the ProPresenter prop “' + m.name + '”.'
+        : (m.kind === 'message' ? 'No prop called “' + t.text + '”, so it fills in the “' + m.name + '” message.' : (m.why || '')));
+      return {
+        id: t.id, item: t.item || 'Meeting leader', position: t.position, name: t.text || 'Needs a name', nameColor: t.text ? '#ECEEF1' : '#FF7A45',
+        badge: b, badgeBg: bg, badgeFg: fg, src: src, how: how, needs: !t.text, canType: !!t.item_id,
+        editing: editing, notEditing: !editing, editVal: editing ? s.ntVal : '',
+        typed: t.source === 'typed',
+        openEdit: () => this.setState({ ntEdit: t.id, ntVal: t.text || '' }),
+        setVal: (e) => this.setState({ ntVal: e.target.value }),
+        cancel: () => this.setState({ ntEdit: '' }),
+        save: () => this.ntTyped(t.item_id, s.ntVal),
+        badVal: !String(s.ntVal || '').trim() || String(s.ntVal).length > 80,
+        unType: () => this.ntTyped(t.item_id, ''),
+        editLabel: t.text ? 'Change' : 'Type the name', editAria: (t.text ? 'Change the name tag for ' : 'Type the name for ') + (t.item || 'Meeting leader'),
+        inputId: 'nt-in-' + t.id
+      };
+    };
+    const rules = (d && d.rules) || [];
+    const byPos = {}; this.ntAll(d).forEach((t) => { byPos[t.position] = t.item; });
+    const draft = s.ntLinks;
+    const titles = d && d.items ? d.items.map((x) => x.title) : [];
+    const uniq = titles.filter((x, i) => titles.indexOf(x) === i);
+    const notReady = d ? this.ntAll(d).filter((t) => !t.text || (t.match || {}).kind === 'none').length : 0;
+    return {
+      ntHas: !!d, ntNone: !d, ntErr: s.ntErr || '', hasNtErr: !!s.ntErr,
+      ntHead: d && d.plan ? d.plan.service_type + ' · ' + d.plan.dates : 'Planning Center',
+      ntSub: d ? (d.status === 'ok' ? 'Read at ' + d.at + ' · ' + (notReady ? notReady + ' need' + (notReady === 1 ? 's' : '') + ' a look' : 'all ready') : (d.reason || '')) : '',
+      ntSubColor: d && d.status === 'ok' && !notReady ? '#6CB4F5' : '#F5C518',
+      ntStale: !!(d && d.stale), ntOff: !!(d && d.status === 'off'),
+      ntPPReason: d && d.pp_reason ? d.pp_reason : '', hasNtPP: !!(d && d.pp_reason),
+      ntRows: d ? d.tags.map(row) : [], ntLeader: d && d.leader ? [row(d.leader)] : [],
+      ntToast: s.ntToast || '', hasNtToast: !!s.ntToast,
+      ntBusy: !!s.ntBusy, ntRefreshLabel: s.ntBusy ? 'Reading Planning Center…' : 'Read Planning Center again',
+      ntRefresh: () => { this.setState({ ntBusy: true }); this.ntLoad(true).then(() => { this.setState({ ntBusy: false }); this.ntToast('✓ Read Planning Center and ProPresenter again'); }); },
+      ntIsDemo: !this.ntServer,
+      ntDemoGuest: () => { const st = this.ntDemoState(); st.noGuest = !st.noGuest; this.ntDemoSave(st); this.setState({ nt: this.ntDemo() }); },
+      ntDemoGuestLabel: this.ntDemoState().noGuest ? 'Demo: put Joel Burden back' : 'Demo: guest preacher with no name',
+      // Admin: which item goes with each 9 - Ministry position
+      ntAdmin: admin, ntLinksLabel: admin ? 'Which item goes with each position' : 'Which item goes with each position (Admin)',
+      ntLinksOpen: !!draft, ntLinksClosed: !draft,
+      ntOpenLinks: () => this.setState({ ntLinks: {} }), ntCloseLinks: () => this.setState({ ntLinks: null, ntAskReset: false }),
+      ntLinkRows: rules.map((r) => {
+        const cur = draft && draft[r.position] !== undefined ? draft[r.position] : (byPos[r.position] || '');
+        const opts = [{ v: '', label: cur || byPos[r.position] ? 'No item' : 'Not in this week’s plan' }].concat(uniq.map((x) => ({ v: x, label: x })));
+        return { position: r.position, value: cur, opts: opts, id: 'nt-link-' + r.position.replace(/\W+/g, '-'),
+          set: (e) => this.setState({ ntLinks: { ...(s.ntLinks || {}), [r.position]: e.target.value } }) };
+      }),
+      ntLinksSame: !draft || !Object.keys(draft).some((k) => draft[k] !== (byPos[k] || '')),
+      ntSaveLinks: () => this.ntSaveLinks(),
+      ntDefaultLinks: !d || d.default_rules, ntChangedLinks: !!d && !d.default_rules,
+      ntAskReset: !!s.ntAskReset, ntAskResetFn: () => this.setState({ ntAskReset: true }), ntNoReset: () => this.setState({ ntAskReset: false }),
+      ntResetLinks: () => this.ntResetLinks()
+    };
+  }
+  // Planning Center: who's signed in, this Sunday's times as timers, all in this network's local time.
+  // On the C3 Life server it uses /api/pco; in the preview, a pretend account and plan.
+  pcToken() { try { const x = JSON.parse(localStorage.getItem('booth.session') || 'null'); return x ? x.token : ''; } catch (e) { return ''; } }
+  pcApi(path, method, body) {
+    const h = { 'Content-Type': 'application/json' }; const t = this.pcToken(); if (t) h.Authorization = 'Bearer ' + t;
+    return fetch('/api/pco' + path, { method: method || 'GET', headers: h, body: body ? JSON.stringify(body) : undefined })
+      .then((r) => r.json().catch(() => ({})).then((j) => ({ code: r.status, j: j || {} })));
+  }
+  pcLocalTz() {
+    const off = -new Date().getTimezoneOffset() / 60;
+    let name = ''; try { name = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) {}
+    return { name: name, offset: off ? 'UTC' + (off > 0 ? '+' : '') + off : 'UTC' };
+  }
+  pcDemo() { try { return JSON.parse(localStorage.getItem('booth.pco') || 'null') || { signed_in: true, who: 'Jonathan McGinlay', org: 'C3 Church', org_tz: 'Europe/London', since: '2026-10-11 18:42', service_type: 'Sunday Morning' }; } catch (e) { return {}; } }
+  pcDemoSave(d) { try { localStorage.setItem('booth.pco', JSON.stringify(d)); } catch (e) {} }
+  pcDemoTimers() {
+    // this Sunday as Planning Center has it (item lengths), times in this device's time
+    const d = new Date(); d.setHours(10, 0, 0, 0); if (d.getTime() < Date.now() - 3 * 3600e3) d.setDate(d.getDate() + 7);
+    const band = new Date(d.getTime() - 3600e3);
+    let st = {}; try { st = JSON.parse(localStorage.getItem('booth.pcotimers') || '{}'); } catch (e) {}
+    const now = Date.now() / 1000;
+    const items = [['3', 'Welcome', 180], ['8', '60 Secs of Prayer', 60], ['12', 'PASTORAL Welcome', 300], ['15', 'Offering', 180], ['22', 'Message', 2400], ['26', 'CLOSE', 300]];
+    const len = (st.lengths || {});
+    const out = [
+      { id: 'time-1', kind: 'countdown', name: 'Band call starts', at: String(band.getHours()).padStart(2, '0') + ':' + String(band.getMinutes()).padStart(2, '0'), left: Math.round((band.getTime() / 1000) - now) },
+      { id: 'time-2', kind: 'countdown', name: 'Service starts', at: '10:00', left: Math.round((d.getTime() / 1000) - now) }];
+    items.forEach(([id, name, l]) => {
+      const L = len[id] || l, t = (st.t || {})['item-' + id] || {};
+      let left = t.left !== undefined ? t.left : L; if (t.run) left -= Math.round(now - t.stamp);
+      out.push({ id: 'item-' + id, kind: 'item', item_id: id, name: name, length: L, left: left, run: !!t.run });
+    });
+    const ids = out.filter((t) => t.kind === 'item').map((t) => t.id), cur = ids.indexOf(st.current) > -1 ? st.current : '';
+    const nxt = cur ? (ids[ids.indexOf(cur) + 1] || '') : (ids[0] || '');
+    if (cur) {
+      const t = out.find((x) => x.id === cur), e = new Date(Date.now() + Math.max(0, t.left) * 1000);
+      t.ends = String(e.getHours()).padStart(2, '0') + ':' + String(e.getMinutes()).padStart(2, '0');
+      if (nxt) out.find((x) => x.id === nxt).starts = t.ends;
+    }
+    return { current: cur, next: nxt, signed_in: !!this.pcDemo().signed_in, plan: { dates: d.toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' }), service_type: this.pcDemo().service_type }, timers: this.pcDemo().signed_in ? out : [], local_tz: this.pcLocalTz() };
+  }
+  pcDemoChange(id, action, secs) {
+    let st = {}; try { st = JSON.parse(localStorage.getItem('booth.pcotimers') || '{}'); } catch (e) {}
+    if (['next', 'prev', 'go', 'clear'].indexOf(action) > -1) {
+      // Next, Previous, or straight to one item: the old one stops where it is, the new one starts
+      const d = this.pcDemoTimers(), items = d.timers.filter((t) => t.kind === 'item'), ids = items.map((t) => t.id), cur = d.current;
+      let to = '';
+      if (action === 'next') { to = d.next; if (!to) return 'That was the last item.'; }
+      else if (action === 'prev') { if (!cur || !ids.indexOf(cur)) return 'That\u2019s the first item.'; to = ids[ids.indexOf(cur) - 1]; }
+      else if (action === 'go') to = id;
+      const now = Date.now() / 1000; st.t = st.t || {};
+      if (cur) st.t[cur] = { run: false, left: items.find((t) => t.id === cur).left, stamp: now };
+      if (to) { const t = items.find((x) => x.id === to); st.t[to] = { run: true, left: action === 'next' || t.left === t.length ? t.length : t.left, stamp: now }; }
+      st.current = to; try { localStorage.setItem('booth.pcotimers', JSON.stringify(st)); } catch (e) {}
+      return '';
+    }
+    st.t = st.t || {}; const cur = this.pcDemoTimers().timers.find((x) => x.id === id); if (!cur) return;
+    const now = Date.now() / 1000, t = { run: cur.run, left: cur.left, stamp: now };
+    if (action === 'start') t.run = true; else if (action === 'stop') t.run = false;
+    else if (action === 'reset') { t.run = false; t.left = cur.length; } else if (action === 'add') t.left = cur.left + secs; else if (action === 'set') t.left = secs;
+    st.t[id] = t; try { localStorage.setItem('booth.pcotimers', JSON.stringify(st)); } catch (e) {}
+  }
+  pcDemoLength(itemId, secs) {
+    let st = {}; try { st = JSON.parse(localStorage.getItem('booth.pcotimers') || '{}'); } catch (e) {}
+    st.lengths = { ...(st.lengths || {}), [itemId]: secs }; if (st.t) delete st.t['item-' + itemId];
+    try { localStorage.setItem('booth.pcotimers', JSON.stringify(st)); } catch (e) {}
+  }
+  hidden() { try { return JSON.parse(localStorage.getItem('booth.hidetimers') || '{}') || {}; } catch (e) { return {}; } }
+  setHidden(k, v) { const h = this.hidden(); h[k] = v; try { localStorage.setItem('booth.hidetimers', JSON.stringify(h)); } catch (e) {} this.setState({ hideTick: Date.now() }); }
+  pcFmt(v) {
+    const a = Math.abs(v), h = Math.floor(a / 3600), m = Math.floor((a % 3600) / 60), sec = String(a % 60).padStart(2, '0');
+    return (v < 0 ? '−' : '') + (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + sec;
+  }
+  pcParse(str) {
+    const p = String(str).trim().split(':').map((x) => Number(x));
+    if (!p.length || p.some((x) => isNaN(x) || x < 0)) return null;
+    if (p.length === 1) return Math.round(p[0] * 60);
+    if (p.length === 2) return p[0] * 60 + p[1];
+    return p[0] * 3600 + p[1] * 60 + p[2];
+  }
+  pcLoadStatus() {
+    try {
+      return this.pcApi('').then(({ code, j }) => {
+        if (code === 200 && j.ok) { this.pcServer = true; this.setState({ pcs: j }); return; }
+        if (code === 401 || code === 403) { this.pcServer = true; this.setState({ pcs: null }); return; }
+        this.pcServer = false; this.setState({ pcs: { ...this.pcDemo(), local_tz: this.pcLocalTz(), service_types: ['Sunday Morning', 'Carols', 'Worship Recording', 'Prayer & Worship Night'] } });
+      }).catch(() => { this.pcServer = false; this.setState({ pcs: { ...this.pcDemo(), local_tz: this.pcLocalTz(), service_types: ['Sunday Morning', 'Carols'] } }); });
+    } catch (e) { return Promise.resolve(); }
+  }
+  pcSignIn() {
+    const s = this.state, app = String(s.pcApp || '').trim(), sec = String(s.pcSec || '').trim();
+    if (!app || !sec) { this.setState({ pcMsgErr: 'Type both parts of the Personal Access Token.' }); return; }
+    this.setState({ pcBusy: true, pcMsgErr: '', pcMsg: '' });
+    if (this.pcServer) {
+      this.pcApi('/signin', 'POST', { app_id: app, secret: sec }).then(({ code, j }) => {
+        if (code === 200) this.setState({ pcBusy: false, pcs: { ...this.state.pcs, ...j }, pcApp: '', pcSec: '', pcSwitch: false, pcMsg: '✓ Signed in as ' + j.who + (j.org ? ' (' + j.org + ')' : '') + '. Name tags and the running order use this account now.' });
+        else this.setState({ pcBusy: false, pcMsgErr: j.error || 'Couldn’t sign in.' });
+      }).catch(() => this.setState({ pcBusy: false, pcMsgErr: 'The C3 Life server didn’t answer.' }));
+      return;
+    }
+    const d = { signed_in: true, who: 'Chris Denham', org: 'C3 Church', org_tz: 'Europe/London', since: new Date().toLocaleString(), service_type: this.pcDemo().service_type || 'Sunday Morning' };
+    this.pcDemoSave(d);
+    this.setState({ pcBusy: false, pcs: { ...this.state.pcs, ...d }, pcApp: '', pcSec: '', pcSwitch: false, pcMsg: '✓ Signed in as Chris Denham (preview: any token works here).' });
+  }
+  pcSignOut() {
+    const done = (j) => this.setState({ pcs: { ...this.state.pcs, ...j, signed_in: false }, pcAskOut: false, pcMsg: 'Signed out of Planning Center. Sign in again, with this or another account, to bring the plan back.' });
+    if (this.pcServer) { this.pcApi('/signout', 'POST', {}).then(({ code, j }) => (code === 200 ? done(j) : this.setState({ pcMsgErr: j.error || 'Couldn’t sign out.' }))); return; }
+    const d = { ...this.pcDemo(), signed_in: false, who: '', org: '' }; this.pcDemoSave(d); done(d);
+  }
+  pcSetType(e) {
+    const name = e.target.value;
+    if (this.pcServer) { this.pcApi('/service_type', 'PUT', { name: name }).then(({ code, j }) => (code === 200 ? this.setState({ pcs: { ...this.state.pcs, ...j }, pcMsg: '✓ Using ' + name + ' plans.' }) : this.setState({ pcMsgErr: j.error || 'Couldn’t change it.' }))); return; }
+    const d = { ...this.pcDemo(), service_type: name }; this.pcDemoSave(d); this.setState({ pcs: { ...this.state.pcs, service_type: name }, pcMsg: '✓ Using ' + name + ' plans.' });
+  }
+  pcPlanVals() {
+    const s = this.state, d = s.pcs, admin = s.admin;
+    const tz = d && d.local_tz ? d.local_tz : this.pcLocalTz();
+    const signedIn = !!(d && d.signed_in);
+    return {
+      pcReady: !!d, pcIn: signedIn, pcOut: !!d && !signedIn,
+      pcWho: signedIn ? 'Signed in as ' + (d.who || 'the installer’s token') + (d.org ? ' · ' + d.org : '') : 'Not signed in',
+      pcSince: signedIn && d.since ? 'Since ' + d.since : (d && d.from_installer ? 'Set by the installer' : ''),
+      pcTz: 'Times show in this network’s time: ' + (tz.name && tz.name !== tz.offset ? tz.name + ', ' : '') + tz.offset + '.',
+      pcTzWarn: !!(d && d.org_tz && tz.name && d.org_tz !== tz.name), pcTzWarnText: d && d.org_tz ? 'Planning Center is set to ' + d.org_tz + '. Its times are turned into ' + (tz.name || 'local time') + ' here, so they match the booth’s clocks.' : '',
+      pcAdmin: admin, pcNotAdmin: !admin,
+      pcTypes: (d && d.service_types ? d.service_types : []).map((x) => ({ v: x, label: x })), pcType: d ? d.service_type : '', pcSetType: (e) => this.pcSetType(e), pcHasTypes: !!(d && d.service_types && d.service_types.length && signedIn && admin),
+      pcAskOutFn: () => this.setState({ pcAskOut: true }), pcAskOut: !!s.pcAskOut, pcNoOut: () => this.setState({ pcAskOut: false }), pcDoOut: () => this.pcSignOut(),
+      pcSwitchFn: () => this.setState({ pcSwitch: !s.pcSwitch }), pcSwitching: !!s.pcSwitch || (!!d && !signedIn), pcSwitchLabel: s.pcSwitch ? 'Cancel' : 'Switch account',
+      pcApp: s.pcApp || '', pcSetApp: (e) => this.setState({ pcApp: e.target.value, pcMsgErr: '' }), pcSec: s.pcSec || '', pcSetSec: (e) => this.setState({ pcSec: e.target.value, pcMsgErr: '' }),
+      pcSignInFn: () => this.pcSignIn(), pcBusy: !!s.pcBusy, pcSignLabel: s.pcBusy ? 'Checking with Planning Center…' : 'Sign in',
+      pcMsg: s.pcMsg || '', hasPcMsg: !!s.pcMsg, pcMsgErr: s.pcMsgErr || '', hasPcMsgErr: !!s.pcMsgErr
+    };
+  }
+  renderVals() {
+    const s = this.state;
+    const v = s.view;
+    const items = s.items;
+    const swap = (i, j) => {
+      if (j < 0 || j >= items.length) return;
+      const next = items.slice();
+      const a = { ...next[i], pending: !s.online }, b = { ...next[j], pending: !s.online };
+      next[i] = b; next[j] = a;
+      this.change(next);
+    };
+    const log = [
+      ['10:00:00', 'RTA log started (scheduled)', 'RTA · room mic'],
+      ['10:00:00', 'Welcome live · no macro', 'Running order'],
+      ['10:03:05', 'Song 1 live · macro "Worship start" ran (4 steps)', 'Macros'],
+      ['10:03:06', 'Playback started', 'Playback'],
+      ['10:05:40', 'ProPresenter → Chorus', 'ProPresenter'],
+      ['10:06:02', 'Peak 97.8 dB(A) · over limit', 'RTA'],
+      ['10:06:10', '01 Lead Vox fader −2.0 dB', 'Wing'],
+      ['10:08:44', 'Song 2 live', 'Running order'],
+      ['10:09:15', 'Running order changed: Song 3 moved up', 'App → ProPresenter · PCO queued'],
+      ['10:10:00', 'Marker added', 'Phone']
+    ].map(([t, what, src]) => ({ t, what, src }));
+    const svcL = this.svcList(), cur = this.svcCur();
+    const draft = s.svcEdit;
+    const setRow = (i, patch) => this.setState({ svcEdit: draft.map((x, j) => (j === i ? { ...x, ...patch } : x)) });
+    return {
+      ...this.ntPlanVals(),
+      ...this.pcPlanVals(),
+      svcName: cur.name, svcId: cur.id, svcTimes: cur.start + '\u2013' + cur.end, svcSetup: cur.setup, svcSetupShort: cur.setup.split(' \u00b7 ')[0], svcOrder: cur.order,
+      svcs: svcL.map((v) => ({ id: v.id, label: v.name + ' \u00b7 ' + v.start + '\u2013' + v.end })),
+      pickSvc: (e) => { try { localStorage.setItem('booth.service', e.target.value); } catch (er) {} this.setState({ svcAsk: true, svcToast: '', svcTick: Date.now() }); },
+      svcAsk: s.svcAsk,
+      svcKeep: () => this.setState({ svcAsk: false, svcToast: 'Kept the current setup. The RTA report will mark ' + cur.start + '\u2013' + cur.end + '.' }),
+      svcLoad: () => this.setState({ svcAsk: false, svcToast: '\u2713 Loaded ' + cur.setup + ' for ' + cur.name + '. Now load the running order.' }),
+      hasSvcToast: !!s.svcToast, svcToast: s.svcToast,
+      svcEditing: !!draft, svcEditLabel: draft ? 'Close without saving' : (s.admin ? 'Edit services' : 'Edit services (Admin)'),
+      toggleSvcEdit: () => this.setState({ svcEdit: draft ? null : JSON.parse(JSON.stringify(svcL)) }),
+      svcRows: (draft || []).map((r, i) => ({ ...r, only: draft.length === 1,
+        setName: (e) => setRow(i, { name: e.target.value }), setStart: (e) => setRow(i, { start: e.target.value }), setEnd: (e) => setRow(i, { end: e.target.value }), setSetup: (e) => setRow(i, { setup: e.target.value }),
+        remove: () => this.setState({ svcEdit: draft.filter((x, j) => j !== i) }) })),
+      addSvc: () => this.setState({ svcEdit: draft.concat([{ id: 's' + Date.now(), name: 'New service', start: '10:00', end: '11:30', setup: 'v12 \u00b7 Sunday standard', order: 'Planning Center' }]) }),
+      discardSvc: () => this.setState({ svcEdit: null }),
+      svcSame: !draft || JSON.stringify(draft) === JSON.stringify(svcL) || draft.some((x) => !x.name.trim()),
+      saveSvc: () => { try { localStorage.setItem('booth.services', JSON.stringify(draft)); } catch (e) {} this.setState({ svcEdit: null, svcToast: '\u2713 Services saved. They are part of the saved setup.' }); },
+      isPlan: v === 'plan', isLog: v === 'log',
+      showPlan: () => this.setState({ view: 'plan' }),
+      showLog: () => this.setState({ view: 'log' }),
+      netText: s.online ? 'Online' : 'No internet',
+      ppStatus: 'In sync',
+      pcoSub: s.online ? 'Online · live sync' : 'Offline copy · synced Sat 18:42',
+      pcoWaiting: s.queued > 0, pcoOk: s.queued === 0,
+      pcoStatus: s.queued > 0 ? s.queued + ' change' + (s.queued > 1 ? 's' : '') + ' waiting' : (s.online ? 'In sync' : 'Up to date'),
+      onlineBtn: s.online ? 'Simulate: lose internet' : 'Simulate: internet comes back',
+      toggleOnline: () => this.setState({
+        online: !s.online,
+        queued: 0,
+        items: !s.online ? items.map((x) => ({ ...x, pending: false })) : items
+      }),
+      autoRun: s.autoRun,
+      notAdmin: !s.admin,
+      autoHint: s.autoRun ? 'On: macros run when their item goes live (they still ask first).' : 'Off: nothing runs by itself. Tap Run on the item when you are ready.' + (s.admin ? '' : ' Only an Admin can change this.'),
+      toggleAuto: () => { const v = !s.autoRun; try { localStorage.setItem('booth.auto', v ? 'on' : 'off'); } catch (e) {} this.setState({ autoRun: v }); },
+      editing: s.editing,
+      editLabel: s.editing ? 'Done' : 'Edit order',
+      toggleEdit: () => this.setState({ editing: !s.editing }),
+      macroOpts: ['None', 'Walk-in', 'Worship start', 'Message', 'End of service'],
+      addItem: () => this.change(items.concat([{ id: 'it' + (this.nextId++), time: '—', title: 'New item', detail: 'Added in app', macro: 'None', inPP: true, inPCO: true, pending: !s.online }])),
+      loadTitle: s.loadedFrom ? 'Running order loaded' : 'Running order not loaded',
+      loadSub: s.loadedFrom ? 'From ' + s.loadedFrom + ' at ' + s.loadedAt + ' · ' + items.length + ' items' : 'Loading is manual. Choose the source when you\u2019re ready.',
+      loadBorder: s.loadedFrom ? '#262C36' : '#F5C518',
+      loadBtn: s.loadedFrom ? 'Reload' : 'Load running order',
+      choosing: s.choosing, notChoosing: !s.choosing,
+      startLoad: () => this.setState({ choosing: true }),
+      cancelLoad: () => this.setState({ choosing: false }),
+      pcoDisabled: !s.online,
+      pcoOpacity: s.online ? '1' : '0.5',
+      pcoLoadSub: s.online ? 'Latest plan with times and team' : 'Needs internet · last synced Sat 18:42',
+      loadPP: () => this.setState({ choosing: false, loadedFrom: 'ProPresenter playlist', loadedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }),
+      loadPCO: () => this.setState({ choosing: false, loadedFrom: 'Planning Center', loadedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }),
+      notLoaded: !s.loadedFrom,
+      items: (s.loadedFrom ? items : []).map((x, i) => {
+        const now = x.id === s.nowId;
+        return {
+          ...x,
+          now: now,
+          onlyPP: !x.inPCO,
+          border: now ? '#F5C518' : (x.pending ? '#5A4A2A' : '#262C36'),
+          timeColor: now ? '#F5C518' : '#A3ACB8',
+          weight: now ? '600' : '500',
+          up: () => swap(i, i - 1),
+          down: () => swap(i, i + 1),
+          pickMacro: (e) => this.setState({ items: items.map((y, j) => (j === i ? { ...y, macro: e.target.value } : y)) }),
+          hasMacro: !!x.macro && x.macro !== 'None',
+          runLabel: s.ran[x.id] ? '\u2713 ' + x.macro + ' ran at ' + s.ran[x.id] + ' \u00b7 Undo on Macros' : 'Run ' + x.macro,
+          runCls: s.ran[x.id] ? 'btn' : 'btn pri',
+          runAria: 'Run the ' + x.macro + ' macro for ' + x.title,
+          run: () => { const t = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); this.setState({ ran: { ...s.ran, [x.id]: t } }); },
+          addToPCO: () => this.change(items.map((y, j) => (j === i ? { ...y, inPCO: true, pending: !s.online } : y)))
+        };
+      }),
+      log: log,
+      logCount: log.length
+    };
+  }
+}
+</script>
+</body>
+</html>

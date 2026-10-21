@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>C3 Life – MIDI buttons</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet" data-look>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Safari / iPad: no zoom when typing, no double-tap zoom, no text-select or callout while dragging */
+html{-webkit-text-size-adjust:100%;touch-action:manipulation}
+input,select,textarea{font-size:16px!important}
+button,a,summary,label,[role=slider]{-webkit-tap-highlight-color:transparent}
+[role=slider],.fader,.pan{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+body{margin:0;background:#0D1015}
+a{color:#6CB4F5}a:hover{color:#9CCBF8}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:62px;color:#A3ACB8;text-decoration:none;font-size:12px;font-weight:500;border-top:2px solid transparent}
+.tab:hover{color:#ECEEF1}
+.tab.on{color:#F5C518;border-top-color:#F5C518}
+.card{background:#161A21;border:1px solid #262C36;border-radius:14px;padding:14px}
+.lbl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#A3ACB8;font-weight:500}
+.mono{font-family:'IBM Plex Mono',ui-monospace,monospace}
+.btn{min-height:44px;padding:0 14px;border-radius:10px;border:1px solid #333B47;background:#1E232C;color:#ECEEF1;font:500 14px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer}
+.btn.pri{background:#F5C518;border-color:#F5C518;color:#1A1204}
+.x{width:44px;min-height:40px;border-radius:9px;border:1px solid #333B47;background:transparent;color:#A3ACB8;font:500 16px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer;flex:none}
+select{flex:1;min-width:0;min-height:44px;border-radius:10px;border:1px solid #333B47;background:#0F1318;color:#ECEEF1;font:400 14px 'IBM Plex Sans',system-ui,sans-serif;padding:0 8px}
+
+/* Fills any screen. Wider than 700px (iPad, laptop, web) the content sits in a centred column. */
+@media (min-width:700px){
+  .app > *:not(.bn):not([style*="position:absolute"]){width:100%;max-width:760px;margin-left:auto;margin-right:auto;box-sizing:border-box}
+}
+
+.app > .rtabar{max-width:none !important;margin-left:0 !important;margin-right:0 !important}
+
+/* Easy to use: every link, tick box and control is at least 40-44px tall, so it is easy to hit with a thumb. */
+a[style*="min-height:28px"]{min-height:44px !important}
+a[style*="font-size:12px"][style*="text-decoration:none"],a[style*="font-size:13px"][style*="text-decoration:none"]{display:inline-flex;align-items:center;min-height:40px}
+label:has(> input[type=checkbox]),label:has(> input[type=radio]){min-height:44px}
+input[type=checkbox],input[type=radio]{width:22px;height:22px;flex:none;accent-color:#F5C518}
+input[type=range]{min-height:40px}
+select{min-height:44px}
+button.sw::after,button.cell::after{content:'';position:absolute;inset:-7px -4px}
+.cell{position:relative}
+input[type=checkbox][aria-label]{width:32px;height:32px}
+
+/* Menu: a drop-down list at the top of every screen. Tap Menu to open it, tap again (or pick a page) to close. */
+.topmenu{position:relative;z-index:20;flex:none;background:#11151B;border-bottom:1px solid #262C36}
+.topmenu summary{list-style:none;display:flex;align-items:center;gap:10px;min-height:52px;padding:0 16px;cursor:pointer;color:#ECEEF1;font:600 15px 'IBM Plex Sans',system-ui,sans-serif;max-width:760px;margin:0 auto;box-sizing:border-box}
+.topmenu summary::-webkit-details-marker{display:none}
+.topmenu .mlabel{font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:#A3ACB8}
+.topmenu .mcur{flex:1;color:#F5C518}
+.topmenu .chev{transition:transform .15s}
+.topmenu details[open] .chev{transform:rotate(180deg)}
+.topmenu .mlist{position:absolute;left:8px;right:8px;top:calc(100% + 4px);background:#161A21;border:1px solid #333B47;border-radius:14px;box-shadow:0 14px 34px rgba(0,0,0,.55);padding:6px;display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.topmenu .mlist a{display:flex;align-items:center;gap:10px;min-height:52px;padding:0 12px;border-radius:10px;color:#ECEEF1;text-decoration:none;font:500 15px 'IBM Plex Sans',system-ui,sans-serif}
+.topmenu .mlist a:hover{background:#1E232C}
+.topmenu .mlist a.on{background:#262C36;color:#F5C518}
+@media (min-width:700px){.topmenu .mlist{left:calc(50% - 372px);right:auto;width:440px}}
+@media (min-width:700px) and (max-width:800px){.topmenu .mlist{left:16px}}
+/* wide:start — iPad landscape and laptops: use the width */
+@media (min-width:1000px){
+  .app > *:not(.bn):not([style*="position:absolute"]){max-width:1240px}
+  .topmenu summary{max-width:1240px}
+  .app main.wide2{display:grid !important;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:14px 18px !important}
+  .app main.wide2 > *{min-width:0}
+  .app main.wide2 > :not(section):not(.card):not(details):not(.wcol){grid-column:1 / -1}
+  .app main.wide2 > .wfull{grid-column:1 / -1}
+  .app main.wide1{max-width:980px !important}
+  .app:has(main.wide1) > *:not(.bn):not([style*="position:absolute"]){max-width:980px}
+  .app:has(main.wide1) .topmenu summary{max-width:980px}
+}
+@media (min-width:1500px){ .app main.wide2.wide3{grid-template-columns:repeat(3,minmax(0,1fr))} }
+/* wide:end */
+/* look:start — the WING look (like WING Edit): near-black, outlined panels, condensed headings, yellow for active, blue for selected.
+   Settings › Look › Classic puts the old look back on this device (html[data-look=classic]). */
+:root{--wk-bg:#0A0B0D;--wk-panel:#121418;--wk-panel2:#181B20;--wk-line:#2E333A;--wk-yellow:#F5C518;--wk-blue:#2F6CC4;--wk-cond:'Barlow Condensed','IBM Plex Sans',system-ui,sans-serif}
+html:not([data-look=classic]) body{background:var(--wk-bg)}
+html:not([data-look=classic]) .app{background:var(--wk-bg) !important}
+html:not([data-look=classic]) .card{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .lbl{font-family:var(--wk-cond);font-size:13px;font-weight:600;letter-spacing:.07em;color:#D4D9E0}
+html:not([data-look=classic]) h1{font-family:var(--wk-cond);font-weight:600 !important;text-transform:uppercase;letter-spacing:.05em;font-size:21px !important;line-height:1.2;color:var(--wk-yellow);border:1.5px solid var(--wk-yellow);border-radius:3px;padding:2px 12px;display:inline-block}
+html:not([data-look=classic]) .btn,html:not([data-look=classic]) .lk,html:not([data-look=classic]) .mxb,html:not([data-look=classic]) .mxbk,html:not([data-look=classic]) .mute,html:not([data-look=classic]) .pbtn{font-family:var(--wk-cond);font-size:15px;letter-spacing:.02em;border-radius:4px}
+html:not([data-look=classic]) .btn.pri{background:var(--wk-yellow);border-color:var(--wk-yellow);color:#111}
+html:not([data-look=classic]) .seg{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .seg a{font-family:var(--wk-cond);font-size:15px;letter-spacing:.03em;border-radius:4px}
+html:not([data-look=classic]) .seg a.on,html:not([data-look=classic]) .lk.on{background:var(--wk-blue);color:#fff}
+html:not([data-look=classic]) .tab.on{color:var(--wk-yellow);border-top-color:var(--wk-yellow)}
+html:not([data-look=classic]) .topmenu{background:#000;border-bottom-color:var(--wk-line)}
+html:not([data-look=classic]) .topmenu summary{font-family:var(--wk-cond);font-size:16px;letter-spacing:.03em}
+html:not([data-look=classic]) .topmenu .mcur{color:var(--wk-yellow)}
+html:not([data-look=classic]) .topmenu .mlist{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .topmenu .mlist a{font-family:var(--wk-cond);font-size:16px;border-radius:4px}
+html:not([data-look=classic]) .topmenu .mlist a.on{background:var(--wk-panel2);color:var(--wk-yellow);box-shadow:inset 3px 0 0 var(--wk-yellow)}
+html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic]) input[type=radio],html:not([data-look=classic]) input[type=range]{accent-color:var(--wk-yellow)}
+.wkside{display:none}
+/* iPad landscape and laptops: a sidebar like WING Edit's (HOME, MIXER, ...) instead of the menu at the top */
+@media (min-width:1000px){
+  html:not([data-look=classic]) .wkside{display:flex;flex-direction:column;gap:2px;position:fixed;left:0;top:0;bottom:0;width:132px !important;max-width:132px !important;margin:0 !important;padding:8px 6px 12px;box-sizing:border-box;background:#000;border-right:1px solid var(--wk-line);overflow-y:auto;z-index:30}
+  html:not([data-look=classic]) .wkside .wkbrand{font:700 24px var(--wk-cond);letter-spacing:.06em;color:var(--wk-yellow);padding:6px 8px 12px}
+  html:not([data-look=classic]) .wkside a{display:flex;align-items:center;gap:9px;min-height:46px;padding:0 8px;border-radius:4px;color:#D4D9E0;text-decoration:none;font:600 15px var(--wk-cond);text-transform:uppercase;letter-spacing:.04em}
+  html:not([data-look=classic]) .wkside a:hover{background:var(--wk-panel2)}
+  html:not([data-look=classic]) .wkside a.on{background:var(--wk-panel2);color:var(--wk-yellow);box-shadow:inset 3px 0 0 var(--wk-yellow)}
+  html:not([data-look=classic]) .wkside svg{flex:none}
+  html:not([data-look=classic]) .app{padding-left:132px;box-sizing:border-box !important}
+  html:not([data-look=classic]) .app > .topmenu{display:none}
+}
+/* look:end */
+</style>
+</helmet>
+<div class="app has-bn" style="width:100%;height:100vh;height:100dvh;display:flex;flex-direction:column;background:#0D1015;color:#ECEEF1;font-family:'IBM Plex Sans',system-ui,sans-serif;overflow:hidden;position:relative">
+  
+  
+  
+  
+  <nav class="wkside" aria-label="Main menu (side)"><div class="wkbrand" aria-hidden="true">C3 LIFE</div><a href="Main.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Home</a>
+        <a href="Wing.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4v16M12 4v16M18 4v16"/><path d="M4 14h4M10 8h4M16 16h4"/></svg>Mixer</a>
+        <a href="RTA.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V12M9 20V6M14 20V10M19 20V4"/></svg>RTA</a>
+        <a href="Show.dc.html" class="on" aria-current="page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M10 8l5 2-5 2z"/><path d="M8 20h8"/></svg>Show</a>
+        <a href="Lights.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>Lights</a>
+        <a href="Plan.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h1M4 12h1M4 18h1"/></svg>Plan</a>
+        <a href="Chat.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>Chat</a>
+        <a href="Listen.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="15" width="4" height="6" rx="1.5"/><rect x="17" y="15" width="4" height="6" rx="1.5"/><path d="M10 9.5a2.5 2.5 0 0 1 4 0"/></svg>Listen</a>
+        <a href="Help.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2.5 2-2.5 3.5M12 17h.01"/></svg>Help</a>
+        <a href="Report.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4h11l-1.5 4L16 12H5"/></svg>Report an issue</a></nav>
+  <nav class="bn topmenu" aria-label="Main menu">
+    <details>
+      <summary aria-label="Menu. You are on MIDI buttons"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span class="mlabel">Menu</span><span class="mcur">MIDI buttons</span><svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+      <div class="mlist">
+        <a href="Main.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Home</a>
+        <a href="Wing.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4v16M12 4v16M18 4v16"/><path d="M4 14h4M10 8h4M16 16h4"/></svg>Mixer</a>
+        <a href="RTA.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V12M9 20V6M14 20V10M19 20V4"/></svg>RTA</a>
+        <a href="Show.dc.html" class="on" aria-current="page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M10 8l5 2-5 2z"/><path d="M8 20h8"/></svg>Show</a>
+        <a href="Lights.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>Lights</a>
+        <a href="Plan.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h1M4 12h1M4 18h1"/></svg>Plan</a>
+        <a href="Chat.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>Chat</a>
+        <a href="Listen.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="15" width="4" height="6" rx="1.5"/><rect x="17" y="15" width="4" height="6" rx="1.5"/><path d="M10 9.5a2.5 2.5 0 0 1 4 0"/></svg>Listen</a>
+        <a href="Help.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2.5 2-2.5 3.5M12 17h.01"/></svg>Help</a>
+        <a href="Report.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4h11l-1.5 4L16 12H5"/></svg>Report an issue</a>
+      </div>
+    </details>
+  </nav>
+  <header style="padding:18px 20px 12px;display:flex;flex-direction:column;gap:4px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end">
+      <h1 style="margin:0;font-size:26px;font-weight:600">Show</h1>
+      <div style="font-size:12px;color:#A3ACB8;text-align:right">Press a button,<br>pick what it does</div>
+    </div>
+    <nav style="display:flex;gap:4px;background:#161A21;border:1px solid #262C36;border-radius:12px;padding:4px" aria-label="Show sections">
+      <a href="Show.dc.html" style="flex:1;display:flex;align-items:center;justify-content:center;min-height:44px;border-radius:9px;color:#A3ACB8;text-decoration:none;font-size:13px;font-weight:500">Show</a>
+      <a href="Music.dc.html" style="flex:1;display:flex;align-items:center;justify-content:center;min-height:44px;border-radius:9px;color:#A3ACB8;text-decoration:none;font-size:13px;font-weight:500">Music</a>
+      <a href="Foyer.dc.html" style="flex:1;display:flex;align-items:center;justify-content:center;min-height:44px;border-radius:9px;color:#A3ACB8;text-decoration:none;font-size:13px;font-weight:500">Foyer</a>
+      <a href="NetMidi.dc.html" style="flex:1;display:flex;align-items:center;justify-content:center;min-height:44px;border-radius:9px;color:#A3ACB8;text-decoration:none;font-size:13px;font-weight:500">MIDI</a>
+      <a href="Midi.dc.html" style="flex:1;display:flex;align-items:center;justify-content:center;min-height:44px;border-radius:9px;background:#262C36;color:#ECEEF1;text-decoration:none;font-size:13px;font-weight:500">Buttons</a>
+      <a href="Bible.dc.html" style="flex:1;display:flex;align-items:center;justify-content:center;min-height:44px;border-radius:9px;color:#A3ACB8;text-decoration:none;font-size:13px;font-weight:500">Bible</a>
+    </nav>
+  </header>
+
+  <main class=" wide2" style="flex:1;overflow-y:auto;padding:0 16px 16px;display:flex;flex-direction:column;gap:12px">
+    <section class="card" style="display:flex;flex-direction:column;padding:8px 14px">
+      <div class="lbl" style="padding:4px 0 6px">Controllers</div>
+      <sc-for list="{{ctrls}}" as="c" hint-placeholder-count="2">
+        <div style="display:flex;align-items:center;gap:10px;min-height:52px;border-top:1px solid #222831">
+          <span style="width:8px;height:8px;border-radius:50%;background:#6CB4F5;flex:none"></span>
+          <div style="flex:1"><div style="font-size:14px;font-weight:500">{{c.name}}</div><div style="font-size:12px;color:#A3ACB8">{{c.how}}</div></div>
+          <div style="font-size:12px;color:#6CB4F5">Connected</div>
+        </div>
+      </sc-for>
+      <div style="display:flex;align-items:center;gap:10px;min-height:44px;border-top:1px solid #222831">
+        <span style="font-size:12px;color:#A3ACB8;flex:1">Last message</span>
+        <span class="mono" style="font-size:13px;color:{{lastColor}}">{{last}}</span>
+      </div>
+    </section>
+
+    <sc-if value="{{learning}}" hint-placeholder-val="{{ false }}">
+      <div role="status" style="background:#1E232C;border:2px dashed #F5C518;border-radius:14px;padding:14px;text-align:center">
+        <div style="font-size:17px;font-weight:600;color:#F5C518">Press a button on your controller…</div>
+        <div style="font-size:12px;color:#A3ACB8;margin-top:4px">Pads, keys, footswitches and knobs all work</div>
+      </div>
+    </sc-if>
+    <sc-if value="{{notLearning}}" hint-placeholder-val="{{ true }}">
+      <button class="btn pri" onClick="{{learn}}">Learn a new button</button>
+    </sc-if>
+
+    <section class="card" style="display:flex;flex-direction:column;gap:10px;border-color:{{abBorder}}">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-size:15px;font-weight:600">A/B switch</div>
+          <div style="font-size:12px;color:#A3ACB8"><span class="mono">{{ab.msg}}</span> · {{ab.label}} · {{abCh}} · each press flips A ↔ B</div>
+        </div>
+        <span style="font-size:11px;font-weight:600;border-radius:5px;padding:2px 7px;background:#F5C518;color:#0D1015">App</span>
+      </div>
+      <label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:#A3ACB8">Channel it controls · names from Wing
+        <select value="{{abCh}}" onChange="{{pickAbCh}}" style="flex:none;width:100%">
+          <sc-for list="{{abChs}}" as="c" hint-placeholder-count="8"><option value="{{c}}">{{c}}</option></sc-for>
+        </select>
+      </label>
+      <div style="display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:8px">
+        <sc-for list="{{abSides}}" as="sd" hint-placeholder-count="2">
+          <div style="border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:6px;border:2px solid {{sd.border}};background:{{sd.bg}}">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span style="font-size:22px;font-weight:600;color:{{sd.color}}">{{sd.name}}</span>
+              <span style="font-size:11px;font-weight:600;color:{{sd.color}}">{{sd.state}}</span>
+            </div>
+            <sc-for list="{{sd.steps}}" as="st" hint-placeholder-count="2">
+              <div style="display:flex;flex-direction:column;gap:3px">
+                <span style="font-size:11px;font-weight:600;border-radius:4px;padding:1px 5px;background:{{st.devColor}};color:#0D1015;align-self:flex-start">{{st.dev}}</span>
+                <select aria-label="{{sd.name}} step {{st.n}}" value="{{st.action}}" onChange="{{st.pick}}" style="min-height:40px;font-size:12px">
+                  <sc-for list="{{st.opts}}" as="o" hint-placeholder-count="6"><option value="{{o}}">{{o}}</option></sc-for>
+                </select>
+              </div>
+            </sc-for>
+            <button class="btn" style="min-height:36px;font-size:12px" onClick="{{sd.add}}">+ Step</button>
+          </div>
+        </sc-for>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn pri" style="flex:1" onClick="{{abPress}}">Demo: press {{ab.label}}</button>
+        <sc-if value="{{abCanUndo}}" hint-placeholder-val="{{ false }}">
+          <button class="btn" style="background:#6CB4F5;border-color:#6CB4F5;color:#08131C;font-weight:600" onClick="{{abUndo}}">↶ Undo</button>
+        </sc-if>
+      </div>
+      <sc-if value="{{abHasUndo}}" hint-placeholder-val="{{ false }}">
+        <div role="status" style="background:#0F1318;border:1px solid {{abUndoBorder}};border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:4px">
+          <div style="font-size:13px;font-weight:600">{{abUndoTitle}}</div>
+          <div style="font-size:12px;color:#A3ACB8">{{abUndoSub}}</div>
+        </div>
+      </sc-if>
+      <div style="display:flex;flex-direction:column;gap:6px;border-top:1px solid #222831;padding-top:8px">
+        <div style="font-size:12px;color:#A3ACB8">Undo from the controller</div>
+        <div style="display:flex;gap:4px;background:#0F1318;border:1px solid #262C36;border-radius:10px;padding:3px" role="group" aria-label="Undo gesture">
+          <sc-for list="{{abGestures}}" as="g" hint-placeholder-count="3">
+            <button onClick="{{g.pick}}" aria-pressed="{{g.on}}" style="flex:1;min-height:40px;border-radius:8px;border:0;cursor:pointer;font:500 12px 'IBM Plex Sans',system-ui,sans-serif;background:{{g.bg}};color:{{g.color}}">{{g.name}}</button>
+          </sc-for>
+        </div>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px"><input type="checkbox" checked style="width:20px;height:20px;accent-color:#F5C518"> Light the button on the controller (on = B)</label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px"><input type="checkbox" style="width:20px;height:20px;accent-color:#F5C518"> Momentary: B only while the button is held</label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px"><input type="checkbox" checked style="width:20px;height:20px;accent-color:#F5C518"> Follow the desk: if someone mutes the channel on the Wing, flip to A</label>
+      <div style="font-size:12px;color:#A3ACB8">Changing the channel updates both sides. If that channel is renamed on the Wing, the new name shows here.</div>
+    </section>
+
+    <section class="card" style="display:flex;flex-direction:column;padding:8px 14px">
+      <div class="lbl" style="padding:4px 0 6px">Button → action</div>
+      <sc-for list="{{maps}}" as="m" hint-placeholder-count="6">
+        <div style="display:flex;flex-direction:column;gap:6px;padding:10px 0;border-top:1px solid #222831">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="mono" style="font-size:12px;background:#0F1318;border:1px solid {{m.ring}};border-radius:6px;padding:3px 7px">{{m.msg}}</span>
+            <span style="flex:1;font-size:13px;color:#A3ACB8">{{m.label}}</span>
+            <span style="font-size:11px;font-weight:600;border-radius:5px;padding:2px 7px;background:{{m.toBg}};color:#0D1015">{{m.to}}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <select aria-label="Action for {{m.label}}" value="{{m.action}}" onChange="{{m.pick}}">
+              <sc-for list="{{actions}}" as="a" hint-placeholder-count="10"><option value="{{a}}">{{a}}</option></sc-for>
+            </select>
+            <button class="x" onClick="{{m.remove}}" aria-label="Remove {{m.label}}">×</button>
+          </div>
+        </div>
+      </sc-for>
+    </section>
+
+    <div style="font-size:12px;color:#A3ACB8;padding:0 4px;line-height:1.45">The controller is plugged into the MacBook Pro. Buttons marked <b>Playback</b> are handled by Playback on the Mac and ignored by the app. Buttons marked <b>App</b> reach the booth app over network MIDI. Every press is logged.</div>
+  </main>
+
+  <div class="rtabar" style="flex:none">
+    <dc-import name="MiniRTA" hint-size="390px,48px"></dc-import>
+  </div>
+  <div style="position:absolute;inset:0;z-index:6;pointer-events:none">
+    <dc-import name="MDTalk" hint-size="390px,844px"></dc-import>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.nextNote = 40;
+    this.state = {
+      learning: false, last: 'Note 36 · vel 100', flash: false, hit: -1, abState: 'A', abFlash: false, abUndo: null, abGesture: 1,
+      ab: { msg: 'CC 65', label: 'Footswitch 2', ch: this.chLabel(15),
+        A: [['Wing', 'Mute Ch 15 · Pastor HH'], ['ProPresenter', 'Stage layout: Band']],
+        B: [['Wing', 'Unmute Ch 15 · Pastor HH'], ['ProPresenter', 'Stage layout: Speaker']] },
+      maps: [
+        ['Note 36', 'Pad 1', 'Macro: Worship start'],
+        ['Note 37', 'Pad 2', 'Macro: Message'],
+        ['Note 38', 'Pad 3', 'ProPresenter: Next slide'],
+        ['Note 39', 'Pad 4', 'Lights: Go'],
+        ['CC 64', 'Footswitch', 'Playback: Play / Stop'],
+        ['CC 20', 'Button A', 'Add log marker']
+      ]
+    };
+  }
+  componentDidMount() {
+    this.tick = setInterval(() => {
+      const u = this.state.abUndo;
+      if (u && !u.done && u.left > 0) this.setState({ abUndo: { ...u, left: u.left - 1 } });
+    }, 1000);
+    this.timer = setInterval(() => {
+      if (this.state.learning) return;
+      const i = Math.floor(Math.random() * this.state.maps.length);
+      const m = this.state.maps[i];
+      this.setState({ last: m[0] + (m[0].startsWith('CC') ? ' · 127' : ' · vel 100'), hit: i, flash: true });
+      this.t2 = setTimeout(() => this.setState({ flash: false, hit: -1 }), 500);
+    }, 4000);
+  }
+  componentWillUnmount() { clearInterval(this.timer); clearInterval(this.tick); clearTimeout(this.t); clearTimeout(this.t2); clearTimeout(this.t3); }
+  // Channel, bus and DCA names come from the Wing. Every screen reads this one list, so they always match the desk.
+  wnDefaults() {
+    return {
+      ch: { 1: 'Lead Vox', 2: 'BV 1', 3: 'BV 2', 4: 'Acoustic', 5: 'Keys', 6: 'Bass DI', 7: 'Kick', 8: 'RTA Mic', 9: 'Snare', 10: 'Playback L/R', 11: 'Band Leader', 12: 'MD Talkback', 13: 'Drummer TB', 14: 'Spare', 15: 'Pastor HH', 16: 'Pastor Lapel' },
+      aux: { 2: 'Walk-in', 3: 'MD Wireless', 4: 'Click' },
+      bus: { 1: 'Wedges', 2: 'IEM Band', 4: 'IEM Keys', 5: 'Stream L/R' },
+      dca: { 1: 'Band', 2: 'Vocals', 3: 'Speech', 4: 'PB' },
+      mtx: { 1: 'Foyer' },
+      at: '09:58'
+    };
+  }
+  wn() { try { const w = JSON.parse(localStorage.getItem('booth.wingnames') || 'null'); if (w && w.ch) return w; } catch (e) {} return this.wnDefaults(); }
+  chName(n) { return this.wn().ch[n] || 'Ch ' + String(n).padStart(2, '0'); }
+  chLabel(n) { return 'Ch ' + String(n).padStart(2, '0') + ' · ' + this.chName(n); }
+  wnSave(kind, n, name, by) {
+    const w = this.wn(); w[kind] = { ...w[kind], [n]: name };
+    const d = new Date(); w.at = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); w.by = by || '';
+    try { localStorage.setItem('booth.wingnames', JSON.stringify(w)); } catch (e) {}
+    return w;
+  }
+  renderVals() {
+    const s = this.state;
+    return {
+      ctrls: [
+        { name: 'USB MIDI controller', how: 'Plugged into MacBook Pro · USB' },
+        { name: 'Network MIDI · C3 Life Session', how: 'MacBook Pro forwards the controller to the app' }
+      ],
+      last: s.last,
+      lastColor: s.flash ? '#F5C518' : '#ECEEF1',
+      learning: s.learning, notLearning: !s.learning,
+      learn: () => {
+        this.setState({ learning: true });
+        this.t = setTimeout(() => {
+          const n = this.nextNote++;
+          this.setState({ learning: false, last: 'Note ' + n + ' · vel 96', maps: this.state.maps.concat([['Note ' + n, 'Pad ' + (n - 35), 'Choose an action…']]) });
+        }, 1800);
+      },
+      actions: ['Choose an action…', 'Macro: Walk-in', 'Macro: Worship start', 'Macro: Message', 'Macro: End of service', 'ProPresenter: Next slide', 'ProPresenter: Previous slide', 'ProPresenter: Clear all', 'Lights: Go', 'Lights: Back', 'Lights: Blackout', 'Playback: Play / Stop', 'Playback: Next section', 'Wing: Mute band DCA', 'Chat: Stand by', 'Add log marker', 'Undo last MIDI press', 'Undo last macro'],
+      ab: s.ab,
+      abCh: s.ab.ch,
+      abChs: [1, 2, 3, 4, 5, 11, 12, 13, 15, 16].map((n) => this.chLabel(n)),
+      pickAbCh: (e) => {
+        const nc = e.target.value, oc = s.ab.ch;
+        const swap = (list) => list.map(([d, a]) => [d, d === 'Wing' ? a.split(oc).join(nc) : a]);
+        this.setState({ ab: { ...s.ab, ch: nc, A: swap(s.ab.A), B: swap(s.ab.B) } });
+      },
+      abBorder: s.abFlash ? '#F5C518' : '#262C36',
+      abPress: () => {
+        const next = s.abState === 'A' ? 'B' : 'A';
+        const t = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        this.setState({ abState: next, abFlash: true, last: s.ab.msg + ' · ' + (next === 'B' ? '127' : '0'), abUndo: { from: s.abState, to: next, at: t, left: 30, done: false } });
+        clearTimeout(this.t3); this.t3 = setTimeout(() => this.setState({ abFlash: false }), 500);
+      },
+      abHasUndo: !!s.abUndo,
+      abCanUndo: !!s.abUndo && !s.abUndo.done && s.abUndo.left > 0,
+      abUndoBorder: s.abUndo && s.abUndo.done ? '#6CB4F5' : '#262C36',
+      abUndoTitle: !s.abUndo ? '' : (s.abUndo.done ? 'Undone · back to ' + s.abUndo.from : 'Pressed at ' + s.abUndo.at + ' · ' + s.abUndo.from + ' → ' + s.abUndo.to),
+      abUndoSub: !s.abUndo ? '' : (s.abUndo.done
+        ? 'Put back exactly as before: ' + s.ab.ch + ' mute and level, and the stage display layout.'
+        : (s.abUndo.left > 0 ? 'Undo puts back ' + s.ab.ch + ' (mute and level) and the stage layout · ' + s.abUndo.left + 's left' : 'Undo time has passed. Press the switch again to flip back.')),
+      abUndo: () => this.setState({ abState: s.abUndo.from, abUndo: { ...s.abUndo, done: true }, last: 'Undo · ' + s.ab.label }),
+      abGestures: ['Off', 'Double-tap', 'Hold 2 s'].map((n, i) => ({
+        name: n, on: s.abGesture === i,
+        bg: s.abGesture === i ? '#262C36' : 'transparent', color: s.abGesture === i ? '#ECEEF1' : '#A3ACB8',
+        pick: () => this.setState({ abGesture: i })
+      })),
+      abSides: ['A', 'B'].map((side) => {
+        const on = s.abState === side;
+        const opts = {
+          'Wing': ['Mute ' + s.ab.ch, 'Unmute ' + s.ab.ch, 'Fade ' + s.ab.ch + ' to −∞ over 2s', 'Fade ' + s.ab.ch + ' back to its level over 2s', 'Mute DCA 1 · Band', 'Unmute DCA 1 · Band', 'Turn on MG 1 · Band', 'Turn off MG 1 · Band'],
+          'ProPresenter': ['Stage layout: Band', 'Stage layout: Speaker', 'Stage layout: MD only', 'Stage message: Wrap up', 'Clear stage message'],
+          'Lights': ['Fire cue: Worship warm', 'Fire cue: Message', 'Master to 40%']
+        };
+        const colors = { 'Wing': '#6CB4F5', 'ProPresenter': '#B48CF2', 'Lights': '#F5C518' };
+        return {
+          name: side,
+          state: on ? 'ACTIVE' : '',
+          color: on ? '#0D1015' : '#ECEEF1',
+          bg: on ? (side === 'A' ? '#F5C518' : '#6CB4F5') : '#0F1318',
+          border: on ? (side === 'A' ? '#F5C518' : '#6CB4F5') : '#262C36',
+          steps: s.ab[side].map(([dev, action], k) => ({
+            n: k + 1, dev, action, devColor: colors[dev], opts: opts[dev],
+            pick: (e) => this.setState({ ab: { ...s.ab, [side]: s.ab[side].map((x, j) => (j === k ? [x[0], e.target.value] : x)) } })
+          })),
+          add: () => this.setState({ ab: { ...s.ab, [side]: s.ab[side].concat([['Lights', 'Fire cue: Message']]) } })
+        };
+      }),
+      maps: s.maps.map(([msg, label, action], i) => ({
+        msg, label, action,
+        to: action.indexOf('Playback:') === 0 ? 'Playback' : 'App',
+        toBg: action.indexOf('Playback:') === 0 ? '#7FD1C1' : '#F5C518',
+        ring: s.hit === i ? '#F5C518' : '#333B47',
+        pick: (e) => this.setState({ maps: s.maps.map((x, j) => (j === i ? [x[0], x[1], e.target.value] : x)) }),
+        remove: () => this.setState({ maps: s.maps.filter((_, j) => j !== i) })
+      }))
+    };
+  }
+}
+</script>
+</body>
+</html>

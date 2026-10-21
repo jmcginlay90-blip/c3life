@@ -1,0 +1,492 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>C3 Life – Network connections</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet" data-look>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Safari / iPad: no zoom when typing, no double-tap zoom, no text-select or callout while dragging */
+html{-webkit-text-size-adjust:100%;touch-action:manipulation}
+input,select,textarea{font-size:16px!important}
+button,a,summary,label,[role=slider]{-webkit-tap-highlight-color:transparent}
+[role=slider],.fader,.pan{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+body{margin:0;background:#0D1015}
+a{color:#6CB4F5}a:hover{color:#9CCBF8}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:62px;color:#A3ACB8;text-decoration:none;font-size:12px;font-weight:500;border-top:2px solid transparent}
+.tab.on{color:#F5C518;border-top-color:#F5C518}
+.card{background:#161A21;border:1px solid #262C36;border-radius:14px;padding:14px}
+.lbl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#A3ACB8;font-weight:500}
+.mono{font-family:'IBM Plex Mono',ui-monospace,monospace}
+.btn{min-height:46px;padding:0 14px;border-radius:12px;border:1px solid #333B47;background:#1E232C;color:#ECEEF1;font:500 14px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer}
+.btn.pri{background:#F5C518;border-color:#F5C518;color:#1A1204;font-weight:600}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.row{display:flex;align-items:center;gap:10px;min-height:52px;border-top:1px solid #222831}
+.chip{font-size:12px;border:1px solid #333B47;border-radius:14px;padding:4px 10px;color:#C9CFD7}
+input[type=text]{width:100%;min-height:44px;border-radius:10px;border:1px solid #333B47;background:#0F1318;color:#ECEEF1;font:400 14px 'IBM Plex Sans',system-ui,sans-serif;padding:0 10px;box-sizing:border-box}
+input[type=text]:disabled{opacity:.5}
+.cab{display:flex;gap:10px;padding:10px 0;border-top:1px solid #222831;align-items:flex-start}
+.cab.chg{background:#2A2010;border:1px solid #F5C518;border-radius:10px;padding:10px;margin:4px 0}
+.cid{font:600 13px 'IBM Plex Mono',ui-monospace,monospace;width:38px;flex:none;color:#C9CFD7;padding-top:1px}
+
+/* Fills any screen. Wider than 700px (iPad, laptop, web) the content sits in a centred column. */
+@media (min-width:700px){
+  .app > *:not(.bn):not([style*="position:absolute"]){width:100%;max-width:760px;margin-left:auto;margin-right:auto;box-sizing:border-box}
+}
+
+.app > .rtabar{max-width:none !important;margin-left:0 !important;margin-right:0 !important}
+
+/* Easy to use: every link, tick box and control is at least 40-44px tall, so it is easy to hit with a thumb. */
+a[style*="min-height:28px"]{min-height:44px !important}
+a[style*="font-size:12px"][style*="text-decoration:none"],a[style*="font-size:13px"][style*="text-decoration:none"]{display:inline-flex;align-items:center;min-height:40px}
+label:has(> input[type=checkbox]),label:has(> input[type=radio]){min-height:44px}
+input[type=checkbox],input[type=radio]{width:22px;height:22px;flex:none;accent-color:#F5C518}
+input[type=range]{min-height:40px}
+select{min-height:44px}
+button.sw::after,button.cell::after{content:'';position:absolute;inset:-7px -4px}
+.cell{position:relative}
+input[type=checkbox][aria-label]{width:32px;height:32px}
+
+/* Menu: a drop-down list at the top of every screen. Tap Menu to open it, tap again (or pick a page) to close. */
+.topmenu{position:relative;z-index:20;flex:none;background:#11151B;border-bottom:1px solid #262C36}
+.topmenu summary{list-style:none;display:flex;align-items:center;gap:10px;min-height:52px;padding:0 16px;cursor:pointer;color:#ECEEF1;font:600 15px 'IBM Plex Sans',system-ui,sans-serif;max-width:760px;margin:0 auto;box-sizing:border-box}
+.topmenu summary::-webkit-details-marker{display:none}
+.topmenu .mlabel{font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:#A3ACB8}
+.topmenu .mcur{flex:1;color:#F5C518}
+.topmenu .chev{transition:transform .15s}
+.topmenu details[open] .chev{transform:rotate(180deg)}
+.topmenu .mlist{position:absolute;left:8px;right:8px;top:calc(100% + 4px);background:#161A21;border:1px solid #333B47;border-radius:14px;box-shadow:0 14px 34px rgba(0,0,0,.55);padding:6px;display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.topmenu .mlist a{display:flex;align-items:center;gap:10px;min-height:52px;padding:0 12px;border-radius:10px;color:#ECEEF1;text-decoration:none;font:500 15px 'IBM Plex Sans',system-ui,sans-serif}
+.topmenu .mlist a:hover{background:#1E232C}
+.topmenu .mlist a.on{background:#262C36;color:#F5C518}
+@media (min-width:700px){.topmenu .mlist{left:calc(50% - 372px);right:auto;width:440px}}
+@media (min-width:700px) and (max-width:800px){.topmenu .mlist{left:16px}}
+
+.wfn{width:100%;display:flex;align-items:center;gap:12px;min-height:58px;padding:6px 8px;background:none;border:0;color:#ECEEF1;cursor:pointer;font:inherit;border-radius:10px;box-sizing:border-box}
+.wfn:hover{background:#1A1F27}
+.wfn.on{background:#1E232C;box-shadow:inset 0 0 0 1px #F5C518}
+.wfn:disabled{opacity:.5;cursor:not-allowed}
+/* wide:start — iPad landscape and laptops: use the width */
+@media (min-width:1000px){
+  .app > *:not(.bn):not([style*="position:absolute"]){max-width:1240px}
+  .topmenu summary{max-width:1240px}
+  .app main.wide2{display:grid !important;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:14px 18px !important}
+  .app main.wide2 > *{min-width:0}
+  .app main.wide2 > :not(section):not(.card):not(details):not(.wcol){grid-column:1 / -1}
+  .app main.wide2 > .wfull{grid-column:1 / -1}
+  .app main.wide1{max-width:980px !important}
+  .app:has(main.wide1) > *:not(.bn):not([style*="position:absolute"]){max-width:980px}
+  .app:has(main.wide1) .topmenu summary{max-width:980px}
+}
+@media (min-width:1500px){ .app main.wide2.wide3{grid-template-columns:repeat(3,minmax(0,1fr))} }
+/* wide:end */
+/* look:start — the WING look (like WING Edit): near-black, outlined panels, condensed headings, yellow for active, blue for selected.
+   Settings › Look › Classic puts the old look back on this device (html[data-look=classic]). */
+:root{--wk-bg:#0A0B0D;--wk-panel:#121418;--wk-panel2:#181B20;--wk-line:#2E333A;--wk-yellow:#F5C518;--wk-blue:#2F6CC4;--wk-cond:'Barlow Condensed','IBM Plex Sans',system-ui,sans-serif}
+html:not([data-look=classic]) body{background:var(--wk-bg)}
+html:not([data-look=classic]) .app{background:var(--wk-bg) !important}
+html:not([data-look=classic]) .card{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .lbl{font-family:var(--wk-cond);font-size:13px;font-weight:600;letter-spacing:.07em;color:#D4D9E0}
+html:not([data-look=classic]) h1{font-family:var(--wk-cond);font-weight:600 !important;text-transform:uppercase;letter-spacing:.05em;font-size:21px !important;line-height:1.2;color:var(--wk-yellow);border:1.5px solid var(--wk-yellow);border-radius:3px;padding:2px 12px;display:inline-block}
+html:not([data-look=classic]) .btn,html:not([data-look=classic]) .lk,html:not([data-look=classic]) .mxb,html:not([data-look=classic]) .mxbk,html:not([data-look=classic]) .mute,html:not([data-look=classic]) .pbtn{font-family:var(--wk-cond);font-size:15px;letter-spacing:.02em;border-radius:4px}
+html:not([data-look=classic]) .btn.pri{background:var(--wk-yellow);border-color:var(--wk-yellow);color:#111}
+html:not([data-look=classic]) .seg{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .seg a{font-family:var(--wk-cond);font-size:15px;letter-spacing:.03em;border-radius:4px}
+html:not([data-look=classic]) .seg a.on,html:not([data-look=classic]) .lk.on{background:var(--wk-blue);color:#fff}
+html:not([data-look=classic]) .tab.on{color:var(--wk-yellow);border-top-color:var(--wk-yellow)}
+html:not([data-look=classic]) .topmenu{background:#000;border-bottom-color:var(--wk-line)}
+html:not([data-look=classic]) .topmenu summary{font-family:var(--wk-cond);font-size:16px;letter-spacing:.03em}
+html:not([data-look=classic]) .topmenu .mcur{color:var(--wk-yellow)}
+html:not([data-look=classic]) .topmenu .mlist{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .topmenu .mlist a{font-family:var(--wk-cond);font-size:16px;border-radius:4px}
+html:not([data-look=classic]) .topmenu .mlist a.on{background:var(--wk-panel2);color:var(--wk-yellow);box-shadow:inset 3px 0 0 var(--wk-yellow)}
+html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic]) input[type=radio],html:not([data-look=classic]) input[type=range]{accent-color:var(--wk-yellow)}
+.wkside{display:none}
+/* iPad landscape and laptops: a sidebar like WING Edit's (HOME, MIXER, ...) instead of the menu at the top */
+@media (min-width:1000px){
+  html:not([data-look=classic]) .wkside{display:flex;flex-direction:column;gap:2px;position:fixed;left:0;top:0;bottom:0;width:132px !important;max-width:132px !important;margin:0 !important;padding:8px 6px 12px;box-sizing:border-box;background:#000;border-right:1px solid var(--wk-line);overflow-y:auto;z-index:30}
+  html:not([data-look=classic]) .wkside .wkbrand{font:700 24px var(--wk-cond);letter-spacing:.06em;color:var(--wk-yellow);padding:6px 8px 12px}
+  html:not([data-look=classic]) .wkside a{display:flex;align-items:center;gap:9px;min-height:46px;padding:0 8px;border-radius:4px;color:#D4D9E0;text-decoration:none;font:600 15px var(--wk-cond);text-transform:uppercase;letter-spacing:.04em}
+  html:not([data-look=classic]) .wkside a:hover{background:var(--wk-panel2)}
+  html:not([data-look=classic]) .wkside a.on{background:var(--wk-panel2);color:var(--wk-yellow);box-shadow:inset 3px 0 0 var(--wk-yellow)}
+  html:not([data-look=classic]) .wkside svg{flex:none}
+  html:not([data-look=classic]) .app{padding-left:132px;box-sizing:border-box !important}
+  html:not([data-look=classic]) .app > .topmenu{display:none}
+}
+/* look:end */
+</style>
+</helmet>
+<div class="app has-bn" style="width:100%;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;background:#0D1015;color:#ECEEF1;font-family:'IBM Plex Sans',system-ui,sans-serif;overflow:hidden">
+  
+  
+  
+  
+  <nav class="wkside" aria-label="Main menu (side)"><div class="wkbrand" aria-hidden="true">C3 LIFE</div><a href="Main.dc.html" class="on" aria-current="page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Home</a>
+        <a href="Wing.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4v16M12 4v16M18 4v16"/><path d="M4 14h4M10 8h4M16 16h4"/></svg>Mixer</a>
+        <a href="RTA.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V12M9 20V6M14 20V10M19 20V4"/></svg>RTA</a>
+        <a href="Show.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M10 8l5 2-5 2z"/><path d="M8 20h8"/></svg>Show</a>
+        <a href="Lights.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>Lights</a>
+        <a href="Plan.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h1M4 12h1M4 18h1"/></svg>Plan</a>
+        <a href="Chat.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>Chat</a>
+        <a href="Listen.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="15" width="4" height="6" rx="1.5"/><rect x="17" y="15" width="4" height="6" rx="1.5"/><path d="M10 9.5a2.5 2.5 0 0 1 4 0"/></svg>Listen</a>
+        <a href="Help.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2.5 2-2.5 3.5M12 17h.01"/></svg>Help</a>
+        <a href="Report.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4h11l-1.5 4L16 12H5"/></svg>Report an issue</a></nav>
+  <nav class="bn topmenu" aria-label="Main menu">
+    <details>
+      <summary aria-label="Menu. You are on Network connections"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span class="mlabel">Menu</span><span class="mcur">Network connections</span><svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+      <div class="mlist">
+        <a href="Main.dc.html" class="on" aria-current="page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Home</a>
+        <a href="Wing.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4v16M12 4v16M18 4v16"/><path d="M4 14h4M10 8h4M16 16h4"/></svg>Mixer</a>
+        <a href="RTA.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V12M9 20V6M14 20V10M19 20V4"/></svg>RTA</a>
+        <a href="Show.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M10 8l5 2-5 2z"/><path d="M8 20h8"/></svg>Show</a>
+        <a href="Lights.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>Lights</a>
+        <a href="Plan.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h1M4 12h1M4 18h1"/></svg>Plan</a>
+        <a href="Chat.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>Chat</a>
+        <a href="Listen.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="15" width="4" height="6" rx="1.5"/><rect x="17" y="15" width="4" height="6" rx="1.5"/><path d="M10 9.5a2.5 2.5 0 0 1 4 0"/></svg>Listen</a>
+        <a href="Help.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2.5 2-2.5 3.5M12 17h.01"/></svg>Help</a>
+        <a href="Report.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4h11l-1.5 4L16 12H5"/></svg>Report an issue</a>
+      </div>
+    </details>
+  </nav>
+  <header style="padding:18px 20px 12px;display:flex;flex-direction:column;gap:4px">
+    <a href="Main.dc.html" style="font-size:13px;text-decoration:none;min-height:28px;display:flex;align-items:center">← Home</a>
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:10px">
+      <h1 style="margin:0;font-size:26px;font-weight:600">Network connections</h1>
+      <span style="font-size:12px;font-weight:600;color:{{lockColor}};border:1px solid {{lockColor}};border-radius:6px;padding:3px 8px;white-space:nowrap">{{lockText}}</span>
+    </div>
+    <div style="font-size:13px;color:#A3ACB8">The C3 Life server can use more than one Ethernet cable and more than one Wi-Fi network. Booth gear always stays on its own network.</div>
+  </header>
+
+  <main class=" wide2" style="flex:1;overflow-y:auto;padding:0 16px 16px;display:flex;flex-direction:column;gap:12px">
+    <section class="card" style="display:flex;flex-direction:column;gap:6px;border-color:{{netEdge}}">
+      <div class="lbl">Right now</div>
+      <div style="display:flex;align-items:center;gap:8px"><span style="width:10px;height:10px;border-radius:50%;background:#6CB4F5;flex:none"></span><span style="font-size:15px;font-weight:600">Booth gear: Ethernet 1</span></div>
+      <div style="display:flex;align-items:center;gap:8px"><span style="width:10px;height:10px;border-radius:50%;flex:none;background:{{netDot}}"></span><span style="font-size:15px;font-weight:600">{{netNow}}</span></div>
+      <sc-if value="{{hasSwitch}}" hint-placeholder-val="{{ false }}"><div style="font-size:13px;color:#F5C518">{{switchNote}}</div></sc-if>
+    </section>
+
+    <section class="card" style="display:flex;flex-direction:column;padding:6px 14px">
+      <div class="lbl" style="padding:8px 0">Connections on the C3 Life server</div>
+      <sc-for list="{{ports}}" as="c" hint-placeholder-count="3">
+        <div style="display:flex;flex-direction:column;gap:6px;padding:10px 0;border-top:1px solid #222831">
+          <div style="display:flex;align-items:flex-start;gap:10px">
+            <span style="width:10px;height:10px;border-radius:50%;margin-top:5px;flex:none;background:{{c.dot}}"></span>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:14px;font-weight:600">{{c.name}}</div>
+              <div style="font-size:12px;color:#A3ACB8">{{c.where}}</div>
+              <div style="font-size:12px;color:{{c.dot}}">{{c.status}}</div>
+            </div>
+          </div>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#A3ACB8">Use for
+            <select value="{{c.use}}" onChange="{{c.setUse}}" disabled="{{c.lockUse}}" style="flex:1">
+              <sc-for list="{{c.uses}}" as="u" hint-placeholder-count="3"><option value="{{u.v}}">{{u.t}}</option></sc-for>
+            </select>
+          </label>
+        </div>
+      </sc-for>
+      <div style="font-size:12px;color:#A3ACB8;padding:8px 0;line-height:1.45">Ethernet 1 is fixed to booth gear. More Ethernet ports can be added with a USB Ethernet adapter. They show here when plugged in.</div>
+    </section>
+
+    <section class="card" style="display:flex;flex-direction:column;padding:6px 14px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;padding:8px 0">
+        <div class="lbl">Internet: try in this order</div>
+        <span style="font-size:12px;color:#A3ACB8">{{orderCount}}</span>
+      </div>
+      <sc-for list="{{order}}" as="o" hint-placeholder-count="4">
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid #222831">
+          <span class="mono" style="width:18px;font-size:13px;color:#A3ACB8">{{o.n}}</span>
+          <span style="width:8px;height:8px;border-radius:50%;flex:none;background:{{o.dot}}"></span>
+          <div style="flex:1;min-width:0"><div style="font-size:14px">{{o.name}}</div><div style="font-size:12px;color:#A3ACB8">{{o.state}}</div></div>
+          <button class="btn" style="min-height:40px;width:40px;padding:0" onClick="{{o.up}}" disabled="{{o.noUp}}" aria-label="{{o.upLabel}}">↑</button>
+          <button class="btn" style="min-height:40px;width:40px;padding:0" onClick="{{o.down}}" disabled="{{o.noDown}}" aria-label="{{o.downLabel}}">↓</button>
+          <sc-if value="{{o.isWifi}}" hint-placeholder-val="{{ true }}"><button class="btn" style="min-height:40px;padding:0 10px;font-size:13px" onClick="{{o.forget}}" disabled="{{locked}}">Forget</button></sc-if>
+        </div>
+      </sc-for>
+    </section>
+
+    <section class="card" style="display:flex;flex-direction:column;gap:8px">
+      <div style="font-size:16px;font-weight:600">Add a Wi-Fi network</div>
+      <div style="font-size:12px;color:#A3ACB8;line-height:1.45">Scan to see the Wi-Fi the C3 Life server can hear, tap one and type its password. It joins, checks the internet works and adds it to the bottom of the list above.</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn pri" onClick="{{wfScanBtn}}" disabled="{{wfScanOff}}">{{wfScanLabel}}</button>
+        <sc-if value="{{wfScanning}}" hint-placeholder-val="{{ false }}"><div role="status" style="font-size:13px;color:#A3ACB8">The C3 Life server is listening for Wi-Fi networks nearby…</div></sc-if>
+        <sc-if value="{{wfOk}}" hint-placeholder-val="{{ false }}"><div role="status" style="font-size:13px;color:#6CB4F5;line-height:1.45">✓ {{wfMsg}}</div></sc-if>
+        <sc-if value="{{wfDone}}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column">
+            <div class="lbl" style="padding:6px 0">{{wfCount}} · strongest first</div>
+            <sc-for list="{{wfNets}}" as="w" hint-placeholder-count="6">
+              <div style="display:flex;flex-direction:column;border-top:1px solid #222831">
+                <button class="{{w.cls}}" onClick="{{w.pick}}" disabled="{{w.off}}" aria-label="{{w.aria}}">
+                  <span style="display:flex;align-items:flex-end;gap:2px;height:16px;flex:none" aria-hidden="true">
+                    <sc-for list="{{w.bars}}" as="b" hint-placeholder-count="4"><span style="width:4px;border-radius:1px;height:{{b.h}}px;background:{{b.c}}"></span></sc-for>
+                  </span>
+                  <span style="flex:1;min-width:0;text-align:left"><span style="display:block;font-size:15px;font-weight:500">{{w.ssid}}</span><span style="display:block;font-size:12px;color:#A3ACB8">{{w.sub}}</span></span>
+                  <sc-if value="{{w.saved}}" hint-placeholder-val="{{ false }}"><span style="font-size:11px;font-weight:600;color:#6CB4F5;border:1px solid #6CB4F5;border-radius:4px;padding:1px 6px">Saved</span></sc-if>
+                  <sc-if value="{{w.lock}}" hint-placeholder-val="{{ true }}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#A3ACB8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></sc-if>
+                </button>
+                <sc-if value="{{w.picked}}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex;flex-direction:column;gap:8px;background:#0F1318;border:1px solid #F5C518;border-radius:12px;padding:12px;margin:0 0 10px">
+                    <sc-if value="{{wfOpenNote}}" hint-placeholder-val="{{ false }}"><div style="font-size:13px;color:#C9CFD7;line-height:1.45">{{wfOpenText}}</div></sc-if>
+                  <sc-if value="{{wfNeedPw}}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex;flex-direction:column;gap:6px">
+                      <label for="wf-pw" style="font-size:13px;color:#A3ACB8">Password for {{wfPickName}}</label>
+                      <div style="display:flex;gap:8px">
+                        <input id="wf-pw" type="{{wfPwType}}" value="{{wfPw}}" onChange="{{wfSetPw}}" autocomplete="off" autocapitalize="none" spellcheck="false" style="flex:1;min-height:48px;border-radius:10px;border:1px solid #333B47;background:#0F1318;color:#ECEEF1;font:500 16px 'IBM Plex Mono',ui-monospace,monospace;padding:0 12px;box-sizing:border-box;min-width:0">
+                        <button class="btn" style="flex:none" onClick="{{wfToggleShow}}" aria-label="{{wfShowLabel}} password">{{wfShowLabel}}</button>
+                      </div>
+                      <sc-if value="{{wfPwHint}}" hint-placeholder-val="{{ false }}"><div style="font-size:12px;color:#A3ACB8">{{wfPwHint}}</div></sc-if>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{wfFail}}" hint-placeholder-val="{{ false }}"><div role="alert" style="font-size:13px;color:#FF8A80;line-height:1.45">{{wfMsg}}</div></sc-if>
+                  <sc-if value="{{wfHasPick}}" hint-placeholder-val="{{ false }}">
+                    <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px">
+                      <button class="btn" onClick="{{wfCancel}}">Cancel</button>
+                      <button class="btn pri" onClick="{{wfJoinBtn}}" disabled="{{wfCantJoin}}">{{wfJoinLabel}}</button>
+                      </div>
+                  </sc-if>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-for>
+            <button class="btn" style="margin-top:8px" onClick="{{wfOther}}" disabled="{{wfLocked}}">Not in the list? Join a hidden network</button>
+          </div>
+        </sc-if>
+        <sc-if value="{{wfPickHidden}}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:8px;background:#0F1318;border:1px solid #F5C518;border-radius:12px;padding:12px">
+            <div style="font-size:15px;font-weight:600">Join a hidden network</div>
+            <label style="font-size:13px;color:#A3ACB8">Network name, exactly as it is spelled<input id="wf-name" type="text" value="{{wfHiddenName}}" onChange="{{wfSetHidden}}" autocomplete="off" autocapitalize="none"></label>
+        <sc-if value="{{wfNeedPw}}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <label for="wf-pw" style="font-size:13px;color:#A3ACB8">Password for {{wfPickName}}</label>
+            <div style="display:flex;gap:8px">
+              <input id="wf-pw" type="{{wfPwType}}" value="{{wfPw}}" onChange="{{wfSetPw}}" autocomplete="off" autocapitalize="none" spellcheck="false" style="flex:1;min-height:48px;border-radius:10px;border:1px solid #333B47;background:#0F1318;color:#ECEEF1;font:500 16px 'IBM Plex Mono',ui-monospace,monospace;padding:0 12px;box-sizing:border-box;min-width:0">
+              <button class="btn" style="flex:none" onClick="{{wfToggleShow}}" aria-label="{{wfShowLabel}} password">{{wfShowLabel}}</button>
+            </div>
+            <sc-if value="{{wfPwHint}}" hint-placeholder-val="{{ false }}"><div style="font-size:12px;color:#A3ACB8">{{wfPwHint}}</div></sc-if>
+          </div>
+        </sc-if>
+        <sc-if value="{{wfFail}}" hint-placeholder-val="{{ false }}"><div role="alert" style="font-size:13px;color:#FF8A80;line-height:1.45">{{wfMsg}}</div></sc-if>
+        <sc-if value="{{wfHasPick}}" hint-placeholder-val="{{ false }}">
+          <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px">
+            <button class="btn" onClick="{{wfCancel}}">Cancel</button>
+            <button class="btn pri" onClick="{{wfJoinBtn}}" disabled="{{wfCantJoin}}">{{wfJoinLabel}}</button>
+            </div>
+        </sc-if>
+          </div>
+        </sc-if>
+      </div>
+    </section>
+
+    <section class="card" style="display:flex;flex-direction:column;gap:10px">
+      <label style="display:flex;align-items:flex-start;gap:8px;font-size:14px"><input type="checkbox" checked="{{failover}}" onChange="{{toggleFailover}}" disabled="{{locked}}"><span>Switch to the next one by itself if the internet stops<br><span style="font-size:12px;color:#A3ACB8">Checks every 30 seconds. Reports wait on the drive until one works.</span></span></label>
+      <label style="display:flex;align-items:flex-start;gap:8px;font-size:14px"><input type="checkbox" checked disabled><span>Keep booth gear off the church network<br><span style="font-size:12px;color:#A3ACB8">Always on. The Wing, Dante and the Macs are only reached on Ethernet 1.</span></span></label>
+      <label style="display:flex;align-items:flex-start;gap:8px;font-size:14px"><input type="checkbox" checked="{{backupAp}}" onChange="{{toggleBackupAp}}" disabled="{{locked}}"><span>Backup Wi-Fi for phones<br><span style="font-size:12px;color:#A3ACB8">If the booth Wi-Fi access point stops, the C3 Life server turns on Windows Mobile hotspot, called C3Life-Backup. It has one Wi-Fi card, so Wi-Fi internet stops while it's on. Ethernet 2 still works. Check at the booth that the hotspot starts with no internet.</span></span></label>
+    </section>
+
+    <section class="card" style="display:flex;flex-direction:column;gap:8px">
+      <div class="lbl">Try it</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn" style="flex:1;min-width:150px;border-style:dashed;color:#A3ACB8;font-size:13px" onClick="{{demoEth}}">{{demoEthLabel}}</button>
+        <button class="btn" style="flex:1;min-width:150px;border-style:dashed;color:#A3ACB8;font-size:13px" onClick="{{demoWifi}}">{{demoWifiLabel}}</button>
+      </div>
+    </section>
+    <sc-if value="{{hasToast}}" hint-placeholder-val="{{ false }}"><div style="font-size:13px;color:#6CB4F5;text-align:center">{{toast}}</div></sc-if>
+  </main>
+
+  <div class="rtabar" style="flex:none">
+    <dc-import name="MiniRTA" hint-size="390px,48px"></dc-import>
+  </div>
+  <div style="position:absolute;inset:0;z-index:6;pointer-events:none">
+    <dc-import name="MDTalk" hint-size="390px,844px"></dc-import>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem('booth.net') || 'null'); } catch (e) {}
+    this.state = saved || {
+      uses: { eth1: 'internet', wlan0: 'internet' },
+      order: [
+        { id: 'eth1', name: 'Ethernet 2 · church network', wifi: false },
+        { id: 'w1', name: 'Wi-Fi · StMarys-Staff', wifi: true },
+        { id: 'w2', name: 'Wi-Fi · Church Office', wifi: true },
+        { id: 'w3', name: 'Phone hotspot · Booth iPhone', wifi: true }
+      ],
+      failover: true, backupAp: false, ethIn: true, wifiDown: false
+    };
+    this.state = { ...this.state, admin: false, adding: false, newName: '', newPw: '', toast: '' };
+  }
+  readUser() { try { return JSON.parse(localStorage.getItem('booth.user') || 'null'); } catch (e) { return null; } }
+  componentDidMount() {
+    const check = () => { const u = this.readUser(); const a = !!u && (u.role || u.name) === 'Admin'; if (a !== this.state.admin) this.setState({ admin: a }); };
+    check(); this.poll = setInterval(check, 800);
+  }
+  componentWillUnmount() { clearInterval(this.poll); clearTimeout(this.t); clearTimeout(this.wfT); }
+  wfJoined(n) { this.setState({ order: n.order }); }
+  // Wi-Fi scan: the C3 Life server lists the networks it can hear, you pick one and type the password.
+  wfFound() {
+    return [
+      { id: 'w-staff', ssid: 'StMarys-Staff', sig: 4, sec: 'WPA2', band: '5 GHz' },
+      { id: 'w-booth', ssid: 'Booth Control', sig: 4, sec: 'WPA3', band: '5 GHz', booth: true },
+      { id: 'w-office', ssid: 'Church Office', sig: 3, sec: 'WPA2', band: '2.4 + 5 GHz' },
+      { id: 'w-guest', ssid: 'C3 Life Guest', sig: 3, sec: 'Open', band: '5 GHz' },
+      { id: 'w-hall', ssid: 'Hall Wi-Fi', sig: 2, sec: 'WPA2', band: '2.4 GHz' },
+      { id: 'w-phone', ssid: 'Booth iPhone', sig: 2, sec: 'WPA2', band: '5 GHz', hotspot: true },
+      { id: 'w-next', ssid: 'BT-Home-8F21', sig: 1, sec: 'WPA2', band: '2.4 GHz' }
+    ];
+  }
+  wfSaved() {
+    try { const n = JSON.parse(localStorage.getItem('booth.net') || 'null'); if (n && n.order) return n.order.map((o) => o.name.replace(/^(Wi-Fi|Phone hotspot) · /, '')); } catch (e) {}
+    return ['StMarys-Staff', 'Church Office', 'Booth iPhone'];
+  }
+  wfScanNow() {
+    this.setState({ wfScan: 'scanning', wfPick: '', wfJoin: 'idle', wfMsg: '' });
+    clearTimeout(this.wfT); this.wfT = setTimeout(() => this.setState({ wfScan: 'done' }), 1600);
+  }
+  wfDoJoin(net) {
+    const s = this.state;
+    const pw = s.wfPw || '';
+    this.setState({ wfJoin: 'joining', wfMsg: '' });
+    clearTimeout(this.wfT);
+    this.wfT = setTimeout(() => {
+      if (net.sec !== 'Open' && !net.saved && (pw.length < 8 || /wrong/i.test(pw))) {
+        this.setState({ wfJoin: 'fail', wfMsg: 'That password didn’t work for ' + net.ssid + '. Check capitals and try again.' });
+        return;
+      }
+      // Save it to the internet list (Network connections) so the C3 Life server joins it again by itself.
+      let n = null; try { n = JSON.parse(localStorage.getItem('booth.net') || 'null'); } catch (e) {}
+      n = n || { uses: { eth1: 'internet', wlan0: 'internet' }, order: [{ id: 'eth1', name: 'Ethernet 2 · church network', wifi: false }, { id: 'w1', name: 'Wi-Fi · StMarys-Staff', wifi: true }, { id: 'w2', name: 'Wi-Fi · Church Office', wifi: true }, { id: 'w3', name: 'Phone hotspot · Booth iPhone', wifi: true }], failover: true, backupAp: false, ethIn: true, wifiDown: false };
+      const label = (net.hotspot ? 'Phone hotspot · ' : 'Wi-Fi · ') + net.ssid;
+      if (!n.order.some((o) => o.name === label)) n.order = n.order.concat([{ id: 'w' + Date.now(), name: label, wifi: true }]);
+      try { localStorage.setItem('booth.net', JSON.stringify(n)); } catch (e) {}
+      this.setState({ wfJoin: 'ok', wfPick: '', wfPw: '', wfMsg: 'Joined ' + net.ssid + ' · internet works · saved, so the C3 Life server joins it again by itself.' });
+      if (this.wfJoined) this.wfJoined(n, net);
+    }, 1400);
+  }
+  wfVals(locked) {
+    const s = this.state;
+    const saved = this.wfSaved();
+    const list = this.wfFound().map((x) => ({ ...x, saved: saved.indexOf(x.ssid) > -1 }));
+    const pick = list.find((x) => x.id === s.wfPick) || (s.wfPick === 'hidden' ? { id: 'hidden', ssid: (s.wfHiddenName || '').trim(), sec: 'WPA2', hidden: true } : null);
+    const sigText = ['', 'Weak', 'OK', 'Good', 'Strong'];
+    return {
+      wfLocked: !!locked,
+      wfIdle: s.wfScan !== 'scanning' && s.wfScan !== 'done',
+      wfScanning: s.wfScan === 'scanning',
+      wfDone: s.wfScan === 'done',
+      wfScanLabel: s.wfScan === 'scanning' ? 'Looking for Wi-Fi…' : (s.wfScan === 'done' ? 'Scan again' : 'Scan for Wi-Fi'),
+      wfScanBtn: () => this.wfScanNow(),
+      wfScanOff: s.wfScan === 'scanning' || !!locked,
+      wfHasPick: !!s.wfPick,
+      wfCount: list.length + ' networks found',
+      wfNets: list.map((x) => ({
+        ssid: x.ssid,
+        sub: (x.booth ? 'Booth network · not for internet' : (x.hotspot ? 'Phone hotspot' : x.sec === 'Open' ? 'No password' : 'Password')) + ' · ' + x.band + ' · ' + sigText[x.sig] + ' signal',
+        bars: [1, 2, 3, 4].map((b) => ({ h: 4 + b * 3, c: b <= x.sig ? '#ECEEF1' : '#333B47' })),
+        lock: x.sec !== 'Open',
+        saved: x.saved, picked: s.wfPick === x.id,
+        cls: s.wfPick === x.id ? 'wfn on' : 'wfn',
+        off: !!locked || !!x.booth,
+        aria: 'Join ' + x.ssid + ', ' + sigText[x.sig] + ' signal' + (x.saved ? ', saved' : ''),
+        pick: () => this.setState({ wfPick: x.id, wfPw: '', wfJoin: 'idle', wfMsg: '' })
+      })),
+      wfPicked: !!pick && !pick.hidden,
+      wfPickHidden: s.wfPick === 'hidden',
+      wfPickName: pick ? pick.ssid : '',
+      wfNeedPw: !!pick && (pick.hidden || (pick.sec !== 'Open' && !pick.saved)),
+      wfOpenNote: !!pick && !pick.hidden && (pick.sec === 'Open' || pick.saved),
+      wfOpenText: pick && pick.saved ? 'Already saved. Tap Join, no password needed.' : 'No password needed. Anyone can join this network, so reports are still sent encrypted.',
+      wfPw: s.wfPw || '', wfSetPw: (e) => this.setState({ wfPw: e.target.value, wfJoin: s.wfJoin === 'fail' ? 'idle' : s.wfJoin }),
+      wfPwType: s.wfShow ? 'text' : 'password', wfShowLabel: s.wfShow ? 'Hide' : 'Show', wfToggleShow: () => this.setState({ wfShow: !s.wfShow }),
+      wfHiddenName: s.wfHiddenName || '', wfSetHidden: (e) => this.setState({ wfHiddenName: e.target.value }),
+      wfOther: () => this.setState({ wfPick: 'hidden', wfPw: '', wfJoin: 'idle', wfMsg: '' }),
+      wfCancel: () => this.setState({ wfPick: '', wfPw: '', wfJoin: 'idle', wfMsg: '' }),
+      wfCantJoin: !pick || s.wfJoin === 'joining' || (pick.hidden && !pick.ssid) || ((pick.hidden || (pick.sec !== 'Open' && !pick.saved)) && (s.wfPw || '').length < 8),
+      wfPwHint: (s.wfPw || '').length > 0 && (s.wfPw || '').length < 8 ? 'Wi-Fi passwords are at least 8 characters.' : '',
+      wfJoinLabel: s.wfJoin === 'joining' ? 'Joining…' : 'Join and save',
+      wfJoinBtn: () => pick && this.wfDoJoin(pick),
+      wfFail: s.wfJoin === 'fail', wfOk: s.wfJoin === 'ok', wfMsg: s.wfMsg || ''
+    };
+  }
+
+  // Save the network setup so Drivers can offer these networks in its scan settings.
+  save(patch, msg) {
+    const n = { ...this.state, ...patch };
+    try { localStorage.setItem('booth.net', JSON.stringify({ uses: n.uses, order: n.order, failover: n.failover, backupAp: n.backupAp, ethIn: n.ethIn, wifiDown: n.wifiDown })); } catch (e) {}
+    this.setState({ ...patch, toast: msg || '' });
+    clearTimeout(this.t); if (msg) this.t = setTimeout(() => this.setState({ toast: '' }), 3500);
+  }
+  avail(o) {
+    const s = this.state;
+    if (o.id === 'eth1') return s.ethIn && s.uses.eth1 === 'internet';
+    if (s.uses.wlan0 !== 'internet' || s.backupAp) return false;
+    if (o.id === 'w1') return !s.wifiDown;
+    if (o.id === 'w2') return false;
+    return true;
+  }
+  renderVals() {
+    const s = this.state;
+    const locked = !s.admin;
+    const live = s.order.find((o) => this.avail(o));
+    const firstWanted = s.order[0];
+    const switched = s.failover && live && firstWanted && live.id !== firstWanted.id;
+    const stateOf = (o) => {
+      if (live && o.id === live.id) return ['In use · internet works', '#6CB4F5'];
+      if (o.id === 'eth1') return [!s.ethIn ? 'Not plugged in' : (s.uses.eth1 !== 'internet' ? 'Not used for internet' : 'Ready'), !s.ethIn ? '#FF7A45' : '#A3ACB8'];
+      if (s.backupAp) return ['Paused while the backup Wi-Fi is on', '#A3ACB8'];
+      if (o.id === 'w1' && s.wifiDown) return ['No internet on this network', '#FF7A45'];
+      if (o.id === 'w2') return ['Not in range', '#A3ACB8'];
+      return ['Ready if needed', '#A3ACB8'];
+    };
+    const uses = (opts) => opts.map(([v, t]) => ({ v, t }));
+    const move = (i, d) => { const o = s.order.slice(); const j = i + d; [o[i], o[j]] = [o[j], o[i]]; this.save({ order: o }, 'Order saved. The C3 Life server tries them top to bottom.'); };
+    return {
+      ...this.wfVals(locked),
+      locked, lockText: s.admin ? 'Admin · editing' : 'Admin can change', lockColor: s.admin ? '#F5C518' : '#A3ACB8',
+      netNow: live ? 'Internet: ' + live.name : 'Internet: none right now · reports wait on the drive',
+      netDot: live ? '#6CB4F5' : '#FF7A45', netEdge: live ? '#262C36' : '#FF7A45',
+      hasSwitch: !!switched, switchNote: switched ? firstWanted.name + ' isn’t working, so the C3 Life server switched to ' + live.name + ' by itself.' : '',
+      ports: [
+        { name: 'Ethernet 1 · built in', where: 'Cable C01 → booth switch P1 · 192.168.10.10 (fixed)', status: 'Connected · 1 Gb/s', dot: '#6CB4F5', use: 'booth', uses: uses([['booth', 'Booth gear (Wing, Dante, Macs, phones)']]), lockUse: true, setUse: () => {} },
+        { name: 'Ethernet 2 · USB adapter', where: 'Cable C12 → church network socket · address from the church router', status: s.ethIn ? 'Plugged in' : 'Not plugged in', dot: s.ethIn ? '#6CB4F5' : '#FF7A45', use: s.uses.eth1,
+          uses: uses([['internet', 'Internet'], ['off', 'Not used']]), lockUse: locked, setUse: (e) => this.save({ uses: { ...s.uses, eth1: e.target.value } }, 'Saved.') },
+        { name: 'Wi-Fi · built in', where: s.backupAp ? 'Making the C3Life-Backup Wi-Fi for phones' : 'Joins the networks in the list below', status: s.backupAp ? 'Backup Wi-Fi on' : (s.uses.wlan0 === 'internet' ? 'On' : 'Off'), dot: s.uses.wlan0 === 'internet' || s.backupAp ? '#6CB4F5' : '#A3ACB8', use: s.uses.wlan0,
+          uses: uses([['internet', 'Internet'], ['off', 'Not used']]), lockUse: locked, setUse: (e) => this.save({ uses: { ...s.uses, wlan0: e.target.value } }, 'Saved.') }
+      ],
+      orderCount: s.order.length + ' saved',
+      order: s.order.map((o, i) => {
+        const st = stateOf(o);
+        return { n: i + 1, name: o.name, state: st[0], dot: st[1], isWifi: o.wifi,
+          noUp: locked || i === 0, noDown: locked || i === s.order.length - 1,
+          upLabel: 'Move ' + o.name + ' up', downLabel: 'Move ' + o.name + ' down',
+          up: () => move(i, -1), down: () => move(i, 1),
+          forget: () => this.save({ order: s.order.filter((x) => x.id !== o.id) }, o.name + ' forgotten.') };
+      }),
+      adding: s.adding, notAdding: !s.adding,
+      startAdd: () => this.setState({ adding: true, newName: '', newPw: '' }),
+      cancelAdd: () => this.setState({ adding: false }),
+      newName: s.newName, newPw: s.newPw,
+      setNewName: (e) => this.setState({ newName: e.target.value }), setNewPw: (e) => this.setState({ newPw: e.target.value }),
+      cantAdd: !s.newName.trim() || s.newPw.length < 8,
+      saveAdd: () => this.save({ adding: false, order: s.order.concat([{ id: 'w' + Date.now(), name: 'Wi-Fi · ' + s.newName.trim(), wifi: true }]) }, 'Added at the bottom. Move it up to try it sooner.'),
+      failover: s.failover, toggleFailover: () => this.save({ failover: !s.failover }),
+      backupAp: s.backupAp, toggleBackupAp: () => this.save({ backupAp: !s.backupAp }),
+      demoEthLabel: s.ethIn ? 'Demo: unplug Ethernet 2' : 'Demo: plug Ethernet 2 back in',
+      demoEth: () => this.save({ ethIn: !s.ethIn }),
+      demoWifiLabel: s.wifiDown ? 'Demo: church Wi-Fi works again' : 'Demo: church Wi-Fi loses internet',
+      demoWifi: () => this.save({ wifiDown: !s.wifiDown }),
+      hasToast: !!s.toast, toast: s.toast
+    };
+  }
+}
+</script>
+</body>
+</html>

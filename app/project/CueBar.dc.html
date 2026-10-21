@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>C3 Life – Slide cue bar</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet" data-look>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+html{-webkit-text-size-adjust:100%;touch-action:manipulation}
+button{-webkit-tap-highlight-color:transparent}
+body{margin:0}
+.cqb{min-height:44px;padding:0 14px;border-radius:10px;border:1px solid #333B47;background:#1E232C;color:#ECEEF1;font:600 14px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer}
+.cqb.pri{background:#B48CF2;border-color:#B48CF2;color:#0D1015}
+/* look:start — the WING look (like WING Edit): near-black, outlined panels, condensed headings, yellow for active, blue for selected.
+   Settings › Look › Classic puts the old look back on this device (html[data-look=classic]). */
+:root{--wk-bg:#0A0B0D;--wk-panel:#121418;--wk-panel2:#181B20;--wk-line:#2E333A;--wk-yellow:#F5C518;--wk-blue:#2F6CC4;--wk-cond:'Barlow Condensed','IBM Plex Sans',system-ui,sans-serif}
+html:not([data-look=classic]) body{background:var(--wk-bg)}
+html:not([data-look=classic]) .app{background:var(--wk-bg) !important}
+html:not([data-look=classic]) .card{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .lbl{font-family:var(--wk-cond);font-size:13px;font-weight:600;letter-spacing:.07em;color:#D4D9E0}
+html:not([data-look=classic]) h1{font-family:var(--wk-cond);font-weight:600 !important;text-transform:uppercase;letter-spacing:.05em;font-size:21px !important;line-height:1.2;color:var(--wk-yellow);border:1.5px solid var(--wk-yellow);border-radius:3px;padding:2px 12px;display:inline-block}
+html:not([data-look=classic]) .btn,html:not([data-look=classic]) .lk,html:not([data-look=classic]) .mxb,html:not([data-look=classic]) .mxbk,html:not([data-look=classic]) .mute,html:not([data-look=classic]) .pbtn{font-family:var(--wk-cond);font-size:15px;letter-spacing:.02em;border-radius:4px}
+html:not([data-look=classic]) .btn.pri{background:var(--wk-yellow);border-color:var(--wk-yellow);color:#111}
+html:not([data-look=classic]) .seg{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .seg a{font-family:var(--wk-cond);font-size:15px;letter-spacing:.03em;border-radius:4px}
+html:not([data-look=classic]) .seg a.on,html:not([data-look=classic]) .lk.on{background:var(--wk-blue);color:#fff}
+html:not([data-look=classic]) .tab.on{color:var(--wk-yellow);border-top-color:var(--wk-yellow)}
+html:not([data-look=classic]) .topmenu{background:#000;border-bottom-color:var(--wk-line)}
+html:not([data-look=classic]) .topmenu summary{font-family:var(--wk-cond);font-size:16px;letter-spacing:.03em}
+html:not([data-look=classic]) .topmenu .mcur{color:var(--wk-yellow)}
+html:not([data-look=classic]) .topmenu .mlist{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .topmenu .mlist a{font-family:var(--wk-cond);font-size:16px;border-radius:4px}
+html:not([data-look=classic]) .topmenu .mlist a.on{background:var(--wk-panel2);color:var(--wk-yellow);box-shadow:inset 3px 0 0 var(--wk-yellow)}
+html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic]) input[type=radio],html:not([data-look=classic]) input[type=range]{accent-color:var(--wk-yellow)}
+.wkside{display:none}
+/* iPad landscape and laptops: a sidebar like WING Edit's (HOME, MIXER, ...) instead of the menu at the top */
+@media (min-width:1000px){
+  html:not([data-look=classic]) .wkside{display:flex;flex-direction:column;gap:2px;position:fixed;left:0;top:0;bottom:0;width:132px !important;max-width:132px !important;margin:0 !important;padding:8px 6px 12px;box-sizing:border-box;background:#000;border-right:1px solid var(--wk-line);overflow-y:auto;z-index:30}
+  html:not([data-look=classic]) .wkside .wkbrand{font:700 24px var(--wk-cond);letter-spacing:.06em;color:var(--wk-yellow);padding:6px 8px 12px}
+  html:not([data-look=classic]) .wkside a{display:flex;align-items:center;gap:9px;min-height:46px;padding:0 8px;border-radius:4px;color:#D4D9E0;text-decoration:none;font:600 15px var(--wk-cond);text-transform:uppercase;letter-spacing:.04em}
+  html:not([data-look=classic]) .wkside a:hover{background:var(--wk-panel2)}
+  html:not([data-look=classic]) .wkside a.on{background:var(--wk-panel2);color:var(--wk-yellow);box-shadow:inset 3px 0 0 var(--wk-yellow)}
+  html:not([data-look=classic]) .wkside svg{flex:none}
+  html:not([data-look=classic]) .app{padding-left:132px;box-sizing:border-box !important}
+  html:not([data-look=classic]) .app > .topmenu{display:none}
+}
+/* look:end */
+</style>
+</helmet>
+<div style="width:100%;height:100vh;height:100dvh;position:relative;pointer-events:none;font-family:'IBM Plex Sans',system-ui,sans-serif;color:#ECEEF1">
+  <sc-if value="{{hasPending}}" hint-placeholder-val="{{ false }}">
+    <div role="alertdialog" aria-label="Slide cue: {{p.name}}" style="position:absolute;left:12px;right:12px;bottom:64px;max-width:620px;margin:0 auto;pointer-events:auto;background:#161A21;border:2px solid #B48CF2;border-radius:14px;padding:12px;box-shadow:0 14px 34px rgba(0,0,0,.6);display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;align-items:flex-start;gap:12px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:11px;font-weight:600;letter-spacing:.08em;color:#B48CF2">SLIDE CUE · {{p.slide}} IS LIVE</div>
+          <div style="font-size:17px;font-weight:600">{{p.name}}</div>
+          <div style="font-size:13px;color:#C9CFD7;line-height:1.4">{{p.summary}}</div>
+        </div>
+        <sc-if value="{{p.counting}}" hint-placeholder-val="{{ true }}">
+          <div aria-label="Runs in {{p.left}} seconds" style="flex:none;width:52px;height:52px;border-radius:26px;border:3px solid #B48CF2;display:flex;align-items:center;justify-content:center;font:600 22px 'IBM Plex Mono',ui-monospace,monospace">{{p.left}}</div>
+        </sc-if>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <button class="cqb" onClick="{{p.cancel}}">{{p.cancelLabel}}</button>
+        <button class="cqb pri" onClick="{{p.run}}">{{p.runLabel}}</button>
+      </div>
+      <sc-if value="{{hasMore}}" hint-placeholder-val="{{ false }}"><div style="font-size:12px;color:#A3ACB8">{{more}}</div></sc-if>
+    </div>
+  </sc-if>
+  <sc-if value="{{hasDone}}" hint-placeholder-val="{{ false }}">
+    <div role="status" style="position:absolute;left:12px;right:12px;bottom:64px;max-width:620px;margin:0 auto;pointer-events:auto;background:#161A21;border:1px solid #333B47;border-radius:14px;padding:10px 12px;box-shadow:0 14px 34px rgba(0,0,0,.6);display:flex;align-items:center;gap:10px">
+      <div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600">{{doneTitle}}</div><div style="font-size:12px;color:#A3ACB8;line-height:1.4">{{doneText}}</div></div>
+      <sc-if value="{{canUndo}}" hint-placeholder-val="{{ true }}"><button class="cqb" onClick="{{undo}}">Undo</button></sc-if>
+      <button class="cqb" style="padding:0 10px" onClick="{{closeDone}}" aria-label="Close">&#215;</button>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { tick: 0 };
+  }
+  componentDidMount() {
+    let seen = 0; try { seen = (JSON.parse(localStorage.getItem('booth.ppslide') || 'null') || {}).at || 0; } catch (e) {}
+    this.seen = Math.max(seen, this.lastSeen());
+    this.cqFetch();
+    this.timer = setInterval(() => this.step(), 250);
+    this.wingCheck(); this.wingT = setInterval(() => this.wingCheck(), 5000);
+  }
+  // On the C3 Life server with the Wing connected and set to Control, cues move the desk itself (the fades run on
+  // the C3 Life server). Otherwise they move the app's mixer, as before.
+  wingCheck() {
+    if (this.wingNo) return;
+    try {
+      const t = this.cqToken();
+      fetch('/api/wing?since=' + (this.wingSt ? this.wingSt.version : -1), { headers: t ? { Authorization: 'Bearer ' + t } : {} })
+        .then((r) => { if (r.status === 404) { this.wingNo = true; return null; } return r.json(); })
+        .then((j) => { if (j && j.ok) this.wingSt = j.changed === false && this.wingSt ? { ...this.wingSt, ...j, strips: this.wingSt.strips } : j; })
+        .catch(() => {});
+    } catch (e) {}
+  }
+  wingLive() { const w = this.wingSt; return !!w && w.status === 'connected' && w.mode === 'control'; }
+  wingFade(moves) {
+    const t = this.cqToken(), h = { 'Content-Type': 'application/json' }; if (t) h.Authorization = 'Bearer ' + t;
+    return fetch('/api/wing/fade', { method: 'POST', headers: h, body: JSON.stringify({ moves: moves }) }).then((r) => r.json().catch(() => ({}))).catch(() => ({ error: 'Couldn\u2019t reach the C3 Life server.' }));
+  }
+  runWing(c, how) {
+    // what each channel has on the desk now, so Undo can put it back
+    const st = ((this.wingSt || {}).strips || {}).ch || {}, before = {}, mv = {};
+    const target = {}; c.do.forEach((a) => { if (a.act === 'fader') target[a.ch] = { db: a.db, fade: a.fade || 0 }; });
+    c.do.forEach((a) => {
+      const cur = st[a.ch] || {}, f = cur.fdr === undefined ? -144 : cur.fdr;
+      if (!before[a.ch]) before[a.ch] = { fdr: f, mute: !!cur.mute };
+      const tg = target[a.ch], secs = a.fade || 0;
+      if (a.act === 'on') mv[a.ch] = secs ? { n: a.ch, from: -144, mute: false, to: tg ? tg.db : (f > -90 ? f : 0), secs: secs } : { n: a.ch, mute: false, to: tg ? tg.db : f, secs: tg ? tg.fade : 0 };
+      else if (a.act === 'off') mv[a.ch] = secs ? { n: a.ch, to: -144, secs: secs, then_mute: true, then_fdr: f } : { n: a.ch, mute: true, to: f, secs: 0 };
+    });
+    c.do.forEach((a) => { if (a.act === 'fader' && !mv[a.ch]) mv[a.ch] = { n: a.ch, to: a.db, secs: a.fade || 0 }; });
+    this.wingFade(Object.values(mv)).then((j) => {
+      if (j && j.ok) {
+        this.cqLog({ cue: c.name, what: 'Ran ' + how + ' on the Wing: ' + this.cqSummary(c) });
+        try { localStorage.setItem('booth.cuedone', JSON.stringify({ name: c.name, text: this.cqSummary(c) + ' (on the Wing)', before: before, wing: true, until: Date.now() + 15000 })); } catch (e) {}
+      } else {
+        this.cqLog({ cue: c.name, what: 'Not sent to the Wing: ' + ((j && j.error) || 'no answer') });
+        try { localStorage.setItem('booth.cuedone', JSON.stringify({ name: c.name, text: 'Not sent to the Wing: ' + ((j && j.error) || 'no answer'), before: {}, undone: true, until: Date.now() + 15000 })); } catch (e) {}
+      }
+      this.setState({ tick: Date.now() });
+    });
+  }
+  componentWillUnmount() { clearInterval(this.timer); clearInterval(this.fadeT); clearInterval(this.wingT); }
+  // Slide cues: audio changes when a ProPresenter slide goes live (a presentation, a slide group or a label).
+  // Each cue asks, counts down with Cancel (5 s unless it says otherwise) or, if an Admin chose it, runs
+  // straight away with Undo. The cues live on the C3 Life server (/api/cues); the mixer here shows the result.
+  cqToken() { try { const x = JSON.parse(localStorage.getItem('booth.session') || 'null'); return x ? x.token : ''; } catch (e) { return ''; } }
+  cqDefaults() { return JSON.parse(JSON.stringify({"enabled": true, "default_how": "count5", "cues": [{"id": "c1", "name": "Pastor mic on for the Message", "on": true, "when": {"kind": "presentation", "text": "Message"}, "how": "count5", "do": [{"ch": 15, "act": "on", "fade": 2}, {"ch": 1, "act": "fader", "db": -10.0, "fade": 3}]}, {"id": "c2", "name": "Lead Vox up for the bridge", "on": true, "when": {"kind": "group", "text": "Bridge"}, "how": "count5", "do": [{"ch": 1, "act": "fader", "db": 2.0, "fade": 2}]}, {"id": "c3", "name": "Walk-in music off at the Welcome", "on": true, "when": {"kind": "presentation", "text": "Welcome"}, "how": "ask", "do": [{"ch": 10, "act": "off", "fade": 3}]}]})); }
+  cqRead() { try { const d = JSON.parse(localStorage.getItem('booth.cues') || 'null'); if (d && Array.isArray(d.cues)) return d; } catch (e) {} return this.cqDefaults(); }
+  cqWrite(d) { try { localStorage.setItem('booth.cues', JSON.stringify(d)); } catch (e) {} }
+  cqFetch() {
+    // On the C3 Life server, the shared cues; this device keeps a copy for the countdown bar.
+    try {
+      const t = this.cqToken();
+      return fetch('/api/cues', { headers: t ? { Authorization: 'Bearer ' + t } : {} }).then((r) => r.json().catch(() => ({})).then((j) => ({ code: r.status, j: j })))
+        .then(({ code, j }) => { if (code === 200 && j.ok) { this.cqServer = true; const d = { enabled: j.enabled, default_how: j.default_how, cues: j.cues }; this.cqWrite(d); return d; } if (code === 401 || code === 403) this.cqServer = true; return null; })
+        .catch(() => null);
+    } catch (e) { return Promise.resolve(null); }
+  }
+  cqNames() {
+    const d = { 1: 'Lead Vox', 2: 'BV 1', 3: 'BV 2', 4: 'Acoustic', 5: 'Keys', 6: 'Bass DI', 7: 'Kick', 8: 'RTA Mic', 9: 'Snare', 10: 'Playback L/R', 11: 'Band Leader', 12: 'MD Talkback', 13: 'Drummer TB', 14: 'Spare', 15: 'Pastor HH', 16: 'Pastor Lapel' };
+    try { const w = JSON.parse(localStorage.getItem('booth.wingnames') || 'null'); if (w && w.ch) return { ...d, ...w.ch }; } catch (e) {}
+    return d;
+  }
+  cqCh(n) { return 'Ch ' + String(n).padStart(2, '0') + ' ' + (this.cqNames()[n] || ''); }
+  // fader position (0-100, as the mixer screen draws it) <-> dB
+  cqToDb(l) { return l <= 0 ? -90 : (l >= 75 ? ((l - 75) / 25) * 10 : -((75 - l) * 1.2)); }
+  cqToLevel(db) { return db <= -90 ? 0 : Math.max(0, Math.min(100, db >= 0 ? 75 + (db / 10) * 25 : 75 + db / 1.2)); }
+  cqDb(db) { return db <= -90 ? '−∞ dB' : (db > 0 ? '+' : (db < 0 ? '−' : '')) + Math.abs(db).toFixed(1) + ' dB'; }
+  cqMix() {
+    // The mixer as everyone sees it: channel -> {level, muted}. The Mixer screen shares the same.
+    const base = {}; const lv = [78, 72, 72, 70, 68, 74, 73, 0, 71, 66, 70, 70, 70, 0, 75, 75];
+    for (let n = 1; n <= 16; n++) base[n] = { level: lv[n - 1], muted: n === 8 || n === 14 || n === 15 || n === 16 };
+    try { const m = JSON.parse(localStorage.getItem('booth.mix') || 'null'); if (m && m.ch) { Object.keys(m.ch).forEach((k) => { base[k] = { ...base[k], ...m.ch[k] }; }); return { v: m.v || 0, ch: base }; } } catch (e) {}
+    return { v: 0, ch: base };
+  }
+  cqSetMix(changes) {
+    const m = this.cqMix();
+    Object.keys(changes).forEach((k) => { m.ch[k] = { ...m.ch[k], ...changes[k] }; });
+    m.v = (m.v || 0) + 1;
+    try { localStorage.setItem('booth.mix', JSON.stringify(m)); } catch (e) {}
+  }
+  cqHowName(h) { return { ask: 'Ask first', count3: '3-second countdown', count5: '5-second countdown', count10: '10-second countdown', now: 'Straight away (with Undo)' }[h] || h; }
+  cqWhenName(w) { return ({ presentation: 'Presentation', group: 'Slide group', label: 'Slide label' }[w.kind] || '') + ' “' + w.text + '”'; }
+  cqDo(a) {
+    if (a.act === 'on') return this.cqCh(a.ch) + (a.fade ? ' fades in over ' + a.fade + ' s' : ' on');
+    if (a.act === 'off') return this.cqCh(a.ch) + (a.fade ? ' fades out over ' + a.fade + ' s' : ' off');
+    return this.cqCh(a.ch) + ' to ' + this.cqDb(a.db) + (a.fade ? ' over ' + a.fade + ' s' : '');
+  }
+  cqSummary(c) { return c.do.map((a) => this.cqDo(a)).join(' · '); }
+  cqLog(entry) {
+    let l = []; try { l = JSON.parse(localStorage.getItem('booth.cuelog') || '[]'); } catch (e) {}
+    const d = new Date(); l.unshift({ t: String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') + ':' + String(d.getSeconds()).padStart(2, '0'), ...entry });
+    try { localStorage.setItem('booth.cuelog', JSON.stringify(l.slice(0, 30))); } catch (e) {}
+  }
+  cqSlide(slide) {
+    // What ProPresenter just put live. On the C3 Life server this comes from ProPresenter; here, from the Show screen.
+    try { localStorage.setItem('booth.ppslide', JSON.stringify({ ...slide, at: Date.now() })); } catch (e) {}
+  }
+  lastSeen() { try { return +(localStorage.getItem('booth.cueseen') || 0); } catch (e) { return 0; } }
+  mine() {
+    // Only devices that control the mixer get the bar (Admin and FOH sound, or whoever Access levels allows).
+    let u = null; try { u = JSON.parse(localStorage.getItem('booth.user') || 'null'); } catch (e) {}
+    if (!u) return true;
+    try { const r = JSON.parse(localStorage.getItem('booth.access') || 'null'); const role = Array.isArray(r) && r.find((x) => x.name === (u.role || u.name)); if (role) return role.p[0] === 2 || role.p[7] === 2; } catch (e) {}
+    return ['Admin', 'FOH sound'].indexOf(u.role || u.name) > -1;
+  }
+  pending() { try { return JSON.parse(localStorage.getItem('booth.cuepending') || '[]'); } catch (e) { return []; } }
+  setPending(l) { try { localStorage.setItem('booth.cuepending', JSON.stringify(l)); } catch (e) {} }
+  step() {
+    const now = Date.now();
+    let slide = null; try { slide = JSON.parse(localStorage.getItem('booth.ppslide') || 'null'); } catch (e) {}
+    if (slide && slide.at > this.seen && slide.at > this.lastSeen()) {
+      this.seen = slide.at; try { localStorage.setItem('booth.cueseen', String(slide.at)); } catch (e) {}
+      const d = this.cqRead();
+      if (d.enabled && this.mine()) {
+        const have = { presentation: slide.presentation || '', group: slide.group || '', label: slide.label || '' };
+        const hits = d.cues.filter((c) => c.on && (have[c.when.kind] || '').trim().toLowerCase() === c.when.text.trim().toLowerCase());
+        const list = this.pending().filter((p) => !hits.some((c) => c.id === p.id));
+        hits.forEach((c) => {
+          const secs = { count3: 3, count5: 5, count10: 10 }[c.how];
+          const p = { id: c.id, name: c.name, slide: slide[c.when.kind] || c.when.text, how: c.how, due: secs ? now + secs * 1000 : 0, expires: now + 60000 };
+          if (c.how === 'now') this.run(p, 'straight away'); else list.push(p);
+        });
+        this.setPending(list);
+      }
+    }
+    // countdowns that reached 0 run; questions nobody answered in a minute are dropped
+    const list = this.pending(); let changed = false;
+    list.slice().forEach((p) => {
+      if (p.due && p.due <= now) { this.run(p, 'after the countdown'); changed = true; }
+      else if (!p.due && p.expires <= now) { this.cqLog({ cue: p.name, what: 'Skipped: nobody answered' }); changed = true; }
+    });
+    if (changed) this.setPending(this.pending().filter((p) => !((p.due && p.due <= now) || (!p.due && p.expires <= now))));
+    let done = null; try { done = JSON.parse(localStorage.getItem('booth.cuedone') || 'null'); } catch (e) {}
+    if (done && done.until < now) { try { localStorage.removeItem('booth.cuedone'); } catch (e) {} }
+    this.setState({ tick: now });
+  }
+  run(p, how) {
+    const c = this.cqRead().cues.find((x) => x.id === p.id);
+    this.setPending(this.pending().filter((x) => x.id !== p.id));
+    if (!c) return;
+    if (this.wingLive()) { this.runWing(c, how); return; }
+    const mix = this.cqMix(), before = {}, now = {}, fades = [];
+    const target = {}; c.do.forEach((a) => { if (a.act === 'fader') target[a.ch] = this.cqToLevel(a.db); });
+    const faded = {};
+    c.do.forEach((a) => {
+      if (!before[a.ch]) before[a.ch] = { ...mix.ch[a.ch] };
+      const cur = mix.ch[a.ch], ms = (a.fade || 0) * 1000;
+      if (a.act === 'on' && ms) {
+        // fade in: on at -inf, then up to its fader (or the level this cue sets)
+        const to = target[a.ch] !== undefined ? target[a.ch] : (cur.level > 0 ? cur.level : 75);
+        now[a.ch] = { muted: false, level: 0 }; fades.push({ ch: a.ch, from: 0, to: to, ms: ms }); faded[a.ch] = true;
+      } else if (a.act === 'off' && ms) {
+        // fade out: down to -inf, then off, with the fader back where it was
+        fades.push({ ch: a.ch, from: cur.level, to: 0, ms: ms, end: { muted: true, level: cur.level } }); faded[a.ch] = true;
+      } else if (a.act === 'on') now[a.ch] = { ...(now[a.ch] || {}), muted: false };
+      else if (a.act === 'off') now[a.ch] = { ...(now[a.ch] || {}), muted: true };
+    });
+    c.do.forEach((a) => {
+      if (a.act !== 'fader' || faded[a.ch]) return;
+      if (!a.fade) now[a.ch] = { ...(now[a.ch] || {}), level: this.cqToLevel(a.db) };
+      else fades.push({ ch: a.ch, from: mix.ch[a.ch].level, to: this.cqToLevel(a.db), ms: a.fade * 1000 });
+    });
+    this.cqSetMix(now);
+    if (fades.length) {
+      const t0 = Date.now(); clearInterval(this.fadeT);
+      const longest = Math.max(...fades.map((f) => f.ms));
+      this.fadeT = setInterval(() => {
+        const el = Date.now() - t0, ch = {};
+        fades.forEach((f) => { const k = Math.min(1, el / f.ms); ch[f.ch] = k >= 1 && f.end ? f.end : { level: Math.round((f.from + (f.to - f.from) * k) * 10) / 10 }; });
+        this.cqSetMix(ch); if (el >= longest) clearInterval(this.fadeT);
+      }, 100);
+    }
+    this.cqLog({ cue: c.name, what: 'Ran ' + how + ': ' + this.cqSummary(c) });
+    try { localStorage.setItem('booth.cuedone', JSON.stringify({ name: c.name, text: this.cqSummary(c), before: before, until: Date.now() + 15000 })); } catch (e) {}
+  }
+  renderVals() {
+    const list = this.pending(), now = Date.now(), p = list[0];
+    let done = null; try { done = JSON.parse(localStorage.getItem('booth.cuedone') || 'null'); } catch (e) {}
+    const c = p ? this.cqRead().cues.find((x) => x.id === p.id) : null;
+    return {
+      hasPending: !!p && !!c, hasMore: list.length > 1, more: list.length > 1 ? '+ ' + (list.length - 1) + ' more cue' + (list.length > 2 ? 's' : '') + ' waiting' : '',
+      p: p && c ? {
+        name: c.name, slide: String(p.slide).toUpperCase(), summary: this.cqSummary(c),
+        counting: !!p.due, left: p.due ? Math.max(1, Math.ceil((p.due - now) / 1000)) : '',
+        runLabel: p.due ? 'Run now' : 'Run', cancelLabel: p.due ? 'Cancel' : 'Skip',
+        run: () => this.run(p, p.due ? 'early (Run now)' : 'when asked'),
+        cancel: () => { this.setPending(this.pending().filter((x) => x.id !== p.id)); this.cqLog({ cue: c.name, what: p.due ? 'Cancelled' : 'Skipped' }); this.setState({ tick: Date.now() }); }
+      } : {},
+      hasDone: !!done && !p, doneTitle: done ? '\u2713 ' + done.name : '', doneText: done ? (done.undone ? 'Undone: back as it was.' : done.text) : '', canUndo: !!done && !done.undone,
+      undo: () => {
+        if (done.wing) this.wingFade(Object.keys(done.before).map((k) => ({ n: Number(k), to: done.before[k].fdr, mute: done.before[k].mute, secs: 0 })));
+        else { clearInterval(this.fadeT); this.cqSetMix(done.before); } this.cqLog({ cue: done.name, what: 'Undone' }); try { localStorage.setItem('booth.cuedone', JSON.stringify({ ...done, undone: true, until: Date.now() + 4000 })); } catch (e) {} this.setState({ tick: Date.now() });
+      },
+      closeDone: () => { try { localStorage.removeItem('booth.cuedone'); } catch (e) {} this.setState({ tick: Date.now() }); }
+    };
+  }
+}
+</script>
+</body>
+</html>
