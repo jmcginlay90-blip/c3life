@@ -218,6 +218,18 @@ class Devices(unittest.TestCase):
         self.assertEqual(self.ft.sets, [])  # a scan only asks: nothing was set on the Tio
         self.assertEqual(r["unknown"], [])  # the camera's on the same address as ProPresenter here, so it isn't listed twice
 
+    def test_every_helper_found_goes_to_the_helpers_list_with_its_id(self):
+        got = []
+        self.sc.on_found = lambda finds: (got.extend(finds), ["Found a C3 Life helper"])[1]
+        hl = web({"/hello": (200, {"service": "c3life-helper", "id": "9f8e7d", "name": "Foyer PC", "os": "windows", "apps": ["Spotify"]})})
+        try:
+            self.sc.cfg["scan_ports"] = {hl.server_address[1]: "helper"}
+            self.sc.run()
+        finally:
+            hl.shutdown(); hl.server_close()
+        self.assertEqual([(f["kind"], f["port"], f["hwid"]) for f in got], [("helper", hl.server_address[1], "helper:9f8e7d")])
+        self.assertIn("Found a C3 Life helper", self.sc.result["changes"])
+
     def test_a_device_without_a_driver_says_what_it_is(self):
         sc = sm.Scanner(self.tmp, {"scan_hosts": ["127.0.0.1"], "scan_ports": {self.cam.server_address[1]: "http"}, "scan_networks": ["10.9.9.0/24"]}, _Log())
         sc.arp, sc.mdns = (lambda: {}), (lambda: {})
@@ -295,6 +307,48 @@ class Api(unittest.TestCase):
         self.assertEqual(self.call("/api/scan/use", "POST", {"kind": "wing", "ip": "10.0.0.9", "port": 2223}, who="FOH sound")[0], 409)
         self.assertEqual(self.call("/api/scan/settings", "PUT", {"auto": False}, who="FOH sound")[0], 403)
         self.assertEqual(self.call("/api/scan/settings", "PUT", {"auto": False})[1]["auto"], False)
+
+
+class Watch(unittest.TestCase):
+    """Through the day: something that stops answering makes the scan run straight away, but not over and over."""
+
+    def test_scans_when_something_stops_answering(self):
+        tmp = tempfile.mkdtemp()
+        try:
+            sc = sm.Scanner(tmp, {"scan_hosts": [], "scan_ports": {}}, _Log())
+            started, clock, lost = [], {"t": 1000.0}, {"v": []}
+            sc.start = lambda who="", auto=False: (started.append(who), True)[1]
+            ticks = {"n": 0}
+
+            def check():
+                ticks["n"] += 1
+                clock["t"] += 30  # each check is 30 seconds after the last
+                if ticks["n"] >= 12:
+                    sc.stop.set()
+                return lost["v"]
+            lost["v"] = []
+            th = threading.Thread(target=sc.watch, args=([check, lambda: []],), kwargs={"every": 0.001, "gap": 120, "now": lambda: clock["t"]})
+            th.start()
+            for _ in range(200):
+                if ticks["n"] >= 2:
+                    break
+                time.sleep(0.005)
+            lost["v"] = ["the C3 Life helper on Mac mini"]
+            th.join(5)
+            self.assertFalse(th.is_alive())
+            self.assertGreaterEqual(len(started), 2)  # it scanned, and again after the gap
+            self.assertLessEqual(len(started), 3)     # but not every check (12 checks, 30 s apart, 2 minutes between scans)
+            self.assertIn("the C3 Life helper on Mac mini stopped answering", started[0])
+            # automatic scans off: the watch does nothing either
+            sc2 = sm.Scanner(tmp, {"scan_hosts": [], "scan_ports": {}}, _Log())
+            sc2.settings["auto"] = False
+            n2 = []
+            sc2.start = lambda who="", auto=False: (n2.append(who), True)[1]
+            th = threading.Thread(target=sc2.watch, args=([lambda: ["the Wing"]],), kwargs={"every": 0.001})
+            th.start(); time.sleep(0.1); sc2.stop.set(); th.join(5)
+            self.assertEqual(n2, [])
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
 
 
 if __name__ == "__main__":

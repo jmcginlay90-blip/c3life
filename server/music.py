@@ -1,11 +1,13 @@
-"""Music: Spotify on the Mac mini, through the C3 Life helper there (helper/c3life_helper.py).
+"""Music: Spotify through a C3 Life helper (helper/c3life_helper.py) on the computer that plays it, usually the Mac mini.
 
 The C3 Life server keeps the playlists (so every device shows the same list) and passes each button press to the helper
-with its key, which phones never see. The helper does the rest with the Mac's own AppleScript, including fades, so a
-fade finishes even if the phone locks. It can also open ProPresenter on that Mac.
+with its key, which phones never see. The helpers are found by the network scan and kept in helpers.py. On a Mac the
+helper does everything with AppleScript, including fades, so a fade finishes even if the phone locks; on a Windows PC
+it can only press Play/Pause, Next and Previous. "Open ProPresenter" uses the helper on the computer ProPresenter is
+set up on ("propresenter" in config.json), or else the music one.
 
-config.json: "helper" (the Mac mini, default http://192.168.10.30:8099) and "helper_key" (shown when the helper starts).
-data/music.json: {"playlists": [{"name", "uri"}], "fade_seconds": 10, "walk_in_volume": 30}
+data/music.json: {"playlists": [{"name", "uri"}], "fade_seconds": 10, "walk_in_volume": 30, "helper_id": ""}
+("helper_id": which computer plays the music; "" = the only one that can)
 """
 
 import json
@@ -13,8 +15,7 @@ import os
 import re
 import threading
 import time
-import urllib.error
-import urllib.request
+import urllib.parse
 
 # the same check as the helper's (helper/c3life_helper.py, which runs on its own on the Mac)
 URI = re.compile(r"^spotify:(playlist|album|track|artist):[A-Za-z0-9]{10,40}$")
@@ -33,9 +34,8 @@ def spotify_uri(s):
     return "spotify:%s:%s" % m.groups() if m else None
 
 
-DEFAULT = {"playlists": [], "fade_seconds": 10, "walk_in_volume": 30}
+DEFAULT = {"playlists": [], "fade_seconds": 10, "walk_in_volume": 30, "helper_id": ""}
 MAX_PLAYLISTS = 30
-NO_KEY = "The helper's key isn't set. Start the helper on the Mac mini, then put its key in config.json (\"helper_key\") or run Install-C3Life.ps1 -HelperKey."
 CACHE = 1.0  # seconds: many phones looking at once ask the Mac once
 
 
@@ -63,13 +63,15 @@ def valid(d):
     v = d.get("walk_in_volume")
     if not isinstance(v, int) or isinstance(v, bool) or not 0 <= v <= 100:
         return "Volume is 0 to 100."
+    if not isinstance(d.get("helper_id"), str) or len(d["helper_id"]) > 40:
+        return "Which computer plays the music isn't understood."
     return None
 
 
 class Music:
-    def __init__(self, data_dir, cfg, log):
+    def __init__(self, data_dir, cfg, log, helpers):
         self.path = os.path.join(data_dir, "music.json")
-        self.cfg, self.log = cfg, log
+        self.cfg, self.log, self.helpers = cfg, log, helpers
         self.lock = threading.Lock()
         self.d = dict(DEFAULT)
         self.now = None  # the playlist last started from C3 Life
@@ -83,29 +85,22 @@ class Music:
         except (OSError, ValueError, TypeError):
             pass
 
-    # talking to the helper
-    def url(self):
-        return (self.cfg.get("helper") or "http://192.168.10.30:8099").rstrip("/")
+    # which helper
+    def helper(self):
+        """The helper that plays the music, or None. The first one used is kept, so adding a second computer later
+        doesn't leave C3 Life unsure which one plays."""
+        hid = self.get()["helper_id"]
+        h = self.helpers.pick("spotify", hid)
+        if h and not hid and h.get("key"):
+            with self.lock:
+                self.d["helper_id"] = h["id"]
+                self._write()
+        return h
 
-    def ask(self, path, body=None, timeout=3):
-        """-> (ok, json or the error in words)"""
-        key = self.cfg.get("helper_key") or ""
-        if not key:
-            return False, NO_KEY
-        data = json.dumps(body).encode("utf-8") if body is not None else None
-        req = urllib.request.Request(self.url() + path, data=data, method="POST" if data is not None else "GET",
-                                     headers={"X-C3Life-Key": key, "Content-Type": "application/json"})
-        try:
-            with urllib.request.urlopen(req, timeout=timeout) as r:
-                return True, json.loads(r.read() or b"{}")
-        except urllib.error.HTTPError as e:
-            try:
-                j = json.loads(e.read() or b"{}")
-            except ValueError:
-                j = {}
-            return False, j.get("error") or "The helper said no (%d)." % e.code
-        except (urllib.error.URLError, OSError, ValueError):
-            return False, "The helper on the Mac mini didn't answer (%s). Is the Mac on, and the helper running?" % self.url()
+    def pp_helper(self):
+        host = urllib.parse.urlparse(self.cfg.get("propresenter") or "").hostname
+        h = self.helpers.at_host(host, "propresenter") if host else None
+        return h or self.helpers.pick("propresenter", (self.helper() or {}).get("id", ""))
 
     # what phones see
     def get(self):
@@ -115,11 +110,17 @@ class Music:
     def view(self):
         t, v = self.cache
         if v is None or time.time() - t > CACHE:
-            ok, sp = self.ask("/spotify")
-            okp, pp = self.ask("/propresenter") if ok else (False, None)
-            v = {"helper": {"ok": ok, "error": "" if ok else sp, "url": self.url()},
+            h, p = self.helper(), self.pp_helper()
+            ok, sp = self.helpers.ask(h, "/spotify")
+            if not h and any("spotify" in x["can"] for x in self.helpers.view()):
+                sp = "More than one computer has the C3 Life helper. Choose which one plays the music (below), and an Admin types its key."
+            okp, pp = self.helpers.ask(p, "/propresenter") if p else (False, None)
+            about = lambda x: {"id": x["id"], "name": x.get("name") or "", "address": x["url"].split("//")[-1], "os": x.get("os") or "",
+                               "can": x.get("can") or [], "paired": bool(x.get("key"))} if x else None
+            v = {"helper": dict(about(h) or {}, ok=ok, error="" if ok else sp, found=bool(h)),
                  "spotify": sp if ok else {"running": False},
-                 "propresenter": {"running": bool(okp and pp.get("running"))} if ok else {"running": None}}
+                 "propresenter": {"running": bool(pp.get("running")) if okp else None, "helper": about(p)},
+                 "helpers": self.helpers.view()}
             self.cache = (time.time(), v)
         with self.lock:
             now = self.now
@@ -128,7 +129,7 @@ class Music:
     # changes
     def save(self, d):
         d = {"playlists": [{"name": p["name"].strip(), "uri": spotify_uri(p["uri"])} for p in d["playlists"]],
-             "fade_seconds": d["fade_seconds"], "walk_in_volume": d["walk_in_volume"]}
+             "fade_seconds": d["fade_seconds"], "walk_in_volume": d["walk_in_volume"], "helper_id": d["helper_id"]}
         with self.lock:
             self.d = d
             if self.now and self.now not in [p["name"] for p in d["playlists"]]:
@@ -155,14 +156,16 @@ class Music:
                 return "That playlist isn't on the list any more."
             send = {"do": "playlist", "uri": p["uri"]}
         elif d in ("play", "pause", "next", "previous"):
-            send = {"do": d}
+            h = self.helper()
+            more = h and "spotify_more" in (h.get("can") or [])
+            send = {"do": d if more or d in ("next", "previous") else "playpause"}  # Windows: one Play/Pause key
         elif d == "volume":
             send = {"do": "volume", "value": body.get("value")}
         elif d == "fade":
             send = {"do": "fade", "to": body.get("to"), "seconds": body.get("seconds", self.get()["fade_seconds"]), "then": body.get("then", "")}
         else:
             return "Not understood."
-        ok, j = self.ask("/spotify", send)
+        ok, j = self.helpers.ask(self.helper(), "/spotify", send)
         self.cache = (0.0, None)
         if not ok:
             return j
@@ -175,9 +178,12 @@ class Music:
         return None
 
     def open_propresenter(self, who):
-        ok, j = self.ask("/propresenter/open", {}, timeout=20)
+        p = self.pp_helper()
+        if not p:
+            return "No C3 Life helper that can open ProPresenter has been found yet."
+        ok, j = self.helpers.ask(p, "/propresenter/open", {}, timeout=20)
         self.cache = (0.0, None)
         if not ok:
             return j
-        self.log.info("music: %s opened ProPresenter on the Mac mini", who)
+        self.log.info("music: %s opened ProPresenter on %s", who, p.get("name") or p["url"])
         return None
