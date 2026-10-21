@@ -85,8 +85,9 @@ jobs:
             throw 'C3 Life did not answer on http://127.0.0.1:8080/api/health'
           }
           "C3 Life $($h.version) is up, serving the $($h.app) folder"
-          $r = Invoke-WebRequest http://127.0.0.1:8080/ -MaximumRedirection 0 -SkipHttpErrorCheck -TimeoutSec 5
-          "The address opens: $($r.Headers.Location)"
+          $to = curl.exe -s -o NUL -w "%{redirect_url}" http://127.0.0.1:8080/
+          if ($to -notlike '*Listen.dc.html*') { throw "The address should open Listen, not '$to'" }
+          "The address opens: $to"
           Invoke-WebRequest http://127.0.0.1:8080/project/Lights.dc.html -UseBasicParsing -TimeoutSec 5 | Out-Null
           'Lights page served'
           Stop-Process $p
