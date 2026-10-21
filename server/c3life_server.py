@@ -516,12 +516,24 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 return
             source, q = listen.open(src)
             log.info("listen: %s started %s%s", s["name"] or "someone not signed in", sid, " (from home)" if self.remote else "")
+            # Wait for the first sound before saying it's playing: with none, the phone is told why instead
+            try:
+                first = q.get(timeout=float(cfg.get("listen_first_wait", 6)))
+            except _queue.Empty:
+                first = None
+            if first is None:
+                source.remove(q)
+                why = source.why()
+                log.warning("listen: %s: %s", sid, why)
+                self.send_json(503, {"ok": False, "error": why})
+                return
             try:
                 self.send_response(200)
                 self.send_header("Content-Type", "audio/mpeg")
                 self.send_header("Cache-Control", "no-cache, no-store")
                 self.send_header("Connection", "close")
                 self.end_headers()
+                self.wfile.write(first)
                 while True:
                     try:
                         data = q.get(timeout=20)

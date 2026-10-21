@@ -295,7 +295,7 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
         <section class="card now" aria-label="Now playing">
           <div style="display:flex;align-items:center;gap:12px">
             <div class="eq" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
-            <div style="flex:1;min-width:0"><div style="font-size:12px;color:#A3ACB8">Playing</div><div style="font-size:18px;font-weight:600">{{nowName}}</div></div>
+            <div style="flex:1;min-width:0"><div style="font-size:12px;color:#A3ACB8">{{nowLabel}}</div><div style="font-size:18px;font-weight:600">{{nowName}}</div></div>
             <button class="btn" style="flex:none" onClick="{{stop}}">Stop</button>
           </div>
           <label class="vol"><span>Volume</span><input type="range" min="0" max="100" value="{{volume}}" onChange="{{setVolume}}" aria-label="Volume on this device"></label>
@@ -321,7 +321,8 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
           <a class="plink" href="{{publicLink}}" target="_blank" rel="noopener">{{publicLink}}</a>
         </section>
       </sc-if>
-      <section class="card" style="display:flex;flex-direction:column;gap:2px">
+      <div style="display:contents"><sc-if value="{{noSound}}" hint-placeholder-val="{{ false }}"><div class="card" role="alert" style="border-color:#FF7A45;font-size:14px;line-height:1.45"><b>No sound.</b> {{noSound}}</div></sc-if></div>
+    <section class="card" style="display:flex;flex-direction:column;gap:2px">
         <div class="lbl">You can listen to</div>
         <sc-if value="{{isGuest}}" hint-placeholder-val="{{ false }}"><div class="ptext" style="padding:2px 0 6px">You’re listening without signing in. <a href="User.dc.html">Sign in</a> to hear more, if you’re on a team.</div></sc-if>
         <sc-if value="{{isKept}}" hint-placeholder-val="{{ false }}"><div class="ptext" style="padding:2px 0 6px">An Admin has set what you hear. Ask them if you need something else.</div></sc-if>
@@ -532,22 +533,37 @@ class Component extends DCLogic {
     if (!again) { this.subLast = 0; this.subN = 0; this.setState({ subLines: [], subPartial: '', subStatus: '' }); }
     if (!id) { this.setState({ now: '', playing: false, sounding: false }); return; }
     if (this.state.server && typeof Audio === 'function') {
-      const a = new Audio('/listen/' + id + '.mp3?t=' + encodeURIComponent(this.token()));
+      const url = '/listen/' + id + '.mp3?t=' + encodeURIComponent(this.token());
+      const a = new Audio(url);
       a.volume = this.state.volume / 100;
       a.play().catch(() => this.say('Tap Play again to start the sound.'));
       // If the stream drops (Wi-Fi blip, C3 Life server restart), try again by itself, up to 10 times.
       const retry = () => {
         if (this.audio !== a || this.state.now !== id) return;
-        this.tries = (this.tries || 0) + 1;
-        if (this.tries > 10) { this.say('The sound stopped. Check the C3 Life server and Dante, then tap Play.'); this.setState({ playing: false }); return; }
-        this.say('Reconnecting\u2026');
-        setTimeout(() => { if (this.audio === a && this.state.now === id) this.play(id, true); }, 2000);
+        // Ask the server why: with no sound at all it answers in words (ffmpeg missing, no Dante Virtual Soundcard)
+        if (!this.state.sounding && !this.asking) {
+          this.asking = true;
+          fetch(url).then((r) => (r.status === 503 ? r.json().catch(() => ({})) : (r.body && r.body.cancel && r.body.cancel(), null))).then((j) => {
+            this.asking = false;
+            if (j && this.audio === a) { this.audio = null; a.onerror = a.onended = null; a.pause(); this.setState({ playing: false, sounding: false, now: '', noSound: j.error || 'No sound from the C3 Life server.' }); }
+            else this.retryLater(a, id);
+          }).catch(() => { this.asking = false; this.retryLater(a, id); });
+          return;
+        }
+        this.retryLater(a, id);
       };
       a.onerror = retry; a.onended = retry;
-      a.onplaying = () => { this.tries = 0; this.setState({ sounding: true }); };
+      a.onplaying = () => { this.tries = 0; this.setState({ sounding: true, noSound: '' }); };
       this.audio = a;
     }
-    this.setState({ now: id, playing: true });
+    this.setState({ now: id, playing: true, sounding: false, noSound: '' });
+  }
+  // The stream dropped (Wi-Fi blip, C3 Life server restart): try again by itself, up to 10 times.
+  retryLater(a, id) {
+    this.tries = (this.tries || 0) + 1;
+    if (this.tries > 10) { this.say('The sound stopped. Check the C3 Life server and Dante, then tap Play.'); this.setState({ playing: false }); return; }
+    this.say('Reconnecting\u2026');
+    setTimeout(() => { if (this.audio === a && this.state.now === id) this.play(id, true); }, 2000);
   }
   saveCfg(c, msg) {
     try { localStorage.setItem('booth.listen', JSON.stringify(c)); } catch (e) {}
@@ -676,6 +692,8 @@ class Component extends DCLogic {
       askLeaveRoom: () => this.setState({ ask: { kind: 'leave' }, askPwName: (this.people().find((x) => x.role === 'Admin') || { name: 'Admin' }).name, askPw: '', askErr: '' }),
       // listen
       hasNow: !!(s.playing && nowSrc), nowName: nowSrc ? nowSrc.name : '', stop: () => this.play(''),
+      nowLabel: s.server && !s.sounding ? 'Starting\u2026' : 'Playing',
+      noSound: s.noSound || '',
       volume: s.volume, setVolume: (e) => { const v = parseInt(e.target.value, 10) || 0; try { localStorage.setItem('booth.listenvol', String(v)); } catch (er) {} if (this.audio) this.audio.volume = v / 100; this.setState({ volume: v }); },
       noSources: mine.length === 0, isKept: !isAdmin && !!(u && c.people && c.people[u.name] && c.people[u.name].fixed),
       // subtitles
