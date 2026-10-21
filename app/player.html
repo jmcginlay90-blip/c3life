@@ -11,7 +11,7 @@
   function apply(){var no=!chatOk(),h=document.documentElement;if(no!==h.hasAttribute('data-nochat')){if(no)h.setAttribute('data-nochat','');else h.removeAttribute('data-nochat');}names();}
   apply();setInterval(apply,1000);
   try{window.addEventListener('storage',apply);}catch(e){}
-  try{new MutationObserver(names).observe(document.getElementById('app')||document.body,{childList:true,subtree:true});}catch(e){}
+  try{new MutationObserver(names).observe(document.getElementById('app')||document.body,{childList:true,characterData:true,subtree:true});}catch(e){}
 })();
 </script>
 <script>
