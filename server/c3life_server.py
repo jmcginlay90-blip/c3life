@@ -54,6 +54,10 @@ API (JSON):
   PUT  /api/music {"playlists","fade_seconds","walk_in_volume"}   (Music control) the playlists: {"name", "uri"}
   POST /api/music/do {"do": "play|pause|next|previous|volume|playlist|fade", ...}   (Music control) passed to the helper
   POST /api/music/propresenter             (Music control) open ProPresenter (on its computer's helper)
+  PUT  /api/rta/ringout {"on","sens"}      (RTA settings control) the feedback watch; GET /api/rta/live has "ringout"
+  POST /api/rta/ringout/cut {"f"}          (RTA settings + Mixer control, the Wing in Control) a narrow cut on a flat band
+                                           of Main 1's EQ; again on the same note goes deeper
+  POST /api/rta/ringout/undo {"id"}        (the same) that band back as it was
   POST /api/foyer/do {"do": "source", "to": "a"|"b"} | {"do": "volume", "db"} | {"do": "mute", "on"}   (Foyer control),
                      {"do": "balance", "mix": "a"|"b", "db"}  (Foyer setup control: each mix's send level to the matrix)
                                            which mix the foyer hears, its volume (never above the maximum) and mute,
@@ -1121,6 +1125,23 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 if self.admin():
                     self.send_json(200, {"ok": True, "found": lightkey_mod.find(browse=cfg.get("_lightkey_browse"))})
                 return
+            if path in ("/api/rta/ringout/cut", "/api/rta/ringout/undo"):
+                s = self.level("RTA settings", need=2)
+                if not s:
+                    return
+                if access.level(s["role"], "Mixer") < 2:
+                    self.send_json(403, {"ok": False, "error": "A Ring-Out cut changes the desk, so it needs Mixer control too (Access levels)."})
+                    return
+                body = self.read_json() or {}
+                if path.endswith("/cut"):
+                    err, c = rta_live.ring.cut(desk, body.get("f"), s["name"])
+                else:
+                    err, c = rta_live.ring.undo(desk, body.get("id"), s["name"]), None
+                out = dict(rta_live.ring.view(rta_live.cal["offset"]), ok=not err, cut=c)
+                if err:
+                    out["error"] = err
+                self.send_json(200 if not err else 409, out)
+                return
             if path in ("/api/rta/patch", "/api/rta/unpatch"):
                 body = self.read_json() or {}
                 which = body.get("which")
@@ -1508,6 +1529,18 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 log.info("rta: %s set the room mic to %s (%s %d) and the desk reference to %s (%s %d)", s["name"],
                          d["mic"]["from"], d["mic"]["via"], d["mic"]["ch"], d["ref"]["from"], d["ref"]["via"], d["ref"]["ch"])
                 self.send_json(200, dict(rta_inputs.view(dante, desk), ok=True))
+                return
+            if self.route() == "/api/rta/ringout":
+                s = self.level("RTA settings", need=2)
+                if not s:
+                    return
+                body = self.read_json() or {}
+                err = rta_live.ring.settings(on=body.get("on"), sens=body.get("sens"))
+                if err:
+                    self.send_json(400, {"ok": False, "error": err})
+                    return
+                log.info("ringout: %s set the feedback watch %s, %s", s["name"], "on" if rta_live.ring.on else "off", rta_live.ring.sens)
+                self.send_json(200, dict(rta_live.ring.view(rta_live.cal["offset"]), ok=True))
                 return
             if self.route() == "/api/music":
                 s = self.level("Music", need=2)

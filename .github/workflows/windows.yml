@@ -1,12 +1,21 @@
-# On every push: the C3 Life server's tests on a Windows computer (GitHub's Windows Server runner), and on Linux to
-# compare, then the installer on Windows. These computers have no Wing, Dante, Tio or Lightkey: the tests use the
-# pretend ones, and real hardware is still checked with HARDWARE-CHECK.md on the HP.
+# The C3 Life server's tests and the installers, on GitHub's computers. These have no Wing, Dante, Tio or Lightkey:
+# the tests use the pretend ones, and real hardware is still checked with HARDWARE-CHECK.md on the HP.
+#
+# GitHub's free minutes are limited (2,000 a month on a private repository; Windows minutes count double, Mac minutes
+# ten times), so:
+#   on each pull request: the server tests on Linux, the HP installer and the Windows helper installer (about 15 min)
+#   by hand (Actions > Windows > Run workflow): also every server test on Windows and the Mac helper installer, once
+#     before merging
+# A newer push to the same pull request cancels the run still going.
 name: Windows
 
 on:
-  push:
   pull_request:
   workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   server-tests:
@@ -15,7 +24,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, ubuntu-latest]
+        os: ${{ github.event_name == 'workflow_dispatch' && fromJSON('["windows-latest", "ubuntu-latest"]') || fromJSON('["ubuntu-latest"]') }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -136,6 +145,7 @@ jobs:
 
   helper-mac:
     name: Helper installer (Mac)
+    if: github.event_name == 'workflow_dispatch'
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4

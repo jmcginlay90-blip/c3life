@@ -259,9 +259,17 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
         <div role="alert" style="background:#FF7A45;color:#1A0A03;border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:6px">
           <div style="font-size:17px;font-weight:600">Feedback ringing at {{fbFreq}}</div>
           <div style="font-size:13px;line-height:1.45">Started {{fbAgo}}. Most often a lectern, lapel or handheld mic near a speaker. On the Wing, lower that channel's fader a little, or cut {{fbFreq}} by 3 to 6 dB on its EQ.</div>
+          <sc-if value="{{roCanCut}}" hint-placeholder-val="{{ false }}"><button style="min-height:44px;border-radius:10px;border:2px solid #1A0A03;background:#FFE3D6;color:#1A0A03;font:600 14px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer" onClick="{{roAskCut}}">Cut {{fbFreq}} on {{roTarget}}…</button></sc-if>
           <button style="min-height:44px;border-radius:10px;border:0;background:#1A0A03;color:#FFFFFF;font:500 14px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer" onClick="{{fbClear}}">It's sorted</button>
         </div>
       </sc-if></div>
+    <div><sc-if value="{{roAsk}}" hint-placeholder-val="{{ false }}">
+        <div role="alertdialog" aria-label="Cut the feedback?" style="border:1px solid #F5C518;border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px;background:#161A21">
+          <div style="font-size:15px;line-height:1.45">Cut {{roAskFreq}} by {{roAskDb}} on {{roTarget}}’s EQ, on the Wing? It uses a band that’s flat, so it doesn’t touch FOH’s EQ, and Undo puts it back.</div>
+          <div style="display:flex;gap:8px"><button class="btn pri" style="flex:1" onClick="{{roCut}}">Cut it</button><button class="btn" style="flex:1" onClick="{{roNoCut}}">Cancel</button></div>
+        </div>
+      </sc-if></div>
+    <div><sc-if value="{{roMsg}}" hint-placeholder-val="{{ false }}"><div role="status" class="card" style="font-size:13px;color:#C9CFD7;padding:10px 12px">{{roMsg}}</div></sc-if></div>
     <div style="display:contents"><sc-if value="{{viewRta}}" hint-placeholder-val="{{ true }}">
       <section class="rgraph" aria-label="Spectrum">
         <div class="rplot">
@@ -294,7 +302,7 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
         <div class="xax" aria-hidden="true"><sc-for list="{{xTicks}}" as="t" hint-placeholder-count="10"><span style="left:{{t.pct}}%">{{t.t}}</span></sc-for></div>
         <div class="rleg"><span><i style="background:#4CD964"></i>Room mic</span><span><i style="background:#FF5A4F"></i>Peak hold</span><span style="opacity:{{deskOp}}"><i style="background:#F5C518"></i>Desk reference</span><span class="mono">dB SPL · 1/12 octave</span></div>
       </section>
-      <div><sc-if value="{{fbQuiet}}" hint-placeholder-val="{{ false }}"><div class="rro"><span>Ring-Out · {{fbQuietText}}</span><button class="btn" onClick="{{fbDemo}}">Demo: feedback starts</button></div></sc-if></div>
+      <div><sc-if value="{{fbQuiet}}" hint-placeholder-val="{{ false }}"><div class="rro"><span>Ring-Out · {{fbQuietText}}</span><sc-if value="{{fbDemoShow}}" hint-placeholder-val="{{ true }}"><button class="btn" onClick="{{fbDemo}}">Demo: feedback starts</button></sc-if></div></sc-if></div>
       <section class="rspec" aria-label="Spectrograph">
         <div class="rspec-h"><span class="mono">{{specSpan}}</span><span>Spectrograph</span><span style="color:{{liveColor}};font-weight:600">{{liveText}}</span></div>
         <div class="rspec-p">
@@ -484,7 +492,18 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
             <option value="high">High · catches it early, may warn on a held note</option>
           </select>
         </label>
-        <div style="font-size:12px;color:#A3ACB8;line-height:1.45">It warns, it never changes the desk by itself. The RTA bar on every screen shows FEEDBACK too. A held note on a keyboard or vocal can sometimes look the same, so check by ear.</div>
+        <div style="font-size:12px;color:#A3ACB8;line-height:1.45">It warns, it never changes the desk by itself. The RTA bar on every screen shows FEEDBACK too. A held note on a keyboard or vocal can sometimes look the same, so check by ear. On the C3 Life server it can cut the note on {{roTarget}}’s EQ, but only when you say so.</div>
+        <sc-if value="{{roHasCuts}}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:6px;border-top:1px solid #262C36;padding-top:8px">
+            <div class="lbl">Ring-Out cuts on {{roTarget}}</div>
+            <sc-for list="{{roCuts}}" as="c" hint-placeholder-count="1">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="flex:1;font-size:14px">{{c.text}}</span>
+                <button class="btn" style="min-height:40px" onClick="{{c.undo}}" aria-label="Undo the {{c.freq}} cut">Undo</button>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
       </section>
       <section class="card" style="display:flex;flex-direction:column;gap:10px">
         <div style="display:flex;align-items:center;gap:10px">
@@ -569,6 +588,24 @@ class Component extends DCLogic {
   }
   componentWillUnmount() { clearInterval(this.timer); clearInterval(this.riT); clearInterval(this.rtT); clearTimeout(this.rpT); }
   // The C3 Life server hears the room mic (GET /api/rta/live); in the preview there's no server and the demo runs.
+  // ---- Ring-Out on the C3 Life server (GET /api/rta/live "ringout"); the preview keeps its demo ----
+  roLive() { return this.rtOn && this.rtLive && this.rtLive.ringout ? this.rtLive.ringout : null; }
+  roOn() { const L = this.roLive(); return L ? L.on : this.state.fbOn; }
+  roF(f) { return f < 1000 ? Math.round(f) + ' Hz' : (f / 1000).toFixed(f < 10000 ? 2 : 1).replace(/\.?0+$/, '') + ' kHz'; }
+  roFb() {
+    const L = this.roLive();
+    if (!L) return this.state.fb;
+    const r = (L.ringing || [])[0];
+    if (!r || this.state.roDismissed === Math.round(r.f)) return null;
+    return { freq: this.roF(r.f), at: r.since * 1000, f: r.f };
+  }
+  roApi(path, method, body, done) {
+    return this.riApi(path, method, body).then(({ j }) => {
+      if (j && j.on !== undefined && this.rtLive) this.rtLive = { ...this.rtLive, ringout: Object.assign({}, this.rtLive.ringout, j) };
+      this.setState({ roMsg: (j && j.error) || done || '' });
+      return j;
+    }).catch(() => this.setState({ roMsg: 'The C3 Life server didn’t answer. Try again.' }));
+  }
   rtPoll() {
     if (this.rtOff || this.rtBusy) return;
     const fast = (this.state.lkView || 'rta') === 'rta' && !this.state.frozen;
@@ -902,7 +939,7 @@ class Component extends DCLogic {
   }
   lkVals() {
     const s = this.state, top = this.lkTop(), bot = this.lkBot(), span = top - bot, limit = this.limit();
-    const view = s.lkView || 'rta', over = s.overSince !== null, fb = s.fb;
+    const view = s.lkView || 'rta', over = s.overSince !== null, fb = this.roFb(), fbOn = this.roOn();
     const xi = (f) => 12 * Math.log2(f / 20), X = (i) => (i / 119) * 360, Y = (v) => Math.max(0, Math.min(300, ((top - v) / span) * 300));
     const room = this.lkRoom || this.lkFine(s.room.map(() => 70)), desk = this.lkDesk || room, pk = this.lkPk || room;
     const pts = (a) => a.map((v, i) => X(i).toFixed(1) + ',' + Y(v).toFixed(1)).join(' ');
@@ -926,13 +963,13 @@ class Component extends DCLogic {
       goLive: () => this.setState({ frozen: false }), goPause: () => this.setState({ frozen: true }),
       compareOn: !!s.cmpOn, cmpCls: 'rb box' + (s.cmpOn ? ' on' : ''), toggleCompare: () => this.setState({ cmpOn: !s.cmpOn }), deskOp: s.cmpOn ? 1 : 0,
       idOn: !!s.idOn, idCls: 'rt' + (s.idOn ? ' on' : ''), toggleId: () => this.setState({ idOn: !s.idOn }),
-      roCls: 'rt' + (s.fbOn && fb ? ' hot' : (s.fbOn ? ' on' : '')),
+      roCls: 'rt' + (fbOn && fb ? ' hot' : (fbOn ? ' on' : '')),
       yTicks: ticks.map((v) => ({ t: String(v), pct: (((top - v) / span) * 100).toFixed(2) })),
       hLines: ticks.map((v) => Y(v).toFixed(1)), vLines: xs.map(([f]) => X(xi(f)).toFixed(1)),
       xTicks: xs.map(([f, t]) => ({ t, pct: ((xi(f) / 119) * 100).toFixed(2) })),
       roomPts: pts(room), peakPts: pts(pk), deskPts: pts(desk), fillPts: pts(room) + ' 360,300 0,300',
       idX: X(mi).toFixed(1), idOp: s.idOn ? 0.8 : 0, idPct: ((mi / 119) * 100).toFixed(2), idText: fmtF(20 * Math.pow(2, mi / 12)) + ' · ' + room[mi].toFixed(0) + ' dB',
-      roMark: !!(s.fbOn && fb), roX: X(fbF ? xi(fbF) : 0).toFixed(1), roOp: s.fbOn && fb ? 0.9 : 0, roPct: (((fbF ? xi(fbF) : 0) / 119) * 100).toFixed(2),
+      roMark: !!(fbOn && fb), roX: X(fbF ? xi(fbF) : 0).toFixed(1), roOp: fbOn && fb ? 0.9 : 0, roPct: (((fbF ? xi(fbF) : 0) / 119) * 100).toFixed(2),
       hTop: this.lkHandle('top'), hBot: this.lkHandle('bot'), scaleTop: top, scaleBot: bot, hTopPct: 10, hBotPct: 88,
       leq1: this.lkLeq(60), leq15: this.lkLeq(900), bigDb: this.rtOn && !(this.rtLive && this.rtLive.mic) ? '---' : big.toFixed(1), bigColor, unitColor: '#D9A441',
       boxSub: this.rtOn ? (this.rtLive && this.rtLive.calibrated ? 'Calibrated · room mic' : 'Not calibrated yet · an estimate') : 'Calibrated · dbx RTA-M room mic',
@@ -982,17 +1019,31 @@ class Component extends DCLogic {
     });
     const secs = over ? Math.floor((Date.now() - s.overSince) / 1000) : 0;
     const modes = ['Room', 'Desk', 'Compare', 'Spectrogram'];
-    const fb = s.fb;
+    const fb = this.roFb(), RL = this.roLive(), fbOn = this.roOn();
     const fbAgo = fb ? Math.max(1, Math.round((Date.now() - fb.at) / 1000)) : 0;
+    const cutDb = (f) => { const c = RL && (RL.cuts || []).find((x) => Math.abs(x.f - f) <= x.f * 0.03); return c ? Math.max(-12, c.g - 3) : -6; };
     return {
-      fbOn: s.fbOn, toggleFb: () => { this.setState({ fbOn: !s.fbOn }); if (s.fbOn) this.setFb(null); },
-      fbSens: s.fbSens, setFbSens: (e) => this.setState({ fbSens: e.target.value }),
-      fbRinging: s.fbOn && !!fb, fbQuiet: !(s.fbOn && fb),
-      fbQuietText: s.fbOn ? 'Listening \u00b7 no ringing' : 'Feedback watch is off',
+      fbOn: fbOn,
+      toggleFb: () => { if (RL) { this.roApi('/api/rta/ringout', 'PUT', { on: !fbOn }, fbOn ? 'Feedback watch off.' : 'Feedback watch on.'); return; } this.setState({ fbOn: !s.fbOn }); if (s.fbOn) this.setFb(null); },
+      fbSens: RL ? RL.sens : s.fbSens,
+      setFbSens: (e) => { if (RL) this.roApi('/api/rta/ringout', 'PUT', { sens: e.target.value }); else this.setState({ fbSens: e.target.value }); },
+      fbRinging: fbOn && !!fb, fbQuiet: !(fbOn && fb),
+      fbQuietText: fbOn ? (RL && this.rtLive.status !== 'live' ? 'Waiting for the room mic' : 'Listening \u00b7 no ringing') : 'Feedback watch is off',
+      fbDemoShow: !RL,
+      roTarget: RL ? RL.target : 'Main 1',
+      roCanCut: !!RL && !!fb && this.rtaSetLevel() >= 2,
+      roAsk: !!s.roAsk, roAskFreq: s.roAsk ? this.roF(s.roAsk) : '', roAskDb: s.roAsk ? (-cutDb(s.roAsk)) + ' dB' : '',
+      roAskCut: () => this.setState({ roAsk: fb && fb.f, roMsg: '' }),
+      roNoCut: () => this.setState({ roAsk: null }),
+      roCut: () => { const f = s.roAsk; this.setState({ roAsk: null }); this.roApi('/api/rta/ringout/cut', 'POST', { f: f }, 'Cut ' + this.roF(f) + ' on ' + (RL ? RL.target : 'Main 1') + '. Undo is in RTA settings › Feedback watch.'); },
+      roMsg: s.roMsg || '',
+      roHasCuts: !!RL && (RL.cuts || []).length > 0,
+      roCuts: (RL && RL.cuts || []).map((c) => ({ freq: this.roF(c.f), text: this.roF(c.f) + ' · ' + c.g + ' dB · band ' + c.band + ' · ' + c.who,
+        undo: () => this.roApi('/api/rta/ringout/undo', 'POST', { id: c.id }, 'Undone: ' + this.roF(c.f) + ' is back as it was.') })),
       fbFreq: fb ? fb.freq : '', fbAgo: fbAgo < 60 ? fbAgo + ' s ago' : Math.round(fbAgo / 60) + ' min ago',
-      fbEdge: s.fbOn && fb ? '#FF7A45' : '#262C36',
+      fbEdge: fbOn && fb ? '#FF7A45' : '#262C36',
       fbDemo: () => { if (!s.fbOn) this.setState({ fbOn: true }); this.setFb({ freq: ['2.5 kHz', '630 Hz', '3.15 kHz'][Math.floor(Math.random() * 3)], at: Date.now() }); },
-      fbClear: () => this.setFb(null),
+      fbClear: () => { if (RL) { if (fb) this.setState({ roDismissed: Math.round(fb.f) }); return; } this.setFb(null); },
       bg: red ? '#8E1B12' : '#0D1015',
       over: over,
       overFor: 'over for ' + secs + 's · logged',

@@ -190,6 +190,7 @@ class Wing(desk_mod.Desk):
         self.rta_want, self.rta_off = None, 0
         self.sends = {}  # bus -> channel (or "a<N>" for an aux input) -> {"on", "lvl", "mode", "plink", "pan"}
         self.buseq = {}  # bus -> {"eq/on": 1, "eq/1g": -3.0, ...}
+        self.eqs = {}  # ("main"|"mtx", n) -> the same fields as a bus's EQ (Ring-Out cuts on Main 1)
         self.mtxsends = {}  # bus -> matrix -> {"on", "lvl"}: what each bus sends to each matrix (the foyer's two mixes)
         self.bus_focus = {}  # bus -> until when someone has its sends open
         self.outs = {}  # "CRD/12" -> {"grp": "LCL", "in": 8}, read while out_focus is set
@@ -371,6 +372,15 @@ class Wing(desk_mod.Desk):
         with self.lock:
             return dict(self.buseq.get(b, {}))
 
+    def ask_eq(self, kind, n):
+        """A bus's, main's or matrix's EQ (they're all the same 6-band EQ with shelves)."""
+        for a in BUS_EQ:
+            self.send(osc("/%s/%d/%s" % (kind, n, a)))
+
+    def eq(self, kind, n):
+        with self.lock:
+            return dict(self.buseq.get(n, {}) if kind == "bus" else self.eqs.get((kind, n), {}))
+
     def ask_mtx(self, b, m):
         """Bus b's send to matrix m (/bus/b/send/m/on and lvl)."""
         for f in ("on", "lvl"):
@@ -439,9 +449,9 @@ class Wing(desk_mod.Desk):
                     self.rtacfg[parts[2]], changed = v, True
                 if parts[2] == "$src":
                     self._rta_check()
-            elif len(parts) == 4 and parts[0] == "bus" and parts[1].isdigit() and "/".join(parts[2:]) in BUS_EQ:
+            elif len(parts) == 4 and parts[0] in ("bus", "main", "mtx") and parts[1].isdigit() and "/".join(parts[2:]) in BUS_EQ:
                 b, key, k = int(parts[1]), "/".join(parts[2:]), BUS_EQ["/".join(parts[2:])]
-                if not args or not 1 <= b <= KINDS["bus"]:
+                if not args or not 1 <= b <= KINDS[parts[0]]:
                     return
                 if k[0] == "s":
                     v = str(args[0])
@@ -450,7 +460,7 @@ class Wing(desk_mod.Desk):
                     if x is None:
                         return
                     v = int(round(x)) if k[0] == "b" else round(float(x), 2)
-                cur = self.buseq.setdefault(b, {})
+                cur = self.buseq.setdefault(b, {}) if parts[0] == "bus" else self.eqs.setdefault((parts[0], b), {})
                 if cur.get(key) != v:
                     cur[key], changed = v, True
             elif len(parts) == 5 and parts[0] in SENDERS and parts[1].isdigit() and parts[2] == "send" and parts[3].isdigit() and parts[4] in SEND:
@@ -658,7 +668,7 @@ class Wing(desk_mod.Desk):
                 v = 1 if value else 0
             ok = self.send(osc("/bus/%d/send/%s/%s" % (n, m, f), v)) and self.send(osc("/bus/%d/send/%s/%s" % (n, m, f)))
             return None if ok else "Couldn't send to the Wing."
-        elif field in BUS_EQ and kind == "bus":
+        elif field in BUS_EQ and kind in ("bus", "main", "mtx"):
             k = BUS_EQ[field]
             if k[0] == "s":
                 if value not in k[1]:
@@ -670,7 +680,7 @@ class Wing(desk_mod.Desk):
                 return "That's outside what the Wing allows (%g to %g)." % (k[1], k[2])
             else:
                 v = float(value)
-            ok = self.send(osc("/bus/%d/%s" % (n, field), v)) and self.send(osc("/bus/%d/%s" % (n, field)))
+            ok = self.send(osc("/%s/%d/%s" % (kind, n, field), v)) and self.send(osc("/%s/%d/%s" % (kind, n, field)))
             return None if ok else "Couldn't send to the Wing."
         elif field in PROC:
             kind2 = PROC[field]

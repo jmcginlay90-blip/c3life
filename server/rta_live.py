@@ -26,6 +26,7 @@ import subprocess
 import threading
 import time
 
+import ringout
 import rta_inputs as rta_inputs_mod
 
 RATE = 48000
@@ -187,6 +188,7 @@ class Analyser:
         self.t = 0.0
         self.source = ""
         self.caps = {}
+        self.ring = ringout.Watch(data_dir, RATE / N, log)  # Ring-Out: the feedback watch on the room mic
 
     # ---- what to listen to ----------------------------------------------------------------------
 
@@ -299,6 +301,8 @@ class Analyser:
             if bins:
                 avg = [sum(b[k] for b in bins) / len(bins) for k in range(len(bins[0]))]  # left and right: the mean power
                 res[key] = sp.to_bands(avg)
+                if key == "mic":
+                    self.ring.feed(avg)  # feedback is looked for on the bins, not the bands: a ringing note is narrow
         mic = res["mic"]
         ref = res.get("mains")
         if ref and res.get("subs"):
@@ -349,6 +353,10 @@ class Analyser:
                     shift = (10 * math.log10(m) - 10 * math.log10(r)) if r > 1e-14 and m > 1e-14 else off
                     out["ref"] = [round(x + shift, 1) for x in ref]
             out["leq"] = {k: self.leq(s) for k, s in LEQS}
+            ro = self.ring.view(off)
+            if self.status != "live":
+                ro["ringing"] = []  # nothing heard now, so nothing is ringing now
+            out["ringout"] = ro
             out["max"] = round(max(x for _, x in self.secs) + off, 1) if self.secs else None
         return out
 

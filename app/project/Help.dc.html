@@ -494,6 +494,14 @@ class Component extends DCLogic {
         'Key lost or shared? On that computer, in the helper folder:  python3 c3life_helper.py --new-key --config "<the C3 Life Helper folder>/helper.json"  then install again and Change key on Music. Only private networks can reach a helper (never the internet), and everything but its hello needs the key.',
         'To take it off a computer: Uninstall-Helper.command (Mac) or Uninstall-Helper.cmd (Windows). Its key is kept, so installing it again doesn\u2019t need the key typed again.',
         'Not tried with the church\u2019s computers and Spotify yet, and the Windows media keys haven\u2019t been tried on a real PC: the first time, try it before the service, not during one.'] },
+      { q: 'Feedback: one note keeps ringing', c: '#FF7A45', href: 'RTA.dc.html', go: 'RTA', steps: [
+        'Ring-Out (on the RTA) listens to the room mic for one note that rings: it stands out from the sound around it, stays at the same pitch, and doesn\u2019t die away. It shows Feedback ringing at (the note), marks it on the graph, and the RTA bar on every screen says FEEDBACK.',
+        'First, by ear: it\u2019s most often a lectern, lapel or handheld mic near a speaker. Lower that channel\u2019s fader a little.',
+        'FOH sound or an Admin can tap Cut (the note) on Main 1\u2026 It asks first, then puts a narrow cut (\u22126 dB) at that note on a band of Main 1\u2019s EQ that\u2019s flat, so it never changes a band FOH has set. Again on the same note: \u22129, then \u221212 dB.',
+        'Undo: RTA settings \u203a Feedback watch \u203a Ring-Out cuts on Main 1. Undo puts that band back exactly as it was.',
+        'It only cuts when the Wing is in Control, and needs Mixer control too. If Main 1\u2019s EQ is off on the Wing, it says so and doesn\u2019t turn it on.',
+        'A held note on a keyboard, or a long sung note, can look the same, especially on High. That\u2019s why it never changes anything by itself. Sensitivity: RTA settings \u203a Feedback watch.',
+        'It listens while any screen with the RTA or the RTA bar is open. Not tried on our room mic yet.'] },
       { q: 'A warning says something isn\u2019t answering', c: '#FF7A45', href: 'Drivers.dc.html', go: 'Drivers', steps: [
         'Every screen shows a warning when something C3 Life is set up to use stops answering for 15 seconds: the Wing, the Tio, ProPresenter, Lightkey or a C3 Life helper. You only see the ones your role can use.',
         'C3 Life is already looking for it: it scans the network straight away, and if the device turns up at a new address it follows it by itself (the Wing by its serial number, the Tio and ProPresenter by their network card, a helper by its own id, Lightkey by its Bonjour name). The warning goes by itself when it\u2019s back.',
