@@ -22,13 +22,18 @@
 #devwarn a{color:#FFD07A;font-size:13px}
 #devwarn button{align-self:flex-end;min-height:36px;padding:0 12px;border-radius:6px;border:1px solid #FF7A45;background:transparent;color:#FFE3D6;font:500 13px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer}
 @media (min-width:1000px){#devwarn{left:146px}}
+#devwarn.small{left:auto;right:10px;top:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 60px);margin:0;padding:0;border-radius:22px;background:#2A1208}
+#devwarn.small .dw,#devwarn.small>button.hide{display:none}
+#devwarn .open{display:none}
+#devwarn.small .open{display:block;min-height:44px;min-width:44px;padding:0 14px;border:0;border-radius:22px;background:transparent;color:#FFB089;font:600 14px 'IBM Plex Sans',system-ui,sans-serif;align-self:auto}
 </style>
 <script>
-/* Something that's set up has stopped answering (the Wing, the Tio, ProPresenter, a C3 Life helper): a warning on every
-   screen, for whoever is signed in and can see it (GET /api/devices, every 15 seconds). Hide hides it for 10 minutes on this
-   device. In the preview (no C3 Life server) there's nothing to ask, so nothing shows. */
+/* Something that's set up has stopped answering (the Wing, the Tio, ProPresenter, Lightkey, a C3 Life helper): a warning on
+   every screen, for whoever is signed in and can see it (GET /api/devices, every 15 seconds). It shows in full, then after
+   8 seconds shrinks to a small badge in the corner so it doesn't sit on top of the controls; tap the badge for the details.
+   Hide hides it for 10 minutes on this device. In the preview (no C3 Life server) there's nothing to ask, so nothing shows. */
 (function(){
-  var off=false, box=null, last=[], AREA={Mixer:'Mixer',Show:'Show',Music:'Music'};
+  var off=false, box=null, last=[], shrinkT=null, AREA={Mixer:'Mixer',Show:'Show',Music:'Music',Lights:'Lights'};
   function tok(){try{var x=JSON.parse(localStorage.getItem('booth.session')||'null');return x?x.token:'';}catch(e){return '';}}
   function hidden(){try{return JSON.parse(sessionStorage.getItem('booth.devwarn')||'{}')||{};}catch(e){return {};}}
   function hhmm(t){var d=new Date(t*1000);return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);}
@@ -40,8 +45,13 @@
     var key=JSON.stringify(w.map(function(d){return [d.id,d.since];}));
     key+='|'+(window.__page||'');
     if(box&&box.getAttribute('data-k')===key)return;  // the same as shown: leave it alone
+    var isNew=!box||box.getAttribute('data-ids')!==w.map(function(d){return d.id;}).join();
     if(!box){box=el('div',null,{id:'devwarn',role:'alert'});document.body.appendChild(box);}
-    box.setAttribute('data-k',key);box.textContent='';
+    box.setAttribute('data-k',key);box.setAttribute('data-ids',w.map(function(d){return d.id;}).join());box.textContent='';
+    if(isNew){box.classList.remove('small');clearTimeout(shrinkT);shrinkT=setTimeout(function(){if(box)box.classList.add('small');},8000);}
+    var open=el('button','\u26A0 '+w.length+' not answering',{type:'button','class':'open','aria-label':w.length+' not answering: show'});
+    open.addEventListener('click',function(){box.classList.remove('small');clearTimeout(shrinkT);shrinkT=setTimeout(function(){if(box)box.classList.add('small');},8000);});
+    box.appendChild(open);
     w.forEach(function(d){
       var r=el('div',null,{'class':'dw'});
       var b=el('b','⚠ '+d.name+' isn’t answering');r.appendChild(b);
@@ -50,7 +60,7 @@
       r.appendChild(el('small',d.why+' C3 Life is looking for it on the network.'));
       box.appendChild(r);
     });
-    var btn=el('button','Hide for 10 minutes',{type:'button'});
+    var btn=el('button','Hide for 10 minutes',{type:'button','class':'hide'});
     btn.addEventListener('click',function(){var hh=hidden(),u=Date.now()+600000;w.forEach(function(d){hh[d.id]=u;});try{sessionStorage.setItem('booth.devwarn',JSON.stringify(hh));}catch(e){}show(last);});
     box.appendChild(btn);
   }
