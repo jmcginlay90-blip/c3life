@@ -54,6 +54,8 @@ API (JSON):
   PUT  /api/music {"playlists","fade_seconds","walk_in_volume"}   (Music control) the playlists: {"name", "uri"}
   POST /api/music/do {"do": "play|pause|next|previous|volume|playlist|fade", ...}   (Music control) passed to the helper
   POST /api/music/propresenter             (Music control) open ProPresenter (on its computer's helper)
+  GET  /api/devices                        (signed in) what's set up and whether it's answering, for the warning on
+                                           every screen: only what this role can see (Wing and Tio: Mixer or Own monitor mix)
   POST /api/helpers/find                   (Music or Settings control) scan the network now for C3 Life helpers
   POST /api/helpers/key {"id","key"}       (Admin) a helper's key, checked with the helper; kept here, never sent back
   POST /api/helpers/forget {"id"}          (Admin) take a helper off the list
@@ -152,6 +154,7 @@ import dante_names as dante_names_mod
 import lightkey as lightkey_mod
 import music as music_mod
 import helpers as helpers_mod
+import health as health_mod
 import rta_live as rta_live_mod
 import midi_in as midi_mod
 
@@ -166,6 +169,9 @@ DEFAULTS = {
     "data_dir": os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data"),
     # The booth network, plus this PC itself.
     "allowed_networks": ["192.168.10.0/24", "127.0.0.0/8"],
+    # Also the network this PC is on now (each of its addresses' /24), added at every start, so phones still get in
+    # after the church's router or network changes. false = only allowed_networks.
+    "own_network": True,
     # Where "/" goes: Listen, with Sign in at the top. Someone already signed in on that device goes to their own
     # first screen instead (Home, My mix or Foyer), which player.html works out from "start=1".
     "start_page": "/player.html?p=Listen.dc.html&start=1",
@@ -190,7 +196,7 @@ DEFAULTS = {
     "nametag_team": "9 - Ministry",
     "nametag_note_categories": ["Hosting"],
     # ProPresenter's network API (ProPresenter > Settings > Network), and the message used for anyone without a prop.
-    "propresenter": "http://192.168.10.30:50001",
+    "propresenter": "",  # "" = the network scan finds it (and follows it if its address changes)
     "nametag_message": "Name tag",
     "nametag_token": "Name",
     # Bible Scripture. KJV and WEBBE are built in; the others need the church's own keys.
@@ -387,6 +393,10 @@ def load_config(path):
     for k in ("allowed_networks", "remote_networks", "remote_support_roles"):
         v = cfg.get(k)
         cfg[k] = [] if v is None else [v] if isinstance(v, str) else list(v)
+    if cfg.get("own_network", True):
+        for n in _own_networks():
+            if n not in cfg["allowed_networks"]:
+                cfg["allowed_networks"].append(n)
     cfg["_nets"] = [ipaddress.ip_network(n, strict=False) for n in cfg["allowed_networks"]]
     cfg["_remote"] = [ipaddress.ip_network(n, strict=False) for n in cfg["remote_networks"]]
     return cfg
@@ -399,7 +409,7 @@ def _ip_ok(x):
         return False
 
 
-def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bible=None, cues=None, reports=None, plan=None, desk=None, tio=None, monitors=None, scanner=None, foyer=None, rta_inputs=None, dante_names=None, lights=None, rta_live=None, midi=None, music=None, helpers=None):
+def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bible=None, cues=None, reports=None, plan=None, desk=None, tio=None, monitors=None, scanner=None, foyer=None, rta_inputs=None, dante_names=None, lights=None, rta_live=None, midi=None, music=None, helpers=None, health=None):
     nets = cfg["_nets"]
     remote_nets = cfg.get("_remote", [])
 
@@ -793,6 +803,12 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
             if path == "/api/foyer":
                 if self.level("Foyer", "Show", "Mixer"):
                     self.send_json(200, dict(foyer.view(desk), ok=True))
+                return
+            if path == "/api/devices":
+                s, _ = self.session()
+                if s:
+                    see = lambda area: access.level(s["role"], area) >= 1 or (area == "Mixer" and access.level(s["role"], "Own monitor mix") >= 1)
+                    self.send_json(200, {"ok": True, "devices": [d for d in health.devices() if see(d["area"])]})
                 return
             if path == "/api/music":
                 s = self.level("Music")
@@ -1763,6 +1779,30 @@ def _my_ips():
         return []
 
 
+def _own_networks():
+    """The private networks this PC is on now: each of its addresses' /24 (192.168.1.0/24, 10.0.5.0/24...)."""
+    import socket
+    ips = set(_my_ips())
+    try:
+        u = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        u.connect(("192.0.2.1", 9))  # sends nothing; only picks the address this PC would use
+        ips.add(u.getsockname()[0])
+        u.close()
+    except OSError:
+        pass
+    out = []
+    for ip in sorted(ips):
+        try:
+            a = ipaddress.ip_address(ip)
+        except ValueError:
+            continue
+        if a.version == 4 and a.is_private and not a.is_loopback and not a.is_link_local:
+            n = str(ipaddress.ip_network(ip + "/24", strict=False))
+            if n not in out:
+                out.append(n)
+    return out
+
+
 def serve(cfg):
     store = Store(cfg["data_dir"])
     sessions = Sessions(float(cfg.get("session_hours", 12)))
@@ -1787,6 +1827,7 @@ def serve(cfg):
     lights = lightkey_mod.Lightkey(cfg["data_dir"], cfg, log)
     helpers = helpers_mod.Helpers(cfg["data_dir"], cfg, log)
     music = music_mod.Music(cfg["data_dir"], cfg, log, helpers)
+    health = health_mod.Health(cfg, desk, tio, helpers, lights=lights)
     rta_live = rta_live_mod.Analyser(cfg["data_dir"], cfg, log, rta_inputs)
     if int(cfg["port"]) == 0:  # the tests: any free ports, so several servers can run at once
         cfg.setdefault("midi_port", 0)
@@ -1796,16 +1837,16 @@ def serve(cfg):
     scanner = scan_mod.Scanner(cfg["data_dir"], cfg, log, wing=desk, tio=tio,
                                wing_find=lambda: desk.find(target=cfg.get("wing_find_target", "255.255.255.255")))
     # Port 0 is only used by the tests (any free port): they scan when they mean to, not by themselves.
-    scanner.on_found = helpers.found  # every C3 Life helper it finds, followed by its own id
+    scanner.on_found = [helpers.found, lights.found]  # every C3 Life helper (by its id) and Lightkey (by its Bonjour name)
     if cfg.get("scan_auto", True) and int(cfg["port"]) != 0:
         threading.Thread(target=scanner.loop, daemon=True).start()
         gone = lambda d, name: [name] if d and d.status()["status"] == "no answer" else []
-        threading.Thread(target=scanner.watch, args=([lambda: gone(desk, desk.NAME), lambda: gone(tio, "the Tio"), helpers.check],), daemon=True).start()
-    httpd = ThreadingHTTPServer((cfg["bind"], int(cfg["port"])), make_handler(cfg, store, sessions, listen, access, dante, tags, bible, cues, reports, plan, desk, tio, monitors, scanner, foyer, rta_inputs, dante_names, lights, rta_live, midi, music, helpers))
+        threading.Thread(target=scanner.watch, args=([lambda: gone(desk, desk.NAME), lambda: gone(tio, "the Tio"), health.check],), daemon=True).start()
+    httpd = ThreadingHTTPServer((cfg["bind"], int(cfg["port"])), make_handler(cfg, store, sessions, listen, access, dante, tags, bible, cues, reports, plan, desk, tio, monitors, scanner, foyer, rta_inputs, dante_names, lights, rta_live, midi, music, helpers, health))
     httpd.daemon_threads = True
     close = httpd.server_close
     httpd.server_close = lambda: (scanner.stop.set(), lights.close(), rta_live.stop(), midi.close(), close())
-    httpd.store, httpd.sessions, httpd.listen, httpd.access, httpd.tags, httpd.bible, httpd.reports, httpd.plan, httpd.desk, httpd.tio, httpd.monitors, httpd.scanner, httpd.foyer, httpd.rta_inputs, httpd.lights, httpd.rta_live, httpd.midi, httpd.music, httpd.helpers = store, sessions, listen, access, tags, bible, reports, plan, desk, tio, monitors, scanner, foyer, rta_inputs, lights, rta_live, midi, music, helpers
+    httpd.store, httpd.sessions, httpd.listen, httpd.access, httpd.tags, httpd.bible, httpd.reports, httpd.plan, httpd.desk, httpd.tio, httpd.monitors, httpd.scanner, httpd.foyer, httpd.rta_inputs, httpd.lights, httpd.rta_live, httpd.midi, httpd.music, httpd.helpers, httpd.health = store, sessions, listen, access, tags, bible, reports, plan, desk, tio, monitors, scanner, foyer, rta_inputs, lights, rta_live, midi, music, helpers, health
     httpd.wing = desk  # the tests, and older code, call it this
     return httpd
 

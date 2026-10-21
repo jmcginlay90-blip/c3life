@@ -159,6 +159,8 @@ class NameTags:
         return (self.cfg.get("propresenter") or "").rstrip("/")
 
     def pp(self, method, path, body=None):
+        if not self.pp_url():
+            raise urllib.error.URLError("ProPresenter hasn't been found on the network yet. Open it with Settings > Network turned on; the network scan finds it.")
         req = urllib.request.Request(self.pp_url() + path, method=method, data=None if body is None else json.dumps(body).encode(),
                                      headers={"Content-Type": "application/json"} if body is not None else {})
         with urllib.request.urlopen(req, timeout=4) as r:

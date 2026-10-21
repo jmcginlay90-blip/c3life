@@ -190,7 +190,9 @@ class Helpers:
     def _heard(self, hid, ok):
         with self.lock:
             was = self.health.get(hid, {})
-            self.health[hid] = {"ok": ok, "at": time.time() if ok else was.get("at", 0)}
+            t = time.time()
+            self.health[hid] = {"ok": ok, "at": t if ok else was.get("at", 0),
+                                "down": 0 if ok else (was.get("down") or t)}  # when it stopped answering
 
     def check(self):
         """Asks every helper with a key whether it's there. -> the names of the ones that didn't answer"""
@@ -209,6 +211,7 @@ class Helpers:
         with self.lock:
             hs = [{"id": h["id"], "name": h.get("name") or "", "url": h["url"], "address": h["url"].split("//")[-1],
                    "os": h.get("os") or "", "can": h.get("can") or [], "paired": bool(h.get("key")), "seen": h.get("seen", 0),
-                   "ok": self.health.get(h["id"], {}).get("ok"), "last_ok": self.health.get(h["id"], {}).get("at", 0)}
+                   "ok": self.health.get(h["id"], {}).get("ok"), "last_ok": self.health.get(h["id"], {}).get("at", 0),
+                   "down_since": self.health.get(h["id"], {}).get("down", 0)}
                   for h in self.d.values()]
         return sorted(hs, key=lambda h: (h["name"].lower(), h["url"]))

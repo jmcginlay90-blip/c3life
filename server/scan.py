@@ -3,6 +3,8 @@
 How it looks (all of it only asks; a scan never changes anything on a device):
   1. The Wing search: the "WING?" broadcast every Wing answers (UDP 2222) with its name, model and serial number.
   2. Bonjour (mDNS): Dante devices, network MIDI sessions (MultiTracks Playback), and the names Macs and web devices give.
+     These work on any address, including Dante's own 169.254.x.x when there's no DHCP server, and every address
+     Bonjour announces is tried in step 3 too.
   3. Every address on the booth network: try the ports the booth apps use (TCP connect only).
   4. Ask what answered: ProPresenter GET /version, the C3 Life helper GET /hello, Shelly GET /shelly, Companion GET /,
      the Tio "get IO:Current/InCh/HAGain 0 0" (a read), Shure "< GET DEVICE_ID >" (a read).
@@ -43,20 +45,27 @@ import urllib.request
 # The ports the booth apps use, and what each one might be.
 PORTS = {50001: "propresenter", 8099: "helper", 80: "http", 49280: "yamaha", 8000: "companion", 2202: "shure"}
 # Bonjour service types worth asking for.
-MDNS_TYPES = ["_netaudio-arc._udp.local", "_apple-midi._udp.local", "_http._tcp.local", "_shelly._tcp.local"]
+MDNS_TYPES = ["_netaudio-arc._udp.local", "_apple-midi._udp.local", "_http._tcp.local", "_shelly._tcp.local", "_osc._udp.local"]
 # The few network-card makers we're sure of (the first half of the hardware address).
 VENDORS = {"001dc1": "Audinate (Dante)", "00a0de": "Yamaha", "000edd": "Shure", "001b66": "Sennheiser",
            "b827eb": "Raspberry Pi", "dca632": "Raspberry Pi", "e45f01": "Raspberry Pi", "d83add": "Raspberry Pi",
            "2ccf67": "Raspberry Pi", "28cdc1": "Raspberry Pi"}
 # What each kind is called on the Drivers screen.
 TYPES = {"wing": "Behringer Wing", "tio": "Yamaha Tio1608-D", "propresenter": "ProPresenter 7", "helper": "C3 Life helper",
-         "companion": "Companion", "shelly": "Smart plug (Shelly)", "shure": "Wireless mic receiver", "dante": "Dante (discovery)",
+         "lightkey": "Lightkey", "companion": "Companion", "shelly": "Smart plug (Shelly)", "shure": "Wireless mic receiver", "dante": "Dante (discovery)",
          "midi": "Network MIDI"}
 # The kinds the C3 Life server connects to itself, so a scan can connect them or follow them.
 MANAGED = ("wing", "tio", "propresenter")
 WATCH_EVERY = 60   # seconds between the watch's checks (the Wing, the Tio, the helpers)
 WATCH_GAP = 120    # at most one extra scan this often, however many things stop answering
 EVERY = 300  # seconds between scans when "auto" is on
+
+
+def _is_v4(s):
+    try:
+        return ipaddress.ip_address(s).version == 4
+    except ValueError:
+        return False
 
 
 def _mac(s):
@@ -288,7 +297,7 @@ class Scanner:
         self.stop = threading.Event()
         self.arp = read_arp
         self.mdns = mdns_browse
-        self.on_found = None  # helpers.found: every C3 Life helper the scan found -> changes in words
+        self.on_found = []  # helpers.found, lights.found: they're given what the scan found -> changes in words
 
     def save(self):
         tmp = self.path + ".tmp"
@@ -304,8 +313,19 @@ class Scanner:
                 n = ipaddress.ip_network(n, strict=False)
             except ValueError:
                 continue
-            if n.version == 4 and not n.is_loopback and n.prefixlen >= 22:
+            if n.version != 4 or n.is_loopback:
+                continue
+            if n.prefixlen >= 22:
                 nets.append(n)
+            else:  # a big network (a /16, say): too many addresses to try, so the part this PC is in
+                for ip in self.cfg.get("_my_ips") or []:
+                    try:
+                        if ipaddress.ip_address(ip) in n:
+                            m = ipaddress.ip_network(ip + "/24", strict=False)
+                            if m not in nets:
+                                nets.append(m)
+                    except ValueError:
+                        pass
         return nets
 
     def hosts(self):
@@ -331,8 +351,7 @@ class Scanner:
         if self.tio:
             cur["tio"] = {"ip": self.tio.settings["ip"], "port": self.tio.port, "mode": self.tio.settings["mode"]}
         u = urllib.parse.urlparse(self.cfg.get("propresenter") or "")
-        if u.hostname:
-            cur["propresenter"] = {"ip": u.hostname, "port": u.port or 80, "mode": "on"}
+        cur["propresenter"] = {"ip": u.hostname or "", "port": u.port or 50001, "mode": "on"}  # not set yet: the scan finds it
         return cur
 
     def state(self):
@@ -376,8 +395,8 @@ class Scanner:
         try:
             r = self.scan()
             changes = self.apply(r, who or "scan")
-            if self.on_found:
-                changes += self.on_found([f for f in r["found"] if f["kind"] == "helper"]) or []
+            for cb in ([self.on_found] if callable(self.on_found) else self.on_found or []):
+                changes += cb(r["found"]) or []  # each takes its own kind: helpers.found, lights.found
             r["changes"] = changes
             r["by"], r["auto"] = who, auto
             with self.lock:
@@ -419,6 +438,10 @@ class Scanner:
             if any(t.startswith("_netaudio-arc") for t in svc):
                 inst = next(v for t, v in svc.items() if t.startswith("_netaudio-arc"))
                 found.append({"kind": "dante", "ip": ip, "port": 0, "how": "Dante device · " + inst.split(".")[0], "detail": nm})
+            osc = svc.get("_osc._udp.local", "")
+            if "lightkey" in osc.lower():  # Lightkey offers its OSC over Bonjour
+                found.append({"kind": "lightkey", "ip": ip, "port": 21600, "how": "Lightkey answered (Bonjour) · " + osc.split("._osc")[0],
+                              "detail": nm, "name": osc.split("._osc")[0]})
             if any(t.startswith("_apple-midi") for t in svc):
                 inst = next(v for t, v in svc.items() if t.startswith("_apple-midi"))
                 found.append({"kind": "midi", "ip": ip, "port": 5004, "how": "Network MIDI session · " + inst.split(".")[0], "detail": nm})
@@ -426,6 +449,11 @@ class Scanner:
         self.step = "Checking every address on the booth network"
         ports, hosts = self.ports(), self.hosts()
         tries = [(h, p) for h in hosts for p in ports]
+        # Every address Bonjour announced, even outside the booth network: Dante devices with no DHCP server give
+        # themselves a 169.254.x.x address, and a Tio there is still recognised (without trying all of 169.254).
+        for ip in names:
+            if ip not in hosts and _is_v4(ip):
+                tries += [(ip, p) for p in ports]
         if "127.0.0.1" not in hosts:
             tries += [("127.0.0.1", p) for p, k in ports.items() if k == "companion"]  # Companion runs on this server
         open_ = []

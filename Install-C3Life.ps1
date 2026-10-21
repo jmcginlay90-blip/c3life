@@ -25,7 +25,9 @@ param(
   [string]$BoothUser = 'booth',
   [int]$Port = 80,
   [string]$InstallDir = 'C:\C3Life',
-  [string]$BoothNetwork = '192.168.10.0/24',
+  # The booth network. Leave out to use the networks this PC is on (whatever the church's router uses: 192.168.x,
+  # 10.x...), and the firewall follows this PC's own network if it ever changes.
+  [string]$BoothNetwork = '',
   [switch]$NoKiosk,
   [switch]$ListenFromHome,
   # Remote support: Admins can use the whole app from anywhere through Tailscale (everyone else: Listen only).
@@ -40,7 +42,7 @@ param(
   [string]$PlanningCenterAppId = '',
   [string]$PlanningCenterSecret = '',
   # ProPresenter's network API (ProPresenter > Settings > Network > Enable Network).
-  [string]$ProPresenter = 'http://192.168.10.30:50001',
+  [string]$ProPresenter = '',   # leave out: the network scan finds it (and follows it if its address changes)
   # The Behringer Wing's IP address (on the Wing: Setup > Network). Leave out to keep what's set, or set it
   # later on the Mixer screen (Find the Wing). The app starts as Watch only; an Admin switches it to Control.
   [string]$WingIp = '',
@@ -65,6 +67,30 @@ param(
   [string]$MondayToken = '',
   [switch]$Yes
 )
+
+# The booth network: given, or the private networks this PC is on now (each connected adapter's own network).
+function Get-OwnNetworks {
+  $out = @()
+  foreach ($a in @(Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue | Where-Object { $_.PrefixOrigin -ne 'WellKnown' -and $_.IPAddress -notlike '169.254.*' -and $_.IPAddress -notlike '127.*' })) {
+    $ip = [System.Net.IPAddress]::Parse($a.IPAddress).GetAddressBytes()
+    $b = $ip[0]; $c = $ip[1]
+    if (-not ($b -eq 10 -or ($b -eq 172 -and $c -ge 16 -and $c -le 31) -or ($b -eq 192 -and $c -eq 168))) { continue }
+    $len = [int]$a.PrefixLength
+    $mask = [uint32]0; if ($len -gt 0) { $mask = [uint32]([math]::Pow(2, 32) - [math]::Pow(2, 32 - $len)) }
+    $n = ([uint32]$ip[0] -shl 24) -bor ([uint32]$ip[1] -shl 16) -bor ([uint32]$ip[2] -shl 8) -bor [uint32]$ip[3]
+    $n = $n -band $mask
+    $net = '{0}.{1}.{2}.{3}/{4}' -f (($n -shr 24) -band 255), (($n -shr 16) -band 255), (($n -shr 8) -band 255), ($n -band 255), $len
+    if ($out -notcontains $net) { $out += $net }
+  }
+  return $out
+}
+if ($BoothNetwork) { $boothNets = @($BoothNetwork); $fwRemote = $BoothNetwork }
+else {
+  $boothNets = @(Get-OwnNetworks)
+  if (-not $boothNets) { $boothNets = @('192.168.10.0/24'); Write-Warning 'No network found on this PC yet: using 192.168.10.0/24. Run this again once it is on the booth network, or give -BoothNetwork.' }
+  $fwRemote = 'LocalSubnet'   # Windows' own "this PC's network", which follows it if the network changes
+  $BoothNetwork = $boothNets -join ', '
+}
 $ErrorActionPreference = 'Stop'
 $here = $PSScriptRoot
 
@@ -191,7 +217,7 @@ if ($LASTEXITCODE -ne 0) { Write-Warning 'netaudio did not install: Listen setti
 if (Test-Path $appDir) { Get-ChildItem $appDir | Remove-Item -Recurse -Force }
 Copy-Item -Recurse -Force (Join-Path $here 'app\*') $appDir
 if (Test-Path $cfgPath) { $cfg = Get-Content $cfgPath -Raw | ConvertFrom-Json }
-else { $cfg = [pscustomobject][ordered]@{ port = $Port; bind = '0.0.0.0'; app_dir = $appDir; data_dir = $dataDir; allowed_networks = @($BoothNetwork, '127.0.0.0/8'); start_page = '/player.html?p=Listen.dc.html&start=1' } }
+else { $cfg = [pscustomobject][ordered]@{ port = $Port; bind = '0.0.0.0'; app_dir = $appDir; data_dir = $dataDir; allowed_networks = @($boothNets + '127.0.0.0/8'); start_page = '/player.html?p=Listen.dc.html&start=1' } }
 # Listen settings are refreshed every time: where ffmpeg is, the DVS sound device, and listening from home.
 if ($ffmpeg) { $cfg | Add-Member -Force -NotePropertyName ffmpeg -NotePropertyValue $ffmpeg }
 if ($dvsDevice) { $cfg | Add-Member -Force -NotePropertyName listen_device -NotePropertyValue $dvsDevice }
@@ -204,7 +230,7 @@ if ($PlanningCenterAppId -and $PlanningCenterSecret) {
 } elseif (-not $cfg.pco_app_id) {
   Write-Host 'Name tags: no Planning Center token yet. Run again with -PlanningCenterAppId and -PlanningCenterSecret to turn them on.'
 }
-$cfg | Add-Member -Force -NotePropertyName propresenter -NotePropertyValue $ProPresenter
+if ($ProPresenter) { $cfg | Add-Member -Force -NotePropertyName propresenter -NotePropertyValue $ProPresenter }
 if ($Helper) { $cfg | Add-Member -Force -NotePropertyName helper -NotePropertyValue $Helper }
 if ($HelperKey) {
   $cfg | Add-Member -Force -NotePropertyName helper_key -NotePropertyValue $HelperKey
@@ -321,14 +347,14 @@ Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Se
 # 3. Firewall, booth network only
 foreach ($r in @(@{ n = 'C3 Life (booth network)'; p = $Port }, @{ n = 'Companion (booth network)'; p = 8000 })) {
   Get-NetFirewallRule -DisplayName $r.n -ErrorAction SilentlyContinue | Remove-NetFirewallRule
-  New-NetFirewallRule -DisplayName $r.n -Direction Inbound -Protocol TCP -LocalPort $r.p -RemoteAddress $BoothNetwork -Profile Private, Domain -Action Allow | Out-Null
+  New-NetFirewallRule -DisplayName $r.n -Direction Inbound -Protocol TCP -LocalPort $r.p -RemoteAddress $fwRemote -Profile Private, Domain -Action Allow | Out-Null
 }
 # The Wing's meters, and the network scan's answers (Wing search, Bonjour), arrive by UDP, from the booth network only
 Get-NetFirewallRule -DisplayName 'C3 Life Wing meters' -ErrorAction SilentlyContinue | Remove-NetFirewallRule
 # network MIDI from MultiTracks Playback (Lights › Show setup), booth network only
 Get-NetFirewallRule -DisplayName 'C3 Life network MIDI (Playback)' -ErrorAction SilentlyContinue | Remove-NetFirewallRule
-New-NetFirewallRule -DisplayName 'C3 Life network MIDI (Playback)' -Direction Inbound -Protocol UDP -LocalPort 5004, 5005 -RemoteAddress $BoothNetwork -Profile Private, Domain -Action Allow | Out-Null
-New-NetFirewallRule -DisplayName 'C3 Life Wing meters' -Direction Inbound -Protocol UDP -Program $pyw -RemoteAddress $BoothNetwork -Profile Private, Domain -Action Allow | Out-Null
+New-NetFirewallRule -DisplayName 'C3 Life network MIDI (Playback)' -Direction Inbound -Protocol UDP -LocalPort 5004, 5005 -RemoteAddress $fwRemote -Profile Private, Domain -Action Allow | Out-Null
+New-NetFirewallRule -DisplayName 'C3 Life Wing meters' -Direction Inbound -Protocol UDP -Program $pyw -RemoteAddress $fwRemote -Profile Private, Domain -Action Allow | Out-Null
 # Listening from home: Tailscale devices may reach C3 Life, which only lets them use Listen.
 Get-NetFirewallRule -DisplayName 'C3 Life Listen (from home)' -ErrorAction SilentlyContinue | Remove-NetFirewallRule
 if ($ListenFromHome -or $RemoteSupport) {

@@ -15,9 +15,9 @@ does what the server asks. What it can do depends on the computer, and it says s
 Install-Helper.command (Mac) and Install-Helper.cmd (Windows), next to this file, install it so it starts by itself
 whenever someone logs in and restarts if it stops: no Terminal window to keep open.
 
-Only the C3 Life server should talk to it: every call but GET /hello needs the key (header X-C3Life-Key), and only the
-booth network may connect: the networks this computer is on (worked out at each start, so a computer that moves to
-another address still works), unless helper.json says "allowed_networks". Kept in helper.json next to this file: {"key", "id", "name", "port", "allowed_networks"}.
+Only the C3 Life server should talk to it: every call but GET /hello needs the key (header X-C3Life-Key), and only
+private networks may connect (10.x, 172.16-31.x, 192.168.x and the computer itself: whatever the church's network
+uses), never the internet. helper.json "allowed_networks" narrows it if wanted. Kept in helper.json next to this file: {"key", "id", "name", "port", "allowed_networks"}.
 The C3 Life server finds the helper by itself (its network scan asks every address on port 8099 for /hello), and
 follows it by its "id" if the Mac's address changes. Only the key has to be typed in, once (Music on the server).
 
@@ -52,7 +52,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 VERSION = 1
 PORT = 8099
 HERE = os.path.dirname(os.path.abspath(__file__))
-DEFAULT = {"key": "", "id": "", "name": "", "port": PORT, "allowed_networks": None}  # None: this computer's own networks
+PRIVATE = ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "127.0.0.0/8"]
+DEFAULT = {"key": "", "id": "", "name": "", "port": PORT, "allowed_networks": None}  # None: any private network (PRIVATE)
 MAX_FADE = 60
 STEP = 0.2  # seconds between volume steps in a fade
 PROPRESENTER_APP = "ProPresenter"
@@ -430,7 +431,7 @@ def my_networks():
 
 def make_handler(cfg, helper):
     allowed = cfg.get("allowed_networks")
-    nets = [ipaddress.ip_network(n, strict=False) for n in (allowed if allowed is not None else my_networks())]
+    nets = [ipaddress.ip_network(n, strict=False) for n in (allowed if allowed is not None else PRIVATE)]
 
     def hello():
         return {"service": "c3life-helper", "id": cfg.get("id", ""), "name": cfg.get("name") or socket.gethostname(),
@@ -547,7 +548,8 @@ def main(argv=None):
     print("(Kept in %s.)" % a.config)
     httpd = serve(cfg)
     allowed = cfg.get("allowed_networks")
-    print("C3 Life helper on port %d, answering %s. Stop with Ctrl+C." % (cfg["port"], ", ".join(allowed if allowed is not None else my_networks())))
+    print("C3 Life helper on port %d, answering %s (this computer is on %s). Stop with Ctrl+C." % (
+        cfg["port"], ", ".join(allowed) if allowed is not None else "private networks only", ", ".join(n for n in my_networks() if not n.startswith("127."))))
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:

@@ -201,6 +201,6 @@ class ConfigFile(unittest.TestCase):
                 json.dump({"remote_networks": None, "allowed_networks": "192.168.10.0/24", "remote_support_roles": None}, f)
             cfg = s.load_config(p)
             self.assertEqual((cfg["remote_networks"], cfg["_remote"], cfg["remote_support_roles"]), ([], [], []))
-            self.assertEqual([str(n) for n in cfg["_nets"]], ["192.168.10.0/24"])
+            self.assertEqual([str(n) for n in cfg["_nets"]][0], "192.168.10.0/24")  # then the network this PC is on now
         finally:
             shutil.rmtree(d, ignore_errors=True)

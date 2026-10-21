@@ -227,8 +227,18 @@ class Devices(unittest.TestCase):
             self.sc.run()
         finally:
             hl.shutdown(); hl.server_close()
-        self.assertEqual([(f["kind"], f["port"], f["hwid"]) for f in got], [("helper", hl.server_address[1], "helper:9f8e7d")])
+        self.assertEqual([(f["kind"], f["port"], f["hwid"]) for f in got if f["kind"] == "helper"], [("helper", hl.server_address[1], "helper:9f8e7d")])
         self.assertIn("Found a C3 Life helper", self.sc.result["changes"])
+
+    def test_a_tio_bonjour_announces_outside_the_booth_network_is_found(self):
+        # a Dante device with no DHCP server is on 169.254.x.x; here, an address the scan wouldn't try by itself
+        self.sc.cfg["scan_hosts"] = []
+        self.sc.mdns = lambda: {"127.0.0.1": {"names": {"Tio1608-D-1a2b"}, "services": {"_netaudio-arc._udp.local": "Tio1608-D-1a2b._netaudio-arc._udp.local"}}}
+        self.sc.run()
+        kinds = {f["kind"]: f for f in self.sc.result["found"]}
+        self.assertEqual((kinds["tio"]["ip"], kinds["tio"]["state"]), ("127.0.0.1", "connected_now"))
+        self.assertIn("dante", kinds)
+        self.assertEqual(self.ft.sets, [])
 
     def test_a_device_without_a_driver_says_what_it_is(self):
         sc = sm.Scanner(self.tmp, {"scan_hosts": ["127.0.0.1"], "scan_ports": {self.cam.server_address[1]: "http"}, "scan_networks": ["10.9.9.0/24"]}, _Log())
@@ -307,6 +317,33 @@ class Api(unittest.TestCase):
         self.assertEqual(self.call("/api/scan/use", "POST", {"kind": "wing", "ip": "10.0.0.9", "port": 2223}, who="FOH sound")[0], 409)
         self.assertEqual(self.call("/api/scan/settings", "PUT", {"auto": False}, who="FOH sound")[0], 403)
         self.assertEqual(self.call("/api/scan/settings", "PUT", {"auto": False})[1]["auto"], False)
+
+
+class Networks(unittest.TestCase):
+    def test_any_network_not_only_192_168_10(self):
+        for nets, mine, want in ((["192.168.1.0/24"], [], ["192.168.1.0/24"]),
+                                 (["10.0.0.0/24"], [], ["10.0.0.0/24"]),
+                                 (["10.0.0.0/16"], ["10.0.7.20"], ["10.0.7.0/24"]),      # big: the part this PC is in
+                                 (["172.16.0.0/12"], ["172.20.3.4"], ["172.20.3.0/24"]),
+                                 (["127.0.0.0/8", "10.0.0.0/16"], [], [])):               # nothing sensible to try
+            sc = sm.Scanner(tempfile.mkdtemp(), {"allowed_networks": nets, "_my_ips": mine}, _Log())
+            self.assertEqual([str(n) for n in sc.networks()], want, nets)
+
+    def test_the_server_adds_the_network_it_is_on(self):
+        real = s._own_networks
+        s._own_networks = lambda: ["10.0.5.0/24"]
+        try:
+            c = s.load_config(None)
+            self.assertIn("10.0.5.0/24", c["allowed_networks"])
+            self.assertTrue(any(s.ipaddress.ip_address("10.0.5.77") in n for n in c["_nets"]))
+            tmp = tempfile.mkdtemp()
+            with open(os.path.join(tmp, "config.json"), "w") as f:
+                json.dump({"own_network": False}, f)
+            self.assertNotIn("10.0.5.0/24", s.load_config(os.path.join(tmp, "config.json"))["allowed_networks"])
+            shutil.rmtree(tmp, ignore_errors=True)
+        finally:
+            s._own_networks = real
+        self.assertTrue(all(s.ipaddress.ip_network(n).is_private for n in s._own_networks()))
 
 
 class Watch(unittest.TestCase):

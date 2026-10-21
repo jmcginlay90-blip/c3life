@@ -229,11 +229,14 @@ class HelperServer(unittest.TestCase):
         finally:
             httpd.shutdown(); httpd.server_close()
 
-    def test_it_answers_the_networks_this_computer_is_on(self):
-        nets = hp.my_networks()
-        self.assertIn("127.0.0.0/8", nets)
-        self.assertTrue(all(s.ipaddress.ip_network(n).is_private for n in nets))
+    def test_it_answers_any_private_network_but_not_the_internet(self):
         self.assertIsNone(hp.DEFAULT["allowed_networks"])  # nothing to set, unless helper.json says otherwise
+        nets = [s.ipaddress.ip_network(n) for n in hp.PRIVATE]
+        for ip in ("192.168.10.30", "192.168.1.20", "10.0.0.5", "10.20.30.40", "172.16.4.2", "127.0.0.1"):
+            self.assertTrue(any(s.ipaddress.ip_address(ip) in n for n in nets), ip)
+        for ip in ("8.8.8.8", "81.2.69.160", "172.32.0.1"):
+            self.assertFalse(any(s.ipaddress.ip_address(ip) in n for n in nets), ip)
+        self.assertTrue(all(s.ipaddress.ip_network(n).is_private for n in hp.my_networks()))
 
     def test_show_key_shows_it_and_stops(self):
         tmp = tempfile.mkdtemp()

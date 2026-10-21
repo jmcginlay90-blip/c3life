@@ -479,7 +479,8 @@ class Component extends DCLogic {
         'If it plays in the booth but not the foyer, see "The foyer is silent".'] },
       { q: 'Set up a C3 Life helper (Mac or Windows PC)', c: '#1ED760', href: 'Music.dc.html', go: 'Music', steps: [
         'The helper is a small program (helper/c3life_helper.py in the C3 Life download) for any computer in the booth with Spotify or ProPresenter. It needs Python 3 (Mac: open Terminal and type python3, and macOS offers to install it; Windows: from python.org).',
-        'Start it in its folder. Mac, in Terminal:  python3 c3life_helper.py   Windows, in Command Prompt:  py c3life_helper.py   It shows its key and says it\u2019s on port 8099. Leave the window open. On Windows, if it asks, allow Python on Private networks.',
+        'Install it once, from the helper folder. Mac: double-click Install-Helper.command (if macOS says it can\u2019t be opened: right-click it \u203a Open \u203a Open). Windows: double-click Install-Helper.cmd and say Yes when Windows asks. It starts the helper, makes it start by itself whenever someone logs in (and restart if it stops), and shows its key. No window needs to stay open.',
+        'Keep that computer logged in (on a Mac: System Settings \u203a Users & Groups \u203a Automatically log in), or the helper waits until someone logs in.',
         'Nobody types an address: the C3 Life server\u2019s network scan finds it (20 seconds after the server starts, then every 5 minutes, or tap Music \u203a Find it now). It shows under Music \u203a Computers with the C3 Life helper, with Key needed.',
         'An Admin types its key there once, and taps Save key. C3 Life checks it with the helper first. The key stays on the C3 Life server and is never shown again.',
         'If a computer gets a new address, C3 Life follows it by itself, key and all. Every helper is checked once a minute; one that stops answering makes C3 Life look for it straight away. Each shows when it last answered.',
@@ -489,8 +490,15 @@ class Component extends DCLogic {
         'Open ProPresenter uses the helper on the computer ProPresenter is set up on, or else the music one.',
         'Add the church\u2019s playlists on Music \u203a Change list: in Spotify, right-click a playlist \u203a Share \u203a Copy link to playlist, and paste it. Download each playlist in Spotify so it plays without internet.',
         'Who can press Play: anyone with Music control in Access levels. At first that\u2019s Admin, FOH sound and ProPresenter; Lighting and Viewer can look. Only an Admin types keys or forgets a computer.',
-        'Key lost or shared? On that computer:  python3 c3life_helper.py --new-key  (Windows: py), then Change key on Music. Only the booth network can reach a helper, and everything but its hello needs the key.',
+        'Key lost or shared? On that computer, in the helper folder:  python3 c3life_helper.py --new-key --config "<the C3 Life Helper folder>/helper.json"  then install again and Change key on Music. Only private networks can reach a helper (never the internet), and everything but its hello needs the key.',
+        'To take it off a computer: Uninstall-Helper.command (Mac) or Uninstall-Helper.cmd (Windows). Its key is kept, so installing it again doesn\u2019t need the key typed again.',
         'Not tried with the church\u2019s computers and Spotify yet, and the Windows media keys haven\u2019t been tried on a real PC: the first time, try it before the service, not during one.'] },
+      { q: 'A warning says something isn\u2019t answering', c: '#FF7A45', href: 'Drivers.dc.html', go: 'Drivers', steps: [
+        'Every screen shows a warning when something C3 Life is set up to use stops answering for 15 seconds: the Wing, the Tio, ProPresenter, Lightkey or a C3 Life helper. You only see the ones your role can use.',
+        'C3 Life is already looking for it: it scans the network straight away, and if the device turns up at a new address it follows it by itself (the Wing by its serial number, the Tio and ProPresenter by their network card, a helper by its own id, Lightkey by its Bonjour name). The warning goes by itself when it\u2019s back.',
+        'If it stays: check the device is switched on and plugged into the booth switch. For ProPresenter, check it\u2019s open with Settings \u203a Network on. For a helper, check that computer is on and logged in.',
+        'Hide for 10 minutes hides it on this device only.',
+        'Any network works: 192.168.x, 10.x or 172.16-31.x. Dante devices on their own 169.254.x.x addresses (no DHCP server) are found by their Bonjour announcements.'] },
       { q: 'The foyer mixes have the wrong names', c: '#F5C518', href: 'Foyer.dc.html', go: 'Foyer', steps: [
         'The two mixes are called what the desk calls those two buses. Rename the bus on the Wing (or on Mixer) and the Foyer screens change within a few seconds.',
         'If they say Spotify and Live service, the desk isn\u2019t connected (or those buses have no names yet).',
