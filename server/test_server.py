@@ -204,3 +204,19 @@ class ConfigFile(unittest.TestCase):
             self.assertEqual([str(n) for n in cfg["_nets"]][0], "192.168.10.0/24")  # then the network this PC is on now
         finally:
             shutil.rmtree(d, ignore_errors=True)
+
+
+class InstallerCopiesEverything(unittest.TestCase):
+    """Install-C3Life.ps1 lists the server's files one by one: a module it forgets means C3 Life won't start on the HP."""
+
+    def test_every_server_module_is_installed_and_uninstalled(self):
+        import re
+        here = os.path.dirname(os.path.abspath(__file__))
+        mods = {f[:-3] for f in os.listdir(here) if f.endswith(".py") and not f.startswith("test_") and f not in ("fake_netaudio.py",)}
+        with open(os.path.join(here, "..", "Install-C3Life.ps1"), encoding="utf-8-sig") as f:
+            inst = f.read()
+        with open(os.path.join(here, "..", "Uninstall-C3Life.ps1"), encoding="utf-8-sig") as f:
+            uninst = f.read()
+        for m in sorted(mods):
+            self.assertEqual(len(re.findall(r"server\\%s\.py'" % m, inst)), 2, "Install-C3Life.ps1 should check for and copy server\\%s.py" % m)
+            self.assertIn("server\\%s.py'" % m, uninst, "Uninstall-C3Life.ps1 should remove server\\%s.py" % m)

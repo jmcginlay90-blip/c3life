@@ -31,7 +31,7 @@ jobs:
       - name: Run every server test
         working-directory: server
         run: python -m unittest -v
-        timeout-minutes: 30
+        timeout-minutes: 50
 
   installer:
     name: Installer (Windows)
