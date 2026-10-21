@@ -306,7 +306,8 @@ class Link(unittest.TestCase):
         self.assertEqual(m["1"], -12.0)
         self.assertEqual(m["2"], -60.0)
         self.assertEqual(self.w.meter_state()["lr"]["1"], [-12.0, -18.0])  # left and right, for stereo channels
-        self.assertTrue(wait(lambda: self.w.inputs.get("USB/20", {}).get("mode") == "ST"))
+        # its source, then its mode, each come on a later round (every 2 s): slow computers need longer
+        self.assertTrue(wait(lambda: self.w.inputs.get("USB/20", {}).get("mode") == "ST", 15))
         self.assertEqual(self.w.inputs["LCL/1"]["mode"], "M")
 
     def test_gain_reduction_history(self):
