@@ -179,7 +179,7 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
 
     <section class="card" style="display:flex;flex-direction:column;padding:6px 14px">
       <div style="display:flex;justify-content:space-between;align-items:baseline;padding:8px 0">
-        <div class="lbl">Cables</div><span style="font-size:12px;color:#A3ACB8">Network 192.168.10.x</span>
+        <div class="lbl">Cables</div><span style="font-size:12px;color:#A3ACB8">Booth network · any address range</span>
       </div>
       <sc-for list="{{cables}}" as="r" hint-placeholder-count="11">
         <div class="{{r.cls}}">
@@ -252,7 +252,7 @@ class Component extends DCLogic {
       { id: 1, name: 'Behringer Wing', ip: '192.168.10.20', port: '2223', enabled: true },
       { id: 3, name: 'RTA audio', ip: '239.69.1.10', port: '5004', enabled: true },
       { id: 4, name: 'ProPresenter · Mac mini', ip: '192.168.10.30', port: '50001', enabled: true },
-      { id: 5, name: 'Spotify · Mac mini', ip: '192.168.10.30', port: '8099', enabled: true },
+      { id: 5, name: 'C3 Life helper · Mac mini', ip: '192.168.10.30', port: '8099', enabled: true },
       { id: 6, name: 'Playback · MacBook Pro', ip: '192.168.10.31', port: '5004', enabled: true },
       { id: 7, name: 'Lightkey · events Mac', ip: '192.168.10.32', port: '21600', enabled: false }
     ];
@@ -294,10 +294,10 @@ class Component extends DCLogic {
     };
     const others = list.filter((x) => this.cabled.indexOf(x.id) < 0 && x.id !== 2 && x.id !== 8)
       .map((x) => {
-        const r = row('', x.name, x.id === 3 ? 'AES67 from the Wing card · room mic, FOH mix, MD mic' : (x.id === 5 ? 'Same Mac as ProPresenter (C05)' : 'Added in Drivers · needs a cable number'), x.id);
-        // Spotify helper runs on the same Mac mini as ProPresenter, so their IPs should match.
+        const r = row('', x.name, x.id === 3 ? 'AES67 from the Wing card · room mic, FOH mix, MD mic' : (x.id === 5 ? 'Same Mac as ProPresenter (C05) · found by the network scan' : 'Added in Drivers · needs a cable number'), x.id);
+        // The helper usually runs on the same Mac mini as ProPresenter, so their addresses usually match.
         if (x.id === 5 && byId[4] && byId[4].ip !== x.ip) {
-          r.warn = 'Not the same as ProPresenter (' + byId[4].ip + '). If the Mac mini moved, change this in Drivers too.';
+          r.warn = 'Not the same address as ProPresenter (' + byId[4].ip + '). Fine if the helper is on another computer; C3 Life follows each one by itself if its address changes.';
           r.cls = 'cab chg'; r.ipColor = '#F5C518';
         }
         return r;

@@ -305,7 +305,7 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
         <sc-if value="{{canFind}}" hint-placeholder-val="{{ false }}"><button class="btn" style="min-height:36px;padding:0 10px;font-size:13px" onClick="{{findNow}}" disabled="{{finding}}">{{findLabel}}</button></sc-if>
       </div>
       <div style="font-size:12px;color:#A3ACB8;line-height:1.45">Found by the network scan, and followed if a computer’s address changes. Each one is checked every minute; one that stops answering makes C3 Life look for it straight away.</div>
-      <sc-if value="{{noHelpers}}" hint-placeholder-val="{{ false }}"><div style="font-size:13px;color:#C9CFD7;line-height:1.45">None found yet. On the Mac (or Windows PC) with Spotify, start the helper: python3 c3life_helper.py</div></sc-if>
+      <sc-if value="{{noHelpers}}" hint-placeholder-val="{{ false }}"><div style="font-size:13px;color:#C9CFD7;line-height:1.45">None found yet. On the Mac (or Windows PC) with Spotify, install the helper once: double-click Install-Helper.command (Mac) or Install-Helper.cmd (Windows) in the helper folder.</div></sc-if>
       <sc-for list="{{helperRows}}" as="h" hint-placeholder-count="1">
         <div style="display:flex;flex-direction:column;gap:6px;border-top:1px solid #222831;padding-top:8px">
           <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">

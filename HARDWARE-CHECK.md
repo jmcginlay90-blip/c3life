@@ -64,10 +64,15 @@ Then:
 - **ProPresenter: no answer.**
   - In ProPresenter, go to Settings > Network, turn on Enable Network, and use the same port.
 - **Not found by the scan.**
-  - The device is off, or on a different network than 192.168.10.x.
+  - The device is off, or on a different network from the laptop (any address range works: 192.168.x, 10.x, 172.16-31.x, and Dante's own 169.254.x through Bonjour).
   - Or (for a Mac) it's asleep.
+- **A C3 Life helper isn't found.**
+  - It isn't installed on that computer: double-click `Install-Helper.command` (Mac) or `Install-Helper.cmd` (Windows) in the `helper` folder.
+  - Or nobody is logged in on that computer: the helper starts when someone logs in.
+  - Windows: the network must be Private, not Public.
 
 ## What it doesn't test yet
 
 - **Changing anything (Control).** That comes later, on the HP. It should be done with FOH watching, never during a service, one thing at a time (a fader, a mute, then gain, then phantom power with the mic's channel muted).
-- **Lightkey and the Sennheiser receivers.** The scan doesn't recognise these yet.
+- **The Sennheiser receivers.** The scan doesn't recognise these yet. (Lightkey is recognised from its Bonjour announcement, but that hasn't been tried with the real Lightkey yet.)
+- **Spotify and ProPresenter through the helper.** The check only sees that a helper answers; playing music is tried from Music on the C3 Life server.

@@ -401,8 +401,8 @@ class Component extends DCLogic {
       'AES67 receiver': { port: '5004', hint: 'Audio stream from the WING Dante card: room mic and FOH mix for the RTA, and the MD mic for the MD talk log.' },
       'ProPresenter 7': { port: '50001', hint: 'Turn on Network in ProPresenter settings and use the same port.' },
       'MultiTracks Playback': { port: '5004', hint: 'Network MIDI session on the MacBook Pro.' },
-      'Spotify helper (Mac)': { port: '8099', hint: 'The C3 Life helper on a Mac or Windows PC: Spotify and opening ProPresenter. The network scan finds each one by itself and follows it if its address changes; an Admin types its key once on Music.' },
-      'Lightkey': { port: '21600', hint: 'Turn on OSC input in Lightkey and use the same port.' },
+      'C3 Life helper': { port: '8099', hint: 'The C3 Life helper on a Mac or Windows PC: Spotify and opening ProPresenter. The network scan finds each one by itself and follows it if its address changes; an Admin types its key once on Music.' },
+      'Lightkey': { port: '21600', hint: 'Turn on OSC input in Lightkey and use the same port. The network scan finds it from its Bonjour name, and follows the lighting Mac if its address changes.' },
       'Companion': { port: '8000', hint: 'Companion runs on the C3 Life server itself.' },
       'Smart plug (Shelly)': { port: '80', hint: 'Powers the C3 Life server. Used only for Hard reset on C3 Life server power. Keep it on its own fixed IP (192.168.10.5).' },
       'Network MIDI': { port: '5004', hint: 'Same as Audio MIDI Setup on a Mac.' },
@@ -417,7 +417,7 @@ class Component extends DCLogic {
       { id: 2, name: 'Dante network', type: 'Dante (discovery)', ip: 'auto', port: '—', enabled: true, state: 'ok' },
       { id: 3, name: 'RTA audio', type: 'AES67 receiver', ip: '239.69.1.10', port: '5004', enabled: true, state: 'ok' },
       { id: 4, name: 'ProPresenter · Mac mini', type: 'ProPresenter 7', ip: '192.168.10.30', port: '50001', enabled: true, state: 'ok' },
-      { id: 5, name: 'Spotify · Mac mini', type: 'Spotify helper (Mac)', ip: '192.168.10.30', port: '8099', enabled: true, state: 'ok' },
+      { id: 5, name: 'Spotify · Mac mini', type: 'C3 Life helper', ip: '192.168.10.30', port: '8099', enabled: true, state: 'ok' },
       { id: 6, name: 'Playback · MacBook Pro', type: 'MultiTracks Playback', ip: '192.168.10.31', port: '5004', enabled: true, state: 'lost' },
       { id: 7, name: 'Lightkey · events Mac', type: 'Lightkey', ip: '192.168.10.32', port: '21600', enabled: false, state: 'off' },
       { id: 8, name: 'Companion', type: 'Companion', ip: '127.0.0.1', port: '8000', enabled: true, state: 'ok' },
@@ -434,7 +434,7 @@ class Component extends DCLogic {
       { id: 2, name: 'Dante · Wing card + Tio1608-D', ip: 'auto', port: '\u2014', type: 'Dante (discovery)', how: 'Found by Dante: 192.168.10.40 and .41' },
       { id: 3, name: 'RTA audio · AES67 stream', ip: '239.69.1.10', port: '5004', type: 'AES67 receiver', how: 'The Wing card announces this stream' },
       { id: 4, name: 'ProPresenter 7', ip: '192.168.10.30', port: '50001', type: 'ProPresenter 7', how: 'Mac-mini.local · ProPresenter answered on this port' },
-      { id: 5, name: 'Spotify helper', ip: '192.168.10.30', port: '8099', type: 'Spotify helper (Mac)', how: 'Mac-mini.local · the helper announced itself' },
+      { id: 5, name: 'Spotify helper', ip: '192.168.10.30', port: '8099', type: 'C3 Life helper', how: 'Mac-mini.local · the helper announced itself' },
       { id: 8, name: 'Companion', ip: '127.0.0.1', port: '8000', type: 'Companion', how: 'Running on this C3 Life server' },
       { id: 9, name: 'Smart plug', ip: '192.168.10.5', port: '80', type: 'Smart plug (Shelly)', how: 'shellyplug.local · answered on port 80' },
       { id: 0, name: 'Unknown device', ip: '192.168.10.60', port: '80', type: 'Generic HTTP', how: 'Made by Panasonic (maybe a camera) · web page on port 80' }
@@ -494,7 +494,7 @@ class Component extends DCLogic {
     this.setState({ saved, list: fix(this.state.list) });
   }
   // The server's names for driver types, as the Drivers list calls them.
-  lvType(t) { return { 'C3 Life helper': 'Spotify helper (Mac)' }[t] || t; }
+  lvType(t) { return t; }
   lvRows() {
     const j = this.state.lvState, r = j && j.result;
     if (!r) return null;
@@ -524,7 +524,7 @@ class Component extends DCLogic {
       rows.push({ id: d ? d.id : 0, name: d ? d.name : ty, addr: addr(m.ip, m.port), how: 'No answer at its address', kind: 'missing', dot: ORANGE, status: 'Not found · is it switched on? Check its cable.', hasAct: false, actOff: true, actLabel: '', actAria: '', act: () => {} });
     });
     // Drivers the scan looks for, that it didn't find
-    const LOOKS = ['Behringer Wing', 'Yamaha Tio1608-D', 'ProPresenter 7', 'Spotify helper (Mac)', 'Companion', 'Smart plug (Shelly)', 'Wireless mic receiver', 'Network MIDI', 'MultiTracks Playback', 'Dante (discovery)'];
+    const LOOKS = ['Behringer Wing', 'Yamaha Tio1608-D', 'ProPresenter 7', 'C3 Life helper', 'Companion', 'Smart plug (Shelly)', 'Wireless mic receiver', 'Network MIDI', 'MultiTracks Playback', 'Dante (discovery)', 'Lightkey'];
     list.forEach((d) => {
       if (rows.some((x) => x.id === d.id) || LOOKS.indexOf(d.type) < 0) return;
       if (!d.enabled) rows.push({ id: d.id, name: d.name, addr: addr(d.ip, d.port), how: 'Left out, so not checked', kind: 'off', dot: GREY, status: 'Turn on Events mode when you need it', hasAct: false, actOff: true, actLabel: '', actAria: '', act: () => {} });
