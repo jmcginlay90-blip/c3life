@@ -21,6 +21,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      # Listen turns the Dante audio into MP3 with ffmpeg; on the HP the installer asks for it
+      - name: Install ffmpeg (Windows)
+        if: runner.os == 'Windows'
+        run: choco install ffmpeg -y --no-progress
+      - name: Install ffmpeg (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update -q && sudo apt-get install -y -q ffmpeg
       - name: Run every server test
         working-directory: server
         run: python -m unittest -v
@@ -43,7 +50,8 @@ jobs:
         shell: pwsh
         run: |
           Set-ExecutionPolicy -Scope Process Bypass -Force
-          .\Install-C3Life.ps1 -Yes -NoKiosk -NoSubtitles -Languages ''
+          # Port 80 is already taken on GitHub's Windows computer, so this run uses 8080
+          .\Install-C3Life.ps1 -Yes -NoKiosk -NoSubtitles -Languages '' -Port 8080
       - name: Start C3 Life and ask it how it is
         shell: pwsh
         run: |
@@ -52,13 +60,13 @@ jobs:
           $ok = $false
           foreach ($i in 1..30) {
             Start-Sleep 2
-            try { $h = Invoke-RestMethod http://127.0.0.1/api/health; $ok = $h.ok; if ($ok) { break } } catch { }
+            try { $h = Invoke-RestMethod http://127.0.0.1:8080/api/health; $ok = $h.ok; if ($ok) { break } } catch { }
           }
-          if (-not $ok) { throw 'C3 Life did not answer on http://127.0.0.1/api/health' }
+          if (-not $ok) { throw 'C3 Life did not answer on http://127.0.0.1:8080/api/health' }
           "C3 Life $($h.version) is up, serving the $($h.app) folder"
-          $r = Invoke-WebRequest http://127.0.0.1/ -MaximumRedirection 0 -SkipHttpErrorCheck
+          $r = Invoke-WebRequest http://127.0.0.1:8080/ -MaximumRedirection 0 -SkipHttpErrorCheck
           "The address opens: $($r.Headers.Location)"
-          Invoke-WebRequest http://127.0.0.1/project/Lights.dc.html -UseBasicParsing | Out-Null
+          Invoke-WebRequest http://127.0.0.1:8080/project/Lights.dc.html -UseBasicParsing | Out-Null
           'Lights page served'
           Stop-Process $p
       - name: Keep the install logs
