@@ -204,6 +204,8 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
         <input id="ref" type="number" step="0.1" value="{{refVal}}" onChange="{{setRef}}">
         <button class="btn" onClick="{{applyRef}}">Match</button>
       </div>
+      <div style="display:contents"><sc-if value="{{canClear}}" hint-placeholder-val="{{ false }}"><button class="btn" onClick="{{clearCal}}">Clear the calibration (new mic, or the gain changed)</button></sc-if></div>
+      <div style="display:contents"><sc-if value="{{calMsg}}" hint-placeholder-val="{{ false }}"><div role="status" style="font-size:13px;color:{{calMsgColor}}">{{calMsg}}</div></sc-if></div>
     </section>
 
     <section class="card" style="display:flex;flex-direction:column;gap:10px">
@@ -234,19 +236,48 @@ class Component extends DCLogic {
     this.state = { mic: 'dbx RTA-M Reference Mic', file: false, offset: 2.4, calibrated: 'Calibrated 12 Oct', raw: 91.6, refVal: 85.0, calibrating: false, gainChanged: false };
   }
   componentDidMount() {
-    this.timer = setInterval(() => this.setState({ raw: this.state.calibrating ? 91.6 + (Math.random() - 0.5) * 0.2 : 82 + Math.random() * 3 }), 300);
+    this.timer = setInterval(() => { if (!this.live) this.setState({ raw: this.state.calibrating ? 91.6 + (Math.random() - 0.5) * 0.2 : 82 + Math.random() * 3 }); }, 300);
+    this.poll(); this.pollT = setInterval(() => this.poll(), 400);
   }
-  componentWillUnmount() { clearInterval(this.timer); clearTimeout(this.t); }
+  componentWillUnmount() { clearInterval(this.timer); clearInterval(this.pollT); clearTimeout(this.t); }
+  // On the C3 Life server: what the room mic reads now, and calibrating it there (the same on every device)
+  api(path, method, body) {
+    let t = ''; try { const x = JSON.parse(localStorage.getItem('booth.session') || 'null'); t = x ? x.token : ''; } catch (e) {}
+    const h = t ? { Authorization: 'Bearer ' + t } : {};
+    if (body) h['Content-Type'] = 'application/json';
+    return fetch(path, { method: method || 'GET', headers: h, body: body ? JSON.stringify(body) : undefined }).then((r) => r.json().catch(() => ({})).then((j) => ({ code: r.status, j })));
+  }
+  poll() {
+    if (this.noServer || this.busy) return;
+    this.busy = true;
+    this.api('/api/rta/live').then(({ code, j }) => {
+      this.busy = false;
+      if (code === 404) { this.noServer = true; return; }
+      if (code === 200 && j.ok) { this.live = j; this.setState({ tick: (this.state.tick || 0) + 1 }); }
+    }).catch(() => { this.busy = false; });
+  }
+  serverCal(spl, weight, label) {
+    this.setState({ calibrating: true, calMsg: '' });
+    // listen for a moment first, so the level has settled
+    this.t = setTimeout(() => this.api('/api/rta/calibrate', 'POST', { spl, weight }).then(({ j }) => {
+      if (j && j.status) this.live = j;
+      this.setState({ calibrating: false, gainChanged: false, calMsg: (j && (j.message || j.error)) || 'Not calibrated. Try again.', calBad: !(j && j.ok) });
+    }).catch(() => this.setState({ calibrating: false, calMsg: 'The C3 Life server didn’t answer.', calBad: true })), 1500);
+  }
   renderVals() {
     const s = this.state;
     let ri = null; try { ri = JSON.parse(localStorage.getItem('booth.rtainputs') || 'null'); } catch (e) {}
     const mw = ri && ri.mic ? ri.mic : { from: 'LCL/8', via: 'dvs', ch: 1 };
     const micWhere = ({ LCL: 'Local In ', AUX: 'Aux In ', A: 'AES50 A ', B: 'AES50 B ', C: 'AES50 C ', CRD: 'Card in ', USB: 'USB in ', TIO: 'Tio input ' }[mw.from.split('/')[0]] || '') + (mw.from.split('/')[1] || 'Dante device') + (mw.stereo ? ' + ' + (mw.from2 || '').replace(/^[A-Z]+\//, '') : '') + ' \u2192 ' + ({ dvs: 'DVS ', aes67: 'AES67 ', usb: 'USB ' }[mw.via]) + mw.ch + (mw.stereo ? ' + ' + mw.ch2 : '');
+    const lv = this.live, heard = lv && lv.status === 'live';
     return {
       micWhere,
-      statusTitle: s.gainChanged ? 'Needs recalibrating' : s.calibrated,
-      statusSub: 'dbx RTA-M · offset ' + (s.offset >= 0 ? '+' : '') + s.offset.toFixed(1) + ' dB · ' + (s.file ? 'cal file on' : 'flat response'),
-      reading: (s.raw + s.offset).toFixed(1),
+      statusTitle: lv ? (s.gainChanged ? 'Needs recalibrating' : (lv.calibrated ? 'Calibrated ' + lv.cal.calibrated : 'Not calibrated yet')) : (s.gainChanged ? 'Needs recalibrating' : s.calibrated),
+      statusSub: lv ? (heard ? (lv.calibrated ? lv.cal.how + ' · ' : 'Levels are an estimate until it’s calibrated · ') + 'room mic on ' + lv.source : (lv.reason || 'Starting to listen…')) : 'dbx RTA-M · offset ' + (s.offset >= 0 ? '+' : '') + s.offset.toFixed(1) + ' dB · ' + (s.file ? 'cal file on' : 'flat response'),
+      reading: lv ? (heard ? lv.dbz.toFixed(1) : '---') : (s.raw + s.offset).toFixed(1),
+      calMsg: s.calMsg || '', calMsgColor: s.calBad ? '#FF7A45' : '#4CD964',
+      canClear: !!(lv && lv.calibrated),
+      clearCal: () => this.api('/api/rta/calibrate', 'POST', { clear: true }).then(({ j }) => { if (j && j.status) this.live = j; this.setState({ calMsg: (j && (j.message || j.error)) || 'Not cleared.', calBad: !(j && j.ok) }); }),
       mics: ['dbx RTA-M Reference Mic', 'Dayton Audio EMM-6', 'Behringer ECM8000', 'Other / unknown'],
       mic: s.mic,
       pickMic: (e) => this.setState({ mic: e.target.value }),
@@ -256,6 +287,7 @@ class Component extends DCLogic {
       loadFile: () => this.setState({ file: true }),
       calBtn: s.calibrating ? 'Listening to calibrator…' : 'Calibrate to 94.0 dB',
       calibrate: () => {
+        if (lv) { this.serverCal(94, 'Z'); return; }
         this.setState({ calibrating: true });
         this.t = setTimeout(() => this.setState({
           calibrating: false, offset: 94 - 91.6, gainChanged: false,
@@ -264,7 +296,7 @@ class Component extends DCLogic {
       },
       refVal: s.refVal,
       setRef: (e) => this.setState({ refVal: Number(e.target.value) }),
-      applyRef: () => this.setState({ offset: s.refVal - s.raw, calibrated: 'Matched to meter just now', gainChanged: false }),
+      applyRef: () => (lv ? this.serverCal(s.refVal, 'A') : this.setState({ offset: s.refVal - s.raw, calibrated: 'Matched to meter just now', gainChanged: false })),
       gain: s.gainChanged ? '+41.5' : '+38.0',
       gainBtn: s.gainChanged ? 'Set gain back to +38.0 dB' : 'Demo: someone changes the gain',
       simulateGain: () => this.setState({ gainChanged: !s.gainChanged })

@@ -70,6 +70,11 @@ API (JSON):
   POST /api/rta/patch {"which","id"}       (RTA settings control, plus Wing patch control for the Wing and Dante control for Dante; the Wing in Control)
                                            make that plan, if it's still the same; each step is read back
   POST /api/rta/unpatch {"which"}          (the same) put the last one back
+  GET  /api/rta/live                       (RTA view) what the server hears: the room mic and the desk reference in 120 bands
+                                           (1/12 octave from 20 Hz), dB(A), dB(Z) and the Leq averages. Asking keeps it
+                                           listening; it stops 30 s after the last ask
+  POST /api/rta/calibrate {"spl", "weight": "Z"|"A"}   (RTA settings control) the calibrator (Z) or a meter (A) reads spl now
+                                           {"clear": true}: not calibrated any more (a new mic, or the gain changed)
   GET  /api/foyer                          (Foyer, Show or Mixer view) the foyer's name, its two mixes and matrix,
                                            with the names the desk gives those buses (when the Wing is connected)
   PUT  /api/foyer {"name","mix_a","mix_b","mtx","max_db"}   (Foyer setup control: Admin) rename the foyer, or choose its buses
@@ -128,6 +133,7 @@ import rta_inputs as rta_inputs_mod
 import rta_patch as rta_patch_mod
 import dante_names as dante_names_mod
 import lightkey as lightkey_mod
+import rta_live as rta_live_mod
 
 VERSION = "0.3.0"
 START = time.time()
@@ -369,7 +375,7 @@ def _ip_ok(x):
         return False
 
 
-def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bible=None, cues=None, reports=None, plan=None, wing=None, tio=None, monitors=None, scanner=None, foyer=None, rta_inputs=None, dante_names=None, lights=None):
+def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bible=None, cues=None, reports=None, plan=None, wing=None, tio=None, monitors=None, scanner=None, foyer=None, rta_inputs=None, dante_names=None, lights=None, rta_live=None):
     nets = cfg["_nets"]
     remote_nets = cfg.get("_remote", [])
 
@@ -733,6 +739,11 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                     wing.outputs()  # start reading the Wing's card outputs, for "Set it up for me"
                     self.send_json(200, dict(rta_inputs.view(dante, wing), ok=True))
                 return
+            if path == "/api/rta/live":
+                if self.level("RTA"):
+                    rta_live.ask()
+                    self.send_json(200, dict(rta_live.state(), ok=True))
+                return
             if path == "/api/rta/plan":
                 if not self.level("RTA"):
                     return
@@ -938,6 +949,24 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 for r in out.get("results", []):
                     log.info("dante: %s: %s%s", s["name"], r["text"], "" if r["ok"] else " (failed: %s)" % r["error"])
                 self.send_json(st, out)
+                return
+            if path == "/api/rta/calibrate":
+                s = self.level("RTA settings", need=2)
+                if not s:
+                    return
+                body = self.read_json() or {}
+                if body.get("clear") is True:
+                    rta_live.uncalibrate()
+                    log.info("rta: %s cleared the mic's calibration", s["name"])
+                    self.send_json(200, dict(rta_live.state(), ok=True, message="Not calibrated any more."))
+                    return
+                spl, weight = body.get("spl"), body.get("weight", "Z")
+                if not isinstance(spl, (int, float)) or isinstance(spl, bool) or not 40 <= spl <= 140 or weight not in ("Z", "A"):
+                    self.send_json(400, {"ok": False, "error": "The level is 40 to 140 dB."})
+                    return
+                ok, msg = rta_live.calibrate(float(spl), weight)
+                log.info("rta: %s calibrating: %s", s["name"], msg)
+                self.send_json(200 if ok else 409, dict(rta_live.state(), ok=ok, message=msg, **({} if ok else {"error": msg})))
                 return
             if path == "/api/lights/do":
                 s = self.level("Lights", need=2)
@@ -1588,17 +1617,18 @@ def serve(cfg):
     foyer = foyer_mod.Foyer(cfg["data_dir"])
     rta_inputs = rta_inputs_mod.RtaInputs(cfg["data_dir"])
     lights = lightkey_mod.Lightkey(cfg["data_dir"], cfg, log)
+    rta_live = rta_live_mod.Analyser(cfg["data_dir"], cfg, log, rta_inputs)
     cfg.setdefault("_my_ips", _my_ips())
     scanner = scan_mod.Scanner(cfg["data_dir"], cfg, log, wing=wing, tio=tio,
                                wing_find=lambda: wing_mod.find(port=wing.native_port, target=cfg.get("wing_find_target", "255.255.255.255")))
     # Port 0 is only used by the tests (any free port): they scan when they mean to, not by themselves.
     if cfg.get("scan_auto", True) and int(cfg["port"]) != 0:
         threading.Thread(target=scanner.loop, daemon=True).start()
-    httpd = ThreadingHTTPServer((cfg["bind"], int(cfg["port"])), make_handler(cfg, store, sessions, listen, access, dante, tags, bible, cues, reports, plan, wing, tio, monitors, scanner, foyer, rta_inputs, dante_names, lights))
+    httpd = ThreadingHTTPServer((cfg["bind"], int(cfg["port"])), make_handler(cfg, store, sessions, listen, access, dante, tags, bible, cues, reports, plan, wing, tio, monitors, scanner, foyer, rta_inputs, dante_names, lights, rta_live))
     httpd.daemon_threads = True
     close = httpd.server_close
-    httpd.server_close = lambda: (scanner.stop.set(), lights.close(), close())
-    httpd.store, httpd.sessions, httpd.listen, httpd.access, httpd.tags, httpd.bible, httpd.reports, httpd.plan, httpd.wing, httpd.tio, httpd.monitors, httpd.scanner, httpd.foyer, httpd.rta_inputs, httpd.lights = store, sessions, listen, access, tags, bible, reports, plan, wing, tio, monitors, scanner, foyer, rta_inputs, lights
+    httpd.server_close = lambda: (scanner.stop.set(), lights.close(), rta_live.stop(), close())
+    httpd.store, httpd.sessions, httpd.listen, httpd.access, httpd.tags, httpd.bible, httpd.reports, httpd.plan, httpd.wing, httpd.tio, httpd.monitors, httpd.scanner, httpd.foyer, httpd.rta_inputs, httpd.lights, httpd.rta_live = store, sessions, listen, access, tags, bible, reports, plan, wing, tio, monitors, scanner, foyer, rta_inputs, lights, rta_live
     return httpd
 
 
