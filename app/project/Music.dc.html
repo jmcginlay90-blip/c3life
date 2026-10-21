@@ -412,7 +412,7 @@ class Component extends DCLogic {
       walkVol: m.walk_in_volume,
       canEdit: !!m.can, noEdit: !m.can, edit: s.edit && !!m.can, editLabel: s.edit ? 'Done' : 'Change list',
       toggleEdit: () => this.setState({ edit: !s.edit, msg: '' }),
-      noLists: !m.playlists.length, noListsText: m.can ? 'No playlists yet. Tap Change list to add the church’s Spotify playlists.' : 'No playlists yet. Someone with Show control adds them here.',
+      noLists: !m.playlists.length, noListsText: m.can ? 'No playlists yet. Tap Change list to add the church’s Spotify playlists.' : 'No playlists yet. Someone with Music control (FOH sound, ProPresenter or an Admin) adds them here.',
       playlists: m.playlists.map((p, i) => {
         const cur = p.name === m.now && playing;
         return {

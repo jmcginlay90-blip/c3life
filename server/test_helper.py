@@ -259,7 +259,7 @@ class Api(unittest.TestCase):
         self.port = self.httpd.server_address[1]
         threading.Thread(target=self.httpd.serve_forever, daemon=True).start()
         self.tok = {}
-        for n in ("Admin", "ProPresenter", "FOH sound", "Foyer team", "Listener"):
+        for n in ("Admin", "ProPresenter", "FOH sound", "Lighting", "Foyer team", "Listener"):
             body = {"name": n, "password": "c3life-admin"} if n == "Admin" else {"name": n, "pin": "" if n == "Listener" else "1234"}
             self.tok[n] = call(self.port, "/api/login", body)[1]["token"]
 
@@ -303,16 +303,21 @@ class Api(unittest.TestCase):
         self.assertEqual((code, self.pp.opened, j["propresenter"]["running"]), (200, 1, True))
 
     def test_who_may(self):
-        code, j = self.api("/api/music", who="FOH sound")  # Show: view
-        self.assertEqual((code, j["can"], self.api("/api/music", who="ProPresenter")[1]["can"]), (200, False, True))
-        for who in ("FOH sound", "Foyer team", "Listener", None):
+        # Music is its own access area: FOH sound runs the walk-in music without also running slides
+        code, j = self.api("/api/music", who="FOH sound")
+        self.assertEqual((code, j["can"]), (200, True))
+        self.assertEqual(self.api("/api/music/do", {"do": "play"}, who="FOH sound")[0], 200)
+        self.assertEqual(self.api("/api/music/do", {"do": "pause"}, who="ProPresenter")[0], 200)
+        code, j = self.api("/api/music", who="Lighting")  # Music: view
+        self.assertEqual((code, j["can"]), (200, False))
+        calls = list(self.sp.calls)
+        for who in ("Lighting", "Foyer team", "Listener", None):
             self.assertEqual(self.api("/api/music/do", {"do": "play"}, who=who)[0], 403 if who else 401, who)
             self.assertEqual(self.api("/api/music/propresenter", {}, who=who)[0], 403 if who else 401, who)
             self.assertEqual(self.api("/api/music", {"playlists": []}, who=who, method="PUT")[0], 403 if who else 401, who)
         for who in ("Foyer team", "Listener"):
             self.assertEqual(self.api("/api/music", who=who)[0], 403, who)
-        self.assertEqual((self.sp.calls, self.pp.opened), ([], 0))
-        self.assertEqual(self.api("/api/music/do", {"do": "play"}, who="ProPresenter")[0], 200)
+        self.assertEqual((self.sp.calls, self.pp.opened), (calls, 0))
 
     def test_the_key_never_reaches_a_phone(self):
         for path in ("/api/music", "/api/health"):

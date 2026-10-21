@@ -49,6 +49,11 @@ API (JSON):
   GET  /api/wing/tapeq?n=<1-40>            (Tap EQ view) a channel's tap EQ: its own 3-band EQ on the pre-fader send tap,
                                            heard in every monitor mix that takes the channel pre-fader (not front of house)
   POST /api/wing/tapeq {"n","field","value"}   (Tap EQ control) "peq/on", "peq/1g", "peq/1f", "peq/1q", ... 3
+  GET  /api/music                          (Music view) Spotify on the Mac mini (through the C3 Life helper), the playlists,
+                                           whether ProPresenter is open there, and "can" (Music control)
+  PUT  /api/music {"playlists","fade_seconds","walk_in_volume"}   (Music control) the playlists: {"name", "uri"}
+  POST /api/music/do {"do": "play|pause|next|previous|volume|playlist|fade", ...}   (Music control) passed to the helper
+  POST /api/music/propresenter             (Music control) open ProPresenter on the Mac mini
   GET  /api/wing/history?n=&since=          (Mixer view) the open channel's last 8 s of level and gate/comp gain reduction
   GET  /api/wing/rta                       (Mixer view) the Wing's RTA: 120 bands from 20 Hz, and what it's on
   POST /api/wing/rta {"n","tap","kind"?}   (Mixer control; a musician for their own mix, "kind": "bus") point the Wing's
@@ -786,9 +791,9 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                     self.send_json(200, dict(foyer.view(desk), ok=True))
                 return
             if path == "/api/music":
-                s = self.level("Show")
+                s = self.level("Music")
                 if s:
-                    self.send_json(200, dict(music.view(), ok=True, can=access.level(s["role"], "Show") >= 2))
+                    self.send_json(200, dict(music.view(), ok=True, can=access.level(s["role"], "Music") >= 2))
                 return
             if path == "/api/lights/midi":
                 if self.level("Lights"):
@@ -1035,7 +1040,7 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 self.send_json(200 if ok else 409, dict(rta_live.state(), ok=ok, message=msg, **({} if ok else {"error": msg})))
                 return
             if path in ("/api/music/do", "/api/music/propresenter"):
-                s = self.level("Show", need=2)
+                s = self.level("Music", need=2)
                 if not s:
                     return
                 err = music.do(self.read_json(), s["name"]) if path == "/api/music/do" else music.open_propresenter(s["name"])
@@ -1447,7 +1452,7 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 self.send_json(200, dict(rta_inputs.view(dante, desk), ok=True))
                 return
             if self.route() == "/api/music":
-                s = self.level("Show", need=2)
+                s = self.level("Music", need=2)
                 if not s:
                     return
                 body = self.read_json()
