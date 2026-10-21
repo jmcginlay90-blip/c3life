@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>C3 Life – Access levels</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet" data-look>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Safari / iPad: no zoom when typing, no double-tap zoom, no text-select or callout while dragging */
+html{-webkit-text-size-adjust:100%;touch-action:manipulation}
+input,select,textarea{font-size:16px!important}
+button,a,summary,label,[role=slider]{-webkit-tap-highlight-color:transparent}
+[role=slider],.fader,.pan{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+body{margin:0;background:#0D1015}
+a{color:#6CB4F5}a:hover{color:#9CCBF8}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:62px;color:#A3ACB8;text-decoration:none;font-size:12px;font-weight:500;border-top:2px solid transparent}
+.tab:hover{color:#ECEEF1}
+.tab.on{color:#F5C518;border-top-color:#F5C518}
+.card{background:#161A21;border:1px solid #262C36;border-radius:14px;padding:14px}
+.lbl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#A3ACB8;font-weight:500}
+.mono{font-family:'IBM Plex Mono',ui-monospace,monospace}
+.role{flex:none;min-height:44px;padding:0 14px;border-radius:22px;border:1px solid #333B47;background:#1E232C;color:#A3ACB8;font:500 13px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer;white-space:nowrap}
+.role.on{background:#262C36;border-color:#F5C518;color:#ECEEF1}
+.lv{min-width:62px;min-height:40px;border:0;background:transparent;color:#A3ACB8;font:500 12px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer;border-radius:8px}
+.lv.on0{background:#333B47;color:#ECEEF1}
+.lv.on1{background:#6CB4F5;color:#08131C}
+.lv.on2{background:#F5C518;color:#1A1204}
+.btn{min-height:44px;padding:0 14px;border-radius:10px;border:1px solid #333B47;background:#1E232C;color:#ECEEF1;font:500 14px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer}
+
+/* Fills any screen. Wider than 700px (iPad, laptop, web) the content sits in a centred column. */
+@media (min-width:700px){
+  .app > *:not(.bn):not([style*="position:absolute"]){width:100%;max-width:760px;margin-left:auto;margin-right:auto;box-sizing:border-box}
+}
+
+.app > .rtabar{max-width:none !important;margin-left:0 !important;margin-right:0 !important}
+
+/* Easy to use: every link, tick box and control is at least 40-44px tall, so it is easy to hit with a thumb. */
+a[style*="min-height:28px"]{min-height:44px !important}
+a[style*="font-size:12px"][style*="text-decoration:none"],a[style*="font-size:13px"][style*="text-decoration:none"]{display:inline-flex;align-items:center;min-height:40px}
+label:has(> input[type=checkbox]),label:has(> input[type=radio]){min-height:44px}
+input[type=checkbox],input[type=radio]{width:22px;height:22px;flex:none;accent-color:#F5C518}
+input[type=range]{min-height:40px}
+select{min-height:44px}
+button.sw::after,button.cell::after{content:'';position:absolute;inset:-7px -4px}
+.cell{position:relative}
+input[type=checkbox][aria-label]{width:32px;height:32px}
+
+/* Menu: a drop-down list at the top of every screen. Tap Menu to open it, tap again (or pick a page) to close. */
+.topmenu{position:relative;z-index:20;flex:none;background:#11151B;border-bottom:1px solid #262C36}
+.topmenu summary{list-style:none;display:flex;align-items:center;gap:10px;min-height:52px;padding:0 16px;cursor:pointer;color:#ECEEF1;font:600 15px 'IBM Plex Sans',system-ui,sans-serif;max-width:760px;margin:0 auto;box-sizing:border-box}
+.topmenu summary::-webkit-details-marker{display:none}
+.topmenu .mlabel{font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:#A3ACB8}
+.topmenu .mcur{flex:1;color:#F5C518}
+.topmenu .chev{transition:transform .15s}
+.topmenu details[open] .chev{transform:rotate(180deg)}
+.topmenu .mlist{position:absolute;left:8px;right:8px;top:calc(100% + 4px);background:#161A21;border:1px solid #333B47;border-radius:14px;box-shadow:0 14px 34px rgba(0,0,0,.55);padding:6px;display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.topmenu .mlist a{display:flex;align-items:center;gap:10px;min-height:52px;padding:0 12px;border-radius:10px;color:#ECEEF1;text-decoration:none;font:500 15px 'IBM Plex Sans',system-ui,sans-serif}
+.topmenu .mlist a:hover{background:#1E232C}
+.topmenu .mlist a.on{background:#262C36;color:#F5C518}
+@media (min-width:700px){.topmenu .mlist{left:calc(50% - 372px);right:auto;width:440px}}
+@media (min-width:700px) and (max-width:800px){.topmenu .mlist{left:16px}}
+.ask{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);z-index:20;width:min(380px, calc(100% - 24px));background:#1A1C20;border:1px solid #F5C518;border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;box-shadow:0 16px 40px rgba(0,0,0,.6);box-sizing:border-box}
+/* wide:start — iPad landscape and laptops: use the width */
+@media (min-width:1000px){
+  .app > *:not(.bn):not([style*="position:absolute"]){max-width:1240px}
+  .topmenu summary{max-width:1240px}
+  .app main.wide2{display:grid !important;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:14px 18px !important}
+  .app main.wide2 > *{min-width:0}
+  .app main.wide2 > :not(section):not(.card):not(details):not(.wcol){grid-column:1 / -1}
+  .app main.wide2 > .wfull{grid-column:1 / -1}
+  .app main.wide1{max-width:980px !important}
+  .app:has(main.wide1) > *:not(.bn):not([style*="position:absolute"]){max-width:980px}
+  .app:has(main.wide1) .topmenu summary{max-width:980px}
+}
+@media (min-width:1500px){ .app main.wide2.wide3{grid-template-columns:repeat(3,minmax(0,1fr))} }
+/* wide:end */
+/* look:start — the WING look (like WING Edit): near-black, outlined panels, condensed headings, yellow for active, blue for selected.
+   Settings › Look › Classic puts the old look back on this device (html[data-look=classic]). */
+:root{--wk-bg:#0A0B0D;--wk-panel:#121418;--wk-panel2:#181B20;--wk-line:#2E333A;--wk-yellow:#F5C518;--wk-blue:#2F6CC4;--wk-cond:'Barlow Condensed','IBM Plex Sans',system-ui,sans-serif}
+html:not([data-look=classic]) body{background:var(--wk-bg)}
+html:not([data-look=classic]) .app{background:var(--wk-bg) !important}
+html:not([data-look=classic]) .card{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .lbl{font-family:var(--wk-cond);font-size:13px;font-weight:600;letter-spacing:.07em;color:#D4D9E0}
+html:not([data-look=classic]) h1{font-family:var(--wk-cond);font-weight:600 !important;text-transform:uppercase;letter-spacing:.05em;font-size:21px !important;line-height:1.2;color:var(--wk-yellow);border:1.5px solid var(--wk-yellow);border-radius:3px;padding:2px 12px;display:inline-block}
+html:not([data-look=classic]) .btn,html:not([data-look=classic]) .lk,html:not([data-look=classic]) .mxb,html:not([data-look=classic]) .mxbk,html:not([data-look=classic]) .mute,html:not([data-look=classic]) .pbtn{font-family:var(--wk-cond);font-size:15px;letter-spacing:.02em;border-radius:4px}
+html:not([data-look=classic]) .btn.pri{background:var(--wk-yellow);border-color:var(--wk-yellow);color:#111}
+html:not([data-look=classic]) .seg{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .seg a{font-family:var(--wk-cond);font-size:15px;letter-spacing:.03em;border-radius:4px}
+html:not([data-look=classic]) .seg a.on,html:not([data-look=classic]) .lk.on{background:var(--wk-blue);color:#fff}
+html:not([data-look=classic]) .tab.on{color:var(--wk-yellow);border-top-color:var(--wk-yellow)}
+html:not([data-look=classic]) .topmenu{background:#000;border-bottom-color:var(--wk-line)}
+html:not([data-look=classic]) .topmenu summary{font-family:var(--wk-cond);font-size:16px;letter-spacing:.03em}
+html:not([data-look=classic]) .topmenu .mcur{color:var(--wk-yellow)}
+html:not([data-look=classic]) .topmenu .mlist{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .topmenu .mlist a{font-family:var(--wk-cond);font-size:16px;border-radius:4px}
+html:not([data-look=classic]) .topmenu .mlist a.on{background:var(--wk-panel2);color:var(--wk-yellow);box-shadow:inset 3px 0 0 var(--wk-yellow)}
+html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic]) input[type=radio],html:not([data-look=classic]) input[type=range]{accent-color:var(--wk-yellow)}
+.wkside{display:none}
+/* iPad landscape and laptops: a sidebar like WING Edit's (HOME, MIXER, ...) instead of the menu at the top */
+@media (min-width:1000px){
+  html:not([data-look=classic]) .wkside{display:flex;flex-direction:column;gap:2px;position:fixed;left:0;top:0;bottom:0;width:132px !important;max-width:132px !important;margin:0 !important;padding:8px 6px 12px;box-sizing:border-box;background:#000;border-right:1px solid var(--wk-line);overflow-y:auto;z-index:30}
+  html:not([data-look=classic]) .wkside .wkbrand{font:700 24px var(--wk-cond);letter-spacing:.06em;color:var(--wk-yellow);padding:6px 8px 12px}
+  html:not([data-look=classic]) .wkside a{display:flex;align-items:center;gap:9px;min-height:46px;padding:0 8px;border-radius:4px;color:#D4D9E0;text-decoration:none;font:600 15px var(--wk-cond);text-transform:uppercase;letter-spacing:.04em}
+  html:not([data-look=classic]) .wkside a:hover{background:var(--wk-panel2)}
+  html:not([data-look=classic]) .wkside a.on{background:var(--wk-panel2);color:var(--wk-yellow);box-shadow:inset 3px 0 0 var(--wk-yellow)}
+  html:not([data-look=classic]) .wkside svg{flex:none}
+  html:not([data-look=classic]) .app{padding-left:132px;box-sizing:border-box !important}
+  html:not([data-look=classic]) .app > .topmenu{display:none}
+}
+/* look:end */
+</style>
+</helmet>
+<div class="app has-bn" style="width:100%;height:100vh;height:100dvh;display:flex;flex-direction:column;background:#0D1015;color:#ECEEF1;font-family:'IBM Plex Sans',system-ui,sans-serif;overflow:hidden;position:relative">
+  
+  
+  
+  
+  <nav class="wkside" aria-label="Main menu (side)"><div class="wkbrand" aria-hidden="true">C3 LIFE</div><a href="Main.dc.html" class="on" aria-current="page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Home</a>
+        <a href="Wing.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4v16M12 4v16M18 4v16"/><path d="M4 14h4M10 8h4M16 16h4"/></svg>Mixer</a>
+        <a href="RTA.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V12M9 20V6M14 20V10M19 20V4"/></svg>RTA</a>
+        <a href="Show.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M10 8l5 2-5 2z"/><path d="M8 20h8"/></svg>Show</a>
+        <a href="Lights.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>Lights</a>
+        <a href="Plan.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h1M4 12h1M4 18h1"/></svg>Plan</a>
+        <a href="Chat.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>Chat</a>
+        <a href="Listen.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="15" width="4" height="6" rx="1.5"/><rect x="17" y="15" width="4" height="6" rx="1.5"/><path d="M10 9.5a2.5 2.5 0 0 1 4 0"/></svg>Listen</a>
+        <a href="Help.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2.5 2-2.5 3.5M12 17h.01"/></svg>Help</a>
+        <a href="Report.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4h11l-1.5 4L16 12H5"/></svg>Report an issue</a></nav>
+  <nav class="bn topmenu" aria-label="Main menu">
+    <details>
+      <summary aria-label="Menu. You are on Access levels"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span class="mlabel">Menu</span><span class="mcur">Access levels</span><svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+      <div class="mlist">
+        <a href="Main.dc.html" class="on" aria-current="page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Home</a>
+        <a href="Wing.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4v16M12 4v16M18 4v16"/><path d="M4 14h4M10 8h4M16 16h4"/></svg>Mixer</a>
+        <a href="RTA.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V12M9 20V6M14 20V10M19 20V4"/></svg>RTA</a>
+        <a href="Show.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M10 8l5 2-5 2z"/><path d="M8 20h8"/></svg>Show</a>
+        <a href="Lights.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>Lights</a>
+        <a href="Plan.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h1M4 12h1M4 18h1"/></svg>Plan</a>
+        <a href="Chat.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>Chat</a>
+        <a href="Listen.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="15" width="4" height="6" rx="1.5"/><rect x="17" y="15" width="4" height="6" rx="1.5"/><path d="M10 9.5a2.5 2.5 0 0 1 4 0"/></svg>Listen</a>
+        <a href="Help.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2.5 2-2.5 3.5M12 17h.01"/></svg>Help</a>
+        <a href="Report.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4h11l-1.5 4L16 12H5"/></svg>Report an issue</a>
+      </div>
+    </details>
+  </nav>
+  <header style="padding:18px 16px 12px;display:flex;flex-direction:column;gap:8px">
+    <a href="Main.dc.html" style="font-size:13px;text-decoration:none;min-height:28px;display:flex;align-items:center;padding:0 4px">← Home</a>
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;padding:0 4px">
+      <h1 style="margin:0;font-size:26px;font-weight:600">Access levels</h1>
+      <div style="font-size:12px;color:#A3ACB8;text-align:right">Users get a role<br>in Users &amp; PINs</div>
+    </div>
+    <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:2px" role="group" aria-label="Role">
+      <sc-for list="{{roles}}" as="r" hint-placeholder-count="5">
+        <sc-if value="{{r.on}}" hint-placeholder-val="{{ false }}"><button class="role on" onClick="{{r.pick}}">{{r.name}}</button></sc-if>
+        <sc-if value="{{r.off}}" hint-placeholder-val="{{ true }}"><button class="role" onClick="{{r.pick}}">{{r.name}}</button></sc-if>
+      </sc-for>
+    </div>
+  </header>
+
+  <main class=" wide1" style="flex:1;overflow-y:auto;padding:0 16px 16px;display:flex;flex-direction:column;gap:10px">
+    <section class="card" style="display:flex;align-items:center;gap:10px;padding:12px 14px">
+      <div style="flex:1">
+        <div style="font-size:16px;font-weight:600">{{roleName}}</div>
+        <div style="font-size:12px;color:#A3ACB8">{{roleNote}}</div>
+      </div>
+      <div class="mono" style="font-size:14px;letter-spacing:.2em">••••</div>
+      <a href="Users.dc.html" class="btn" style="display:flex;align-items:center;text-decoration:none">Users &amp; PINs</a>
+    </section>
+
+    <section class="card" style="display:flex;align-items:center;gap:10px;padding:12px 14px">
+      <div style="flex:1">
+        <div style="font-size:14px;font-weight:600">Screen timer</div>
+        <div style="font-size:12px;color:#A3ACB8">Lock this role's screen when it's left idle</div>
+      </div>
+      <select aria-label="Screen timer for {{roleName}}" value="{{roleLock}}" onChange="{{pickLock}}" style="min-height:44px;border-radius:10px;border:1px solid #333B47;background:#0F1318;color:#ECEEF1;font:400 14px 'IBM Plex Sans',system-ui,sans-serif;padding:0 8px">
+        <sc-for list="{{lockOpts}}" as="o" hint-placeholder-count="6"><option value="{{o}}">{{o}}</option></sc-for>
+      </select>
+    </section>
+
+    <section class="card" style="display:flex;flex-direction:column;gap:0;padding:6px 12px">
+      <sc-for list="{{areas}}" as="a" hint-placeholder-count="10">
+        <div style="display:flex;align-items:center;gap:8px;min-height:56px;border-bottom:1px solid #222831">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:14px;font-weight:500">{{a.name}}</div>
+            <div style="font-size:13px;color:#A3ACB8">{{a.hint}}</div>
+          </div>
+          <div style="display:flex;gap:2px;background:#0F1318;border:1px solid #262C36;border-radius:10px;padding:2px" role="group" aria-label="{{a.name}} access">
+            <sc-for list="{{a.levels}}" as="l" hint-placeholder-count="3">
+              <button class="{{l.cls}}" onClick="{{l.pick}}" aria-pressed="{{l.on}}">{{l.name}}</button>
+            </sc-for>
+          </div>
+        </div>
+      </sc-for>
+    </section>
+
+    <div style="font-size:12px;color:#A3ACB8;padding:0 4px;line-height:1.45">View shows the screen but buttons are locked. Control can change things. Wing patch and Dante changes still ask to confirm, whatever the level.</div>
+    <button class="btn">+ Add role</button>
+  </main>
+  <sc-if value="{{locked}}" hint-placeholder-val="{{ false }}">
+    <div style="padding:10px 16px;background:#1E232C;border-top:1px solid #333B47;font-size:13px;color:#C9CFD7">Only an Admin can change access levels. <a href="User.dc.html">Sign in</a></div>
+  </sc-if>
+  <sc-if value="{{dirty}}" hint-placeholder-val="{{ false }}">
+    <div style="padding:12px 16px;background:#1E232C;border-top:2px solid #F5C518;display:flex;align-items:center;gap:8px">
+      <div style="flex:1;font-size:14px"><strong>{{dirtyText}}</strong><br><span style="font-size:13px;color:#A3ACB8">Not used until you save</span></div>
+      <button class="btn" onClick="{{discard}}">Discard</button>
+      <button class="btn pri" onClick="{{askSave}}">Save…</button>
+    </div>
+  </sc-if>
+  <sc-if value="{{asking}}" hint-placeholder-val="{{ false }}">
+    <div class="ask" role="dialog" aria-label="Save access levels">
+      <div style="font-size:17px;font-weight:600">Save access levels with your Admin password</div>
+      <div style="font-size:13px;color:#C9CFD7;line-height:1.45">{{askText}} Every phone and iPad follows the change, and the C3 Life server enforces it.</div>
+      <label style="display:flex;flex-direction:column;gap:4px;font-size:13px;color:#A3ACB8">Your password<input type="password" id="acc-pw" maxlength="200" value="{{askPw}}" onChange="{{setAskPw}}" autocomplete="current-password" style="min-height:44px;border-radius:10px;border:1px solid #333B47;background:#0F1318;color:#ECEEF1;font:400 15px 'IBM Plex Sans',system-ui,sans-serif;padding:0 12px"></label>
+      <sc-if value="{{askHasErr}}" hint-placeholder-val="{{ false }}"><div role="alert" style="font-size:13px;color:#FF7A45">{{askErr}}</div></sc-if>
+      <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px"><button class="btn" onClick="{{askNo}}">Cancel</button><button class="btn pri" onClick="{{askYes}}" disabled="{{askBusy}}">Yes, save</button></div>
+    </div>
+  </sc-if>
+  <sc-if value="{{hasToast}}" hint-placeholder-val="{{ false }}"><div role="status" style="padding:12px 16px;background:#6CB4F5;color:#08131C;font-size:14px;font-weight:600">{{toast}}</div></sc-if>
+
+  <div style="position:absolute;inset:0;z-index:6;pointer-events:none">
+    <dc-import name="MDTalk" hint-size="390px,844px"></dc-import>
+  </div>
+  <div class="rtabar" style="flex:none">
+    <dc-import name="MiniRTA" hint-size="390px,48px"></dc-import>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.areas = [
+      ['Mixer', 'Wing faders, mutes, scenes'],
+      ['Wing patch', 'Routing on the Wing'],
+      ['Dante', 'Routing between Dante devices'],
+      ['RTA', 'Analyser, limit, snapshots'],
+      ['Show', 'ProPresenter + Playback'],
+      ['Lights', 'Lightkey · events Mac'],
+      ['Running order', 'Plan, sync, macros on items'],
+      ['Macros', 'Run and edit macros'],
+      ['Chat', 'Team chat + stage display'],
+      ['Foyer', 'Foyer source switch and volume'],
+      ['Foyer setup', 'Which outputs feed the foyer'],
+      ['Settings', 'Internet, reports, access levels, saved setup (save is Admin only)'],
+      ['Own monitor mix', 'Musicians change only their own in-ear or wedge mix'],
+      ['Listen', 'View = can listen, to what their Listen groups and Users & PINs allow. Control (Admins) = Listen settings too'],
+      ['RTA settings', 'Where the RTA listens, Set it up for me, level alert, feedback watch (View = can look)']
+    ];
+    this.LISTEN = this.areas.findIndex((a) => a[0] === 'Listen');
+    // 0 none, 1 view, 2 control, per area in order above
+    const base = this.loadRoles() || this.defaults();
+    this.state = { role: 1, roles: base, saved: base, ask: false, askPw: '', askErr: '', toast: '' };
+  }
+  defaults() {
+    return [
+        { name: 'Admin', note: 'Everything, including access levels', p: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2], lock: '15 minutes' },
+        { name: 'FOH sound', note: 'Sound desk operator', p: [2, 2, 1, 2, 1, 1, 1, 2, 2, 2, 1, 0, 2, 1, 2], lock: 'Never during a service' },
+        { name: 'ProPresenter', note: 'Lyrics and slides operator', p: [0, 0, 0, 1, 2, 0, 1, 1, 2, 1, 1, 0, 0, 1, 1], lock: '30 minutes' },
+        { name: 'Lighting', note: 'Events only · Christmas and special services', p: [0, 0, 0, 1, 1, 2, 1, 1, 2, 1, 1, 0, 0, 1, 1], lock: '30 minutes' },
+        { name: 'Foyer team', note: 'Welcome team · only sees the Foyer screen, Listen and chat', p: [0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 0, 0, 0, 1, 0], lock: '5 minutes' },
+        { name: 'Musician', note: 'Each musician · only their own monitor mix and chat', p: [0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0], lock: '15 minutes' },
+        { name: 'Viewer', note: 'Pastor, band leader · look only', p: [0, 0, 0, 1, 1, 0, 1, 0, 2, 1, 0, 0, 0, 1, 1], lock: '10 minutes' },
+        { name: 'Listener', note: 'Crèche, kids, welcome or overflow helpers · only Listen', p: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0], lock: 'Never' }
+      ];
+  }
+  user() { try { return JSON.parse(localStorage.getItem('booth.user') || 'null'); } catch (e) { return null; } }
+  token() { try { const x = JSON.parse(localStorage.getItem('booth.session') || 'null'); return x ? x.token : ''; } catch (e) { return ''; } }
+  componentDidMount() {
+    // On the C3 Life server the access levels live there, the same for every device.
+    try {
+      fetch('/api/access').then((r) => (r.ok ? r.json() : null)).then((j) => {
+        if (!j || !Array.isArray(j.roles)) return;
+        this.server = true;
+        try { localStorage.setItem('booth.access', JSON.stringify(j.roles)); } catch (e) {}
+        this.setState({ roles: j.roles, saved: j.roles });
+      }).catch(() => {});
+    } catch (e) {}
+  }
+  componentWillUnmount() { clearTimeout(this.tt); }
+  isAdmin() { const u = this.user(); return !!u && u.role === 'Admin'; }
+  // Remembered on this device too, so other screens (Listen, the menus) follow them.
+  loadRoles() {
+    try { const r = JSON.parse(localStorage.getItem('booth.access') || 'null'); if (Array.isArray(r) && r.length && r.every((x) => x.p && x.p.length === this.areas.length)) return r; } catch (e) {}
+    return null;
+  }
+  set(ai, lv) {
+    const s = this.state;
+    if (ai === this.LISTEN) {  // Listen: Admins always keep Listen settings; for everyone else Control means the same as View
+      if (s.roles[s.role].name === 'Admin' && lv < 2) return;
+      if (s.roles[s.role].name !== 'Admin' && lv === 2) lv = 1;
+    }
+    if (!this.isAdmin()) return;
+    const roles = s.roles.map((r, i) => (i === s.role ? { ...r, p: r.p.map((x, j) => (j === ai ? lv : x)) } : r));
+    this.setState({ roles, toast: '' });
+  }
+  renderVals() {
+    const s = this.state;
+    const r = s.roles[s.role];
+    const names = ['None', 'View', 'Control'];
+    return {
+      roles: s.roles.map((x, i) => ({ name: x.name, on: i === s.role, off: i !== s.role, pick: () => this.setState({ role: i }) })),
+      roleName: r.name,
+      roleNote: r.note,
+      roleLock: r.lock,
+      lockOpts: ['2 minutes', '5 minutes', '10 minutes', '15 minutes', '30 minutes', 'Never during a service', 'Never'],
+      pickLock: (e) => { if (!this.isAdmin()) return; const v = e.target.value; this.setState({ roles: s.roles.map((x, i) => (i === s.role ? { ...x, lock: v } : x)), toast: '' }); },
+      ...(() => {
+        const changed = s.roles.filter((x, i) => JSON.stringify(x) !== JSON.stringify(s.saved[i])).map((x) => x.name);
+        const save = (roles) => { try { localStorage.setItem('booth.access', JSON.stringify(roles)); } catch (e) {} this.setState({ saved: roles, roles, ask: false, askPw: '', askBusy: false, toast: '\u2713 Access levels saved' }); clearTimeout(this.tt); this.tt = setTimeout(() => this.setState({ toast: '' }), 3000); };
+        return {
+          locked: !this.isAdmin(),
+          dirty: changed.length > 0 && !s.ask, dirtyText: 'Changed: ' + changed.join(', '),
+          discard: () => this.setState({ roles: s.saved }),
+          askSave: () => this.setState({ ask: true, askPw: '', askErr: '' }),
+          asking: !!s.ask, askPw: s.askPw, askHasErr: !!s.askErr, askErr: s.askErr, askBusy: !!s.askBusy,
+          askText: 'You\u2019re changing what ' + changed.join(', ') + ' can do.',
+          setAskPw: (e) => this.setState({ askPw: e.target.value, askErr: '' }),
+          askNo: () => this.setState({ ask: false, askPw: '', askErr: '' }),
+          askYes: () => {
+            const pw = s.askPw || '';
+            if (!pw) { this.setState({ askErr: 'Type your password.' }); return; }
+            if (this.server) {
+              this.setState({ askBusy: true });
+              fetch('/api/access', { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + this.token() }, body: JSON.stringify({ roles: s.roles, password: pw }) })
+                .then((r) => r.json().then((j) => ({ code: r.status, j })))
+                .then(({ code, j }) => { if (code === 200) save(j.roles); else this.setState({ askBusy: false, askPw: '', askErr: j.error || 'Not saved.' }); })
+                .catch(() => this.setState({ askBusy: false, askErr: 'Can\u2019t reach the C3 Life server.' }));
+              return;
+            }
+            let users = null; try { users = JSON.parse(localStorage.getItem('booth.users') || 'null'); } catch (e) {}
+            const me = this.user(), adm = (Array.isArray(users) ? users : [{ name: 'Admin', pin: 'c3life-admin' }]).find((x) => me && x.name === me.name);
+            if (adm && adm.pin === pw) save(s.roles); else this.setState({ askPw: '', askErr: 'That password isn\u2019t right.' + (adm ? '' : ' (Preview: c3life-admin)') });
+          },
+          hasToast: !!s.toast, toast: s.toast
+        };
+      })(),
+      areas: this.areas.map(([name, hint], ai) => ({
+        name, hint,
+        levels: names.map((n, lv) => ({
+          name: n,
+          on: r.p[ai] === lv,
+          cls: r.p[ai] === lv ? 'lv on' + lv : 'lv',
+          pick: () => this.set(ai, lv)
+        }))
+      }))
+    };
+  }
+}
+</script>
+</body>
+</html>

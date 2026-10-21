@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>C3 Life – Users and PINs</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet" data-look>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Safari / iPad: no zoom when typing, no double-tap zoom, no text-select or callout while dragging */
+html{-webkit-text-size-adjust:100%;touch-action:manipulation}
+input,select,textarea{font-size:16px!important}
+button,a,summary,label,[role=slider]{-webkit-tap-highlight-color:transparent}
+[role=slider],.fader,.pan{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+body{margin:0;background:#0D1015}
+a{color:#6CB4F5}a:hover{color:#9CCBF8}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:62px;color:#A3ACB8;text-decoration:none;font-size:12px;font-weight:500;border-top:2px solid transparent}
+.tab.on{color:#F5C518;border-top-color:#F5C518}
+.card{background:#161A21;border:1px solid #262C36;border-radius:14px;padding:14px}
+.lbl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#A3ACB8;font-weight:500}
+.btn{min-height:44px;padding:0 14px;border-radius:10px;border:1px solid #333B47;background:#1E232C;color:#ECEEF1;font:500 14px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer}
+.btn.pri{background:#F5C518;border-color:#F5C518;color:#1A1204;font-weight:600}
+.btn.del{color:#FF7A45;border-color:#5A3A2A}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.usr{width:100%;display:flex;align-items:center;gap:12px;min-height:64px;padding:8px 2px;border:0;border-top:1px solid #222831;background:transparent;color:#ECEEF1;font:400 14px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer;text-align:left}
+.av{width:40px;height:40px;border-radius:50%;font-weight:600;font-size:14px;display:flex;align-items:center;justify-content:center;flex:none;color:#0D1015}
+.fld{display:flex;flex-direction:column;gap:4px;font-size:12px;color:#A3ACB8}
+input[type=text],input[type=password]{width:100%;min-height:44px;border-radius:10px;border:1px solid #333B47;background:#0F1318;color:#ECEEF1;font:400 15px 'IBM Plex Sans',system-ui,sans-serif;padding:0 10px;box-sizing:border-box}
+input[type=password]{font-family:'IBM Plex Mono',ui-monospace,monospace;letter-spacing:.3em}
+input.bad{border-color:#FF7A45}
+input:disabled,select:disabled{opacity:.5}
+select{width:100%;min-height:44px;border-radius:10px;border:1px solid #333B47;background:#0F1318;color:#ECEEF1;font:400 14px 'IBM Plex Sans',system-ui,sans-serif;padding:0 8px}
+input[type=checkbox]{width:20px;height:20px;accent-color:#F5C518}
+
+/* Fills any screen. Wider than 700px (iPad, laptop, web) the content sits in a centred column. */
+@media (min-width:700px){
+  .app > *:not(.bn):not([style*="position:absolute"]){width:100%;max-width:760px;margin-left:auto;margin-right:auto;box-sizing:border-box}
+}
+
+.app > .rtabar{max-width:none !important;margin-left:0 !important;margin-right:0 !important}
+
+/* Easy to use: every link, tick box and control is at least 40-44px tall, so it is easy to hit with a thumb. */
+a[style*="min-height:28px"]{min-height:44px !important}
+a[style*="font-size:12px"][style*="text-decoration:none"],a[style*="font-size:13px"][style*="text-decoration:none"]{display:inline-flex;align-items:center;min-height:40px}
+label:has(> input[type=checkbox]),label:has(> input[type=radio]){min-height:44px}
+input[type=checkbox],input[type=radio]{width:22px;height:22px;flex:none;accent-color:#F5C518}
+input[type=range]{min-height:40px}
+select{min-height:44px}
+button.sw::after,button.cell::after{content:'';position:absolute;inset:-7px -4px}
+.cell{position:relative}
+input[type=checkbox][aria-label]{width:32px;height:32px}
+
+/* Menu: a drop-down list at the top of every screen. Tap Menu to open it, tap again (or pick a page) to close. */
+.topmenu{position:relative;z-index:20;flex:none;background:#11151B;border-bottom:1px solid #262C36}
+.topmenu summary{list-style:none;display:flex;align-items:center;gap:10px;min-height:52px;padding:0 16px;cursor:pointer;color:#ECEEF1;font:600 15px 'IBM Plex Sans',system-ui,sans-serif;max-width:760px;margin:0 auto;box-sizing:border-box}
+.topmenu summary::-webkit-details-marker{display:none}
+.topmenu .mlabel{font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:#A3ACB8}
+.topmenu .mcur{flex:1;color:#F5C518}
+.topmenu .chev{transition:transform .15s}
+.topmenu details[open] .chev{transform:rotate(180deg)}
+.topmenu .mlist{position:absolute;left:8px;right:8px;top:calc(100% + 4px);background:#161A21;border:1px solid #333B47;border-radius:14px;box-shadow:0 14px 34px rgba(0,0,0,.55);padding:6px;display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.topmenu .mlist a{display:flex;align-items:center;gap:10px;min-height:52px;padding:0 12px;border-radius:10px;color:#ECEEF1;text-decoration:none;font:500 15px 'IBM Plex Sans',system-ui,sans-serif}
+.topmenu .mlist a:hover{background:#1E232C}
+.topmenu .mlist a.on{background:#262C36;color:#F5C518}
+@media (min-width:700px){.topmenu .mlist{left:calc(50% - 372px);right:auto;width:440px}}
+@media (min-width:700px) and (max-width:800px){.topmenu .mlist{left:16px}}
+.lsn{display:flex;flex-direction:column;gap:4px;background:#0F1318;border:1px solid #262C36;border-radius:10px;padding:10px}
+.chk2{display:flex;align-items:center;gap:8px;font-size:14px;min-height:44px}
+.ask{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);z-index:20;width:min(380px, calc(100% - 24px));background:#1A1C20;border:1px solid #F5C518;border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;box-shadow:0 16px 40px rgba(0,0,0,.6);box-sizing:border-box}
+/* wide:start — iPad landscape and laptops: use the width */
+@media (min-width:1000px){
+  .app > *:not(.bn):not([style*="position:absolute"]){max-width:1240px}
+  .topmenu summary{max-width:1240px}
+  .app main.wide2{display:grid !important;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:14px 18px !important}
+  .app main.wide2 > *{min-width:0}
+  .app main.wide2 > :not(section):not(.card):not(details):not(.wcol){grid-column:1 / -1}
+  .app main.wide2 > .wfull{grid-column:1 / -1}
+  .app main.wide1{max-width:980px !important}
+  .app:has(main.wide1) > *:not(.bn):not([style*="position:absolute"]){max-width:980px}
+  .app:has(main.wide1) .topmenu summary{max-width:980px}
+}
+@media (min-width:1500px){ .app main.wide2.wide3{grid-template-columns:repeat(3,minmax(0,1fr))} }
+/* wide:end */
+/* look:start — the WING look (like WING Edit): near-black, outlined panels, condensed headings, yellow for active, blue for selected.
+   Settings › Look › Classic puts the old look back on this device (html[data-look=classic]). */
+:root{--wk-bg:#0A0B0D;--wk-panel:#121418;--wk-panel2:#181B20;--wk-line:#2E333A;--wk-yellow:#F5C518;--wk-blue:#2F6CC4;--wk-cond:'Barlow Condensed','IBM Plex Sans',system-ui,sans-serif}
+html:not([data-look=classic]) body{background:var(--wk-bg)}
+html:not([data-look=classic]) .app{background:var(--wk-bg) !important}
+html:not([data-look=classic]) .card{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .lbl{font-family:var(--wk-cond);font-size:13px;font-weight:600;letter-spacing:.07em;color:#D4D9E0}
+html:not([data-look=classic]) h1{font-family:var(--wk-cond);font-weight:600 !important;text-transform:uppercase;letter-spacing:.05em;font-size:21px !important;line-height:1.2;color:var(--wk-yellow);border:1.5px solid var(--wk-yellow);border-radius:3px;padding:2px 12px;display:inline-block}
+html:not([data-look=classic]) .btn,html:not([data-look=classic]) .lk,html:not([data-look=classic]) .mxb,html:not([data-look=classic]) .mxbk,html:not([data-look=classic]) .mute,html:not([data-look=classic]) .pbtn{font-family:var(--wk-cond);font-size:15px;letter-spacing:.02em;border-radius:4px}
+html:not([data-look=classic]) .btn.pri{background:var(--wk-yellow);border-color:var(--wk-yellow);color:#111}
+html:not([data-look=classic]) .seg{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .seg a{font-family:var(--wk-cond);font-size:15px;letter-spacing:.03em;border-radius:4px}
+html:not([data-look=classic]) .seg a.on,html:not([data-look=classic]) .lk.on{background:var(--wk-blue);color:#fff}
+html:not([data-look=classic]) .tab.on{color:var(--wk-yellow);border-top-color:var(--wk-yellow)}
+html:not([data-look=classic]) .topmenu{background:#000;border-bottom-color:var(--wk-line)}
+html:not([data-look=classic]) .topmenu summary{font-family:var(--wk-cond);font-size:16px;letter-spacing:.03em}
+html:not([data-look=classic]) .topmenu .mcur{color:var(--wk-yellow)}
+html:not([data-look=classic]) .topmenu .mlist{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .topmenu .mlist a{font-family:var(--wk-cond);font-size:16px;border-radius:4px}
+html:not([data-look=classic]) .topmenu .mlist a.on{background:var(--wk-panel2);color:var(--wk-yellow);box-shadow:inset 3px 0 0 var(--wk-yellow)}
+html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic]) input[type=radio],html:not([data-look=classic]) input[type=range]{accent-color:var(--wk-yellow)}
+.wkside{display:none}
+/* iPad landscape and laptops: a sidebar like WING Edit's (HOME, MIXER, ...) instead of the menu at the top */
+@media (min-width:1000px){
+  html:not([data-look=classic]) .wkside{display:flex;flex-direction:column;gap:2px;position:fixed;left:0;top:0;bottom:0;width:132px !important;max-width:132px !important;margin:0 !important;padding:8px 6px 12px;box-sizing:border-box;background:#000;border-right:1px solid var(--wk-line);overflow-y:auto;z-index:30}
+  html:not([data-look=classic]) .wkside .wkbrand{font:700 24px var(--wk-cond);letter-spacing:.06em;color:var(--wk-yellow);padding:6px 8px 12px}
+  html:not([data-look=classic]) .wkside a{display:flex;align-items:center;gap:9px;min-height:46px;padding:0 8px;border-radius:4px;color:#D4D9E0;text-decoration:none;font:600 15px var(--wk-cond);text-transform:uppercase;letter-spacing:.04em}
+  html:not([data-look=classic]) .wkside a:hover{background:var(--wk-panel2)}
+  html:not([data-look=classic]) .wkside a.on{background:var(--wk-panel2);color:var(--wk-yellow);box-shadow:inset 3px 0 0 var(--wk-yellow)}
+  html:not([data-look=classic]) .wkside svg{flex:none}
+  html:not([data-look=classic]) .app{padding-left:132px;box-sizing:border-box !important}
+  html:not([data-look=classic]) .app > .topmenu{display:none}
+}
+/* look:end */
+</style>
+</helmet>
+<div class="app has-bn" style="width:100%;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;background:#0D1015;color:#ECEEF1;font-family:'IBM Plex Sans',system-ui,sans-serif;overflow:hidden">
+  
+  
+  
+  
+  <nav class="wkside" aria-label="Main menu (side)"><div class="wkbrand" aria-hidden="true">C3 LIFE</div><a href="Main.dc.html" class="on" aria-current="page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Home</a>
+        <a href="Wing.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4v16M12 4v16M18 4v16"/><path d="M4 14h4M10 8h4M16 16h4"/></svg>Mixer</a>
+        <a href="RTA.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V12M9 20V6M14 20V10M19 20V4"/></svg>RTA</a>
+        <a href="Show.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M10 8l5 2-5 2z"/><path d="M8 20h8"/></svg>Show</a>
+        <a href="Lights.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>Lights</a>
+        <a href="Plan.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h1M4 12h1M4 18h1"/></svg>Plan</a>
+        <a href="Chat.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>Chat</a>
+        <a href="Listen.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="15" width="4" height="6" rx="1.5"/><rect x="17" y="15" width="4" height="6" rx="1.5"/><path d="M10 9.5a2.5 2.5 0 0 1 4 0"/></svg>Listen</a>
+        <a href="Help.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2.5 2-2.5 3.5M12 17h.01"/></svg>Help</a>
+        <a href="Report.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4h11l-1.5 4L16 12H5"/></svg>Report an issue</a></nav>
+  <nav class="bn topmenu" aria-label="Main menu">
+    <details>
+      <summary aria-label="Menu. You are on Users and PINs"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span class="mlabel">Menu</span><span class="mcur">Users &amp; PINs</span><svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+      <div class="mlist">
+        <a href="Main.dc.html" class="on" aria-current="page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Home</a>
+        <a href="Wing.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4v16M12 4v16M18 4v16"/><path d="M4 14h4M10 8h4M16 16h4"/></svg>Mixer</a>
+        <a href="RTA.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V12M9 20V6M14 20V10M19 20V4"/></svg>RTA</a>
+        <a href="Show.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M10 8l5 2-5 2z"/><path d="M8 20h8"/></svg>Show</a>
+        <a href="Lights.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>Lights</a>
+        <a href="Plan.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h1M4 12h1M4 18h1"/></svg>Plan</a>
+        <a href="Chat.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>Chat</a>
+        <a href="Listen.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="15" width="4" height="6" rx="1.5"/><rect x="17" y="15" width="4" height="6" rx="1.5"/><path d="M10 9.5a2.5 2.5 0 0 1 4 0"/></svg>Listen</a>
+        <a href="Help.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2.5 2-2.5 3.5M12 17h.01"/></svg>Help</a>
+        <a href="Report.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4h11l-1.5 4L16 12H5"/></svg>Report an issue</a>
+      </div>
+    </details>
+  </nav>
+  <header style="padding:18px 20px 12px;display:flex;flex-direction:column;gap:4px">
+    <a href="Main.dc.html" style="font-size:13px;text-decoration:none;min-height:28px;display:flex;align-items:center">← Home</a>
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:10px">
+      <h1 style="margin:0;font-size:26px;font-weight:600">Users &amp; PINs</h1>
+      <span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:{{lockColor}};border:1px solid {{lockColor}};border-radius:6px;padding:3px 8px">{{lockText}}</span>
+    </div>
+    <div style="font-size:13px;color:#A3ACB8">Who can sign in, their role, their PIN (Admins: password) and what they can listen to. What each role can do is set in <a href="Access.dc.html" style="display:inline-flex;align-items:center;min-height:44px">Access levels</a>.</div>
+  </header>
+
+  <main class=" wide1" style="flex:1;overflow-y:auto;padding:0 16px 16px;display:flex;flex-direction:column;gap:12px">
+    <sc-if value="{{locked}}" hint-placeholder-val="{{ true }}">
+      <div class="card" style="display:flex;align-items:center;gap:10px;padding:12px 14px">
+        <div style="flex:1;font-size:13px;color:#C9CFD7">Only an Admin can create users or change PINs.</div>
+        <a href="User.dc.html" class="btn" style="display:flex;align-items:center;text-decoration:none">Sign in</a>
+      </div>
+    </sc-if>
+
+    <section class="card" style="display:flex;flex-direction:column;padding:6px 14px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;padding:6px 0">
+        <div class="lbl">{{count}} users</div>
+        <span style="font-size:12px;color:#A3ACB8">Tap one to edit</span>
+      </div>
+      <sc-for list="{{users}}" as="u" hint-placeholder-count="6">
+        <div>
+          <button class="usr" onClick="{{u.toggle}}" aria-expanded="{{u.open}}">
+            <span class="av" style="background:{{u.color}};opacity:{{u.op}}">{{u.initials}}</span>
+            <span style="flex:1;min-width:0">
+              <span style="font-weight:500;color:{{u.nameColor}}">{{u.name}}</span>
+              <sc-if value="{{u.changed}}" hint-placeholder-val="{{ false }}"><span style="font-size:11px;font-weight:600;color:#F5C518;margin-left:6px">Changed</span></sc-if>
+              <br><span style="font-size:12px;color:#A3ACB8">{{u.role}} · {{u.sub}}</span>
+            </span>
+            <span style="font-size:12px;color:{{u.stateColor}};text-align:right">{{u.state}}</span>
+          </button>
+          <sc-if value="{{u.open}}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;gap:10px;padding:4px 0 14px">
+              <label class="fld">Name<input type="text" value="{{u.name}}" onChange="{{u.setName}}" disabled="{{locked}}"></label>
+              <label class="fld">Role
+                <select value="{{u.role}}" onChange="{{u.setRole}}" disabled="{{locked}}">
+                  <sc-for list="{{roles}}" as="r" hint-placeholder-count="6"><option value="{{r}}">{{r}}</option></sc-for>
+                </select>
+              </label>
+              <div style="display:flex;flex-direction:column;gap:8px;background:#0F1318;border:1px solid #262C36;border-radius:10px;padding:10px">
+                <div style="font-size:13px;font-weight:600">{{u.pinTitle}}</div>
+                <div style="display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:8px">
+                  <label class="fld">{{u.newLabel}}<input type="password" inputmode="{{u.pinMode}}" maxlength="{{u.pinMax}}" class="{{u.pinCls}}" value="{{u.p1}}" onChange="{{u.setP1}}" disabled="{{locked}}" autocomplete="new-password"></label>
+                  <label class="fld">Type it again<input type="password" inputmode="{{u.pinMode}}" maxlength="{{u.pinMax}}" class="{{u.pinCls}}" value="{{u.p2}}" onChange="{{u.setP2}}" disabled="{{locked}}" autocomplete="new-password"></label>
+                </div>
+                <div style="font-size:12px;color:{{u.pinMsgColor}}">{{u.pinMsg}}</div>
+                <button class="btn" onClick="{{u.applyPin}}" disabled="{{u.cantPin}}">{{u.pinBtn}}</button>
+                <label style="display:flex;align-items:center;gap:8px;font-size:13px"><input type="checkbox" checked="{{u.mustChange}}" onChange="{{u.toggleMust}}" disabled="{{locked}}"> {{u.mustText}}</label>
+              </div>
+              <div class="lsn" role="group" aria-label="What {{u.name}} can listen to">
+                <div style="font-size:13px;font-weight:600">Listen</div>
+                <div style="font-size:13px;color:#A3ACB8">{{u.lsnNow}}</div>
+                <sc-if value="{{u.lsnAdmin}}" hint-placeholder-val="{{ false }}"><div style="font-size:13px;color:#A3ACB8">Admins can always hear everything in the building.</div></sc-if>
+                <sc-if value="{{u.lsnEdit}}" hint-placeholder-val="{{ true }}">
+                  <label class="chk2"><input type="radio" name="lsn-{{u.id}}" checked="{{u.lsnGroups}}" onChange="{{u.pickGroups}}" disabled="{{locked}}"> Only what their Listen groups allow</label>
+                  <label class="chk2"><input type="radio" name="lsn-{{u.id}}" checked="{{u.lsnPick}}" onChange="{{u.pickPick}}" disabled="{{locked}}"> Their groups, plus these:</label>
+                  <sc-if value="{{u.lsnPick}}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-wrap:wrap;gap:0 14px;padding-left:28px"><sc-for list="{{u.lsnSrcs}}" as="x" hint-placeholder-count="4"><label class="chk2"><input type="checkbox" checked="{{x.on}}" onChange="{{x.toggle}}" disabled="{{locked}}"> {{x.name}}</label></sc-for></div></sc-if>
+                  <label class="chk2"><input type="radio" name="lsn-{{u.id}}" checked="{{u.lsnFixed}}" onChange="{{u.pickFixed}}" disabled="{{locked}}"> Keep them to one thing only</label>
+                  <sc-if value="{{u.lsnFixed}}" hint-placeholder-val="{{ false }}"><select aria-label="The one thing {{u.name}} can hear" style="margin-left:28px;width:calc(100% - 28px);box-sizing:border-box" value="{{u.fixed}}" onChange="{{u.setFixed}}" disabled="{{locked}}"><sc-for list="{{u.lsnOpts}}" as="o" hint-placeholder-count="4"><option value="{{o.id}}" selected="{{o.sel}}">{{o.name}}</option></sc-for></select></sc-if>
+                  <div style="font-size:13px;color:#A3ACB8">They can’t change this. Saving it needs an Admin password.</div>
+                </sc-if>
+              </div>
+              <label style="display:flex;align-items:center;gap:8px;font-size:14px"><input type="checkbox" checked="{{u.active}}" onChange="{{u.toggleActive}}" disabled="{{locked}}"> Can sign in</label>
+              <label style="display:flex;align-items:flex-start;gap:8px;font-size:14px"><input type="checkbox" checked="{{u.chat}}" onChange="{{u.toggleChat}}" disabled="{{locked}}" aria-label="{{u.name}} can use team chat"><span>Can use team chat<br><span style="font-size:12px;color:#A3ACB8">{{u.chatHint}}</span></span></label>
+              <sc-if value="{{u.hasWarn}}" hint-placeholder-val="{{ false }}"><div style="font-size:12px;color:#FF7A45">{{u.warn}}</div></sc-if>
+              <button class="btn del" onClick="{{u.remove}}" disabled="{{u.cantRemove}}">Delete user</button>
+            </div>
+          </sc-if>
+        </div>
+      </sc-for>
+      <button class="btn" style="margin:10px 0 8px" onClick="{{add}}" disabled="{{locked}}">+ Create user</button>
+    </section>
+
+    <div style="font-size:13px;color:#A3ACB8;padding:0 4px;line-height:1.45">Admins sign in with a password of 8 or more characters, with a letter and a number or symbol. PINs are 4 to 6 digits and are stored encrypted on the C3 Life server. The activity report lists every user at the top, but never the PINs. There must always be at least one Admin who can sign in. Every change here is written to the activity log.</div>
+    <button class="btn" style="font-size:12px;color:#A3ACB8;border-style:dashed" onClick="{{demoAdmin}}">{{demoAdminLabel}}</button>
+  </main>
+
+  <sc-if value="{{dirty}}" hint-placeholder-val="{{ false }}">
+    <div style="padding:12px 16px;background:#1E232C;border-top:2px solid #F5C518;display:flex;align-items:center;gap:8px">
+      <div style="flex:1;font-size:14px"><strong>{{dirtyText}}</strong><br><span style="font-size:13px;color:#A3ACB8">Not used until you save</span></div>
+      <sc-if value="{{canUndoDelete}}" hint-placeholder-val="{{ false }}"><button class="btn" onClick="{{undoDelete}}">Undo</button></sc-if>
+      <button class="btn" onClick="{{discard}}">Discard</button>
+      <button class="btn pri" onClick="{{save}}" disabled="{{cantSave}}">Save</button>
+    </div>
+  </sc-if>
+  <sc-if value="{{asking}}" hint-placeholder-val="{{ false }}">
+    <div class="ask" role="dialog" aria-label="Admin password">
+      <div style="font-size:17px;font-weight:600">Save with your Admin password</div>
+      <div style="font-size:13px;color:#C9CFD7;line-height:1.45">{{askText}}</div>
+      <label class="fld">Your password<input type="password" id="ask-pw" maxlength="200" value="{{askPw}}" onChange="{{setAskPw}}" autocomplete="current-password"></label>
+      <sc-if value="{{askHasErr}}" hint-placeholder-val="{{ false }}"><div role="alert" style="font-size:13px;color:#FF7A45">{{askErr}}</div></sc-if>
+      <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px"><button class="btn" onClick="{{askNo}}">Cancel</button><button class="btn pri" onClick="{{askYes}}" disabled="{{askBusy}}">Yes, save</button></div>
+    </div>
+  </sc-if>
+  <sc-if value="{{hasToast}}" hint-placeholder-val="{{ false }}">
+    <div role="status" style="padding:12px 16px;background:#6CB4F5;color:#08131C;font-size:14px;font-weight:600">{{toast}}</div>
+  </sc-if>
+
+  <div class="rtabar" style="flex:none">
+    <dc-import name="MiniRTA" hint-size="390px,48px"></dc-import>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.roleMeta = {
+      'Admin': '#B48CF2', 'FOH sound': '#F5C518', 'ProPresenter': '#6CB4F5',
+      'Lighting': '#7FD1C1', 'Foyer team': '#22A05A', 'Musician': '#E58FB5', 'Viewer': '#C9CFD7', 'Listener': '#4FD18B'
+    };
+    this.nextId = 100;
+    const base = this.loadUsers();
+    const lc = this.loadListen();
+    this.state = { admin: false, saved: base, list: base, open: -1, pins: {}, toast: '', lsnSaved: lc.people || {}, lsn: lc.people || {}, sources: lc.sources, removedLast: null, ask: false, askPw: '', askErr: '' };
+  }
+  defaults() {
+    return [
+      { id: 1, name: 'Admin', role: 'Admin', pin: 'c3life-admin', active: true, mustChange: false, last: 'Today 08:40' },
+      { id: 2, name: 'FOH sound', role: 'FOH sound', pin: '1234', active: true, mustChange: false, last: 'Today 08:42' },
+      { id: 3, name: 'ProPresenter', role: 'ProPresenter', pin: '1234', active: true, mustChange: false, last: 'Last Sunday' },
+      { id: 4, name: 'Lighting', role: 'Lighting', pin: '1234', active: true, mustChange: false, last: 'Christmas 2025' },
+      { id: 5, name: 'Foyer team', role: 'Foyer team', pin: '1234', active: true, mustChange: false, last: 'Last Sunday' },
+      { id: 6, name: 'Viewer', role: 'Viewer', pin: '', active: true, mustChange: false, last: 'Last Sunday' },
+      { id: 7, name: 'Keys (musician)', role: 'Musician', pin: '1234', active: true, mustChange: false, last: 'Last Sunday' },
+      { id: 8, name: 'Listener', role: 'Listener', pin: '', active: true, mustChange: false, last: 'Last Sunday' }
+    ];
+  }
+  // What each person may listen to (Listen), set here by an Admin. Kept with the Listen setup.
+  loadListen() {
+    let c = null; try { c = JSON.parse(localStorage.getItem('booth.listen') || 'null'); } catch (e) {}
+    const sources = (c && c.sources) || [{ id: 'main', name: 'Main mix' }, { id: 'stream', name: 'Stream mix' }, { id: 'foyer', name: 'Foyer' }, { id: 'speech', name: 'Pastor and speech mics' }];
+    return { sources, people: (c && c.people) || {}, cfg: c };
+  }
+  goodPassword(p) { return p.length >= 8 && /[A-Za-z]/.test(p) && /[^A-Za-z]/.test(p); }
+  token() { try { const x = JSON.parse(localStorage.getItem('booth.session') || 'null'); return x ? x.token : ''; } catch (e) { return ''; } }
+  loadUsers() { try { const u = JSON.parse(localStorage.getItem('booth.users') || 'null'); return Array.isArray(u) && u.length ? u : this.defaults(); } catch (e) { return this.defaults(); } }
+  readUser() { try { return JSON.parse(localStorage.getItem('booth.user') || 'null'); } catch (e) { return null; } }
+  componentDidMount() {
+    let last;
+    const check = () => { const u = this.readUser(); const k = u ? (u.role || u.name) : ''; if (k !== last) { last = k; this.setState({ admin: k === 'Admin' }); } };
+    check();
+    this.poll = setInterval(check, 800);
+    // On the C3 Life server, what people can hear comes from there.
+    try {
+      fetch('/api/health').then((r) => (r.ok ? r.json() : null)).then((h) => {
+        if (!h || h.service !== 'c3life') return;
+        this.server = true;
+        fetch('/api/listen/config', { headers: { Authorization: 'Bearer ' + this.token() } }).then((r) => (r.ok ? r.json() : null)).then((j) => {
+          if (j && j.sources) this.setState({ sources: j.sources, lsnSaved: j.people || {}, lsn: j.people || {} });
+        }).catch(() => {});
+      }).catch(() => {});
+    } catch (e) {}
+  }
+  componentWillUnmount() { clearInterval(this.poll); clearTimeout(this.t); }
+  initials(n) { const p = n.replace(/[^A-Za-z0-9\s]/g, '').trim().split(/\s+/); return ((p[0] || '?')[0] + (p[1] ? p[1][0] : (p[0] || '?')[1] || '')).toUpperCase(); }
+  saveUsersNow() {
+    const s = this.state;
+    try { localStorage.setItem('booth.users', JSON.stringify(s.list)); } catch (e) {}
+    this.setState({ saved: s.list, removedLast: null, toast: 'Saved. These users can sign in now on every device.' });
+  }
+  setItem(id, patch) { this.setState({ list: this.state.list.map((u) => (u.id === id ? { ...u, ...patch } : u)), toast: '' }); }
+  renderVals() {
+    const s = this.state;
+    const savedById = {};
+    s.saved.forEach((u) => { savedById[u.id] = JSON.stringify(u); });
+    const changed = s.list.filter((u) => savedById[u.id] !== JSON.stringify(u)).map((u) => u.id);
+    const removed = s.saved.filter((u) => !s.list.some((x) => x.id === u.id)).length;
+    const n = changed.length + removed;
+    const activeAdmins = s.list.filter((u) => u.role === 'Admin' && u.active).length;
+    const noName = s.list.some((u) => !u.name.trim());
+    const lsnChanged = Object.keys(Object.assign({}, s.lsn, s.lsnSaved)).filter((k) => JSON.stringify(s.lsn[k] || null) !== JSON.stringify(s.lsnSaved[k] || null));
+    const removedNames = s.saved.filter((u) => !s.list.some((x) => x.id === u.id)).map((u) => u.name);
+    const srcName = (id) => (s.sources.find((x) => x.id === id) || { name: id }).name;
+    return {
+      locked: !s.admin,
+      lockText: s.admin ? 'Admin · editing' : 'Admin only',
+      lockColor: s.admin ? '#F5C518' : '#A3ACB8',
+      count: s.list.length,
+      roles: Object.keys(this.roleMeta),
+      users: s.list.map((u) => {
+        const pw = s.pins[u.id] || { p1: '', p2: '' };
+        const isAdm = u.role === 'Admin';
+        const digits = isAdm ? this.goodPassword(pw.p1) : /^\d{4,6}$/.test(pw.p1);
+        const me = s.lsn[u.name] || null, mode = !me ? 'groups' : (me.fixed ? 'fixed' : 'pick');
+        const setL = (v) => { const n = Object.assign({}, s.lsn); if (v) n[u.name] = v; else delete n[u.name]; this.setState({ lsn: n, toast: '' }); };
+        const match = pw.p1 === pw.p2;
+        const typed = pw.p1.length > 0 || pw.p2.length > 0;
+        const lastAdmin = u.role === 'Admin' && activeAdmins <= 1;
+        return {
+          name: u.name, role: u.role, active: u.active, mustChange: u.mustChange,
+          chat: typeof u.chat === 'boolean' ? u.chat : u.role !== 'Listener',
+          chatHint: (typeof u.chat === 'boolean' ? u.chat : u.role !== 'Listener') ? 'Chat shows in their menu.' : 'Chat is hidden from their menu' + (u.role === 'Listener' && typeof u.chat !== 'boolean' ? ' (Listeners don’t have chat unless you turn it on).' : '.'),
+          toggleChat: () => this.setItem(u.id, { chat: !(typeof u.chat === 'boolean' ? u.chat : u.role !== 'Listener') }),
+          initials: this.initials(u.name || u.role),
+          color: this.roleMeta[u.role] || '#C9CFD7',
+          op: u.active ? '1' : '0.4',
+          nameColor: u.active ? '#ECEEF1' : '#A3ACB8',
+          sub: (u.role === 'Viewer' || u.role === 'Listener') && !u.pin ? 'no PIN' + (u.role === 'Listener' ? ' \u00b7 Listen only' : '') : (u.mustChange ? (u.role === 'Admin' ? 'must choose a new password' : 'must choose a new PIN') : 'last signed in ' + u.last),
+          state: u.active ? 'Active' : 'Can’t sign in',
+          stateColor: u.active ? '#6CB4F5' : '#A3ACB8',
+          changed: changed.indexOf(u.id) > -1,
+          open: s.open === u.id,
+          toggle: () => this.setState({ open: s.open === u.id ? -1 : u.id }),
+          setName: (e) => this.setItem(u.id, { name: e.target.value }),
+          setRole: (e) => this.setItem(u.id, { role: e.target.value }),
+          p1: pw.p1, p2: pw.p2,
+          setP1: (e) => this.setState({ pins: { ...s.pins, [u.id]: { ...pw, p1: isAdm ? e.target.value : e.target.value.replace(/\D/g, '') } } }),
+          setP2: (e) => this.setState({ pins: { ...s.pins, [u.id]: { ...pw, p2: isAdm ? e.target.value : e.target.value.replace(/\D/g, '') } } }),
+          newLabel: isAdm ? 'New password' : 'New PIN', pinMode: isAdm ? 'text' : 'numeric', pinMax: isAdm ? '200' : '6',
+          mustText: isAdm ? 'Ask them to choose their own password next time they sign in' : 'Ask them to choose their own PIN next time they sign in',
+          pinTitle: isAdm ? (u.pin ? 'Change password' : 'Set a password') : (u.pin ? 'Change PIN' : 'Set a PIN'),
+          pinCls: typed && (!digits || !match) ? 'bad' : '',
+          pinMsg: !typed ? (isAdm ? 'Admins use a password: type it twice.' : 'Enter the new PIN twice.') : (!digits ? (isAdm ? 'Use 8 or more characters, with a letter and a number or symbol.' : 'Use 4 to 6 digits.') : (!match ? (isAdm ? 'The two passwords don’t match.' : 'The two PINs don’t match.') : (isAdm ? 'Passwords match.' : 'PINs match.'))),
+          id: u.id,
+          lsnAdmin: isAdm, lsnEdit: !isAdm,
+          lsnNow: isAdm ? 'Hears everything.' : (mode === 'groups' ? 'Hears what their Listen groups allow.' : (mode === 'fixed' ? 'Kept to ' + srcName(me.fixed) + ' only.' : 'Their groups, plus ' + (me.sources.map(srcName).join(', ') || 'nothing yet') + '.')),
+          lsnGroups: mode === 'groups', lsnPick: mode === 'pick', lsnFixed: mode === 'fixed',
+          pickGroups: () => setL(null),
+          pickPick: () => setL({ sources: me && me.sources ? me.sources : [], fixed: '' }),
+          pickFixed: () => setL({ sources: [], fixed: (me && me.fixed) || (s.sources[0] ? s.sources[0].id : '') }),
+          lsnSrcs: s.sources.map((x) => ({ name: x.name, on: !!me && (me.sources || []).indexOf(x.id) >= 0, toggle: () => { const l = (me && me.sources ? me.sources : []).slice(); const k = l.indexOf(x.id); if (k >= 0) l.splice(k, 1); else l.push(x.id); setL({ sources: l, fixed: '' }); } })),
+          fixed: me && me.fixed ? me.fixed : '',
+          lsnOpts: s.sources.map((x) => ({ id: x.id, name: x.name, sel: !!me && me.fixed === x.id })),
+          setFixed: (e) => setL({ sources: [], fixed: e.target.value }),
+          pinMsgColor: !typed ? '#A3ACB8' : (digits && match ? '#6CB4F5' : '#FF7A45'),
+          cantPin: !s.admin || !digits || !match,
+          pinBtn: isAdm ? (u.pin ? 'Change password' : 'Set password') : (u.pin ? 'Change PIN' : 'Set PIN'),
+          applyPin: () => { this.setItem(u.id, { pin: pw.p1 }); this.setState({ pins: { ...s.pins, [u.id]: { p1: '', p2: '' } }, toast: '' }); },
+          toggleMust: () => this.setItem(u.id, { mustChange: !u.mustChange }),
+          toggleActive: () => { if (!(lastAdmin && u.active)) this.setItem(u.id, { active: !u.active }); },
+          hasWarn: lastAdmin,
+          warn: 'This is the only Admin who can sign in, so it can’t be switched off or deleted.',
+          cantRemove: !s.admin || lastAdmin,
+          remove: () => this.setState({ list: s.list.filter((x) => x.id !== u.id), open: -1, removedLast: { u, at: s.list.indexOf(u) } })
+        };
+      }),
+      add: () => {
+        const id = this.nextId++;
+        this.setState({ list: s.list.concat([{ id, name: 'New user', role: 'FOH sound', pin: '', active: true, mustChange: true, last: 'never' }]), open: id });
+      },
+      dirty: (n > 0 || lsnChanged.length > 0) && !s.toast,
+      dirtyText: removedNames.length ? removedNames.join(', ') + (removedNames.length === 1 ? ' will be' : ' will be') + ' deleted when you save' + (n + lsnChanged.length > removedNames.length ? ' \u00b7 ' + (n + lsnChanged.length - removedNames.length) + ' other change' + (n + lsnChanged.length - removedNames.length === 1 ? '' : 's') : '') : (n + lsnChanged.length) + (n + lsnChanged.length === 1 ? ' change' : ' changes'),
+      canUndoDelete: !!s.removedLast && !s.list.some((x) => x.id === s.removedLast.u.id),
+      undoDelete: () => { const r = s.removedLast; if (!r) return; const l = s.list.slice(); l.splice(Math.min(r.at, l.length), 0, r.u); this.setState({ list: l, removedLast: null }); },
+      cantSave: !s.admin || noName || activeAdmins < 1,
+      save: () => {
+        // What people can listen to needs the Admin password again, so nobody can change it on an unattended iPad.
+        if (lsnChanged.length) { this.setState({ ask: true, askPw: '', askErr: '' }); return; }
+        this.saveUsersNow();
+      },
+      asking: !!s.ask, askPw: s.askPw, askHasErr: !!s.askErr, askErr: s.askErr, askBusy: !!s.askBusy,
+      askText: 'You\u2019re changing what ' + lsnChanged.join(', ') + (lsnChanged.length === 1 ? ' can' : ' can') + ' listen to. They can\u2019t change it themselves.',
+      setAskPw: (e) => this.setState({ askPw: e.target.value, askErr: '' }),
+      askNo: () => this.setState({ ask: false, askPw: '', askErr: '' }),
+      askYes: () => {
+        const pw = s.askPw || '';
+        if (!pw) { this.setState({ askErr: 'Type your password.' }); return; }
+        const done = () => {
+          const cfg = this.loadListen().cfg || {};
+          try { localStorage.setItem('booth.listen', JSON.stringify(Object.assign({}, cfg, { people: s.lsn }))); } catch (e) {}
+          this.setState({ ask: false, askPw: '', askBusy: false, lsnSaved: s.lsn });
+          this.saveUsersNow();
+        };
+        if (this.server) {
+          this.setState({ askBusy: true });
+          const tok = this.token();
+          const send = (names) => {
+            if (!names.length) { done(); return; }
+            const nm = names[0], v = s.lsn[nm] || { sources: [], fixed: '' };
+            fetch('/api/listen/person', { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tok }, body: JSON.stringify({ name: nm, sources: v.sources || [], fixed: v.fixed || '', password: pw }) })
+              .then((r) => r.json().then((j) => ({ code: r.status, j })))
+              .then(({ code, j }) => { if (code === 200) send(names.slice(1)); else this.setState({ askBusy: false, askPw: '', askErr: j.error || 'Not saved.' }); })
+              .catch(() => this.setState({ askBusy: false, askErr: 'Can\u2019t reach the C3 Life server.' }));
+          };
+          send(lsnChanged);
+          return;
+        }
+        const me = this.readUser(), adm = s.saved.find((x) => me && x.name === me.name);
+        if (adm && adm.pin === pw) done(); else this.setState({ askPw: '', askErr: 'That password isn\u2019t right.' + (adm ? '' : ' (Preview: c3life-admin)') });
+      },
+      discard: () => this.setState({ list: s.saved, open: -1, pins: {}, toast: '', lsn: s.lsnSaved, removedLast: null }),
+      hasToast: !!s.toast, toast: s.toast,
+      demoAdminLabel: s.admin ? 'Demo: lock again' : 'Demo: unlock as Admin',
+      demoAdmin: () => this.setState({ admin: !s.admin })
+    };
+  }
+}
+</script>
+</body>
+</html>

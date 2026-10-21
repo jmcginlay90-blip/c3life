@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>C3 Life – Saved setup</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet" data-look>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Safari / iPad: no zoom when typing, no double-tap zoom, no text-select or callout while dragging */
+html{-webkit-text-size-adjust:100%;touch-action:manipulation}
+input,select,textarea{font-size:16px!important}
+button,a,summary,label,[role=slider]{-webkit-tap-highlight-color:transparent}
+[role=slider],.fader,.pan{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+body{margin:0;background:#0D1015}
+a{color:#6CB4F5}a:hover{color:#9CCBF8}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:62px;color:#A3ACB8;text-decoration:none;font-size:12px;font-weight:500;border-top:2px solid transparent}
+.tab.on{color:#F5C518;border-top-color:#F5C518}
+.card{background:#161A21;border:1px solid #262C36;border-radius:14px;padding:14px}
+.lbl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#A3ACB8;font-weight:500}
+.mono{font-family:'IBM Plex Mono',ui-monospace,monospace}
+.btn{min-height:46px;padding:0 14px;border-radius:12px;border:1px solid #333B47;background:#1E232C;color:#ECEEF1;font:500 14px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer}
+.btn.pri{background:#F5C518;border-color:#F5C518;color:#1A1204;font-weight:600}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.row{display:flex;align-items:center;gap:10px;min-height:52px;border-top:1px solid #222831}
+.chip{font-size:12px;border:1px solid #333B47;border-radius:14px;padding:4px 10px;color:#C9CFD7}
+input[type=text]{width:100%;min-height:44px;border-radius:10px;border:1px solid #333B47;background:#0F1318;color:#ECEEF1;font:400 14px 'IBM Plex Sans',system-ui,sans-serif;padding:0 10px;box-sizing:border-box}
+input[type=text]:disabled{opacity:.5}
+select{width:100%;min-height:44px;border-radius:10px;border:1px solid #333B47;background:#0F1318;color:#ECEEF1;font:400 14px 'IBM Plex Sans',system-ui,sans-serif;padding:0 10px}
+select:disabled{opacity:.5}
+
+/* Fills any screen. Wider than 700px (iPad, laptop, web) the content sits in a centred column. */
+@media (min-width:700px){
+  .app > *:not(.bn):not([style*="position:absolute"]){width:100%;max-width:760px;margin-left:auto;margin-right:auto;box-sizing:border-box}
+}
+
+.app > .rtabar{max-width:none !important;margin-left:0 !important;margin-right:0 !important}
+
+/* Easy to use: every link, tick box and control is at least 40-44px tall, so it is easy to hit with a thumb. */
+a[style*="min-height:28px"]{min-height:44px !important}
+a[style*="font-size:12px"][style*="text-decoration:none"],a[style*="font-size:13px"][style*="text-decoration:none"]{display:inline-flex;align-items:center;min-height:40px}
+label:has(> input[type=checkbox]),label:has(> input[type=radio]){min-height:44px}
+input[type=checkbox],input[type=radio]{width:22px;height:22px;flex:none;accent-color:#F5C518}
+input[type=range]{min-height:40px}
+select{min-height:44px}
+button.sw::after,button.cell::after{content:'';position:absolute;inset:-7px -4px}
+.cell{position:relative}
+input[type=checkbox][aria-label]{width:32px;height:32px}
+
+/* Menu: a drop-down list at the top of every screen. Tap Menu to open it, tap again (or pick a page) to close. */
+.topmenu{position:relative;z-index:20;flex:none;background:#11151B;border-bottom:1px solid #262C36}
+.topmenu summary{list-style:none;display:flex;align-items:center;gap:10px;min-height:52px;padding:0 16px;cursor:pointer;color:#ECEEF1;font:600 15px 'IBM Plex Sans',system-ui,sans-serif;max-width:760px;margin:0 auto;box-sizing:border-box}
+.topmenu summary::-webkit-details-marker{display:none}
+.topmenu .mlabel{font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:#A3ACB8}
+.topmenu .mcur{flex:1;color:#F5C518}
+.topmenu .chev{transition:transform .15s}
+.topmenu details[open] .chev{transform:rotate(180deg)}
+.topmenu .mlist{position:absolute;left:8px;right:8px;top:calc(100% + 4px);background:#161A21;border:1px solid #333B47;border-radius:14px;box-shadow:0 14px 34px rgba(0,0,0,.55);padding:6px;display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.topmenu .mlist a{display:flex;align-items:center;gap:10px;min-height:52px;padding:0 12px;border-radius:10px;color:#ECEEF1;text-decoration:none;font:500 15px 'IBM Plex Sans',system-ui,sans-serif}
+.topmenu .mlist a:hover{background:#1E232C}
+.topmenu .mlist a.on{background:#262C36;color:#F5C518}
+@media (min-width:700px){.topmenu .mlist{left:calc(50% - 372px);right:auto;width:440px}}
+@media (min-width:700px) and (max-width:800px){.topmenu .mlist{left:16px}}
+/* wide:start — iPad landscape and laptops: use the width */
+@media (min-width:1000px){
+  .app > *:not(.bn):not([style*="position:absolute"]){max-width:1240px}
+  .topmenu summary{max-width:1240px}
+  .app main.wide2{display:grid !important;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:14px 18px !important}
+  .app main.wide2 > *{min-width:0}
+  .app main.wide2 > :not(section):not(.card):not(details):not(.wcol){grid-column:1 / -1}
+  .app main.wide2 > .wfull{grid-column:1 / -1}
+  .app main.wide1{max-width:980px !important}
+  .app:has(main.wide1) > *:not(.bn):not([style*="position:absolute"]){max-width:980px}
+  .app:has(main.wide1) .topmenu summary{max-width:980px}
+}
+@media (min-width:1500px){ .app main.wide2.wide3{grid-template-columns:repeat(3,minmax(0,1fr))} }
+/* wide:end */
+/* look:start — the WING look (like WING Edit): near-black, outlined panels, condensed headings, yellow for active, blue for selected.
+   Settings › Look › Classic puts the old look back on this device (html[data-look=classic]). */
+:root{--wk-bg:#0A0B0D;--wk-panel:#121418;--wk-panel2:#181B20;--wk-line:#2E333A;--wk-yellow:#F5C518;--wk-blue:#2F6CC4;--wk-cond:'Barlow Condensed','IBM Plex Sans',system-ui,sans-serif}
+html:not([data-look=classic]) body{background:var(--wk-bg)}
+html:not([data-look=classic]) .app{background:var(--wk-bg) !important}
+html:not([data-look=classic]) .card{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .lbl{font-family:var(--wk-cond);font-size:13px;font-weight:600;letter-spacing:.07em;color:#D4D9E0}
+html:not([data-look=classic]) h1{font-family:var(--wk-cond);font-weight:600 !important;text-transform:uppercase;letter-spacing:.05em;font-size:21px !important;line-height:1.2;color:var(--wk-yellow);border:1.5px solid var(--wk-yellow);border-radius:3px;padding:2px 12px;display:inline-block}
+html:not([data-look=classic]) .btn,html:not([data-look=classic]) .lk,html:not([data-look=classic]) .mxb,html:not([data-look=classic]) .mxbk,html:not([data-look=classic]) .mute,html:not([data-look=classic]) .pbtn{font-family:var(--wk-cond);font-size:15px;letter-spacing:.02em;border-radius:4px}
+html:not([data-look=classic]) .btn.pri{background:var(--wk-yellow);border-color:var(--wk-yellow);color:#111}
+html:not([data-look=classic]) .seg{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .seg a{font-family:var(--wk-cond);font-size:15px;letter-spacing:.03em;border-radius:4px}
+html:not([data-look=classic]) .seg a.on,html:not([data-look=classic]) .lk.on{background:var(--wk-blue);color:#fff}
+html:not([data-look=classic]) .tab.on{color:var(--wk-yellow);border-top-color:var(--wk-yellow)}
+html:not([data-look=classic]) .topmenu{background:#000;border-bottom-color:var(--wk-line)}
+html:not([data-look=classic]) .topmenu summary{font-family:var(--wk-cond);font-size:16px;letter-spacing:.03em}
+html:not([data-look=classic]) .topmenu .mcur{color:var(--wk-yellow)}
+html:not([data-look=classic]) .topmenu .mlist{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .topmenu .mlist a{font-family:var(--wk-cond);font-size:16px;border-radius:4px}
+html:not([data-look=classic]) .topmenu .mlist a.on{background:var(--wk-panel2);color:var(--wk-yellow);box-shadow:inset 3px 0 0 var(--wk-yellow)}
+html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic]) input[type=radio],html:not([data-look=classic]) input[type=range]{accent-color:var(--wk-yellow)}
+.wkside{display:none}
+/* iPad landscape and laptops: a sidebar like WING Edit's (HOME, MIXER, ...) instead of the menu at the top */
+@media (min-width:1000px){
+  html:not([data-look=classic]) .wkside{display:flex;flex-direction:column;gap:2px;position:fixed;left:0;top:0;bottom:0;width:132px !important;max-width:132px !important;margin:0 !important;padding:8px 6px 12px;box-sizing:border-box;background:#000;border-right:1px solid var(--wk-line);overflow-y:auto;z-index:30}
+  html:not([data-look=classic]) .wkside .wkbrand{font:700 24px var(--wk-cond);letter-spacing:.06em;color:var(--wk-yellow);padding:6px 8px 12px}
+  html:not([data-look=classic]) .wkside a{display:flex;align-items:center;gap:9px;min-height:46px;padding:0 8px;border-radius:4px;color:#D4D9E0;text-decoration:none;font:600 15px var(--wk-cond);text-transform:uppercase;letter-spacing:.04em}
+  html:not([data-look=classic]) .wkside a:hover{background:var(--wk-panel2)}
+  html:not([data-look=classic]) .wkside a.on{background:var(--wk-panel2);color:var(--wk-yellow);box-shadow:inset 3px 0 0 var(--wk-yellow)}
+  html:not([data-look=classic]) .wkside svg{flex:none}
+  html:not([data-look=classic]) .app{padding-left:132px;box-sizing:border-box !important}
+  html:not([data-look=classic]) .app > .topmenu{display:none}
+}
+/* look:end */
+</style>
+</helmet>
+<div class="app has-bn" style="width:100%;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;background:#0D1015;color:#ECEEF1;font-family:'IBM Plex Sans',system-ui,sans-serif;overflow:hidden">
+  
+  
+  
+  
+  <nav class="wkside" aria-label="Main menu (side)"><div class="wkbrand" aria-hidden="true">C3 LIFE</div><a href="Main.dc.html" class="on" aria-current="page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Home</a>
+        <a href="Wing.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4v16M12 4v16M18 4v16"/><path d="M4 14h4M10 8h4M16 16h4"/></svg>Mixer</a>
+        <a href="RTA.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V12M9 20V6M14 20V10M19 20V4"/></svg>RTA</a>
+        <a href="Show.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M10 8l5 2-5 2z"/><path d="M8 20h8"/></svg>Show</a>
+        <a href="Lights.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>Lights</a>
+        <a href="Plan.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h1M4 12h1M4 18h1"/></svg>Plan</a>
+        <a href="Chat.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>Chat</a>
+        <a href="Listen.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="15" width="4" height="6" rx="1.5"/><rect x="17" y="15" width="4" height="6" rx="1.5"/><path d="M10 9.5a2.5 2.5 0 0 1 4 0"/></svg>Listen</a>
+        <a href="Help.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2.5 2-2.5 3.5M12 17h.01"/></svg>Help</a>
+        <a href="Report.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4h11l-1.5 4L16 12H5"/></svg>Report an issue</a></nav>
+  <nav class="bn topmenu" aria-label="Main menu">
+    <details>
+      <summary aria-label="Menu. You are on Saved setup"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span class="mlabel">Menu</span><span class="mcur">Saved setup</span><svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+      <div class="mlist">
+        <a href="Main.dc.html" class="on" aria-current="page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Home</a>
+        <a href="Wing.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4v16M12 4v16M18 4v16"/><path d="M4 14h4M10 8h4M16 16h4"/></svg>Mixer</a>
+        <a href="RTA.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V12M9 20V6M14 20V10M19 20V4"/></svg>RTA</a>
+        <a href="Show.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M10 8l5 2-5 2z"/><path d="M8 20h8"/></svg>Show</a>
+        <a href="Lights.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>Lights</a>
+        <a href="Plan.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h1M4 12h1M4 18h1"/></svg>Plan</a>
+        <a href="Chat.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>Chat</a>
+        <a href="Listen.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="15" width="4" height="6" rx="1.5"/><rect x="17" y="15" width="4" height="6" rx="1.5"/><path d="M10 9.5a2.5 2.5 0 0 1 4 0"/></svg>Listen</a>
+        <a href="Help.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2.5 2-2.5 3.5M12 17h.01"/></svg>Help</a>
+        <a href="Report.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4h11l-1.5 4L16 12H5"/></svg>Report an issue</a>
+      </div>
+    </details>
+  </nav>
+  <header style="padding:18px 20px 12px;display:flex;flex-direction:column;gap:4px">
+    <a href="Main.dc.html" style="font-size:13px;text-decoration:none;min-height:28px;display:flex;align-items:center">← Home</a>
+    <div style="display:flex;justify-content:space-between;align-items:flex-end">
+      <h1 style="margin:0;font-size:26px;font-weight:600">Saved setup</h1>
+      <div style="font-size:12px;color:#A3ACB8;text-align:right">Loads every time<br>the C3 Life server starts</div>
+    </div>
+  </header>
+
+  <main class=" wide2" style="flex:1;overflow-y:auto;padding:0 16px 16px;display:flex;flex-direction:column;gap:12px">
+    <section class="card" style="display:flex;flex-direction:column;gap:6px;border-color:#6CB4F5">
+      <div class="lbl">Running now</div>
+      <div style="font-size:18px;font-weight:600">{{curName}}</div>
+      <div style="font-size:13px;color:#A3ACB8">{{curMeta}}</div>
+      <div style="display:flex;align-items:center;gap:8px;font-size:13px;margin-top:4px"><span style="width:8px;height:8px;border-radius:50%;background:#6CB4F5"></span>Loaded at start-up today 08:31</div>
+    </section>
+
+    <section class="card" style="display:flex;flex-direction:column;gap:8px">
+      <label for="app-name" class="lbl">App name</label>
+      <input id="app-name" type="text" maxlength="30" value="{{appDraft}}" onChange="{{setAppDraft}}" disabled="{{locked}}" autocomplete="off">
+      <div style="font-size:12px;color:#A3ACB8;line-height:1.45">Shows at the top of Home, on the laptop dashboard and on both emailed reports. The web address stays <span class="mono">c3life.local</span>.</div>
+      <sc-if value="{{appBad}}" hint-placeholder-val="{{ false }}"><div role="alert" style="font-size:12px;color:#FF8A80">The name can’t be empty.</div></sc-if>
+      <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px">
+        <button class="btn" onClick="{{undoAppName}}" disabled="{{appSame}}">Undo</button>
+        <button class="btn pri" onClick="{{saveAppName}}" disabled="{{cantSaveName}}">Save name</button>
+      </div>
+      <sc-if value="{{locked}}" hint-placeholder-val="{{ true }}"><div style="font-size:12px;color:#A3ACB8">Only an Admin can change the name.</div></sc-if>
+      <sc-if value="{{hasNameToast}}" hint-placeholder-val="{{ false }}"><div role="status" style="font-size:13px;color:#6CB4F5">{{nameToast}}</div></sc-if>
+    </section>
+
+    <section class="card" style="display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px">
+        <div style="font-size:16px;font-weight:600">Backup and restore</div>
+        <span style="font-size:12px;color:{{usbColor}}">{{usbText}}</span>
+      </div>
+      <div style="font-size:12px;color:#A3ACB8;line-height:1.45">A backup holds the whole saved setup (everything listed at the bottom). PINs stay encrypted. Plug the USB stick into the C3 Life server to back up, then take it out and keep it in the booth drawer.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <button class="btn pri" onClick="{{backupUsb}}" disabled="{{cantUsb}}">{{backupLabel}}</button>
+        <button class="btn" onClick="{{download}}" disabled="{{locked}}">Download to this device</button>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:14px"><input type="checkbox" checked="{{autoBackup}}" onChange="{{toggleAutoBackup}}" disabled="{{locked}}"> Back up to the USB stick every time the setup is saved</label>
+      <div class="lbl" style="padding-top:4px">Backups</div>
+      <sc-for list="{{backups}}" as="b" hint-placeholder-count="3">
+        <div style="display:flex;align-items:center;gap:10px;min-height:52px;border-top:1px solid #222831">
+          <div style="flex:1;min-width:0"><div style="font-size:14px">{{b.name}}</div><div style="font-size:12px;color:#A3ACB8">{{b.where}}</div></div>
+          <button class="btn" style="flex:none" onClick="{{b.restore}}" disabled="{{locked}}" aria-label="Restore {{b.name}}">Restore</button>
+        </div>
+      </sc-for>
+      <sc-if value="{{restoring}}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:8px;background:#0F1318;border:1px solid #F5C518;border-radius:12px;padding:12px">
+          <div style="font-size:15px;font-weight:600">Restore {{restoreName}}?</div>
+          <div style="font-size:13px;color:#C9CFD7;line-height:1.45">The setup running now is backed up first, so you can go back. The C3 Life server loads the restored setup straight away. The desk keeps running.</div>
+          <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px">
+            <button class="btn" onClick="{{cancelRestore}}">Cancel</button>
+            <button class="btn pri" onClick="{{doRestore}}">Yes, restore it</button>
+          </div>
+        </div>
+      </sc-if>
+      <button class="btn" style="min-height:40px;border-style:dashed;color:#A3ACB8;font-size:13px" onClick="{{demoUsb}}">{{demoUsbLabel}}</button>
+      <sc-if value="{{hasBkToast}}" hint-placeholder-val="{{ false }}"><div role="status" style="font-size:13px;color:#6CB4F5;line-height:1.45">{{bkToast}}</div></sc-if>
+    </section>
+
+    <section class="card" style="display:flex;flex-direction:column;gap:8px">
+      <div style="font-size:16px;font-weight:600">App updates</div>
+      <div style="font-size:13px">{{verLine}}</div>
+      <div style="font-size:12px;color:#A3ACB8;line-height:1.45">The C3 Life server is often offline, so updates come on a USB stick. Put the update file on the stick, plug it into the C3 Life server, then check here. With internet it can also check online.</div>
+      <sc-if value="{{updIdle}}" hint-placeholder-val="{{ true }}">
+        <button class="btn pri" onClick="{{checkUsb}}" disabled="{{cantUsb}}">Check the USB stick for an update</button>
+      </sc-if>
+      <sc-if value="{{updNone}}" hint-placeholder-val="{{ false }}"><div style="font-size:13px;color:#A3ACB8">No update file on the USB stick. You have the newest version it knows about.</div></sc-if>
+      <sc-if value="{{updFound}}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:8px;background:#0F1318;border:1px solid #6CB4F5;border-radius:12px;padding:12px">
+          <div style="font-size:15px;font-weight:600">C3 Life 1.5.0 found on the USB stick</div>
+          <div style="font-size:13px;color:#C9CFD7;line-height:1.5">What's new: feedback watch on the RTA, wireless mic batteries, musicians' own mix, faster network scan.</div>
+          <div style="font-size:12px;color:#6CB4F5">✓ Checked: the file is a genuine C3 Life update (signed)</div>
+          <sc-if value="{{inService}}" hint-placeholder-val="{{ false }}"><div style="font-size:13px;color:#FF8A80">A service is running. Install after it ends.</div></sc-if>
+          <div style="font-size:12px;color:#A3ACB8;line-height:1.45">Backs up first. Takes about 2 minutes. The desk, Dante and ProPresenter keep working; only the app screens pause.</div>
+          <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px">
+            <button class="btn" onClick="{{cancelUpd}}">Not now</button>
+            <button class="btn pri" onClick="{{installUpd}}" disabled="{{cantInstall}}">Install 1.5.0</button>
+          </div>
+        </div>
+      </sc-if>
+      <sc-if value="{{updRunning}}" hint-placeholder-val="{{ false }}">
+        <div role="status" style="display:flex;flex-direction:column;gap:6px">
+          <sc-for list="{{updSteps}}" as="st" hint-placeholder-count="4"><div style="display:flex;gap:8px;font-size:13px;color:{{st.color}}"><span class="mono" style="width:14px">{{st.mark}}</span>{{st.text}}</div></sc-for>
+        </div>
+      </sc-if>
+      <sc-if value="{{updDone}}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:13px;color:#6CB4F5">✓ Updated to 1.5.0. Your setup, users and logs are all still there.</div>
+        <button class="btn" onClick="{{rollback}}">Go back to 1.4.2</button>
+      </sc-if>
+    </section>
+
+    <section class="card" style="display:flex;flex-direction:column;gap:4px;padding:10px 14px;border-color:{{changesBorder}}">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;padding:2px 0 6px">
+        <div class="lbl">Changes since start-up</div>
+        <span style="font-size:12px;color:{{changesColor}}">{{changesCount}}</span>
+      </div>
+      <sc-if value="{{noChanges}}" hint-placeholder-val="{{ false }}"><div style="font-size:13px;color:#A3ACB8;padding:8px 0">Nothing changed. The C3 Life server is running exactly the saved setup.</div></sc-if>
+      <sc-for list="{{changes}}" as="c" hint-placeholder-count="3">
+        <div style="display:flex;gap:10px;padding:8px 0;border-top:1px solid #222831">
+          <span class="mono" style="font-size:12px;color:#A3ACB8;width:42px;flex:none">{{c.t}}</span>
+          <div style="flex:1;min-width:0"><div style="font-size:13px">{{c.what}}</div><div style="font-size:12px;color:#A3ACB8">{{c.who}}</div></div>
+        </div>
+      </sc-for>
+      <div style="font-size:12px;color:#A3ACB8;padding-top:6px;line-height:1.45">Changes made during a service last until C3 Life restarts. To keep them, an Admin saves them into the setup.</div>
+    </section>
+
+    <section class="card" style="display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="color:{{lockColor}};display:flex"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span>
+        <span style="flex:1;font-size:15px;font-weight:600">Save</span>
+        <sc-if value="{{locked}}" hint-placeholder-val="{{ true }}"><a href="User.dc.html" style="font-size:12px;text-decoration:none">Admin only · sign in ›</a></sc-if>
+        <sc-if value="{{unlocked}}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;color:#F5C518">Signed in as Admin</span></sc-if>
+      </div>
+      <button class="btn pri" onClick="{{update}}" disabled="{{cantSave}}">Update "{{curShort}}" with these changes</button>
+      <label for="vn" style="font-size:12px;color:#A3ACB8">Or save as a new version</label>
+      <div style="display:flex;gap:8px">
+        <input id="vn" type="text" placeholder="e.g. Christmas 2026" value="{{newName}}" onChange="{{setNewName}}" disabled="{{locked}}">
+        <button class="btn" onClick="{{saveNew}}" disabled="{{locked}}">Save</button>
+      </div>
+      <button class="btn" onClick="{{discard}}" disabled="{{cantSave}}">Discard changes · go back to the saved setup…</button>
+      <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#A3ACB8">Load at start-up
+        <select value="{{startup}}" onChange="{{pickStartup}}" disabled="{{locked}}">
+          <sc-for list="{{versionNames}}" as="v" hint-placeholder-count="3"><option value="{{v}}">{{v}}</option></sc-for>
+        </select>
+      </label>
+      <sc-if value="{{hasToast}}" hint-placeholder-val="{{ false }}"><div role="status" style="font-size:13px;color:#6CB4F5">{{toast}}</div></sc-if>
+      <sc-if value="{{asking}}" hint-placeholder-val="{{ false }}">
+        <div class="card" role="dialog" aria-label="{{askTitle}}" style="border-color:#F5C518;display:flex;flex-direction:column;gap:8px">
+          <div style="font-size:15px;font-weight:600">{{askTitle}}</div>
+          <div style="font-size:13px;color:#C9CFD7;line-height:1.45">{{askText}}</div>
+          <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px"><button class="btn" onClick="{{askNo}}">Cancel</button><button class="btn pri" onClick="{{askYes}}">{{askBtn}}</button></div>
+        </div>
+      </sc-if>
+      <button class="btn" style="font-size:12px;color:#A3ACB8;border-style:dashed" onClick="{{demoAdmin}}">{{demoAdminLabel}}</button>
+    </section>
+
+    <section class="card" style="display:flex;flex-direction:column;padding:6px 14px">
+      <div class="lbl" style="padding:6px 0">Versions</div>
+      <sc-for list="{{versions}}" as="v" hint-placeholder-count="3">
+        <div class="row">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:14px;font-weight:{{v.weight}}">{{v.name}}</div>
+            <div style="font-size:12px;color:#A3ACB8">{{v.meta}}</div>
+          </div>
+          <sc-if value="{{v.isCur}}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;color:#6CB4F5">Running</span></sc-if>
+          <sc-if value="{{v.notCur}}" hint-placeholder-val="{{ true }}"><button class="btn" style="min-height:44px;font-size:13px" onClick="{{v.restore}}" disabled="{{locked}}" aria-label="Load {{v.name}}">Load…</button></sc-if>
+        </div>
+      </sc-for>
+    </section>
+
+    <section class="card" style="display:flex;flex-direction:column;gap:10px">
+      <div class="lbl">What the save file holds</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        <sc-for list="{{holds}}" as="h" hint-placeholder-count="10"><span class="chip">{{h}}</span></sc-for>
+      </div>
+      <div style="font-size:12px;color:#A3ACB8;line-height:1.45">Not in the file: the Wing's own scenes (the file remembers which scene to recall), ProPresenter slides and Spotify downloads. PINs are stored encrypted.</div>
+    </section>
+
+    <section class="card" style="display:flex;flex-direction:column;gap:8px">
+      <div class="lbl">Other backup copies</div>
+      <div style="font-size:13px;color:#A3ACB8">For the USB stick, use Backup and restore at the top.</div>
+      <button class="btn" disabled="{{locked}}">Email a backup to the reports address</button>
+      <div style="font-size:12px;color:#A3ACB8">A copy is also kept on the C3 Life server's SSD every time you save.</div>
+    </section>
+  </main>
+
+  <div class="rtabar" style="flex:none">
+    <dc-import name="MiniRTA" hint-size="390px,48px"></dc-import>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      usb: true, autoBackup: true, bkBusy: false, bkToast: '', restoring: null, upd: 'idle', updStep: 0, ver: '1.4.2', serviceOn: false, backups: [{ name: 'v12 Sunday standard', where: 'USB stick \u00b7 today 08:31 (start-up)' }, { name: 'v11 Before the Dante change', where: 'USB stick \u00b7 11 Oct 12:20' }, { name: 'v10 Christmas 2025', where: 'USB stick \u00b7 24 Dec 2025' }],
+      admin: false, appSaved: (() => { try { const n = (localStorage.getItem('booth.appname') || '').trim(); return n || 'C3 Life'; } catch (e) { return 'C3 Life'; } })(), appDraft: (() => { try { const n = (localStorage.getItem('booth.appname') || '').trim(); return n || 'C3 Life'; } catch (e) { return 'C3 Life'; } })(), nameToast: '', cur: 0, startup: 'v12 · Sunday standard', newName: '', toast: '',
+      versions: [
+        { v: 12, name: 'Sunday standard', meta: 'Saved Sat 21:05 by Admin' },
+        { v: 11, name: 'Before the Dante change', meta: 'Saved 11 Oct by Admin' },
+        { v: 10, name: 'Christmas 2025', meta: 'Saved 20 Dec 2025 by Admin' },
+        { v: 9, name: 'Evening acoustic', meta: 'Saved 14 Sep 2025 by Admin' }
+      ],
+      changes: [
+        { t: '09:12', what: 'Foyer volume −10 dB → −8 dB', who: 'Foyer team · foyer phone' },
+        { t: '09:20', what: 'A/B switch channel → Ch 16 · Pastor Lapel', who: 'FOH sound · FOH phone' },
+        { t: '09:41', what: 'Macro "Message": added "Wait 2s"', who: 'Admin · laptop' }
+      ]
+    };
+  }
+  readUser() { try { return JSON.parse(localStorage.getItem('booth.user') || 'null'); } catch (e) { return null; } }
+  watchUser(apply) {
+    this.lastUser = undefined;
+    const check = () => { const u = this.readUser(); const k = u ? (u.role || '') + '|' + u.name : ''; if (k !== this.lastUser) { this.lastUser = k; apply(u); } };
+    check();
+    this.userPoll = setInterval(check, 800);
+    this.onStore = (e) => { if (e.key === 'booth.user') check(); };
+    try { window.addEventListener('storage', this.onStore); } catch (e) {}
+  }
+  unwatchUser() { clearInterval(this.userPoll); try { window.removeEventListener('storage', this.onStore); } catch (e) {} }
+  componentWillUnmount() { clearTimeout(this.bkT); clearTimeout(this.updT); if (this.unwatchUser) this.unwatchUser(); }
+  componentDidMount() { this.watchUser((u) => this.setState({ admin: !!u && (u.role || u.name) === 'Admin' })); }
+  stamp() { return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
+  renderVals() {
+    const s = this.state;
+    const cur = s.versions[s.cur];
+    const n = s.changes.length;
+    const label = (v) => 'v' + v.v + ' · ' + v.name;
+    return {
+      curName: label(cur),
+      curShort: cur.name,
+      curMeta: cur.meta,
+      changes: s.changes,
+      noChanges: n === 0,
+      changesCount: n ? n + ' not saved' : 'None',
+      changesColor: n ? '#F5C518' : '#A3ACB8',
+      changesBorder: n ? '#5A4A2A' : '#262C36',
+      locked: !s.admin, unlocked: s.admin,
+      usbText: s.usb ? 'USB stick: C3LIFE (32 GB)' : 'No USB stick plugged in',
+      usbColor: s.usb ? '#6CB4F5' : '#FF7A45',
+      cantUsb: !s.admin || !s.usb || s.bkBusy,
+      backupLabel: s.bkBusy ? 'Backing up\u2026' : 'Back up to USB now',
+      backupUsb: () => { this.setState({ bkBusy: true, bkToast: '' }); clearTimeout(this.bkT); this.bkT = setTimeout(() => { const t = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); this.setState({ bkBusy: false, backups: [{ name: s.backups[0] ? s.backups[0].name : 'Current setup', where: 'USB stick \u00b7 today ' + t }].concat(this.state.backups), bkToast: '\u2713 Backed up to the USB stick at ' + t + '.' }); }, 900); },
+      download: () => this.setState({ bkToast: 'Downloaded c3life-setup-' + new Date().toISOString().slice(0, 10) + '.c3backup to this device. Keep it somewhere safe.' }),
+      autoBackup: s.autoBackup, toggleAutoBackup: () => this.setState({ autoBackup: !s.autoBackup }),
+      backups: s.backups.map((b, i) => ({ name: b.name, where: b.where, restore: () => this.setState({ restoring: i, bkToast: '' }) })),
+      restoring: s.restoring !== null, restoreName: s.restoring !== null ? s.backups[s.restoring].name + ' (' + s.backups[s.restoring].where.replace('USB stick \u00b7 ', '') + ')' : '',
+      cancelRestore: () => this.setState({ restoring: null }),
+      doRestore: () => { const b = s.backups[s.restoring]; this.setState({ restoring: null, bkToast: '\u2713 Restored ' + b.name + '. The setup you had is backed up as \u201cbefore restore\u201d.', backups: [{ name: 'Before restore', where: 'USB stick \u00b7 just now' }].concat(s.backups) }); },
+      demoUsbLabel: s.usb ? 'Demo: unplug the USB stick' : 'Demo: plug the USB stick in',
+      demoUsb: () => this.setState({ usb: !s.usb }),
+      hasBkToast: !!s.bkToast, bkToast: s.bkToast,
+      verLine: 'Running C3 Life ' + s.ver + (s.ver === '1.5.0' ? ' \u00b7 installed today' : ' \u00b7 installed 12 Oct 2026'),
+      updIdle: s.upd === 'idle' || s.upd === 'none', updNone: s.upd === 'none', updFound: s.upd === 'found', updRunning: s.upd === 'running', updDone: s.upd === 'done',
+      checkUsb: () => this.setState({ upd: s.ver === '1.5.0' ? 'none' : 'found' }),
+      inService: s.serviceOn, cantInstall: !s.admin || s.serviceOn,
+      cancelUpd: () => this.setState({ upd: 'idle' }),
+      installUpd: () => {
+        this.setState({ upd: 'running', updStep: 0 });
+        const next = (k) => { if (k >= 4) { this.setState({ upd: 'done', ver: '1.5.0' }); return; } this.setState({ updStep: k + 1 }); this.updT = setTimeout(() => next(k + 1), 600); };
+        this.updT = setTimeout(() => next(0), 400);
+      },
+      updSteps: ['Backing up the setup and logs', 'Checking the update file is genuine', 'Installing C3 Life 1.5.0', 'Restarting the app'].map((t, i) => ({ text: t, mark: i < s.updStep ? '\u2713' : (i === s.updStep ? '\u2026' : ''), color: i <= s.updStep ? '#ECEEF1' : '#A3ACB8' })),
+      rollback: () => this.setState({ ver: '1.4.2', upd: 'idle', bkToast: 'Back on 1.4.2. Your setup was not changed.' }),
+      appDraft: s.appDraft,
+      setAppDraft: (e) => this.setState({ appDraft: e.target.value, nameToast: '' }),
+      appBad: !s.appDraft.trim(),
+      appSame: s.appDraft === s.appSaved,
+      cantSaveName: !s.admin || !s.appDraft.trim() || s.appDraft.trim() === s.appSaved,
+      undoAppName: () => this.setState({ appDraft: s.appSaved, nameToast: '' }),
+      saveAppName: () => {
+        const n = s.appDraft.trim().slice(0, 30);
+        try { localStorage.setItem('booth.appname', n); } catch (e) {}
+        this.setState({ appSaved: n, appDraft: n, nameToast: 'Saved. Every screen and report now says \u201c' + n + '\u201d.' });
+      },
+      hasNameToast: !!s.nameToast, nameToast: s.nameToast,
+      cantSave: !s.admin || n === 0,
+      lockColor: s.admin ? '#F5C518' : '#A3ACB8',
+      update: () => this.setState({
+        changes: [],
+        versions: s.versions.map((v, i) => (i === s.cur ? { ...v, meta: 'Saved today ' + this.stamp() + ' by Admin' } : v)),
+        toast: 'Saved. The C3 Life server will load this next time it starts.'
+      }),
+      newName: s.newName,
+      setNewName: (e) => this.setState({ newName: e.target.value }),
+      saveNew: () => {
+        const name = s.newName.trim() || 'Untitled setup';
+        const v = { v: s.versions[0].v + 1, name: name, meta: 'Saved today ' + this.stamp() + ' by Admin' };
+        this.setState({ versions: [v].concat(s.versions), cur: 0, changes: [], newName: '', startup: label(v), toast: 'Saved as ' + label(v) + ' and set to load at start-up.' });
+      },
+      discard: () => this.setState({ ask: { title: 'Discard ' + s.changes.length + (s.changes.length === 1 ? ' change' : ' changes') + '?', text: 'Everything goes back to ' + label(cur) + '. Devices change straight away.', btn: 'Yes, discard them',
+        act: () => this.setState({ changes: [], toast: 'Changes discarded. Back to ' + label(cur) + '.' }) } }),
+      asking: !!s.ask, askTitle: s.ask ? s.ask.title : '', askText: s.ask ? s.ask.text : '', askBtn: s.ask ? s.ask.btn : '',
+      askNo: () => this.setState({ ask: null }), askYes: () => { const a = s.ask; this.setState({ ask: null }); if (a) a.act(); },
+      versionNames: s.versions.map(label),
+      startup: s.startup,
+      pickStartup: (e) => this.setState({ startup: e.target.value, toast: 'The C3 Life server will load ' + e.target.value + ' at start-up.' }),
+      hasToast: !!s.toast, toast: s.toast,
+      versions: s.versions.map((v, i) => ({
+        name: label(v), meta: v.meta + (label(v) === s.startup ? ' · loads at start-up' : ''),
+        weight: i === s.cur ? '600' : '400',
+        isCur: i === s.cur, notCur: i !== s.cur,
+        restore: () => this.setState({ ask: { title: 'Load ' + label(v) + '?', text: (s.changes.length ? 'Your ' + s.changes.length + ' unsaved ' + (s.changes.length === 1 ? 'change' : 'changes') + ' will be lost. ' : '') + 'Devices change straight away. The desk keeps running.', btn: 'Yes, load it',
+          act: () => this.setState({ cur: i, changes: [], toast: 'Loaded ' + label(v) + '. Devices update in a few seconds.' }) } })
+      })),
+      holds: ['App name', 'Devices + addresses', 'Network + Wi-Fi list', 'Drivers (types, IPs, ports)', 'Users, roles + PINs', 'Screen timers', 'Macros', 'MIDI buttons + A/B switches', 'Foyer setup + max volume', 'Music + RTA schedules', 'RTA calibration', 'Dante routing presets', 'Fader locks', 'MD talk channel', 'Everyone\u2019s monitor mixes + saved mixes', 'Home layouts', 'Report settings'],
+      demoAdminLabel: s.admin ? 'Demo: lock again' : 'Demo: unlock as Admin',
+      demoAdmin: () => this.setState({ admin: !s.admin })
+    };
+  }
+}
+</script>
+</body>
+</html>

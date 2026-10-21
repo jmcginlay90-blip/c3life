@@ -1,0 +1,866 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>C3 Life – Drivers</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet" data-look>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Safari / iPad: no zoom when typing, no double-tap zoom, no text-select or callout while dragging */
+html{-webkit-text-size-adjust:100%;touch-action:manipulation}
+input,select,textarea{font-size:16px!important}
+button,a,summary,label,[role=slider]{-webkit-tap-highlight-color:transparent}
+[role=slider],.fader,.pan{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+body{margin:0;background:#0D1015}
+a{color:#6CB4F5}a:hover{color:#9CCBF8}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:62px;color:#A3ACB8;text-decoration:none;font-size:12px;font-weight:500;border-top:2px solid transparent}
+.tab.on{color:#F5C518;border-top-color:#F5C518}
+.card{background:#161A21;border:1px solid #262C36;border-radius:14px;padding:14px}
+.lbl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#A3ACB8;font-weight:500}
+.mono{font-family:'IBM Plex Mono',ui-monospace,monospace}
+.btn{min-height:44px;padding:0 14px;border-radius:10px;border:1px solid #333B47;background:#1E232C;color:#ECEEF1;font:500 14px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer}
+.btn.pri{background:#F5C518;border-color:#F5C518;color:#1A1204;font-weight:600}
+.btn.del{color:#FF7A45;border-color:#5A3A2A}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+@keyframes lvgo{0%{margin-left:-40%}100%{margin-left:100%}}
+.lvbar{animation:lvgo 1.4s linear infinite}
+@media (prefers-reduced-motion:reduce){.lvbar{animation:none;width:100% !important}}
+.drv{width:100%;display:flex;align-items:center;gap:10px;min-height:64px;padding:8px 2px;border:0;border-top:1px solid #222831;background:transparent;color:#ECEEF1;font:400 14px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer;text-align:left}
+.fld{display:flex;flex-direction:column;gap:4px;font-size:12px;color:#A3ACB8}
+input[type=text]{width:100%;min-height:44px;border-radius:10px;border:1px solid #333B47;background:#0F1318;color:#ECEEF1;font:400 15px 'IBM Plex Sans',system-ui,sans-serif;padding:0 10px;box-sizing:border-box}
+input.ip{font-family:'IBM Plex Mono',ui-monospace,monospace}
+input.bad{border-color:#FF7A45}
+select{width:100%;min-height:44px;border-radius:10px;border:1px solid #333B47;background:#0F1318;color:#ECEEF1;font:400 14px 'IBM Plex Sans',system-ui,sans-serif;padding:0 8px}
+input[type=checkbox]{width:20px;height:20px;accent-color:#F5C518}
+
+/* Fills any screen. Wider than 700px (iPad, laptop, web) the content sits in a centred column. */
+@media (min-width:700px){
+  .app > *:not(.bn):not([style*="position:absolute"]){width:100%;max-width:760px;margin-left:auto;margin-right:auto;box-sizing:border-box}
+}
+
+.app > .rtabar{max-width:none !important;margin-left:0 !important;margin-right:0 !important}
+
+/* Easy to use: every link, tick box and control is at least 40-44px tall, so it is easy to hit with a thumb. */
+a[style*="min-height:28px"]{min-height:44px !important}
+a[style*="font-size:12px"][style*="text-decoration:none"],a[style*="font-size:13px"][style*="text-decoration:none"]{display:inline-flex;align-items:center;min-height:40px}
+label:has(> input[type=checkbox]),label:has(> input[type=radio]){min-height:44px}
+input[type=checkbox],input[type=radio]{width:22px;height:22px;flex:none;accent-color:#F5C518}
+input[type=range]{min-height:40px}
+select{min-height:44px}
+button.sw::after,button.cell::after{content:'';position:absolute;inset:-7px -4px}
+.cell{position:relative}
+input[type=checkbox][aria-label]{width:32px;height:32px}
+
+/* On iPad/laptop, pop-ups are a centred card instead of a full-width sheet. */
+@media (min-width:700px){[role="dialog"][style*="bottom:0"]{left:50% !important;right:auto !important;transform:translateX(-50%);width:min(560px, calc(100% - 40px));bottom:16px !important;border-radius:16px !important;border:1px solid #333B47}}
+
+/* Menu: a drop-down list at the top of every screen. Tap Menu to open it, tap again (or pick a page) to close. */
+.topmenu{position:relative;z-index:20;flex:none;background:#11151B;border-bottom:1px solid #262C36}
+.topmenu summary{list-style:none;display:flex;align-items:center;gap:10px;min-height:52px;padding:0 16px;cursor:pointer;color:#ECEEF1;font:600 15px 'IBM Plex Sans',system-ui,sans-serif;max-width:760px;margin:0 auto;box-sizing:border-box}
+.topmenu summary::-webkit-details-marker{display:none}
+.topmenu .mlabel{font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:#A3ACB8}
+.topmenu .mcur{flex:1;color:#F5C518}
+.topmenu .chev{transition:transform .15s}
+.topmenu details[open] .chev{transform:rotate(180deg)}
+.topmenu .mlist{position:absolute;left:8px;right:8px;top:calc(100% + 4px);background:#161A21;border:1px solid #333B47;border-radius:14px;box-shadow:0 14px 34px rgba(0,0,0,.55);padding:6px;display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.topmenu .mlist a{display:flex;align-items:center;gap:10px;min-height:52px;padding:0 12px;border-radius:10px;color:#ECEEF1;text-decoration:none;font:500 15px 'IBM Plex Sans',system-ui,sans-serif}
+.topmenu .mlist a:hover{background:#1E232C}
+.topmenu .mlist a.on{background:#262C36;color:#F5C518}
+@media (min-width:700px){.topmenu .mlist{left:calc(50% - 372px);right:auto;width:440px}}
+@media (min-width:700px) and (max-width:800px){.topmenu .mlist{left:16px}}
+/* wide:start — iPad landscape and laptops: use the width */
+@media (min-width:1000px){
+  .app > *:not(.bn):not([style*="position:absolute"]){max-width:1240px}
+  .topmenu summary{max-width:1240px}
+  .app main.wide2{display:grid !important;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:14px 18px !important}
+  .app main.wide2 > *{min-width:0}
+  .app main.wide2 > :not(section):not(.card):not(details):not(.wcol){grid-column:1 / -1}
+  .app main.wide2 > .wfull{grid-column:1 / -1}
+  .app main.wide1{max-width:980px !important}
+  .app:has(main.wide1) > *:not(.bn):not([style*="position:absolute"]){max-width:980px}
+  .app:has(main.wide1) .topmenu summary{max-width:980px}
+}
+@media (min-width:1500px){ .app main.wide2.wide3{grid-template-columns:repeat(3,minmax(0,1fr))} }
+/* wide:end */
+/* look:start — the WING look (like WING Edit): near-black, outlined panels, condensed headings, yellow for active, blue for selected.
+   Settings › Look › Classic puts the old look back on this device (html[data-look=classic]). */
+:root{--wk-bg:#0A0B0D;--wk-panel:#121418;--wk-panel2:#181B20;--wk-line:#2E333A;--wk-yellow:#F5C518;--wk-blue:#2F6CC4;--wk-cond:'Barlow Condensed','IBM Plex Sans',system-ui,sans-serif}
+html:not([data-look=classic]) body{background:var(--wk-bg)}
+html:not([data-look=classic]) .app{background:var(--wk-bg) !important}
+html:not([data-look=classic]) .card{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .lbl{font-family:var(--wk-cond);font-size:13px;font-weight:600;letter-spacing:.07em;color:#D4D9E0}
+html:not([data-look=classic]) h1{font-family:var(--wk-cond);font-weight:600 !important;text-transform:uppercase;letter-spacing:.05em;font-size:21px !important;line-height:1.2;color:var(--wk-yellow);border:1.5px solid var(--wk-yellow);border-radius:3px;padding:2px 12px;display:inline-block}
+html:not([data-look=classic]) .btn,html:not([data-look=classic]) .lk,html:not([data-look=classic]) .mxb,html:not([data-look=classic]) .mxbk,html:not([data-look=classic]) .mute,html:not([data-look=classic]) .pbtn{font-family:var(--wk-cond);font-size:15px;letter-spacing:.02em;border-radius:4px}
+html:not([data-look=classic]) .btn.pri{background:var(--wk-yellow);border-color:var(--wk-yellow);color:#111}
+html:not([data-look=classic]) .seg{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .seg a{font-family:var(--wk-cond);font-size:15px;letter-spacing:.03em;border-radius:4px}
+html:not([data-look=classic]) .seg a.on,html:not([data-look=classic]) .lk.on{background:var(--wk-blue);color:#fff}
+html:not([data-look=classic]) .tab.on{color:var(--wk-yellow);border-top-color:var(--wk-yellow)}
+html:not([data-look=classic]) .topmenu{background:#000;border-bottom-color:var(--wk-line)}
+html:not([data-look=classic]) .topmenu summary{font-family:var(--wk-cond);font-size:16px;letter-spacing:.03em}
+html:not([data-look=classic]) .topmenu .mcur{color:var(--wk-yellow)}
+html:not([data-look=classic]) .topmenu .mlist{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .topmenu .mlist a{font-family:var(--wk-cond);font-size:16px;border-radius:4px}
+html:not([data-look=classic]) .topmenu .mlist a.on{background:var(--wk-panel2);color:var(--wk-yellow);box-shadow:inset 3px 0 0 var(--wk-yellow)}
+html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic]) input[type=radio],html:not([data-look=classic]) input[type=range]{accent-color:var(--wk-yellow)}
+.wkside{display:none}
+/* iPad landscape and laptops: a sidebar like WING Edit's (HOME, MIXER, ...) instead of the menu at the top */
+@media (min-width:1000px){
+  html:not([data-look=classic]) .wkside{display:flex;flex-direction:column;gap:2px;position:fixed;left:0;top:0;bottom:0;width:132px !important;max-width:132px !important;margin:0 !important;padding:8px 6px 12px;box-sizing:border-box;background:#000;border-right:1px solid var(--wk-line);overflow-y:auto;z-index:30}
+  html:not([data-look=classic]) .wkside .wkbrand{font:700 24px var(--wk-cond);letter-spacing:.06em;color:var(--wk-yellow);padding:6px 8px 12px}
+  html:not([data-look=classic]) .wkside a{display:flex;align-items:center;gap:9px;min-height:46px;padding:0 8px;border-radius:4px;color:#D4D9E0;text-decoration:none;font:600 15px var(--wk-cond);text-transform:uppercase;letter-spacing:.04em}
+  html:not([data-look=classic]) .wkside a:hover{background:var(--wk-panel2)}
+  html:not([data-look=classic]) .wkside a.on{background:var(--wk-panel2);color:var(--wk-yellow);box-shadow:inset 3px 0 0 var(--wk-yellow)}
+  html:not([data-look=classic]) .wkside svg{flex:none}
+  html:not([data-look=classic]) .app{padding-left:132px;box-sizing:border-box !important}
+  html:not([data-look=classic]) .app > .topmenu{display:none}
+}
+/* look:end */
+</style>
+</helmet>
+<div class="app has-bn" style="width:100%;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;background:#0D1015;color:#ECEEF1;font-family:'IBM Plex Sans',system-ui,sans-serif;overflow:hidden">
+  
+  
+  
+  
+  <nav class="wkside" aria-label="Main menu (side)"><div class="wkbrand" aria-hidden="true">C3 LIFE</div><a href="Main.dc.html" class="on" aria-current="page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Home</a>
+        <a href="Wing.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4v16M12 4v16M18 4v16"/><path d="M4 14h4M10 8h4M16 16h4"/></svg>Mixer</a>
+        <a href="RTA.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V12M9 20V6M14 20V10M19 20V4"/></svg>RTA</a>
+        <a href="Show.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M10 8l5 2-5 2z"/><path d="M8 20h8"/></svg>Show</a>
+        <a href="Lights.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>Lights</a>
+        <a href="Plan.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h1M4 12h1M4 18h1"/></svg>Plan</a>
+        <a href="Chat.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>Chat</a>
+        <a href="Listen.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="15" width="4" height="6" rx="1.5"/><rect x="17" y="15" width="4" height="6" rx="1.5"/><path d="M10 9.5a2.5 2.5 0 0 1 4 0"/></svg>Listen</a>
+        <a href="Help.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2.5 2-2.5 3.5M12 17h.01"/></svg>Help</a>
+        <a href="Report.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4h11l-1.5 4L16 12H5"/></svg>Report an issue</a></nav>
+  <nav class="bn topmenu" aria-label="Main menu">
+    <details>
+      <summary aria-label="Menu. You are on Drivers"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span class="mlabel">Menu</span><span class="mcur">Drivers</span><svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+      <div class="mlist">
+        <a href="Main.dc.html" class="on" aria-current="page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Home</a>
+        <a href="Wing.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4v16M12 4v16M18 4v16"/><path d="M4 14h4M10 8h4M16 16h4"/></svg>Mixer</a>
+        <a href="RTA.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V12M9 20V6M14 20V10M19 20V4"/></svg>RTA</a>
+        <a href="Show.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M10 8l5 2-5 2z"/><path d="M8 20h8"/></svg>Show</a>
+        <a href="Lights.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>Lights</a>
+        <a href="Plan.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h1M4 12h1M4 18h1"/></svg>Plan</a>
+        <a href="Chat.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>Chat</a>
+        <a href="Listen.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="15" width="4" height="6" rx="1.5"/><rect x="17" y="15" width="4" height="6" rx="1.5"/><path d="M10 9.5a2.5 2.5 0 0 1 4 0"/></svg>Listen</a>
+        <a href="Help.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2.5 2-2.5 3.5M12 17h.01"/></svg>Help</a>
+        <a href="Report.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4h11l-1.5 4L16 12H5"/></svg>Report an issue</a>
+      </div>
+    </details>
+  </nav>
+  <header style="padding:18px 20px 12px;display:flex;flex-direction:column;gap:4px">
+    <a href="Main.dc.html" style="font-size:13px;text-decoration:none;min-height:28px;display:flex;align-items:center">← Home</a>
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:10px">
+      <h1 style="margin:0;font-size:26px;font-weight:600">Drivers</h1>
+      <span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:{{lockColor}};border:1px solid {{lockColor}};border-radius:6px;padding:3px 8px">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>{{lockText}}
+      </span>
+    </div>
+    <div style="font-size:13px;color:#A3ACB8">How the app talks to each piece of gear: type, IP address and port. Saving also updates the <a href="Wiring.dc.html">wiring list</a> and Help.</div>
+  </header>
+
+  <main class=" wide2" style="flex:1;overflow-y:auto;padding:0 16px 16px;display:flex;flex-direction:column;gap:12px">
+    <sc-if value="{{locked}}" hint-placeholder-val="{{ true }}">
+      <div class="card" style="display:flex;align-items:center;gap:10px;padding:12px 14px">
+        <div style="flex:1;font-size:13px;color:#C9CFD7">{{lockMsg}}</div>
+        <a href="User.dc.html" class="btn" style="display:flex;align-items:center;text-decoration:none">Sign in</a>
+      </div>
+    </sc-if>
+
+    <section class="card" style="display:flex;flex-direction:column;gap:10px;border-color:{{scanBorder}}">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="flex:1">
+          <div style="font-size:15px;font-weight:600">Scan the network</div>
+          <div style="font-size:12px;color:#A3ACB8;line-height:1.45">{{scanIntro}}</div>
+        </div>
+      </div>
+      <button class="btn pri" onClick="{{scan}}" disabled="{{cantScan}}">{{scanLabel}}</button>
+      <div style="font-size:12px;color:#A3ACB8;line-height:1.45">{{scanNote}}</div>
+      <div style="display:contents"><sc-if value="{{notLive}}" hint-placeholder-val="{{ true }}"><button class="btn" style="min-height:38px;font-size:13px;border-style:dashed;color:#A3ACB8;width:100%" onClick="{{demoMac}}">{{demoMacLabel}}</button></sc-if></div>
+      <div style="display:contents"><sc-if value="{{notLive}}" hint-placeholder-val="{{ true }}">
+      <div style="border:1px solid #262C36;border-radius:12px;padding:0 12px">
+        <button onClick="{{toggleCfg}}" aria-expanded="{{cfgOpen}}" style="width:100%;display:flex;align-items:center;gap:10px;min-height:52px;background:none;border:0;color:#ECEEF1;font:500 14px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer;text-align:left;padding:0">
+          <span style="flex:1">Scan settings<br><span style="font-size:12px;color:#A3ACB8">{{cfgSummary}}</span></span><span style="color:#A3ACB8" aria-hidden="true">{{cfgChev}}</span>
+        </button>
+        <sc-if value="{{cfgOpen}}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:10px;padding:4px 0 12px">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+              <sc-for list="{{modes}}" as="m" hint-placeholder-count="2">
+                <button class="btn" onClick="{{m.pick}}" aria-label="{{m.name}}" aria-pressed="{{m.on}}" disabled="{{m.off}}" style="min-height:52px;flex-direction:column;border-color:{{m.cls}}"><span style="display:block;font-weight:600">{{m.name}}</span><span style="display:block;font-size:12px;color:#A3ACB8">{{m.hint}}</span></button>
+              </sc-for>
+            </div>
+            <div class="lbl" style="padding-top:4px">Networks to scan</div>
+            <sc-for list="{{scanNets}}" as="o" hint-placeholder-count="3">
+              <label style="display:flex;align-items:flex-start;gap:8px;font-size:14px"><input type="checkbox" checked="{{o.on}}" disabled="{{o.off}}" onChange="{{o.toggle}}"><span>{{o.label}}<br><span style="font-size:12px;color:#A3ACB8">{{o.hint}}</span></span></label>
+            </sc-for>
+            <div class="lbl" style="padding-top:4px">Make it more reliable</div>
+            <sc-for list="{{scanOpts}}" as="o" hint-placeholder-count="5">
+              <label style="display:flex;align-items:flex-start;gap:8px;font-size:14px"><input type="checkbox" checked="{{o.on}}" disabled="{{o.off}}" onChange="{{o.toggle}}"><span>{{o.label}}<br><span style="font-size:12px;color:#A3ACB8">{{o.hint}}</span></span></label>
+            </sc-for>
+            <label class="fld" style="font-size:13px;color:#A3ACB8">Extra ports to try<input type="text" class="ip" value="{{extraPorts}}" onChange="{{setExtra}}" disabled="{{extraOff}}"></label>
+            <div style="font-size:12px;color:#A3ACB8;line-height:1.45"><a href="Network.dc.html">Network connections ›</a> sets which Ethernet and Wi-Fi the C3 Life server uses.</div>
+          </div>
+        </sc-if>
+      </div>
+      </sc-if></div>
+      <sc-if value="{{scanAgain}}" hint-placeholder-val="{{ false }}"><div style="font-size:13px;color:#F5C518">Every device answered. Scanning a second time to be sure…</div></sc-if>
+      <sc-if value="{{scanning}}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="height:6px;border-radius:3px;background:#262C36;overflow:hidden"><div style="height:6px;background:#F5C518;width:{{scanPct}}"></div></div>
+          <sc-for list="{{scanSteps}}" as="st" hint-placeholder-count="4">
+            <div style="display:flex;gap:8px;font-size:13px;color:{{st.color}}"><span class="mono" style="width:14px">{{st.mark}}</span>{{st.text}}</div>
+          </sc-for>
+        </div>
+      </sc-if>
+      <sc-if value="{{scanDone}}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column">
+          <div style="font-size:13px;color:#C9CFD7;padding-bottom:6px">{{scanSummary}}</div>
+          <sc-if value="{{scanMissNote}}" hint-placeholder-val="{{ false }}"><div style="font-size:12px;color:#FF7A45;padding-bottom:8px;line-height:1.45">{{scanMissNote}}</div></sc-if>
+          <sc-for list="{{found}}" as="f" hint-placeholder-count="8">
+            <div style="display:flex;gap:10px;padding:9px 0;border-top:1px solid #222831;align-items:flex-start">
+              <span style="width:10px;height:10px;border-radius:50%;flex:none;margin-top:5px;background:{{f.dot}}"></span>
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+                <div style="display:flex;justify-content:space-between;gap:8px"><span style="font-size:14px;font-weight:500">{{f.name}}</span><span class="mono" style="font-size:12px;color:#C9CFD7;text-align:right">{{f.addr}}</span></div>
+                <div style="font-size:12px;color:#A3ACB8">{{f.how}}</div>
+                <div style="font-size:12px;color:{{f.dot}}">{{f.status}}</div>
+                <sc-if value="{{f.hasAct}}" hint-placeholder-val="{{ false }}"><button class="btn" style="min-height:40px;align-self:flex-start;margin-top:4px" onClick="{{f.act}}" disabled="{{f.actOff}}">{{f.actLabel}}</button></sc-if>
+              </div>
+            </div>
+          </sc-for>
+          <div style="font-size:12px;color:#A3ACB8;padding-top:8px;line-height:1.45">Blue = found and matches. Amber = found somewhere else, or new. Orange = not found. "Use this address" counts as tested and saves by itself after 5 seconds. A new device needs Test connection, then Save. Help and the wiring list show these results straight away.</div>
+        </div>
+      </sc-if>
+      <div style="display:contents"><sc-if value="{{lv}}" hint-placeholder-val="{{ false }}">
+        <div role="region" aria-label="Network scan on the C3 Life server" style="display:flex;flex-direction:column;gap:8px">
+          <div><sc-if value="{{lvRunning}}" hint-placeholder-val="{{ false }}"><div role="status" style="display:flex;flex-direction:column;gap:6px"><div style="height:6px;border-radius:3px;background:#262C36;overflow:hidden"><div class="lvbar" style="height:6px;width:40%;background:#F5C518"></div></div><div style="font-size:13px;color:#F5C518">{{lvStep}}</div></div></sc-if></div>
+          <div><sc-if value="{{lvNoAccess}}" hint-placeholder-val="{{ false }}"><div style="font-size:13px;color:#A3ACB8">Sign in as FOH sound or an Admin to see the network scan.</div></sc-if></div>
+          <div><sc-if value="{{lvNone}}" hint-placeholder-val="{{ false }}"><div style="font-size:13px;color:#A3ACB8">No scan yet. {{lvNoneText}}</div></sc-if></div>
+          <div><sc-if value="{{lvHas}}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column">
+              <div style="font-size:13px;color:#C9CFD7;padding-bottom:6px">{{lvSummary}}</div>
+              <div style="font-size:12px;color:#A3ACB8;padding-bottom:6px">{{lvWhen}}</div>
+              <sc-for list="{{lvChanges}}" as="c" hint-placeholder-count="1">
+                <div role="status" style="font-size:13px;line-height:1.45;color:#ECEEF1;background:#10243A;border:1px solid #2F6CC4;border-radius:10px;padding:8px 10px;margin-bottom:6px">✓ {{c.text}}</div>
+              </sc-for>
+              <div class="lbl" style="padding:6px 0">Booth gear</div>
+              <sc-for list="{{lvFound}}" as="f" hint-placeholder-count="6">
+                <div style="display:flex;gap:10px;padding:9px 0;border-top:1px solid #222831;align-items:flex-start">
+                  <span style="width:10px;height:10px;border-radius:50%;flex:none;margin-top:5px;background:{{f.dot}}"></span>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+                    <div style="display:flex;justify-content:space-between;gap:8px"><span style="font-size:14px;font-weight:500">{{f.name}}</span><span class="mono" style="font-size:12px;color:#C9CFD7;text-align:right">{{f.addr}}</span></div>
+                    <div style="font-size:12px;color:#A3ACB8">{{f.how}}</div>
+                    <div style="font-size:12px;color:{{f.dot}}">{{f.status}}</div>
+                    <div><sc-if value="{{f.hasAct}}" hint-placeholder-val="{{ false }}"><button class="btn" style="min-height:40px;margin-top:4px" onClick="{{f.act}}" disabled="{{f.actOff}}" aria-label="{{f.actAria}}">{{f.actLabel}}</button></sc-if></div>
+                  </div>
+                </div>
+              </sc-for>
+              <div><sc-if value="{{lvHasUnknown}}" hint-placeholder-val="{{ false }}">
+                <div role="region" aria-label="Devices without a driver" style="display:flex;flex-direction:column">
+                  <div class="lbl" style="padding:12px 0 6px">No driver yet · {{lvUnknownCount}}</div>
+                  <div style="font-size:12px;color:#A3ACB8;padding-bottom:6px;line-height:1.45">These answered on the booth network, but C3 Life has no driver for them. Nothing is sent to them. An Admin can add one as a driver, or hide it if it isn't booth gear.</div>
+                  <sc-for list="{{lvUnknown}}" as="u" hint-placeholder-count="2">
+                    <div style="display:flex;gap:10px;padding:9px 0;border-top:1px solid #222831;align-items:flex-start">
+                      <span style="width:10px;height:10px;border-radius:50%;flex:none;margin-top:5px;background:#F5C518"></span>
+                      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+                        <div style="display:flex;justify-content:space-between;gap:8px"><span style="font-size:14px;font-weight:500">Unknown device</span><span class="mono" style="font-size:12px;color:#C9CFD7;text-align:right">{{u.addr}}</span></div>
+                        <div style="font-size:12px;color:#A3ACB8">{{u.how}}</div>
+                        <div style="font-size:12px;color:#A3ACB8">{{u.hw}}</div>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
+                          <button class="btn" style="min-height:40px" onClick="{{u.add}}" disabled="{{notAdmin}}" aria-label="Add {{u.addr}} as a driver">Add as a driver</button>
+                          <button class="btn" style="min-height:40px" onClick="{{u.hide}}" disabled="{{notAdmin}}" aria-label="{{u.addr}} isn't booth gear">Not booth gear</button>
+                        </div>
+                      </div>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-if></div>
+            </div>
+          </sc-if></div>
+          <label style="display:flex;align-items:flex-start;gap:8px;font-size:14px;border-top:1px solid #222831;padding-top:10px"><input type="checkbox" checked="{{lvAuto}}" disabled="{{notAdmin}}" onChange="{{lvToggleAuto}}" aria-label="Scan by itself at start-up and every 5 minutes"><span>Scan by itself at start-up and every 5 minutes<br><span style="font-size:12px;color:#A3ACB8">Admin can change. Keeps Help and the wiring list up to date, and finds the Wing again if it moves.</span></span></label>
+          <div style="font-size:12px;color:#A3ACB8;line-height:1.45">A scan only asks: it never changes anything on a device. Gear it recognises connects in Watch only. If a device moves address, C3 Life follows it by its hardware ID (back in Watch only). A scan never turns Control on. If it finds two of the same, it asks you which one.</div>
+        </div>
+      </sc-if></div>
+    </section>
+
+    <section class="card" style="display:flex;flex-direction:column;padding:6px 14px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;padding:6px 0">
+        <div class="lbl">{{count}} drivers</div>
+        <span style="font-size:12px;color:#A3ACB8">Tap one to edit</span>
+      </div>
+      <sc-for list="{{drivers}}" as="d" hint-placeholder-count="9">
+        <div>
+          <button class="drv" onClick="{{d.toggle}}" aria-expanded="{{d.open}}">
+            <span style="width:10px;height:10px;border-radius:50%;flex:none;background:{{d.dot}}"></span>
+            <span style="flex:1;min-width:0">
+              <span style="font-weight:500;color:{{d.nameColor}}">{{d.name}}</span>
+              <sc-if value="{{d.changed}}" hint-placeholder-val="{{ false }}"><span style="font-size:11px;font-weight:600;color:#F5C518;margin-left:6px">Changed</span></sc-if>
+              <br><span style="font-size:12px;color:#A3ACB8">{{d.type}}</span><br><span class="mono" style="font-size:12px;color:#C9CFD7">{{d.addr}}</span>
+            </span>
+            <span style="font-size:12px;color:{{d.dot}};text-align:right">{{d.status}}</span>
+          </button>
+          <sc-if value="{{d.open}}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;gap:10px;padding:4px 0 14px">
+              <label class="fld">Name<input type="text" value="{{d.name}}" onChange="{{d.setName}}" disabled="{{locked}}"></label>
+              <label class="fld">Driver type
+                <select value="{{d.type}}" onChange="{{d.setType}}" disabled="{{locked}}">
+                  <sc-for list="{{types}}" as="t" hint-placeholder-count="12"><option value="{{t}}">{{t}}</option></sc-for>
+                </select>
+              </label>
+              <div style="display:grid;grid-template-columns:2fr 1fr;gap:8px">
+                <label class="fld">IP address<input type="text" class="{{d.ipCls}}" inputmode="decimal" value="{{d.ip}}" onChange="{{d.setIp}}" disabled="{{ipLocked}}"></label>
+                <label class="fld">Port<input type="text" class="ip" inputmode="numeric" value="{{d.port}}" onChange="{{d.setPort}}" disabled="{{ipLocked}}"></label>
+              </div>
+              <sc-if value="{{d.hasErr}}" hint-placeholder-val="{{ false }}"><div style="font-size:12px;color:#FF7A45">{{d.err}}</div></sc-if>
+              <div style="font-size:12px;color:#A3ACB8">{{d.hint}}</div>
+              <label style="display:flex;align-items:center;gap:8px;font-size:14px"><input type="checkbox" checked="{{d.enabled}}" onChange="{{d.toggleEnabled}}" disabled="{{locked}}"> Use this driver</label>
+              <div style="display:flex;gap:8px">
+                <button class="btn" style="flex:1" onClick="{{d.test}}">{{d.testLabel}}</button>
+                <button class="btn del" onClick="{{d.remove}}" disabled="{{locked}}">Delete</button>
+              </div>
+              <sc-if value="{{d.hasTest}}" hint-placeholder-val="{{ false }}"><div role="status" style="font-size:13px;color:{{d.testColor}}">{{d.testText}}</div></sc-if>
+            </div>
+          </sc-if>
+        </div>
+      </sc-for>
+      <button class="btn" style="margin:10px 0 8px" onClick="{{add}}" disabled="{{locked}}">+ Add driver</button>
+    </section>
+
+    <div style="font-size:12px;color:#A3ACB8;padding:0 4px;line-height:1.45">Drivers are saved into the saved setup and load every time the C3 Life server starts. Use Devices to include or leave out a device for a service; use Drivers to change how it connects.</div>
+    <button class="btn" style="font-size:12px;color:#A3ACB8;border-style:dashed" onClick="{{demoAdmin}}">{{demoAdminLabel}}</button>
+  </main>
+
+  <sc-if value="{{dirty}}" hint-placeholder-val="{{ false }}">
+    <div style="padding:12px 16px;background:#1E232C;border-top:2px solid #F5C518;display:flex;align-items:center;gap:8px">
+      <div style="flex:1;font-size:14px"><strong>{{dirtyText}}</strong><br><span style="font-size:12px;color:#A3ACB8">Not used until you save</span></div>
+      <button class="btn" onClick="{{discard}}">Discard</button>
+      <button class="btn pri" onClick="{{save}}" disabled="{{cantSave}}">Save</button>
+    </div>
+  </sc-if>
+  <sc-if value="{{hasToast}}" hint-placeholder-val="{{ false }}">
+    <div role="status" style="padding:12px 16px;background:#6CB4F5;color:#08131C;font-size:14px;font-weight:600">{{toast}}</div>
+  </sc-if>
+
+  <sc-if value="{{pop}}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;inset:0;z-index:8;background:rgba(5,7,10,.6)"></div>
+    <div role="dialog" aria-modal="true" aria-label="{{popTitle}}" style="position:absolute;left:0;right:0;bottom:0;z-index:9;background:#161A21;border-top:2px solid {{popEdge}};border-radius:18px 18px 0 0;padding:16px 16px 22px;display:flex;flex-direction:column;gap:12px;box-shadow:0 -10px 30px rgba(0,0,0,.5)">
+      <div style="width:40px;height:4px;border-radius:2px;background:#333B47;align-self:center"></div>
+      <div>
+        <div class="lbl">{{popWhy}}</div>
+        <div style="font-size:20px;font-weight:600;margin-top:2px">{{popTitle}}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;background:#0F1318;border:1px solid #262C36;border-radius:12px;padding:4px 12px">
+        <sc-for list="{{checks}}" as="c" hint-placeholder-count="4">
+          <div style="display:flex;align-items:center;gap:10px;min-height:42px;border-top:1px solid #1E232C">
+            <span style="width:22px;height:22px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;background:{{c.bg}};color:#0D1015">{{c.mark}}</span>
+            <span style="flex:1;font-size:14px">{{c.text}}</span>
+          </div>
+        </sc-for>
+      </div>
+      <sc-if value="{{hasSib}}" hint-placeholder-val="{{ false }}">
+        <div style="background:#1F1A10;border:1px solid #F5C518;border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px">
+          <div style="font-size:13px;line-height:1.45">{{sibText}}</div>
+          <button class="btn" onClick="{{moveSib}}">{{sibBtn}}</button>
+        </div>
+      </sc-if>
+      <sc-if value="{{allMet}}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div class="mono" style="width:52px;height:52px;border-radius:50%;border:3px solid {{ringColor}};display:flex;align-items:center;justify-content:center;font-size:22px;flex:none">{{ringText}}</div>
+          <div style="flex:1;font-size:14px;line-height:1.4">{{metText}}</div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:8px">
+          <button class="btn" onClick="{{popCancel}}">Don't save yet</button>
+          <button class="btn pri" onClick="{{popSave}}">Save now</button>
+        </div>
+      </sc-if>
+      <sc-if value="{{notMet}}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:14px;color:#C9CFD7;line-height:1.45">Not saved. Fix the items marked orange, then test again.</div>
+        <button class="btn" onClick="{{popCancel}}">OK</button>
+      </sc-if>
+    </div>
+  </sc-if>
+  <div class="rtabar" style="flex:none">
+    <dc-import name="MiniRTA" hint-size="390px,48px"></dc-import>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.types = {
+      'Behringer Wing': { port: '2223', hint: 'Wing network control: changes go over OSC (2223); live updates come over the Wing’s own connection (2222), so another OSC app can’t knock C3 Life off. Set the Wing’s own IP on the desk.' },
+      'Yamaha Tio1608-D': { port: '49280', hint: 'The stagebox. The C3 Life server reads its gain and phantom power over Yamaha’s control port (the one R Remote uses), in Watch only until an Admin turns Control on.' },
+      'Dante (discovery)': { port: '—', hint: 'Finds Dante devices by itself. No IP needed.' },
+      'AES67 receiver': { port: '5004', hint: 'Audio stream from the WING Dante card: room mic and FOH mix for the RTA, and the MD mic for the MD talk log.' },
+      'ProPresenter 7': { port: '50001', hint: 'Turn on Network in ProPresenter settings and use the same port.' },
+      'MultiTracks Playback': { port: '5004', hint: 'Network MIDI session on the MacBook Pro.' },
+      'Spotify helper (Mac)': { port: '8099', hint: 'The C3 Life helper on the Mac mini. Here it controls Spotify and opens ProPresenter. Paste the helper key that install.sh showed.' },
+      'Lightkey': { port: '21600', hint: 'Turn on OSC input in Lightkey and use the same port.' },
+      'Companion': { port: '8000', hint: 'Companion runs on the C3 Life server itself.' },
+      'Smart plug (Shelly)': { port: '80', hint: 'Powers the C3 Life server. Used only for Hard reset on C3 Life server power. Keep it on its own fixed IP (192.168.10.5).' },
+      'Network MIDI': { port: '5004', hint: 'Same as Audio MIDI Setup on a Mac.' },
+      'Wireless mic receiver': { port: '2202', hint: 'Shure QLX-D, ULX-D, SLX-D or Axient (Sennheiser EW-DX uses 45). Shows battery and signal on Mixer › Mics.' },
+      'Generic OSC': { port: '8000', hint: 'Any device that takes OSC messages.' },
+      'Generic TCP / UDP': { port: '9000', hint: 'Plain text or hex commands.' },
+      'Generic HTTP': { port: '80', hint: 'Web requests, e.g. a PTZ camera or a smart plug.' }
+    };
+    this.nextId = 20;
+    const base = [
+      { id: 1, name: 'Behringer Wing', type: 'Behringer Wing', ip: '192.168.10.20', port: '2223', enabled: true, state: 'ok' },
+      { id: 2, name: 'Dante network', type: 'Dante (discovery)', ip: 'auto', port: '—', enabled: true, state: 'ok' },
+      { id: 3, name: 'RTA audio', type: 'AES67 receiver', ip: '239.69.1.10', port: '5004', enabled: true, state: 'ok' },
+      { id: 4, name: 'ProPresenter · Mac mini', type: 'ProPresenter 7', ip: '192.168.10.30', port: '50001', enabled: true, state: 'ok' },
+      { id: 5, name: 'Spotify · Mac mini', type: 'Spotify helper (Mac)', ip: '192.168.10.30', port: '8099', enabled: true, state: 'ok' },
+      { id: 6, name: 'Playback · MacBook Pro', type: 'MultiTracks Playback', ip: '192.168.10.31', port: '5004', enabled: true, state: 'lost' },
+      { id: 7, name: 'Lightkey · events Mac', type: 'Lightkey', ip: '192.168.10.32', port: '21600', enabled: false, state: 'off' },
+      { id: 8, name: 'Companion', type: 'Companion', ip: '127.0.0.1', port: '8000', enabled: true, state: 'ok' },
+      { id: 9, name: 'Smart plug · C3 Life server power', type: 'Smart plug (Shelly)', ip: '192.168.10.5', port: '80', enabled: true, state: 'ok' }
+    ];
+    let start = base;
+    try {
+      const st = JSON.parse(localStorage.getItem('booth.drivers') || 'null');
+      if (st && st.list) start = st.list.map((d) => ({ ...d, state: d.enabled ? ((base.find((x) => x.id === d.id) || {}).state || 'ok') : 'off' }));
+    } catch (e) {}
+    // What the demo scan "finds" on the network (id = matching driver).
+    this.scanFinds = [
+      { id: 1, name: 'Behringer Wing', ip: '192.168.10.20', port: '2223', type: 'Behringer Wing', how: 'The Wing answered the desk search' },
+      { id: 2, name: 'Dante · Wing card + Tio1608-D', ip: 'auto', port: '\u2014', type: 'Dante (discovery)', how: 'Found by Dante: 192.168.10.40 and .41' },
+      { id: 3, name: 'RTA audio · AES67 stream', ip: '239.69.1.10', port: '5004', type: 'AES67 receiver', how: 'The Wing card announces this stream' },
+      { id: 4, name: 'ProPresenter 7', ip: '192.168.10.30', port: '50001', type: 'ProPresenter 7', how: 'Mac-mini.local · ProPresenter answered on this port' },
+      { id: 5, name: 'Spotify helper', ip: '192.168.10.30', port: '8099', type: 'Spotify helper (Mac)', how: 'Mac-mini.local · the helper announced itself' },
+      { id: 8, name: 'Companion', ip: '127.0.0.1', port: '8000', type: 'Companion', how: 'Running on this C3 Life server' },
+      { id: 9, name: 'Smart plug', ip: '192.168.10.5', port: '80', type: 'Smart plug (Shelly)', how: 'shellyplug.local · answered on port 80' },
+      { id: 0, name: 'Unknown device', ip: '192.168.10.60', port: '80', type: 'Generic HTTP', how: 'Made by Panasonic (maybe a camera) · web page on port 80' }
+    ];
+    this.state = { mac: 'off', cfg: this.readCfg(), cfgOpen: false, again: false, canScan: false, scan: null, scanStep: 0, admin: false, saved: start, list: start, open: -1, tests: {}, toast: '', pop: null };
+  }
+  // ---- the real scan, on the C3 Life server ----
+  lvTok() { try { const x = JSON.parse(localStorage.getItem('booth.session') || 'null'); return x ? x.token : ''; } catch (e) { return ''; } }
+  lvApi(path, method, body) {
+    const t = this.lvTok(), h = t ? { Authorization: 'Bearer ' + t } : {};
+    if (body) h['Content-Type'] = 'application/json';
+    return fetch(path, { method: method || 'GET', headers: h, body: body ? JSON.stringify(body) : undefined })
+      .then((r) => r.json().catch(() => ({})).then((j) => ({ code: r.status, j: j })));
+  }
+  lvPoll() {
+    if (this.lvBusy || this.lvDemo) return;
+    this.lvBusy = true; this.lvLast = Date.now();
+    this.lvApi('/api/scan').then(({ code, j }) => {
+      this.lvBusy = false;
+      if (code === 404) { this.lvDemo = true; clearInterval(this.lvT); return; }
+      if (code === 401 || code === 403) { this.setState({ lv: true, lvNoAccess: true }); return; }
+      if (code !== 200 || !j.ok) return;
+      this.setState({ lv: true, lvNoAccess: false, lvState: j });
+      const at = j.result ? j.result.at : 0;
+      if (at && at !== this.lvAt) { this.lvAt = at; setTimeout(() => { this.lvSync(); this.lvShare(); }); }
+    }).catch(() => { this.lvBusy = false; });
+  }
+  lvToast(t) { this.setState({ toast: t }); clearTimeout(this.lvToastT); this.lvToastT = setTimeout(() => this.setState({ toast: '' }), 5000); }
+  lvScan() {
+    this.setState({ lvState: { ...(this.state.lvState || {}), running: true, step: 'Starting…' } });
+    this.lvApi('/api/scan', 'POST', {}).then(({ j }) => { if (j && j.ok === false && j.error) this.lvToast(j.error); this.lvPoll(); });
+  }
+  lvUse(f) {
+    this.lvApi('/api/scan/use', 'POST', { kind: f.kind, ip: f.ip, port: f.port }).then(({ j }) => {
+      if (j && j.ok) { this.setState({ lvState: j }); this.lvToast('C3 Life now uses the ' + f.type + ' at ' + f.ip + ', in Watch only.'); setTimeout(() => this.lvShare()); }
+      else this.lvToast((j && j.error) || 'That didn’t work. Scan again.');
+    });
+  }
+  lvHide(u) {
+    this.lvApi('/api/scan/hide', 'POST', { ip: u.ip, hwid: u.hwid || '' }).then(({ j }) => { if (j && j.ok) { this.setState({ lvState: j }); this.lvToast(u.ip + ' is hidden. It won’t be listed again.'); } });
+  }
+  lvAdd(u) {
+    const id = this.nextId++;
+    this.setState({ list: this.state.list.concat([{ id, name: 'New device ' + u.ip, type: 'Generic TCP / UDP', ip: u.ip, port: '9000', enabled: true, state: 'new' }]), open: id });
+    this.lvToast('Added as a driver. Pick its type and port below, then Test connection and Save.');
+  }
+  lvManaged(kind) { return ['wing', 'tio', 'propresenter'].indexOf(kind) > -1; }
+  // What the C3 Life server is connected to is the truth: keep those drivers' addresses in step (the change shows in amber on the wiring list).
+  lvSync() {
+    const r = (this.state.lvState || {}).result;
+    if (!r) return;
+    const moves = r.found.filter((f) => this.lvManaged(f.kind) && ['connected', 'connected_now', 'moved'].indexOf(f.state) > -1);
+    const fix = (l) => l.map((x) => { const f = moves.find((m) => this.lvType(m.type) === x.type); return f && (x.ip !== f.ip || String(x.port) !== String(f.port)) ? { ...x, ip: f.ip, port: String(f.port), state: 'ok' } : x; });
+    const saved = fix(this.state.saved);
+    if (JSON.stringify(saved) === JSON.stringify(this.state.saved)) return;
+    this.publish(saved);
+    this.setState({ saved, list: fix(this.state.list) });
+  }
+  // The server's names for driver types, as the Drivers list calls them.
+  lvType(t) { return { 'C3 Life helper': 'Spotify helper (Mac)' }[t] || t; }
+  lvRows() {
+    const j = this.state.lvState, r = j && j.result;
+    if (!r) return null;
+    const list = this.state.list, can = this.state.canScan, admin = this.state.admin;
+    const addr = (ip, port) => ip + (port && port !== '—' ? ' : ' + port : '');
+    const BLUE = '#6CB4F5', AMBER = '#F5C518', ORANGE = '#FF7A45', GREY = '#A3ACB8';
+    const rows = [];
+    r.found.forEach((f) => {
+      const ty = this.lvType(f.type);
+      // the Wing, Tio and ProPresenter: the C3 Life server's own connection is the driver
+      const d = f.kind === 'dante' || this.lvManaged(f.kind) ? list.find((x) => x.type === ty) : list.find((x) => x.type === ty && x.ip === f.ip && String(x.port) === String(f.port));
+      const other = !d && list.find((x) => x.type === ty && x.enabled);
+      const row = { id: d ? d.id : 0, name: d ? d.name : ty, addr: f.kind === 'dante' ? f.ip : addr(f.ip, f.port), how: f.how + (f.detail ? ' · ' + f.detail : ''), hasAct: false, actOff: true, actLabel: '', actAria: '', act: () => {} };
+      const act = (label, off, fn) => ({ hasAct: true, actLabel: label, actOff: off, actAria: label + ': ' + ty + ' at ' + f.ip, act: fn });
+      if (f.state === 'connected') rows.push({ ...row, kind: 'ok', dot: BLUE, status: 'Connected ✓ the C3 Life server talks to it' });
+      else if (f.state === 'connected_now') rows.push({ ...row, kind: 'ok', dot: BLUE, status: 'Found and connected just now, in Watch only' });
+      else if (f.state === 'moved') rows.push({ ...row, kind: 'moved', was: f.was, dot: AMBER, status: 'Moved from ' + f.was + '. Same hardware ID, so C3 Life followed it. Watch only until an Admin turns Control on.' });
+      else if (f.state === 'choose') rows.push({ ...row, kind: 'new', dot: AMBER, status: 'More than one ' + ty + ' found. Choose which one C3 Life uses.', ...act('Use this one', !can, () => this.lvUse(f)) });
+      else if (f.state === 'off_choice') rows.push({ ...row, kind: 'off', dot: GREY, status: 'Turned off on the Mixer screen, so left off' });
+      else if (f.kind === 'dante') rows.push({ ...row, kind: 'ok', dot: BLUE, status: 'Handled by Dante discovery ✓' });
+      else if (d) rows.push({ ...row, kind: 'ok', dot: BLUE, status: 'Matches your driver ✓' });
+      else if (other) rows.push({ ...row, id: other.id, name: other.name, kind: 'moved', was: addr(other.ip, other.port), dot: AMBER, status: 'Your driver says ' + addr(other.ip, other.port), ...act('Use this address', !can, () => this.useFound(other, { ip: f.ip, port: String(f.port) })) });
+      else rows.push({ ...row, kind: 'new', dot: AMBER, status: 'Recognised, but not a driver yet', ...act('Add as a driver', !admin, () => { const id = this.nextId++; this.setState({ list: this.state.list.concat([{ id, name: ty, type: this.types[ty] ? ty : 'Generic TCP / UDP', ip: f.ip, port: String(f.port || '—'), enabled: true, state: 'new' }]), open: id }); }) });
+    });
+    (r.missing || []).forEach((m) => {
+      const ty = this.lvType(m.type), d = list.find((x) => x.type === ty);
+      rows.push({ id: d ? d.id : 0, name: d ? d.name : ty, addr: addr(m.ip, m.port), how: 'No answer at its address', kind: 'missing', dot: ORANGE, status: 'Not found · is it switched on? Check its cable.', hasAct: false, actOff: true, actLabel: '', actAria: '', act: () => {} });
+    });
+    // Drivers the scan looks for, that it didn't find
+    const LOOKS = ['Behringer Wing', 'Yamaha Tio1608-D', 'ProPresenter 7', 'Spotify helper (Mac)', 'Companion', 'Smart plug (Shelly)', 'Wireless mic receiver', 'Network MIDI', 'MultiTracks Playback', 'Dante (discovery)'];
+    list.forEach((d) => {
+      if (rows.some((x) => x.id === d.id) || LOOKS.indexOf(d.type) < 0) return;
+      if (!d.enabled) rows.push({ id: d.id, name: d.name, addr: addr(d.ip, d.port), how: 'Left out, so not checked', kind: 'off', dot: GREY, status: 'Turn on Events mode when you need it', hasAct: false, actOff: true, actLabel: '', actAria: '', act: () => {} });
+      else if (d.type !== 'MultiTracks Playback' || !r.found.some((f) => f.kind === 'midi' && f.ip === d.ip)) rows.push({ id: d.id, name: d.name, addr: addr(d.ip, d.port), how: 'No answer', kind: 'missing', dot: ORANGE, status: /Mac/.test(d.name) ? 'Not found · it may be asleep or switched off.' : 'Not found · is it switched on? Check its cable.', hasAct: false, actOff: true, actLabel: '', actAria: '', act: () => {} });
+    });
+    const unknown = (r.unknown || []).map((u) => ({ addr: u.ip, how: u.how, hw: u.hwid ? 'Hardware ID ' + u.hwid.match(/../g).join(':') : 'Hardware ID not known', add: () => this.lvAdd(u), hide: () => this.lvHide(u) }));
+    const c = { match: rows.filter((x) => x.kind === 'ok').length, diff: rows.filter((x) => x.kind === 'moved').length, add: rows.filter((x) => x.kind === 'new').length, miss: rows.filter((x) => x.kind === 'missing').length };
+    const summary = c.match + ' working' + (c.diff ? ' · ' + c.diff + ' moved' : '') + (c.add ? ' · ' + c.add + ' to choose or add' : '') + (c.miss ? ' · ' + c.miss + ' not found' : '') + (unknown.length ? ' · ' + unknown.length + ' without a driver' : '');
+    return { rows, unknown, counts: c, summary, at: r.at, took: r.took, hosts: r.hosts, by: r.by, auto: r.auto, changes: r.changes || [] };
+  }
+  lvShare() {
+    const v = this.lvRows();
+    if (!v) return;
+    const d = new Date(v.at * 1000), at = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+    try { localStorage.setItem('booth.scan', JSON.stringify({ at, summary: v.summary, counts: v.counts, rows: v.rows.map((x) => ({ id: x.id, name: x.name, kind: x.kind, addr: x.addr, was: x.was || '' })) })); } catch (e) {}
+  }
+  lvVals() {
+    const s = this.state, j = s.lvState || {}, v = s.lv ? this.lvRows() : null;
+    const out = { lv: !!s.lv, notLive: !s.lv, lvRunning: false, lvStep: '', lvNoAccess: !!s.lvNoAccess, lvNone: false, lvNoneText: '', lvHas: false, lvSummary: '', lvWhen: '', lvChanges: [], lvFound: [], lvHasUnknown: false, lvUnknownCount: '', lvUnknown: [], lvAuto: !!j.auto, lvToggleAuto: () => {},
+      scanIntro: 'Finds gear on 192.168.10.x and the ports the booth apps use. Takes about 10 seconds. Nothing changes unless every device answers, or you choose.' };
+    if (!s.lv) return out;
+    const d = v ? new Date(v.at * 1000) : null, hm = d ? String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') : '';
+    return { ...out,
+      scanIntro: 'The C3 Life server looks at every address on the booth network and asks each device what it is. Takes about 10 seconds. It only asks: nothing on any device changes.',
+      lvRunning: !!j.running, lvStep: (j.step || 'Scanning') + '…',
+      lvNone: !j.running && !v && !s.lvNoAccess, lvNoneText: j.auto ? 'The C3 Life server scans by itself shortly after it starts.' : 'Tap Scan network.',
+      lvHas: !!v, lvSummary: v ? v.summary : '',
+      lvWhen: v ? 'Scanned at ' + hm + (v.auto ? ' by itself' : (v.by ? ' by ' + v.by : '')) + ' · ' + v.hosts + (v.hosts === 1 ? ' address' : ' addresses') + ' in ' + v.took + ' s' : '',
+      lvChanges: v ? v.changes.map((t) => ({ text: t })) : [], lvFound: v ? v.rows : [],
+      lvHasUnknown: !!v && v.unknown.length > 0, lvUnknownCount: v ? v.unknown.length + (v.unknown.length === 1 ? ' device' : ' devices') : '', lvUnknown: v ? v.unknown : [],
+      lvToggleAuto: () => this.lvApi('/api/scan/settings', 'PUT', { auto: !j.auto }).then(({ j: k }) => { if (k && k.ok) this.setState({ lvState: k }); }),
+      scan: () => this.lvScan(), scanning: false, scanDone: false, scanAgain: false, scanMissNote: '',
+      cantScan: !s.canScan || !!j.running,
+      scanLabel: j.running ? 'Scanning…' : (v ? 'Scan again' : 'Scan network'),
+      scanNote: !s.canScan ? 'Sign in as FOH sound or Admin to scan.' : 'Runs on the C3 Life server, so it sees the booth network even when this device is on Wi-Fi.',
+      scanBorder: v ? '#6CB4F5' : '#262C36' };
+  }
+  readUser() { try { return JSON.parse(localStorage.getItem('booth.user') || 'null'); } catch (e) { return null; } }
+  watchUser(apply) {
+    this.lastUser = undefined;
+    const check = () => { const u = this.readUser(); const k = u ? (u.role || '') + '|' + u.name : ''; if (k !== this.lastUser) { this.lastUser = k; apply(u); } };
+    check();
+    this.userPoll = setInterval(check, 800);
+    this.onStore = (e) => { if (e.key === 'booth.user') check(); };
+    try { window.addEventListener('storage', this.onStore); } catch (e) {}
+  }
+  unwatchUser() { clearInterval(this.userPoll); try { window.removeEventListener('storage', this.onStore); } catch (e) {} }
+  componentDidMount() {
+    // On the C3 Life server the scan is real; in the preview (no server) the demo scan stays.
+    this.lvPoll();
+    this.lvT = setInterval(() => { const st = this.state.lvState; if ((st && st.running) || !this.lvLast || Date.now() - this.lvLast > 10000) this.lvPoll(); }, 1500);
+    this.watchUser((u) => { const r = u ? (u.role || u.name) : ''; this.setState({ admin: r === 'Admin', canScan: r === 'Admin' || r === 'FOH sound' }); });
+    this.tick = setInterval(() => {
+      const p = this.state.pop;
+      if (!p || !p.met || (p.sib && p.sib.length)) return;
+      if (p.left <= 1) this.saveAll('Saved automatically. ' + p.name + ' loads like this at every start-up.');
+      else this.setState({ pop: { ...p, left: p.left - 1 } });
+    }, 1000);
+  }
+  // Compare what the scan found with the drivers. kind: ok | moved | new | missing | off
+  readCfg() {
+    const d = { mode: 'quick', nets: { eth1: false, wlan0: false }, retries: true, wake: true, hwid: true, twice: false, extra: '80, 443, 8080, 9000', auto: true };
+    try { return { ...d, ...(JSON.parse(localStorage.getItem('booth.scancfg') || '{}')) }; } catch (e) { return d; }
+  }
+  setCfg(patch) { const c = { ...this.state.cfg, ...patch }; try { localStorage.setItem('booth.scancfg', JSON.stringify(c)); } catch (e) {} this.setState({ cfg: c }); }
+  readNet() { try { return JSON.parse(localStorage.getItem('booth.net') || 'null'); } catch (e) { return null; } }
+  // The steps a scan goes through. Thorough adds a second pass and checks more ports.
+  scanStepList() {
+    const c = this.state.cfg;
+    const nets = ['booth network'].concat(c.nets.eth1 ? ['church network (Ethernet 2)'] : []).concat(c.nets.wlan0 ? ['Wi-Fi network'] : []).join(' + ');
+    const tries = c.retries ? ' (up to 3 tries each)' : '';
+    const st = [
+      'Looking for names the Macs and apps announce (Bonjour)',
+      (c.wake ? 'Waking sleeping Macs, then asking' : 'Asking') + ' the Wing and Dante devices' + tries,
+      'Checking every address on the ' + nets,
+      'Trying the usual ports for each app' + (c.extra.trim() ? ' + ' + c.extra.trim() : '')
+    ];
+    if (c.mode === 'thorough') st.push('Second pass on anything that didn\u2019t answer', c.hwid ? 'Matching each device by its hardware ID' : 'Checking the results');
+    return st;
+  }
+  finds() {
+    const m = this.state.mac, c = this.state.cfg;
+    if (m === 'asleep' && c.wake) return this.scanFinds.concat([{ id: 6, name: 'MultiTracks Playback', ip: '192.168.10.31', port: '5004', type: 'MultiTracks Playback', how: 'Was asleep \u00b7 woken with Wake-on-LAN, then answered' }]);
+    return m === 'on' ? this.scanFinds.concat([{ id: 6, name: 'MultiTracks Playback', ip: '192.168.10.31', port: '5004', type: 'MultiTracks Playback', how: 'MacBook-Pro.local \u00b7 network MIDI session announced itself' }]) : this.scanFinds;
+  }
+  scanRows(list) {
+    const addr = (ip, port) => (ip === 'auto' ? 'Found automatically' : ip + (port && port !== '—' ? ' : ' + port : ''));
+    let match = 0, diff = 0, add = 0, miss = 0;
+    const rows = this.finds().map((f) => {
+      const d = f.id ? list.find((x) => x.id === f.id) : null;
+      const base = { id: f.id, name: f.name, addr: addr(f.ip, f.port), how: f.how };
+      if (d && d.ip === f.ip && d.port === f.port) { match++; return { ...base, kind: 'ok', dot: '#6CB4F5', status: 'Matches your driver ✓', hasAct: false }; }
+      if (d) { diff++; return { ...base, how: f.how + (this.state.cfg.hwid ? ' \u00b7 same hardware ID as before, so it\u2019s the same device' : ''), kind: 'moved', was: addr(d.ip, d.port), dot: '#F5C518', status: 'Your driver says ' + addr(d.ip, d.port) + (this.state.cfg.hwid ? '' : ' \u00b7 hardware ID check is off, so make sure it\u2019s the right device'), hasAct: true, actOff: !this.state.canScan, actLabel: 'Use this address', act: () => this.useFound(d, f) }; }
+      if (list.some((x) => x.ip === f.ip && x.port === f.port)) { match++; return { ...base, kind: 'ok', dot: '#6CB4F5', status: 'Added as a driver ✓', hasAct: false }; }
+      add++;
+      return { ...base, kind: 'new', dot: '#F5C518', status: 'Not a driver yet', hasAct: true, actOff: !this.state.admin, actLabel: 'Add as a driver',
+        act: () => { const id = this.nextId++; this.setState({ list: this.state.list.concat([{ id, name: 'Camera (Panasonic)', type: f.type, ip: f.ip, port: f.port, enabled: true, state: 'new' }]), open: id }); } };
+    });
+    list.filter((d) => !this.finds().some((f) => f.id === d.id) && d.id < 20).forEach((d) => {
+      const base = { id: d.id, name: d.name, addr: addr(d.ip, d.port), hasAct: false };
+      if (!d.enabled) rows.push({ ...base, kind: 'off', how: 'Left out, so not checked', dot: '#A3ACB8', status: 'Turn on Events mode when you need it' });
+      else {
+        miss++;
+        const c = this.state.cfg, isMac = /Mac/.test(d.name);
+        const how = (c.retries ? 'No answer after 3 tries' : 'No answer (tried once)') + (isMac && c.wake ? ' \u00b7 Wake-on-LAN sent, no reply' : '');
+        const status = isMac && this.state.mac === 'asleep' && !c.wake ? 'Not found \u00b7 it may be asleep. Turn on "Wake sleeping Macs" in Scan settings.' : 'Not found \u00b7 is it switched on? Check its cable.';
+        rows.push({ ...base, kind: 'missing', how, dot: '#FF7A45', status });
+      }
+    });
+    return { found: rows, scanSummary: match + ' match' + (diff ? ' · ' + diff + ' moved' : '') + (add ? ' · ' + add + ' new' : '') + (miss ? ' · ' + miss + ' not found' : ''), counts: { match, diff, add, miss } };
+  }
+  // The scan already got an answer, so treat it as tested and offer the usual auto-save.
+  useFound(d, f) {
+    const list2 = this.state.list.map((x) => (x.id === d.id ? { ...x, ip: f.ip, port: f.port, state: 'ok' } : x));
+    const cur = list2.find((x) => x.id === d.id);
+    const checks = [
+      ['IP address is valid', this.ipOk(cur.ip)],
+      ['No other driver uses this IP and port', !list2.some((x) => x.id !== cur.id && x.ip === cur.ip && x.port === cur.port && cur.ip !== 'auto')],
+      ['Answered during the scan', true],
+      ['All other drivers are valid', list2.every((x) => this.ipOk(x.ip))],
+      ['Signed in as FOH sound or Admin', !!this.state.canScan]
+    ];
+    this.setState({ list: list2, tests: { ...this.state.tests, [d.id]: 'ok' }, toast: '', pop: { id: d.id, name: cur.name, checks, met: checks.every((c) => c[1]), left: 5, sib: [] } });
+  }
+  shareScan() {
+    const now = new Date();
+    const at = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+    const r = this.scanRows(this.state.list);
+    try { localStorage.setItem('booth.scan', JSON.stringify({ at, summary: r.scanSummary, counts: r.counts, rows: r.found.map((x) => ({ id: x.id, name: x.name, kind: x.kind, addr: x.addr, was: x.was || '' })) })); } catch (e) {}
+  }
+  // Every device answered: take the found addresses and save them after the usual 5-second countdown.
+  autoSaveIfAllOnline() {
+    const r = this.scanRows(this.state.list);
+    if (r.counts.miss > 0 || !this.state.canScan) { this.second = false; this.setState({ again: false }); return; }
+    // "Only save when 2 scans agree": run once more before offering the save.
+    if (this.state.cfg.twice && !this.second) { this.second = true; this.setState({ again: true }); this.runScan(); return; }
+    this.second = false; if (this.state.again) this.setState({ again: false });
+    const moved = r.found.filter((x) => x.kind === 'moved');
+    const byId = {}; this.finds().forEach((f) => { if (f.id) byId[f.id] = f; });
+    const list2 = this.state.list.map((x) => (moved.some((m) => m.id === x.id) ? { ...x, ip: byId[x.id].ip, port: byId[x.id].port, state: 'ok' } : (x.enabled && x.state === 'lost' ? { ...x, state: 'ok' } : x)));
+    const dupe = list2.some((x) => x.ip !== 'auto' && x.ip !== '127.0.0.1' && list2.some((y) => y.id !== x.id && y.ip === x.ip && y.port === x.port));
+    const checks = [
+      ['Every device answered', true],
+      [moved.length ? moved.length + (moved.length === 1 ? ' address' : ' addresses') + ' updated from the scan' : 'All addresses match the scan', true],
+      ['No two drivers share an IP and port', !dupe],
+      ['All addresses are valid', list2.every((x) => this.ipOk(x.ip))],
+      ['Signed in as FOH sound or Admin', true]
+    ];
+    const n = list2.filter((x) => x.enabled).length;
+    this.setState({ list: list2, toast: '', pop: { id: 0, kind: 'all', name: 'Every IP address and port', why: 'Network scan \u00b7 ' + n + ' devices online', checks, met: checks.every((c) => c[1]), left: 5, sib: [] } });
+  }
+  runScan() {
+    this.setState({ scan: 'scanning', scanStep: 0 });
+    const n = this.scanStepList().length, gap = this.state.cfg.mode === 'thorough' ? 800 : 700;
+    const next = (k) => { if (k >= n) { this.setState({ scan: 'done' }); this.shareScan(); this.autoSaveIfAllOnline(); return; } this.setState({ scanStep: k + 1 }); this.scanT = setTimeout(() => next(k + 1), gap); };
+    this.scanT = setTimeout(() => next(0), 500);
+  }
+  componentWillUnmount() { clearTimeout(this.scanT); clearInterval(this.tick); clearInterval(this.lvT); clearTimeout(this.lvToastT); this.unwatchUser(); }
+  saveAll(msg) { this.publish(this.state.list); if (this.state.scan === 'done') setTimeout(() => this.shareScan()); this.setState({ saved: this.state.list, pop: null, toast: msg + ' Wiring list and Help updated.' }); }
+  // Share saved addresses so the Wiring list and Help pages update by themselves.
+  publish(list) {
+    const now = new Date();
+    const at = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+    let prev = null; try { prev = JSON.parse(localStorage.getItem('booth.drivers') || 'null'); } catch (e) {}
+    const changes = (prev && prev.changes) || [];
+    const addr = (d) => d.ip + (d.port && d.port !== '\u2014' ? ':' + d.port : '');
+    list.forEach((d) => {
+      const old = this.state.saved.find((x) => x.id === d.id);
+      if (!old) changes.push({ id: d.id, name: d.name, from: 'new', to: addr(d), at });
+      else if (addr(old) !== addr(d)) changes.push({ id: d.id, name: d.name, from: addr(old), to: addr(d), at });
+    });
+    const u = this.readUser();
+    try { localStorage.setItem('booth.drivers', JSON.stringify({ at, by: u ? u.name : '', list: list.map((d) => ({ id: d.id, name: d.name, type: d.type, ip: d.ip, port: d.port, enabled: d.enabled })), changes })); } catch (e) {}
+  }
+  ipOk(ip) {
+    if (ip === 'auto') return true;
+    const p = ip.split('.');
+    return p.length === 4 && p.every((x) => /^\d{1,3}$/.test(x) && Number(x) <= 255);
+  }
+  setItem(id, patch) {
+    this.setState({ list: this.state.list.map((d) => (d.id === id ? { ...d, ...patch, state: patch.ip || patch.port || patch.type ? 'new' : d.state } : d)), toast: '' });
+  }
+  renderVals() {
+    const s = this.state;
+    const savedById = {};
+    s.saved.forEach((d) => { savedById[d.id] = JSON.stringify({ ...d, state: 0 }); });
+    const changedIds = s.list.filter((d) => savedById[d.id] !== JSON.stringify({ ...d, state: 0 })).map((d) => d.id);
+    const removed = s.saved.filter((d) => !s.list.some((x) => x.id === d.id)).length;
+    const nChanges = changedIds.length + removed;
+    const anyBad = s.list.some((d) => !this.ipOk(d.ip));
+    const statusOf = (d) => {
+      if (!d.enabled) return ['Off', '#A3ACB8'];
+      if (d.state === 'new') return ['Not tested', '#F5C518'];
+      if (d.state === 'lost') return ['Not found', '#FF7A45'];
+      return ['Connected', '#6CB4F5'];
+    };
+    return {
+      locked: !s.admin,
+      notAdmin: !s.admin,
+      ipLocked: !s.canScan,
+      lockMsg: s.canScan ? 'FOH sound can scan, change IP addresses and ports, test and save. Only an Admin can add, delete or rename drivers.' : 'You can look. FOH sound or an Admin can change addresses and save.',
+      cantScan: !s.canScan || s.scan === 'scanning',
+      scanNote: !s.canScan ? 'Sign in as FOH sound or Admin to scan.' : 'When every device answers, the addresses and ports save by themselves after 5 seconds.',
+      scanMissNote: s.scan === 'done' && this.scanRows(s.list).counts.miss > 0 ? 'Not saved automatically: not every device answered. Fix the orange ones and scan again, or accept addresses one at a time.' : '',
+      lockText: s.admin ? 'Admin · editing' : (s.canScan ? 'FOH sound · IP + port' : 'Admin only'),
+      lockColor: s.admin ? '#F5C518' : '#A3ACB8',
+      count: s.list.length,
+      types: Object.keys(this.types),
+      drivers: s.list.map((d) => {
+        const st = statusOf(d);
+        const t = s.tests[d.id];
+        const dup = d.ip !== 'auto' && d.ip !== '127.0.0.1' && s.list.some((x) => x.id !== d.id && x.ip === d.ip && x.port === d.port);
+        const bad = !this.ipOk(d.ip);
+        return {
+          name: d.name, type: d.type, ip: d.ip, port: d.port, enabled: d.enabled,
+          addr: d.ip === 'auto' ? 'Found automatically' : d.ip + (d.port && d.port !== '—' ? ' : ' + d.port : ''),
+          dot: st[1], status: st[0],
+          nameColor: d.enabled ? '#ECEEF1' : '#A3ACB8',
+          changed: changedIds.indexOf(d.id) > -1,
+          open: s.open === d.id,
+          toggle: () => this.setState({ open: s.open === d.id ? -1 : d.id }),
+          setName: (e) => this.setItem(d.id, { name: e.target.value }),
+          setType: (e) => this.setItem(d.id, { type: e.target.value, port: this.types[e.target.value].port }),
+          setIp: (e) => this.setItem(d.id, { ip: e.target.value.trim() }),
+          setPort: (e) => this.setItem(d.id, { port: e.target.value.trim() }),
+          toggleEnabled: () => this.setItem(d.id, { enabled: !d.enabled }),
+          ipCls: bad ? 'ip bad' : 'ip',
+          hasErr: bad || dup,
+          err: bad ? 'That isn’t a valid IP address. It should look like 192.168.10.40.' : 'Another driver already uses this IP and port.',
+          hint: (this.types[d.type] || {}).hint || '',
+          hasTest: !!t,
+          testLabel: t === 'testing' ? 'Testing…' : 'Test connection',
+          testText: t === 'testing' ? 'Trying ' + d.ip + ' …' : (t === 'ok' ? 'Connected in 12 ms. Replies as ' + d.type + '.' : 'No reply from ' + d.ip + '. Check the address, the cable and that the device is on.'),
+          testColor: t === 'ok' ? '#6CB4F5' : (t === 'fail' ? '#FF7A45' : '#A3ACB8'),
+          test: () => {
+            this.setState({ tests: { ...s.tests, [d.id]: 'testing' } });
+            setTimeout(() => {
+              const ok = !bad && d.state !== 'lost' && d.enabled;
+              const list2 = this.state.list.map((x) => (x.id === d.id && x.state === 'new' && ok ? { ...x, state: 'ok' } : x));
+              const cur = list2.find((x) => x.id === d.id);
+              const savedCopy = this.state.saved.find((x) => x.id === d.id);
+              const hasChange = !savedCopy || JSON.stringify({ ...savedCopy, state: 0 }) !== JSON.stringify({ ...cur, state: 0 });
+              const dupNow = cur.ip !== 'auto' && cur.ip !== '127.0.0.1' && list2.some((x) => x.id !== cur.id && x.ip === cur.ip && x.port === cur.port);
+              const allBadOk = list2.every((x) => this.ipOk(x.ip));
+              const checks = [
+                ['IP address is valid', this.ipOk(cur.ip)],
+                ['No other driver uses this IP and port', !dupNow],
+                ['Connection test passed', ok],
+                ['All other drivers are valid', allBadOk],
+                ['Signed in as FOH sound or Admin', !!this.state.canScan]
+              ];
+              const met = checks.every((c) => c[1]);
+              // Other drivers on the same computer's old address (e.g. Spotify on the Mac mini).
+              const oldIp = savedCopy ? savedCopy.ip : '';
+              const sib = oldIp && oldIp !== cur.ip ? list2.filter((x) => x.id !== cur.id && x.ip === oldIp) : [];
+              this.setState({
+                tests: { ...this.state.tests, [d.id]: ok ? 'ok' : 'fail' }, list: list2,
+                pop: hasChange ? { id: d.id, name: cur.name, checks: checks, met: met, left: 5, sib: sib.map((x) => x.id), sibNames: sib.map((x) => x.name).join(', '), oldIp: oldIp, newIp: cur.ip } : null
+              });
+            }, 900);
+          },
+          remove: () => this.setState({ list: s.list.filter((x) => x.id !== d.id), open: -1 })
+        };
+      }),
+      add: () => {
+        const id = this.nextId++;
+        this.setState({ list: s.list.concat([{ id, name: 'New driver', type: 'Generic OSC', ip: '192.168.10.', port: '8000', enabled: true, state: 'new' }]), open: id });
+      },
+      scan: () => { this.second = false; this.setState({ again: false }); this.runScan(); },
+      scanning: s.scan === 'scanning',
+      scanDone: s.scan === 'done',
+      scanBorder: s.scan === 'done' ? '#6CB4F5' : '#262C36',
+      scanLabel: s.scan === 'scanning' ? 'Scanning\u2026' : (s.scan === 'done' ? 'Scan again' : 'Scan network'),
+      scanPct: Math.round(s.scanStep / this.scanStepList().length * 100) + '%',
+      scanAgain: s.again && s.scan === 'scanning',
+      ...(() => {
+        const c = s.cfg, net = this.readNet() || { uses: { eth1: 'internet', wlan0: 'internet' }, ethIn: true };
+        const off = !s.canScan;
+        const opt = (k, label, hint) => ({ label, hint, on: !!c[k], off, toggle: () => this.setCfg({ [k]: !c[k] }) });
+        return {
+          cfgOpen: s.cfgOpen, cfgChev: s.cfgOpen ? '\u2212' : '+',
+          toggleCfg: () => this.setState({ cfgOpen: !s.cfgOpen }),
+          cfgSummary: (c.mode === 'thorough' ? 'Thorough' : 'Quick') + ' \u00b7 ' + [c.retries && '3 tries', c.wake && 'wakes Macs', c.hwid && 'hardware ID', c.twice && 'scans twice', c.auto && 'every 5 min'].filter(Boolean).join(' \u00b7 '),
+          modes: [['quick', 'Quick', 'About 10 seconds'], ['thorough', 'Thorough', 'About 1 minute']].map(([k, n, h]) => ({ name: n, hint: h, cls: c.mode === k ? '#F5C518' : '#333B47', on: c.mode === k, off, pick: () => this.setCfg({ mode: k }) })),
+          scanNets: [
+            { label: 'Booth network · Ethernet 1 (192.168.10.x)', hint: 'Always scanned. All booth gear lives here.', on: true, off: true, toggle: () => {} },
+            { label: 'Church network · Ethernet 2', hint: net.ethIn && net.uses.eth1 === 'internet' ? 'Only if some gear is on the church network' : 'Not plugged in or not used', on: !!c.nets.eth1, off: off || !(net.ethIn && net.uses.eth1 === 'internet'), toggle: () => this.setCfg({ nets: { ...c.nets, eth1: !c.nets.eth1 } }) },
+            { label: 'Wi-Fi network the C3 Life server is on', hint: 'Only if some gear joins church Wi-Fi', on: !!c.nets.wlan0, off: off || (net.uses && net.uses.wlan0 !== 'internet'), toggle: () => this.setCfg({ nets: { ...c.nets, wlan0: !c.nets.wlan0 } }) }
+          ],
+          scanOpts: [
+            opt('retries', 'Try each device 3 times', 'A busy device that misses one reply isn\u2019t marked as missing.'),
+            opt('wake', 'Wake sleeping Macs first', 'Sends Wake-on-LAN to the Macs before asking them.'),
+            opt('hwid', 'Recognise devices by hardware ID', 'A device that moved address is matched as the same device, not a new one.'),
+            opt('twice', 'Only auto-save when 2 scans in a row agree', 'Slower, but a device that blinks off and on can\u2019t cause a wrong save.'),
+            opt('auto', 'Scan by itself at start-up and every 5 minutes', 'Help and the wiring list stay up to date. Moved addresses still wait for FOH sound or an Admin unless every device answers.')
+          ],
+          extraPorts: c.extra, setExtra: (e) => this.setCfg({ extra: e.target.value }), extraOff: off
+        };
+      })(),
+      scanSteps: this.scanStepList().map((t, i) => ({
+        text: t, mark: i < s.scanStep ? '\u2713' : (i === s.scanStep ? '\u2026' : ''), color: i <= s.scanStep ? '#ECEEF1' : '#A3ACB8' })),
+      ...this.scanRows(s.list),
+      pop: !!s.pop,
+      popWhy: s.pop ? (s.pop.why || s.pop.name + ' · tested') : '',
+      popTitle: s.pop ? (s.pop.kind === 'all' && s.pop.met ? 'All devices online and working' : (s.pop.met ? 'Connected and tested' : 'Can\u2019t save yet')) : '',
+      popEdge: s.pop && s.pop.met ? '#6CB4F5' : '#FF7A45',
+      checks: s.pop ? s.pop.checks.map(([text, ok]) => ({ text, mark: ok ? '✓' : '!', bg: ok ? '#6CB4F5' : '#FF7A45' })) : [],
+      allMet: !!s.pop && s.pop.met,
+      notMet: !!s.pop && !s.pop.met,
+      popLeft: s.pop ? s.pop.left : 0,
+      ringText: s.pop && s.pop.sib && s.pop.sib.length ? '❚❚' : (s.pop ? s.pop.left : 0),
+      ringColor: s.pop && s.pop.sib && s.pop.sib.length ? '#F5C518' : '#6CB4F5',
+      metText: s.pop && s.pop.sib && s.pop.sib.length ? 'Everything checks out. Auto-save is paused until you choose above, or tap Save now to keep the other driver as it is.' : 'Everything checks out. Saving automatically in ' + (s.pop ? s.pop.left : 0) + ' seconds. The wiring list and Help pages update at the same time.',
+      hasSib: !!s.pop && !!s.pop.sib && s.pop.sib.length > 0,
+      sibText: s.pop && s.pop.sib && s.pop.sib.length ? s.pop.sibNames + ' is on the same computer and still uses ' + s.pop.oldIp + '.' : '',
+      sibBtn: s.pop && s.pop.sib && s.pop.sib.length ? 'Move it to ' + s.pop.newIp + ' too' : '',
+      moveSib: () => {
+        const p = this.state.pop;
+        this.setState({ list: this.state.list.map((x) => (p.sib.indexOf(x.id) > -1 ? { ...x, ip: p.newIp } : x)), pop: { ...p, sib: [], left: Math.max(p.left, 3) }, toast: '' });
+      },
+      popSave: () => this.saveAll('Saved. ' + s.pop.name + ' loads like this at every start-up.'),
+      popCancel: () => this.setState({ pop: null }),
+      dirty: nChanges > 0 && !s.toast,
+      dirtyText: nChanges + (nChanges === 1 ? ' change' : ' changes'),
+      cantSave: !s.canScan || anyBad,
+      save: () => { this.publish(s.list); if (s.scan === 'done') setTimeout(() => this.shareScan()); this.setState({ saved: s.list, toast: 'Saved. Drivers reconnect now and load like this at every start-up. Wiring list and Help updated.' }); },
+      discard: () => this.setState({ list: s.saved, open: -1, toast: '' }),
+      hasToast: !!s.toast, toast: s.toast,
+      demoMacLabel: { off: 'Demo: MacBook Pro is off (tap for asleep)', asleep: 'Demo: MacBook Pro is asleep (tap for on)', on: 'Demo: MacBook Pro is on (tap for off)' }[s.mac],
+      demoMac: () => this.setState({ mac: { off: 'asleep', asleep: 'on', on: 'off' }[s.mac], scan: null }),
+      demoAdminLabel: s.admin ? 'Demo: lock again' : 'Demo: unlock as Admin',
+      demoAdmin: () => this.setState({ admin: !s.admin, canScan: !s.admin }),
+      ...this.lvVals()
+    };
+  }
+}
+</script>
+</body>
+</html>

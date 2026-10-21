@@ -1,0 +1,69 @@
+# On every push: the C3 Life server's tests on a Windows computer (GitHub's Windows Server runner), and on Linux to
+# compare, then the installer on Windows. These computers have no Wing, Dante, Tio or Lightkey: the tests use the
+# pretend ones, and real hardware is still checked with HARDWARE-CHECK.md on the HP.
+name: Windows
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  server-tests:
+    name: Server tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run every server test
+        working-directory: server
+        run: python -m unittest -v
+        timeout-minutes: 30
+
+  installer:
+    name: Installer (Windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Make the booth user (as in the set-up guide, step 2)
+        shell: pwsh
+        run: |
+          $pw = ConvertTo-SecureString ("C3-" + [guid]::NewGuid().ToString()) -AsPlainText -Force
+          New-LocalUser -Name booth -Password $pw -FullName 'Booth' | Out-Null
+      - name: Run Install-C3Life.ps1
+        shell: pwsh
+        run: |
+          Set-ExecutionPolicy -Scope Process Bypass -Force
+          .\Install-C3Life.ps1 -Yes -NoKiosk -NoSubtitles -Languages ''
+      - name: Start C3 Life and ask it how it is
+        shell: pwsh
+        run: |
+          $py = (Get-Command python).Source
+          $p = Start-Process $py -ArgumentList 'C:\C3Life\server\c3life_server.py', '--config', 'C:\C3Life\server\config.json', '--log', 'C:\C3Life\logs\ci-server.log' -PassThru
+          $ok = $false
+          foreach ($i in 1..30) {
+            Start-Sleep 2
+            try { $h = Invoke-RestMethod http://127.0.0.1/api/health; $ok = $h.ok; if ($ok) { break } } catch { }
+          }
+          if (-not $ok) { throw 'C3 Life did not answer on http://127.0.0.1/api/health' }
+          "C3 Life $($h.version) is up, serving the $($h.app) folder"
+          $r = Invoke-WebRequest http://127.0.0.1/ -MaximumRedirection 0 -SkipHttpErrorCheck
+          "The address opens: $($r.Headers.Location)"
+          Invoke-WebRequest http://127.0.0.1/project/Lights.dc.html -UseBasicParsing | Out-Null
+          'Lights page served'
+          Stop-Process $p
+      - name: Keep the install logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: install-logs
+          path: C:\C3Life\logs

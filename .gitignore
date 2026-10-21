@@ -1,0 +1,6 @@
+# Each server's own settings, people, PINs and logs never go into the repository
+data/
+logs/
+server/config.json
+__pycache__/
+*.pyc

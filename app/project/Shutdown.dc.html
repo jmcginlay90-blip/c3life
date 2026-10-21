@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>C3 Life – Server power</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet" data-look>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Safari / iPad: no zoom when typing, no double-tap zoom, no text-select or callout while dragging */
+html{-webkit-text-size-adjust:100%;touch-action:manipulation}
+input,select,textarea{font-size:16px!important}
+button,a,summary,label,[role=slider]{-webkit-tap-highlight-color:transparent}
+[role=slider],.fader,.pan{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+body{margin:0;background:#0D1015}
+a{color:#6CB4F5}a:hover{color:#9CCBF8}
+.btn{min-height:52px;padding:0 16px;border-radius:14px;border:1px solid #333B47;background:#1E232C;color:#ECEEF1;font:500 16px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer;width:100%}
+.btn.stop{background:#FF7A45;border-color:#FF7A45;color:#1A0A03;font-weight:600}
+.btn.undo{background:#6CB4F5;border-color:#6CB4F5;color:#08131C;font-weight:600;min-height:72px;font-size:20px}
+.mono{font-family:'IBM Plex Mono',ui-monospace,monospace}
+.card{background:#161A21;border:1px solid #262C36;border-radius:14px;padding:14px}
+
+/* Fills any screen. Wider than 700px (iPad, laptop, web) the content sits in a centred column. */
+@media (min-width:700px){
+  .app.has-bn{padding-left:96px;box-sizing:border-box}
+  .app > nav.bn{position:absolute;left:0;top:0;bottom:0;width:96px;flex-direction:column;justify-content:flex-start;border-top:0 !important;border-right:1px solid #262C36;padding-top:12px;z-index:2;overflow-y:auto}
+  .app > nav.bn .tab{flex:none;min-height:66px;border-top:0;border-left:2px solid transparent}
+  .app > nav.bn .tab.on{border-left-color:#F5C518}
+  .app > *:not(.bn):not([style*="position:absolute"]){width:100%;max-width:760px;margin-left:auto;margin-right:auto;box-sizing:border-box}
+}
+
+/* Easy to use: every link, tick box and control is at least 40-44px tall, so it is easy to hit with a thumb. */
+a[style*="min-height:28px"]{min-height:44px !important}
+a[style*="font-size:12px"][style*="text-decoration:none"],a[style*="font-size:13px"][style*="text-decoration:none"]{display:inline-flex;align-items:center;min-height:40px}
+label:has(> input[type=checkbox]),label:has(> input[type=radio]){min-height:44px}
+input[type=checkbox],input[type=radio]{width:22px;height:22px;flex:none;accent-color:#F5C518}
+input[type=range]{min-height:40px}
+select{min-height:44px}
+button.sw::after,button.cell::after{content:'';position:absolute;inset:-7px -4px}
+.cell{position:relative}
+input[type=checkbox][aria-label]{width:32px;height:32px}
+.opt{width:100%;display:flex;align-items:center;gap:12px;min-height:64px;padding:8px 12px;border-radius:12px;border:1px solid #262C36;background:#161A21;color:#ECEEF1;font:400 14px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer}
+.opt.on{border-color:#F5C518;background:#1E232C}
+.opt:disabled{opacity:.5;cursor:not-allowed}
+.rdot{width:18px;height:18px;border-radius:50%;border:2px solid #A3ACB8;box-sizing:border-box;flex:none}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+/* wide:start — iPad landscape and laptops: use the width */
+@media (min-width:1000px){
+  .app > *:not(.bn):not([style*="position:absolute"]){max-width:1240px}
+  .topmenu summary{max-width:1240px}
+  .app main.wide2{display:grid !important;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:14px 18px !important}
+  .app main.wide2 > *{min-width:0}
+  .app main.wide2 > :not(section):not(.card):not(details):not(.wcol){grid-column:1 / -1}
+  .app main.wide2 > .wfull{grid-column:1 / -1}
+  .app main.wide1{max-width:980px !important}
+  .app:has(main.wide1) > *:not(.bn):not([style*="position:absolute"]){max-width:980px}
+  .app:has(main.wide1) .topmenu summary{max-width:980px}
+}
+@media (min-width:1500px){ .app main.wide2.wide3{grid-template-columns:repeat(3,minmax(0,1fr))} }
+/* wide:end */
+/* look:start — the WING look (like WING Edit): near-black, outlined panels, condensed headings, yellow for active, blue for selected.
+   Settings › Look › Classic puts the old look back on this device (html[data-look=classic]). */
+:root{--wk-bg:#0A0B0D;--wk-panel:#121418;--wk-panel2:#181B20;--wk-line:#2E333A;--wk-yellow:#F5C518;--wk-blue:#2F6CC4;--wk-cond:'Barlow Condensed','IBM Plex Sans',system-ui,sans-serif}
+html:not([data-look=classic]) body{background:var(--wk-bg)}
+html:not([data-look=classic]) .app{background:var(--wk-bg) !important}
+html:not([data-look=classic]) .card{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .lbl{font-family:var(--wk-cond);font-size:13px;font-weight:600;letter-spacing:.07em;color:#D4D9E0}
+html:not([data-look=classic]) h1{font-family:var(--wk-cond);font-weight:600 !important;text-transform:uppercase;letter-spacing:.05em;font-size:21px !important;line-height:1.2;color:var(--wk-yellow);border:1.5px solid var(--wk-yellow);border-radius:3px;padding:2px 12px;display:inline-block}
+html:not([data-look=classic]) .btn,html:not([data-look=classic]) .lk,html:not([data-look=classic]) .mxb,html:not([data-look=classic]) .mxbk,html:not([data-look=classic]) .mute,html:not([data-look=classic]) .pbtn{font-family:var(--wk-cond);font-size:15px;letter-spacing:.02em;border-radius:4px}
+html:not([data-look=classic]) .btn.pri{background:var(--wk-yellow);border-color:var(--wk-yellow);color:#111}
+html:not([data-look=classic]) .seg{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .seg a{font-family:var(--wk-cond);font-size:15px;letter-spacing:.03em;border-radius:4px}
+html:not([data-look=classic]) .seg a.on,html:not([data-look=classic]) .lk.on{background:var(--wk-blue);color:#fff}
+html:not([data-look=classic]) .tab.on{color:var(--wk-yellow);border-top-color:var(--wk-yellow)}
+html:not([data-look=classic]) .topmenu{background:#000;border-bottom-color:var(--wk-line)}
+html:not([data-look=classic]) .topmenu summary{font-family:var(--wk-cond);font-size:16px;letter-spacing:.03em}
+html:not([data-look=classic]) .topmenu .mcur{color:var(--wk-yellow)}
+html:not([data-look=classic]) .topmenu .mlist{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .topmenu .mlist a{font-family:var(--wk-cond);font-size:16px;border-radius:4px}
+html:not([data-look=classic]) .topmenu .mlist a.on{background:var(--wk-panel2);color:var(--wk-yellow);box-shadow:inset 3px 0 0 var(--wk-yellow)}
+html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic]) input[type=radio],html:not([data-look=classic]) input[type=range]{accent-color:var(--wk-yellow)}
+.wkside{display:none}
+/* iPad landscape and laptops: a sidebar like WING Edit's (HOME, MIXER, ...) instead of the menu at the top */
+@media (min-width:1000px){
+  html:not([data-look=classic]) .wkside{display:flex;flex-direction:column;gap:2px;position:fixed;left:0;top:0;bottom:0;width:132px !important;max-width:132px !important;margin:0 !important;padding:8px 6px 12px;box-sizing:border-box;background:#000;border-right:1px solid var(--wk-line);overflow-y:auto;z-index:30}
+  html:not([data-look=classic]) .wkside .wkbrand{font:700 24px var(--wk-cond);letter-spacing:.06em;color:var(--wk-yellow);padding:6px 8px 12px}
+  html:not([data-look=classic]) .wkside a{display:flex;align-items:center;gap:9px;min-height:46px;padding:0 8px;border-radius:4px;color:#D4D9E0;text-decoration:none;font:600 15px var(--wk-cond);text-transform:uppercase;letter-spacing:.04em}
+  html:not([data-look=classic]) .wkside a:hover{background:var(--wk-panel2)}
+  html:not([data-look=classic]) .wkside a.on{background:var(--wk-panel2);color:var(--wk-yellow);box-shadow:inset 3px 0 0 var(--wk-yellow)}
+  html:not([data-look=classic]) .wkside svg{flex:none}
+  html:not([data-look=classic]) .app{padding-left:132px;box-sizing:border-box !important}
+  html:not([data-look=classic]) .app > .topmenu{display:none}
+}
+/* look:end */
+</style>
+</helmet>
+<div class="app" style="width:100%;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;background:#0D1015;color:#ECEEF1;font-family:'IBM Plex Sans',system-ui,sans-serif;overflow:hidden">
+  <header style="padding:18px 20px 8px">
+    <sc-if value="{{canLeave}}" hint-placeholder-val="{{ true }}"><a href="Main.dc.html" style="font-size:13px;text-decoration:none;min-height:28px;display:flex;align-items:center">← Home</a></sc-if>
+  </header>
+
+  <main class=" wide2" style="flex:1;overflow-y:auto;padding:8px 20px 24px;display:flex;flex-direction:column;gap:16px">
+    <sc-if value="{{isConfirm}}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <h1 style="margin:0;font-size:28px;font-weight:600">C3 Life server power</h1>
+        <div style="font-size:14px;color:#A3ACB8;line-height:1.5">C3 Life, R Remote, Dante Controller and Companion run on the C3 Life server (Dell OptiPlex). The Wing, the Tio, Dante audio and the Macs keep running whatever you pick here.</div>
+      </div>
+      <div role="radiogroup" aria-label="What to do" style="display:flex;flex-direction:column;gap:8px">
+        <sc-for list="{{acts}}" as="a" hint-placeholder-count="4">
+          <button class="{{a.cls}}" role="radio" aria-checked="{{a.on}}" onClick="{{a.pick}}" disabled="{{a.off}}">
+            <span class="rdot" aria-hidden="true" style="background:{{a.dot}}"></span>
+            <span style="flex:1;min-width:0;text-align:left"><span style="font-size:15px;font-weight:600">{{a.name}}</span><br><span style="font-size:12px;color:#A3ACB8;line-height:1.4">{{a.sub}}</span></span>
+          </button>
+        </sc-for>
+      </div>
+      <section class="card" style="display:flex;flex-direction:column;gap:8px">
+        <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#A3ACB8;font-weight:500">What happens</div>
+        <ol style="margin:0;padding-left:20px;font-size:14px;line-height:1.5;display:flex;flex-direction:column;gap:2px"><sc-for list="{{whatSteps}}" as="w" hint-placeholder-count="4"><li>{{w}}</li></sc-for></ol>
+        <sc-if value="{{hasWhatNote}}" hint-placeholder-val="{{ false }}"><div style="font-size:13px;color:#F5C518">{{whatNote}}</div></sc-if>
+        <div style="font-size:12px;color:#A3ACB8">Last auto-save {{lastSave}} · saves every 5 minutes</div>
+      </section>
+      <sc-if value="{{isOff}}" hint-placeholder-val="{{ true }}">
+        <section class="card" style="display:flex;align-items:center;gap:10px;padding:12px 14px">
+          <span style="width:10px;height:10px;border-radius:50%;background:{{netDot}};flex:none"></span>
+          <span style="flex:1;font-size:14px">{{netText}}</span>
+          <button style="min-height:44px;padding:0 10px;border-radius:9px;border:1px dashed #333B47;background:transparent;color:#A3ACB8;font:500 12px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer" onClick="{{toggleNet}}">Demo: {{netToggle}}</button>
+        </section>
+      </sc-if>
+      <sc-if value="{{inService}}" hint-placeholder-val="{{ false }}">
+        <section class="card" role="status" style="border-color:#F5C518;display:flex;flex-direction:column;gap:8px">
+          <div style="font-size:14px;font-weight:600">A service is running ({{svcName}})</div>
+          <div style="font-size:13px;color:#C9CFD7;line-height:1.45">{{svcText}}</div>
+          <sc-if value="{{isAdmin}}" hint-placeholder-val="{{ false }}">
+            <label style="display:flex;align-items:center;gap:8px;font-size:14px"><input type="checkbox" checked="{{override}}" onChange="{{toggleOverride}}"> I’m an Admin and I need to do this now</label>
+          </sc-if>
+        </section>
+      </sc-if>
+      <button class="btn stop" onClick="{{start}}" disabled="{{blocked}}">{{goLabel}}</button>
+      <a href="Main.dc.html" class="btn" style="display:flex;align-items:center;justify-content:center;text-decoration:none;box-sizing:border-box">Cancel</a>
+      <div style="font-size:12px;color:#A3ACB8;line-height:1.45">Only Admin and FOH sound can use these, and the hard reset is Admin only. Each one is written to the activity log. <button style="min-height:44px;padding:0 8px;border:1px dashed #333B47;border-radius:8px;background:transparent;color:#A3ACB8;font:500 12px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer" onClick="{{toggleSvc}}">Demo: {{svcToggle}}</button></div>
+    </sc-if>
+
+    <sc-if value="{{isCounting}}" hint-placeholder-val="{{ false }}">
+      <div role="timer" aria-live="assertive" style="display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;padding-top:24px">
+        <div style="font-size:15px;color:#A3ACB8">{{countTitle}}</div>
+        <div style="position:relative;width:200px;height:200px">
+          <svg width="200" height="200" viewBox="0 0 200 200" aria-hidden="true">
+            <circle cx="100" cy="100" r="88" fill="none" stroke="#262C36" stroke-width="12"></circle>
+            <circle cx="100" cy="100" r="88" fill="none" stroke="#FF7A45" stroke-width="12" stroke-linecap="round" stroke-dasharray="553" stroke-dashoffset="{{ring}}" transform="rotate(-90 100 100)"></circle>
+          </svg>
+          <div class="mono" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:72px;font-weight:500">{{count}}</div>
+        </div>
+        <div style="font-size:14px;color:#A3ACB8">seconds. Tap Undo to keep everything running.</div>
+        <div style="font-size:14px;color:#C9CFD7;max-width:320px">{{countNote}}</div>
+      </div>
+      <button class="btn undo" onClick="{{undo}}">↶ Undo</button>
+    </sc-if>
+
+    <sc-if value="{{isWorking}}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <h1 style="margin:0;font-size:26px;font-weight:600">{{workTitle}}</h1>
+        <div style="font-size:14px;color:#A3ACB8">{{workSub}}</div>
+      </div>
+      <section class="card" style="display:flex;flex-direction:column;padding:6px 14px">
+        <sc-for list="{{steps}}" as="st" hint-placeholder-count="5">
+          <div style="display:flex;align-items:center;gap:12px;min-height:52px;border-top:1px solid #222831">
+            <span style="width:22px;height:22px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;background:{{st.bg}};color:#0D1015">{{st.mark}}</span>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:14px;color:{{st.color}}">{{st.text}}</div>
+              <sc-if value="{{st.hasNote}}" hint-placeholder-val="{{ false }}"><div style="font-size:12px;color:{{st.noteColor}}">{{st.note}}</div></sc-if>
+            </div>
+          </div>
+        </sc-for>
+      </section>
+      <sc-if value="{{isDone}}" hint-placeholder-val="{{ false }}">
+        <section class="card" style="display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;border-color:#6CB4F5;padding:20px">
+          <div style="font-size:19px;font-weight:600">{{doneTitle}}</div>
+          <div style="font-size:13px;color:#A3ACB8;line-height:1.45">{{doneText}}</div>
+        </section>
+        <button class="btn" onClick="{{reset}}">Demo: start again</button>
+      </sc-if>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { phase: 'confirm', act: 'app', count: 10, step: -1, online: false, svc: this.liveNow(), override: false };
+  }
+  componentWillUnmount() { clearInterval(this.cd); clearTimeout(this.t); }
+  // Is a service on right now? The chosen service (Plan) and the clock decide, like the Home screen.
+  svcCur() {
+    let l = null, id = '';
+    try { l = JSON.parse(localStorage.getItem('booth.services') || 'null'); id = localStorage.getItem('booth.service') || ''; } catch (e) {}
+    if (!Array.isArray(l) || !l.length) l = [{ id: 's1', name: 'Sunday 10:00', start: '10:00', end: '12:10' }];
+    return l.find((x) => x.id === id) || l[0];
+  }
+  liveNow() {
+    const c = this.svcCur(), d = new Date(), now = d.getHours() * 60 + d.getMinutes();
+    const m = (t) => { const p = String(t || '').split(':'); return parseInt(p[0], 10) * 60 + parseInt(p[1] || '0', 10); };
+    const a = m(c.start), b = m(c.end);
+    return isNaN(a) || isNaN(b) ? false : (b > a ? now >= a && now < b : now >= a || now < b);
+  }
+  user() { try { return JSON.parse(localStorage.getItem('booth.user') || 'null'); } catch (e) { return null; } }
+  // The four power actions, softest first. Each one: what it does, its steps, and what you see at the end.
+  acts() {
+    const on = this.state.online;
+    return {
+      app: { name: 'Restart C3 Life', sub: 'Restarts just the app, in about 10 seconds. The C3 Life server stays on. Try this first if something looks stuck.', go: 'Restart C3 Life', count: 5,
+        what: ['Save the logs', 'Close C3 Life and open it again', 'Phones and iPads reconnect by themselves'],
+        steps: [['Save the RTA log and the activity log', 'Saved to the C3 Life server’s drive', true], ['Close C3 Life', 'Companion keeps running', true], ['Open C3 Life again', 'Loads the saved setup', true], ['Phones and iPads reconnect', 'About 10 seconds', true]],
+        doneTitle: 'C3 Life is running again', doneText: 'Phones and iPads have reconnected. Nothing changed on the Wing or Dante.' },
+      restart: { name: 'Restart the C3 Life server', sub: 'A clean Windows restart. Takes about a minute; C3 Life, R Remote and DVS open again by themselves.', go: 'Restart the C3 Life server', count: 10,
+        what: ['Save the logs', 'Close C3 Life, R Remote and Dante Controller', 'Windows restarts (about 1 minute)', 'It signs in by itself and opens C3 Life and Dante Virtual Soundcard'],
+        steps: [['Save the RTA log and the activity log', 'Saved to the C3 Life server’s drive', true], ['Close C3 Life, R Remote and Dante Controller', 'The Wing and Dante audio keep running', true], ['Restart Windows', 'About 1 minute. Phones show “Reconnecting”.', true], ['Open C3 Life and Dante Virtual Soundcard', 'Signs in by itself', true]],
+        doneTitle: 'The C3 Life server has restarted', doneText: 'C3 Life is back and phones have reconnected. The RTA and MD log pick up again once Dante Virtual Soundcard is running.' },
+      off: { name: 'Shut down the C3 Life server', sub: 'At the end of the day. Saves everything, sends today’s reports, then turns the C3 Life server off.', go: 'Shut down', count: 10,
+        what: ['Save the RTA log and the activity log to the drive', 'Email both reports to the reports address', 'No internet? They stay on the drive and send next time it’s online', 'Turn the C3 Life server off'],
+        steps: [['Save the RTA log to the drive', 'rta-2026-10-18 · 08:31–12:20 · report in the standard layout', true], ['Save the activity log to the drive', 'activity-2026-10-18.csv · 231 entries', true], ['Email the RTA report', on ? 'Sent to the reports address' : 'No internet · kept on the drive, sends when online', on], ['Email the activity report', on ? 'Sent to the reports address' : 'No internet · kept on the drive, sends when online', on], ['Turn the C3 Life server off', 'C3 Life stopped · the Wing, Dante and the Macs keep running', true]],
+        doneTitle: 'Safe to switch off the power', doneText: 'The C3 Life server’s power light has gone off. To turn it on again, press its power button, or switch the smart plug off and on (it starts by itself when it gets power). It loads the saved setup' + (on ? '.' : ' and sends the 2 waiting reports as soon as it has internet.') },
+      cycle: { name: 'Hard reset (smart plug)', sub: 'Only if the C3 Life server is badly stuck and a restart didn’t help. Turns its power off for 10 seconds, then back on.', go: 'Hard reset now', count: 10, admin: true,
+        what: ['Save what it can', 'The smart plug turns the C3 Life server’s power off for 10 seconds, then back on', 'It starts by itself (AC Recovery is on in the BIOS) and opens C3 Life'], whatNote: 'Anything changed since the last auto-save may be lost.',
+        steps: [['Save what it can', 'Last auto-save ' + '12:15', true], ['Smart plug: power off', '10 seconds', true], ['Smart plug: power on', 'The C3 Life server starts by itself', true], ['C3 Life opens', 'About 1 to 2 minutes', true]],
+        doneTitle: 'The C3 Life server is starting up', doneText: 'If Windows is frozen and C3 Life can’t answer at all, open the smart plug’s own page on your phone (192.168.10.5) and switch it off and on there.' }
+    };
+  }
+  start() {
+    const a = this.acts()[this.state.act];
+    this.setState({ phase: 'counting', count: a.count });
+    clearInterval(this.cd);
+    this.cd = setInterval(() => {
+      const c = this.state.count - 1;
+      if (c <= 0) { clearInterval(this.cd); this.work(); }
+      else this.setState({ count: c });
+    }, 1000);
+  }
+  work() {
+    const n = this.acts()[this.state.act].steps.length;
+    this.setState({ phase: 'working', step: 0 });
+    const next = (k) => {
+      if (k >= n) { this.setState({ phase: 'done', step: n }); return; }
+      this.setState({ step: k });
+      this.t = setTimeout(() => next(k + 1), 800);
+    };
+    next(0);
+  }
+  renderVals() {
+    const s = this.state;
+    const on = s.online;
+    const u = this.user(), isAdmin = !!u && u.role === 'Admin';
+    const all = this.acts(), a = all[s.act];
+    const done = s.phase === 'done';
+    const blocked = (s.svc && !(isAdmin && s.override)) || (a.admin && !isAdmin);
+    return {
+      canLeave: s.phase === 'confirm',
+      isConfirm: s.phase === 'confirm',
+      isCounting: s.phase === 'counting',
+      isWorking: s.phase === 'working' || done,
+      isDone: done,
+      acts: Object.keys(all).map((k) => {
+        const x = all[k], off = !!x.admin && !isAdmin;
+        return { name: x.name + (off ? ' · Admin only' : ''), sub: x.sub, on: s.act === k, off, cls: s.act === k ? 'opt on' : 'opt', dot: s.act === k ? '#F5C518' : 'transparent', pick: () => this.setState({ act: k }) };
+      }),
+      whatSteps: a.what, hasWhatNote: !!a.whatNote, whatNote: a.whatNote || '',
+      isOff: s.act === 'off',
+      goLabel: a.go,
+      blocked,
+      lastSave: '12:15',
+      netDot: on ? '#6CB4F5' : '#A3ACB8',
+      netText: on ? 'Online · reports will be emailed now' : 'No internet · reports will wait on the drive',
+      netToggle: on ? 'go offline' : 'go online',
+      toggleNet: () => this.setState({ online: !on }),
+      inService: s.svc, svcName: (() => { const c = this.svcCur(); return c.name + ', ' + c.start + '–' + c.end; })(),
+      svcText: isAdmin ? 'Phones, the RTA and the MD log stop while this happens. The sound itself keeps going. Only do it if you have to.' : 'This is blocked until the service ends, so nobody stops the booth by accident. Ask an Admin if it really can’t wait.',
+      isAdmin, override: s.override, toggleOverride: () => this.setState({ override: !s.override }),
+      svcToggle: s.svc ? 'end the service' : 'a service is running', toggleSvc: () => this.setState({ svc: !s.svc, override: false }),
+      start: () => { if (!blocked) this.start(); },
+      countTitle: { app: 'Restarting C3 Life in', restart: 'Restarting the C3 Life server in', off: 'Shutting down the C3 Life server in', cycle: 'Hard reset of the C3 Life server in' }[s.act],
+      countNote: s.act === 'app' ? 'Phones reconnect by themselves.' : 'The sound keeps going. Phones, the RTA and the MD log stop until it’s back.',
+      count: s.count,
+      ring: Math.round(553 * (1 - s.count / a.count)),
+      undo: () => { clearInterval(this.cd); this.setState({ phase: 'confirm', count: a.count }); },
+      workTitle: done ? { app: 'Restart complete', restart: 'Restart complete', off: 'Shut down complete', cycle: 'Power cycled' }[s.act] : { app: 'Restarting C3 Life…', restart: 'Restarting the C3 Life server…', off: 'Shutting down…', cycle: 'Hard reset…' }[s.act],
+      workSub: done ? 'Everything was saved first.' : 'Please don’t pull the power yet.',
+      steps: a.steps.map(([text, note, ok], k) => {
+        const isDoneStep = done || k < s.step;
+        const isNow = !done && k === s.step;
+        const waiting = isDoneStep && !ok;
+        return {
+          text, note, hasNote: isDoneStep || isNow,
+          mark: isDoneStep ? (waiting ? '…' : '✓') : (isNow ? '•' : ''),
+          bg: isDoneStep ? (waiting ? '#F5C518' : '#6CB4F5') : (isNow ? '#F5C518' : '#262C36'),
+          color: isDoneStep || isNow ? '#ECEEF1' : '#A3ACB8',
+          noteColor: waiting ? '#F5C518' : '#A3ACB8'
+        };
+      }),
+      doneTitle: a.doneTitle, doneText: a.doneText,
+      reset: () => this.setState({ phase: 'confirm', count: 10, step: -1 })
+    };
+  }
+}
+</script>
+</body>
+</html>

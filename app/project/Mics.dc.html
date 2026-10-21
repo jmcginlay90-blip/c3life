@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>C3 Life – Wireless mics</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet" data-look>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Safari / iPad: no zoom when typing, no double-tap zoom, no text-select or callout while dragging */
+html{-webkit-text-size-adjust:100%;touch-action:manipulation}
+input,select,textarea{font-size:16px!important}
+button,a,summary,label,[role=slider]{-webkit-tap-highlight-color:transparent}
+[role=slider],.fader,.pan{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+body{margin:0;background:#0D1015}
+a{color:#6CB4F5}a:hover{color:#9CCBF8}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:62px;color:#A3ACB8;text-decoration:none;font-size:12px;font-weight:500;border-top:2px solid transparent}
+.tab:hover{color:#ECEEF1}
+.tab.on{color:#F5C518;border-top-color:#F5C518}
+.card{background:#161A21;border:1px solid #262C36;border-radius:14px;padding:14px}
+.lbl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#A3ACB8;font-weight:500}
+.mono{font-family:'IBM Plex Mono',ui-monospace,monospace}
+.seg{display:flex;gap:4px;background:#161A21;border:1px solid #262C36;border-radius:12px;padding:4px}
+.seg a{flex:1;display:flex;align-items:center;justify-content:center;min-height:44px;border-radius:9px;color:#A3ACB8;text-decoration:none;font-size:14px;font-weight:500}
+.seg a.on{background:#262C36;color:#ECEEF1}
+.mute{width:64px;min-height:44px;border-radius:10px;border:1px solid #333B47;background:#1E232C;color:#ECEEF1;font:500 13px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer}
+.mute.hot{background:#FF7A45;border-color:#FF7A45;color:#1A0A03}
+input[type=range]{width:100%;accent-color:#F5C518;height:28px}
+input[type=range]:disabled{opacity:.35;cursor:not-allowed}
+.mute:disabled{opacity:.4;cursor:not-allowed}
+.lk{flex:1;min-height:44px;border-radius:9px;border:0;background:transparent;color:#A3ACB8;font:500 13px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer}
+.lk.on{background:#262C36;color:#ECEEF1}
+.lkb{width:36px;height:36px;border-radius:8px;border:1px solid #333B47;background:transparent;color:#A3ACB8;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;flex:none}
+.lkb.on{background:#F5C518;border-color:#F5C518;color:#1A1204}
+.btn{min-height:44px;padding:0 16px;border-radius:10px;border:1px solid #333B47;background:#1E232C;color:#ECEEF1;font:500 14px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer}
+.btn.pri{background:#F5C518;border-color:#F5C518;color:#1A1204}
+input[type=checkbox]{width:20px;height:20px;accent-color:#F5C518;flex:none}
+
+/* Fills any screen. Wider than 700px (iPad, laptop, web) the content sits in a centred column. */
+@media (min-width:700px){
+  .app > *:not(.bn):not([style*="position:absolute"]){width:100%;max-width:760px;margin-left:auto;margin-right:auto;box-sizing:border-box}
+}
+
+.app > .rtabar{max-width:none !important;margin-left:0 !important;margin-right:0 !important}
+
+/* Easy to use: every link, tick box and control is at least 40-44px tall, so it is easy to hit with a thumb. */
+a[style*="min-height:28px"]{min-height:44px !important}
+a[style*="font-size:12px"][style*="text-decoration:none"],a[style*="font-size:13px"][style*="text-decoration:none"]{display:inline-flex;align-items:center;min-height:40px}
+label:has(> input[type=checkbox]),label:has(> input[type=radio]){min-height:44px}
+input[type=checkbox],input[type=radio]{width:22px;height:22px;flex:none;accent-color:#F5C518}
+input[type=range]{min-height:40px}
+select{min-height:44px}
+button.sw::after,button.cell::after{content:'';position:absolute;inset:-7px -4px}
+.cell{position:relative}
+input[type=checkbox][aria-label]{width:32px;height:32px}
+
+/* Menu: a drop-down list at the top of every screen. Tap Menu to open it, tap again (or pick a page) to close. */
+.topmenu{position:relative;z-index:20;flex:none;background:#11151B;border-bottom:1px solid #262C36}
+.topmenu summary{list-style:none;display:flex;align-items:center;gap:10px;min-height:52px;padding:0 16px;cursor:pointer;color:#ECEEF1;font:600 15px 'IBM Plex Sans',system-ui,sans-serif;max-width:760px;margin:0 auto;box-sizing:border-box}
+.topmenu summary::-webkit-details-marker{display:none}
+.topmenu .mlabel{font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:#A3ACB8}
+.topmenu .mcur{flex:1;color:#F5C518}
+.topmenu .chev{transition:transform .15s}
+.topmenu details[open] .chev{transform:rotate(180deg)}
+.topmenu .mlist{position:absolute;left:8px;right:8px;top:calc(100% + 4px);background:#161A21;border:1px solid #333B47;border-radius:14px;box-shadow:0 14px 34px rgba(0,0,0,.55);padding:6px;display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.topmenu .mlist a{display:flex;align-items:center;gap:10px;min-height:52px;padding:0 12px;border-radius:10px;color:#ECEEF1;text-decoration:none;font:500 15px 'IBM Plex Sans',system-ui,sans-serif}
+.topmenu .mlist a:hover{background:#1E232C}
+.topmenu .mlist a.on{background:#262C36;color:#F5C518}
+@media (min-width:700px){.topmenu .mlist{left:calc(50% - 372px);right:auto;width:440px}}
+@media (min-width:700px) and (max-width:800px){.topmenu .mlist{left:16px}}
+
+.ren{width:36px;height:36px;margin:-6px 0 -6px 2px;border-radius:8px;border:0;background:none;color:#A3ACB8;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;padding:0}
+.ren:hover{background:#1E232C;color:#ECEEF1}
+.send{min-height:48px;border-radius:10px;border:1px solid #F5C518;background:#F5C518;color:#1A1204;font:600 14px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer}
+.lk:disabled{opacity:.45;cursor:not-allowed}
+/* wide:start — iPad landscape and laptops: use the width */
+@media (min-width:1000px){
+  .app > *:not(.bn):not([style*="position:absolute"]){max-width:1240px}
+  .topmenu summary{max-width:1240px}
+  .app main.wide2{display:grid !important;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:14px 18px !important}
+  .app main.wide2 > *{min-width:0}
+  .app main.wide2 > :not(section):not(.card):not(details):not(.wcol){grid-column:1 / -1}
+  .app main.wide2 > .wfull{grid-column:1 / -1}
+  .app main.wide1{max-width:980px !important}
+  .app:has(main.wide1) > *:not(.bn):not([style*="position:absolute"]){max-width:980px}
+  .app:has(main.wide1) .topmenu summary{max-width:980px}
+}
+@media (min-width:1500px){ .app main.wide2.wide3{grid-template-columns:repeat(3,minmax(0,1fr))} }
+/* wide:end */
+/* look:start — the WING look (like WING Edit): near-black, outlined panels, condensed headings, yellow for active, blue for selected.
+   Settings › Look › Classic puts the old look back on this device (html[data-look=classic]). */
+:root{--wk-bg:#0A0B0D;--wk-panel:#121418;--wk-panel2:#181B20;--wk-line:#2E333A;--wk-yellow:#F5C518;--wk-blue:#2F6CC4;--wk-cond:'Barlow Condensed','IBM Plex Sans',system-ui,sans-serif}
+html:not([data-look=classic]) body{background:var(--wk-bg)}
+html:not([data-look=classic]) .app{background:var(--wk-bg) !important}
+html:not([data-look=classic]) .card{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .lbl{font-family:var(--wk-cond);font-size:13px;font-weight:600;letter-spacing:.07em;color:#D4D9E0}
+html:not([data-look=classic]) h1{font-family:var(--wk-cond);font-weight:600 !important;text-transform:uppercase;letter-spacing:.05em;font-size:21px !important;line-height:1.2;color:var(--wk-yellow);border:1.5px solid var(--wk-yellow);border-radius:3px;padding:2px 12px;display:inline-block}
+html:not([data-look=classic]) .btn,html:not([data-look=classic]) .lk,html:not([data-look=classic]) .mxb,html:not([data-look=classic]) .mxbk,html:not([data-look=classic]) .mute,html:not([data-look=classic]) .pbtn{font-family:var(--wk-cond);font-size:15px;letter-spacing:.02em;border-radius:4px}
+html:not([data-look=classic]) .btn.pri{background:var(--wk-yellow);border-color:var(--wk-yellow);color:#111}
+html:not([data-look=classic]) .seg{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .seg a{font-family:var(--wk-cond);font-size:15px;letter-spacing:.03em;border-radius:4px}
+html:not([data-look=classic]) .seg a.on,html:not([data-look=classic]) .lk.on{background:var(--wk-blue);color:#fff}
+html:not([data-look=classic]) .tab.on{color:var(--wk-yellow);border-top-color:var(--wk-yellow)}
+html:not([data-look=classic]) .topmenu{background:#000;border-bottom-color:var(--wk-line)}
+html:not([data-look=classic]) .topmenu summary{font-family:var(--wk-cond);font-size:16px;letter-spacing:.03em}
+html:not([data-look=classic]) .topmenu .mcur{color:var(--wk-yellow)}
+html:not([data-look=classic]) .topmenu .mlist{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .topmenu .mlist a{font-family:var(--wk-cond);font-size:16px;border-radius:4px}
+html:not([data-look=classic]) .topmenu .mlist a.on{background:var(--wk-panel2);color:var(--wk-yellow);box-shadow:inset 3px 0 0 var(--wk-yellow)}
+html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic]) input[type=radio],html:not([data-look=classic]) input[type=range]{accent-color:var(--wk-yellow)}
+.wkside{display:none}
+/* iPad landscape and laptops: a sidebar like WING Edit's (HOME, MIXER, ...) instead of the menu at the top */
+@media (min-width:1000px){
+  html:not([data-look=classic]) .wkside{display:flex;flex-direction:column;gap:2px;position:fixed;left:0;top:0;bottom:0;width:132px !important;max-width:132px !important;margin:0 !important;padding:8px 6px 12px;box-sizing:border-box;background:#000;border-right:1px solid var(--wk-line);overflow-y:auto;z-index:30}
+  html:not([data-look=classic]) .wkside .wkbrand{font:700 24px var(--wk-cond);letter-spacing:.06em;color:var(--wk-yellow);padding:6px 8px 12px}
+  html:not([data-look=classic]) .wkside a{display:flex;align-items:center;gap:9px;min-height:46px;padding:0 8px;border-radius:4px;color:#D4D9E0;text-decoration:none;font:600 15px var(--wk-cond);text-transform:uppercase;letter-spacing:.04em}
+  html:not([data-look=classic]) .wkside a:hover{background:var(--wk-panel2)}
+  html:not([data-look=classic]) .wkside a.on{background:var(--wk-panel2);color:var(--wk-yellow);box-shadow:inset 3px 0 0 var(--wk-yellow)}
+  html:not([data-look=classic]) .wkside svg{flex:none}
+  html:not([data-look=classic]) .app{padding-left:132px;box-sizing:border-box !important}
+  html:not([data-look=classic]) .app > .topmenu{display:none}
+}
+/* look:end */
+</style>
+</helmet>
+<div class="app has-bn" style="width:100%;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;background:#0D1015;color:#ECEEF1;font-family:'IBM Plex Sans',system-ui,sans-serif;overflow:hidden">
+  
+  
+  
+  
+  <nav class="wkside" aria-label="Main menu (side)"><div class="wkbrand" aria-hidden="true">C3 LIFE</div><a href="Main.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Home</a>
+        <a href="Wing.dc.html" class="on" aria-current="page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4v16M12 4v16M18 4v16"/><path d="M4 14h4M10 8h4M16 16h4"/></svg>Mixer</a>
+        <a href="RTA.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V12M9 20V6M14 20V10M19 20V4"/></svg>RTA</a>
+        <a href="Show.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M10 8l5 2-5 2z"/><path d="M8 20h8"/></svg>Show</a>
+        <a href="Lights.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>Lights</a>
+        <a href="Plan.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h1M4 12h1M4 18h1"/></svg>Plan</a>
+        <a href="Chat.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>Chat</a>
+        <a href="Listen.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="15" width="4" height="6" rx="1.5"/><rect x="17" y="15" width="4" height="6" rx="1.5"/><path d="M10 9.5a2.5 2.5 0 0 1 4 0"/></svg>Listen</a>
+        <a href="Help.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2.5 2-2.5 3.5M12 17h.01"/></svg>Help</a>
+        <a href="Report.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4h11l-1.5 4L16 12H5"/></svg>Report an issue</a></nav>
+  <nav class="bn topmenu" aria-label="Main menu">
+    <details>
+      <summary aria-label="Menu. You are on Wireless mics"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span class="mlabel">Menu</span><span class="mcur">Wireless mics</span><svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+      <div class="mlist">
+        <a href="Main.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Home</a>
+        <a href="Wing.dc.html" class="on" aria-current="page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4v16M12 4v16M18 4v16"/><path d="M4 14h4M10 8h4M16 16h4"/></svg>Mixer</a>
+        <a href="RTA.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V12M9 20V6M14 20V10M19 20V4"/></svg>RTA</a>
+        <a href="Show.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M10 8l5 2-5 2z"/><path d="M8 20h8"/></svg>Show</a>
+        <a href="Lights.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>Lights</a>
+        <a href="Plan.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h1M4 12h1M4 18h1"/></svg>Plan</a>
+        <a href="Chat.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>Chat</a>
+        <a href="Listen.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="15" width="4" height="6" rx="1.5"/><rect x="17" y="15" width="4" height="6" rx="1.5"/><path d="M10 9.5a2.5 2.5 0 0 1 4 0"/></svg>Listen</a>
+        <a href="Help.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2.5 2-2.5 3.5M12 17h.01"/></svg>Help</a>
+        <a href="Report.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4h11l-1.5 4L16 12H5"/></svg>Report an issue</a>
+      </div>
+    </details>
+  </nav>
+  <header style="padding:22px 16px 12px;display:flex;flex-direction:column;gap:12px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;padding:0 4px">
+      <h1 style="margin:0;font-size:26px;font-weight:600">Mixer</h1>
+      <div style="font-size:12px;color:#A3ACB8;text-align:right">Wireless mics<br>Names from the Wing</div>
+    </div>
+    <nav class="seg" aria-label="Mixer sections">
+      <a href="Wing.dc.html">Channels</a>
+      <a href="Patch.dc.html">Patch</a>
+      <a href="Dante.dc.html">Dante</a>
+      <a href="Mics.dc.html" class="on" aria-current="page">Mics</a>
+      <a href="Cues.dc.html">Cues</a>
+    </nav>
+  </header>
+
+  <main class=" wide2" style="flex:1;overflow-y:auto;padding:0 16px 16px;display:flex;flex-direction:column;gap:12px">
+    <sc-if value="{{anyLow}}" hint-placeholder-val="{{ true }}">
+      <div role="alert" style="background:#FF7A45;color:#1A0A03;border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:2px">
+        <div style="font-size:16px;font-weight:600">{{lowTitle}}</div>
+        <div style="font-size:13px">{{lowText}}</div>
+      </div>
+    </sc-if>
+    <section class="card" style="display:flex;flex-direction:column;padding:6px 14px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;padding:8px 0">
+        <div class="lbl">Wireless mics · battery and signal</div>
+        <span style="font-size:12px;color:#A3ACB8">{{readLine}}</span>
+      </div>
+      <sc-for list="{{mics}}" as="m" hint-placeholder-count="6">
+        <div style="display:flex;flex-direction:column;gap:6px;padding:10px 0;border-top:1px solid #222831">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:15px;font-weight:600">{{m.name}}</div>
+              <div style="font-size:12px;color:#A3ACB8">{{m.sub}}</div>
+            </div>
+            <div style="text-align:right;flex:none">
+              <div class="mono" style="font-size:18px;color:{{m.color}}">{{m.pct}}</div>
+              <div style="font-size:12px;color:{{m.color}}">{{m.left}}</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="flex:1;height:8px;border-radius:4px;background:#0F1318;overflow:hidden" role="img" aria-label="{{m.aria}}"><div style="height:8px;border-radius:4px;background:{{m.color}};width:{{m.width}}"></div></div>
+            <span style="font-size:12px;color:#A3ACB8;width:92px;text-align:right">{{m.rf}}</span>
+          </div>
+          <sc-if value="{{m.hasTip}}" hint-placeholder-val="{{ false }}"><div style="font-size:12px;color:{{m.color}}">{{m.tip}}</div></sc-if>
+        </div>
+      </sc-for>
+    </section>
+    <section class="card" style="display:flex;flex-direction:column;gap:10px">
+      <label for="warn-at" style="font-size:14px;font-weight:600">Warn everyone when a battery is below</label>
+      <select id="warn-at" value="{{warnAt}}" onChange="{{setWarn}}">
+        <option value="20">20%</option><option value="25">25%</option><option value="30">30%</option><option value="40">40%</option>
+      </select>
+      <div style="font-size:12px;color:#A3ACB8;line-height:1.45">The warning shows on Home for everyone, and in the activity report. It also reminds you to charge mics after the service.</div>
+      <div style="font-size:12px;color:#A3ACB8;line-height:1.45">Works with networked receivers, such as Shure QLX-D, ULX-D, SLX-D or Axient, and Sennheiser EW-DX. Add each receiver in Drivers. Mics with AA batteries show bars only, not time left.</div>
+      <button class="lk" style="min-height:40px;border:1px dashed #333B47;color:#A3ACB8;font-size:13px" onClick="{{demoDrain}}">Demo: batteries run down</button>
+    </section>
+  </main>
+
+  <div style="position:absolute;inset:0;z-index:6;pointer-events:none">
+    <dc-import name="MDTalk" hint-size="390px,844px"></dc-import>
+  </div>
+  <div class="rtabar" style="flex:none">
+    <dc-import name="MiniRTA" hint-size="390px,48px"></dc-import>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    let warn = 25; try { warn = Number(localStorage.getItem('booth.micwarn') || 25); } catch (e) {}
+    // Read from the networked wireless receivers. Names match the Wing channel each mic is patched to.
+    this.state = { warnAt: warn, drain: 0, readAt: '', mics: [
+      { ch: 15, model: 'Shure QLX-D \u00b7 handheld \u00b7 SB900 rechargeable', pct: 22, mins: 50, rf: 4 },
+      { ch: 16, model: 'Shure QLX-D \u00b7 bodypack \u00b7 SB900 rechargeable', pct: 64, mins: 260, rf: 4 },
+      { ch: 1, model: 'Shure QLX-D \u00b7 handheld \u00b7 SB900 rechargeable', pct: 88, mins: 450, rf: 5 },
+      { ch: 2, model: 'Shure QLX-D \u00b7 handheld \u00b7 AA batteries', pct: 45, mins: null, rf: 3 },
+      { ch: 3, model: 'Shure QLX-D \u00b7 handheld \u00b7 AA batteries', pct: 70, mins: null, rf: 4 },
+      { ch: 11, model: 'Shure QLX-D \u00b7 bodypack \u00b7 AA batteries', pct: 0, mins: null, rf: 0, off: true }
+    ] };
+  }
+  componentDidMount() {
+    const read = () => { const d = new Date(); this.setState({ readAt: String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') + ':' + String(d.getSeconds()).padStart(2, '0') }); this.share(); };
+    read(); this.readTimer = setInterval(read, 10000);
+  }
+  componentWillUnmount() { clearInterval(this.readTimer); }
+  // Low batteries are shared so Home can warn everyone.
+  share(st) {
+    const s = st || this.state;
+    const low = s.mics.filter((m) => !m.off && Math.max(0, m.pct - s.drain) < s.warnAt).map((m) => ({ name: this.chName(m.ch), pct: Math.max(0, m.pct - s.drain), mins: m.mins === null ? null : Math.max(0, m.mins - s.drain * 12) }));
+    try { localStorage.setItem('booth.miclow', JSON.stringify(low)); } catch (e) {}
+  }
+  // Channel, bus and DCA names come from the Wing. Every screen reads this one list, so they always match the desk.
+  wnDefaults() {
+    return {
+      ch: { 1: 'Lead Vox', 2: 'BV 1', 3: 'BV 2', 4: 'Acoustic', 5: 'Keys', 6: 'Bass DI', 7: 'Kick', 8: 'RTA Mic', 9: 'Snare', 10: 'Playback L/R', 11: 'Band Leader', 12: 'MD Talkback', 13: 'Drummer TB', 14: 'Spare', 15: 'Pastor HH', 16: 'Pastor Lapel' },
+      aux: { 2: 'Walk-in', 3: 'MD Wireless', 4: 'Click' },
+      bus: { 1: 'Wedges', 2: 'IEM Band', 4: 'IEM Keys', 5: 'Stream L/R' },
+      dca: { 1: 'Band', 2: 'Vocals', 3: 'Speech', 4: 'PB' },
+      mtx: { 1: 'Foyer' },
+      at: '09:58'
+    };
+  }
+  wn() { try { const w = JSON.parse(localStorage.getItem('booth.wingnames') || 'null'); if (w && w.ch) return w; } catch (e) {} return this.wnDefaults(); }
+  chName(n) { return this.wn().ch[n] || 'Ch ' + String(n).padStart(2, '0'); }
+  chLabel(n) { return 'Ch ' + String(n).padStart(2, '0') + ' · ' + this.chName(n); }
+  wnSave(kind, n, name, by) {
+    const w = this.wn(); w[kind] = { ...w[kind], [n]: name };
+    const d = new Date(); w.at = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); w.by = by || '';
+    try { localStorage.setItem('booth.wingnames', JSON.stringify(w)); } catch (e) {}
+    return w;
+  }
+  renderVals() {
+    const s = this.state;
+    const fmt = (m) => (m === null ? '' : (m >= 60 ? Math.floor(m / 60) + ' h ' + String(m % 60).padStart(2, '0') + ' min left' : m + ' min left'));
+    const rows = s.mics.map((m) => {
+      const pct = Math.max(0, m.pct - s.drain), mins = m.mins === null ? null : Math.max(0, m.mins - s.drain * 12);
+      const low = !m.off && pct < s.warnAt;
+      const color = m.off ? '#A3ACB8' : (low ? '#FF7A45' : '#6CB4F5');
+      return {
+        name: 'Ch ' + String(m.ch).padStart(2, '0') + ' \u00b7 ' + this.chName(m.ch), sub: m.model,
+        pct: m.off ? 'Off' : pct + '%', left: m.off ? 'Not switched on' : (m.mins === null ? 'AA \u00b7 bars only' : fmt(mins)),
+        width: (m.off ? 0 : pct) + '%', color,
+        rf: m.off ? 'No signal' : 'Signal ' + ['', '\u25cf\u25cb\u25cb\u25cb\u25cb', '\u25cf\u25cf\u25cb\u25cb\u25cb', '\u25cf\u25cf\u25cf\u25cb\u25cb', '\u25cf\u25cf\u25cf\u25cf\u25cb', '\u25cf\u25cf\u25cf\u25cf\u25cf'][m.rf],
+        aria: this.chName(m.ch) + ' battery ' + (m.off ? 'off' : pct + ' percent'),
+        hasTip: low || m.off, tip: m.off ? 'Switch it on if it is needed today.' : 'Swap or charge it before it is needed. Put it on charge after the service.'
+      };
+    });
+    const low = rows.filter((r, i) => !s.mics[i].off && Math.max(0, s.mics[i].pct - s.drain) < s.warnAt);
+    return {
+      mics: rows,
+      readLine: 'Read every 10 s \u00b7 ' + s.readAt,
+      anyLow: low.length > 0,
+      lowTitle: low.length === 1 ? 'Battery low: ' + low[0].name.replace(/^Ch \d+ \u00b7 /, '') : low.length + ' mic batteries low',
+      lowText: low.map((r) => r.name.replace(/^Ch \d+ \u00b7 /, '') + ' ' + r.pct + (r.left.indexOf('left') > -1 ? ' \u00b7 about ' + r.left : '')).join(' \u00b7 '),
+      warnAt: String(s.warnAt),
+      setWarn: (e) => { const v = Number(e.target.value); try { localStorage.setItem('booth.micwarn', String(v)); } catch (er) {} const ns = { ...s, warnAt: v }; this.setState({ warnAt: v }); this.share(ns); },
+      demoDrain: () => { const ns = { ...s, drain: s.drain + 10 }; this.setState({ drain: ns.drain }); this.share(ns); }
+    };
+  }
+}
+</script>
+</body>
+</html>

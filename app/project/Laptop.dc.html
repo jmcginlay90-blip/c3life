@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>C3 Life – Laptop layout</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet" data-look>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Safari / iPad: no zoom when typing, no double-tap zoom, no text-select or callout while dragging */
+html{-webkit-text-size-adjust:100%;touch-action:manipulation}
+input,select,textarea{font-size:16px!important}
+button,a,summary,label,[role=slider]{-webkit-tap-highlight-color:transparent}
+[role=slider],.fader,.pan{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+body{margin:0;background:#0D1015}
+a{color:#6CB4F5}a:hover{color:#9CCBF8}
+.top a.t{color:#A3ACB8;text-decoration:none;font-size:14px;font-weight:500;padding:0 12px;min-height:44px;display:flex;align-items:center;border-bottom:2px solid transparent}
+.top a.t.on{color:#ECEEF1;border-bottom-color:#F5C518}
+.card{background:#161A21;border:1px solid #262C36;border-radius:12px;padding:14px}
+.lbl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#A3ACB8;font-weight:500}
+.mono{font-family:'IBM Plex Mono',ui-monospace,monospace}
+.btn{min-height:44px;padding:0 14px;border-radius:10px;border:1px solid #333B47;background:#1E232C;color:#ECEEF1;font:500 14px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer}
+.btn.pri{background:#F5C518;border-color:#F5C518;color:#1A1204;font-weight:600}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.m{width:100%;min-height:32px;border-radius:7px;border:1px solid #333B47;background:#1E232C;color:#ECEEF1;font:600 11px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer}
+.m.hot{background:#FF7A45;border-color:#FF7A45;color:#1A0A03}
+.kbd{font:500 11px 'IBM Plex Mono',ui-monospace,monospace;border:1px solid #333B47;border-bottom-width:2px;border-radius:4px;padding:1px 6px;color:#ECEEF1;background:#161A21}
+.chip{min-height:36px;padding:0 12px;border-radius:18px;border:1px solid #333B47;background:#161A21;color:#ECEEF1;font:500 12px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+.chip.done{border-color:#6CB4F5;color:#6CB4F5}
+
+/* Web dashboard: 3 columns on a wide screen, 2 on a small laptop or iPad landscape, 1 on a narrow window or phone. */
+.dash{grid-template-columns:minmax(0,560px) minmax(0,1fr) minmax(0,380px);align-items:start}
+@media (max-width:1279px){.dash{grid-template-columns:repeat(2,minmax(0,1fr))}.dash > :first-child{grid-column:1 / -1}}
+@media (max-width:760px){.strips{overflow-x:auto;padding-bottom:4px}.strips > div{min-width:60px !important}.dash{grid-template-columns:minmax(0,1fr);padding:12px}.dash > :first-child{grid-column:auto}.webnav{order:5;width:100%;overflow-x:auto}}
+
+/* Easy to use: every link, tick box and control is at least 40-44px tall, so it is easy to hit with a thumb. */
+a[style*="min-height:28px"]{min-height:44px !important}
+a[style*="font-size:12px"][style*="text-decoration:none"],a[style*="font-size:13px"][style*="text-decoration:none"]{display:inline-flex;align-items:center;min-height:40px}
+label:has(> input[type=checkbox]),label:has(> input[type=radio]){min-height:44px}
+input[type=checkbox],input[type=radio]{width:22px;height:22px;flex:none;accent-color:#F5C518}
+input[type=range]{min-height:40px}
+select{min-height:44px}
+button.sw::after,button.cell::after{content:'';position:absolute;inset:-7px -4px}
+.cell{position:relative}
+input[type=checkbox][aria-label]{width:32px;height:32px}
+/* look:start — the WING look (like WING Edit): near-black, outlined panels, condensed headings, yellow for active, blue for selected.
+   Settings › Look › Classic puts the old look back on this device (html[data-look=classic]). */
+:root{--wk-bg:#0A0B0D;--wk-panel:#121418;--wk-panel2:#181B20;--wk-line:#2E333A;--wk-yellow:#F5C518;--wk-blue:#2F6CC4;--wk-cond:'Barlow Condensed','IBM Plex Sans',system-ui,sans-serif}
+html:not([data-look=classic]) body{background:var(--wk-bg)}
+html:not([data-look=classic]) .app{background:var(--wk-bg) !important}
+html:not([data-look=classic]) .card{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .lbl{font-family:var(--wk-cond);font-size:13px;font-weight:600;letter-spacing:.07em;color:#D4D9E0}
+html:not([data-look=classic]) h1{font-family:var(--wk-cond);font-weight:600 !important;text-transform:uppercase;letter-spacing:.05em;font-size:21px !important;line-height:1.2;color:var(--wk-yellow);border:1.5px solid var(--wk-yellow);border-radius:3px;padding:2px 12px;display:inline-block}
+html:not([data-look=classic]) .btn,html:not([data-look=classic]) .lk,html:not([data-look=classic]) .mxb,html:not([data-look=classic]) .mxbk,html:not([data-look=classic]) .mute,html:not([data-look=classic]) .pbtn{font-family:var(--wk-cond);font-size:15px;letter-spacing:.02em;border-radius:4px}
+html:not([data-look=classic]) .btn.pri{background:var(--wk-yellow);border-color:var(--wk-yellow);color:#111}
+html:not([data-look=classic]) .seg{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .seg a{font-family:var(--wk-cond);font-size:15px;letter-spacing:.03em;border-radius:4px}
+html:not([data-look=classic]) .seg a.on,html:not([data-look=classic]) .lk.on{background:var(--wk-blue);color:#fff}
+html:not([data-look=classic]) .tab.on{color:var(--wk-yellow);border-top-color:var(--wk-yellow)}
+html:not([data-look=classic]) .topmenu{background:#000;border-bottom-color:var(--wk-line)}
+html:not([data-look=classic]) .topmenu summary{font-family:var(--wk-cond);font-size:16px;letter-spacing:.03em}
+html:not([data-look=classic]) .topmenu .mcur{color:var(--wk-yellow)}
+html:not([data-look=classic]) .topmenu .mlist{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .topmenu .mlist a{font-family:var(--wk-cond);font-size:16px;border-radius:4px}
+html:not([data-look=classic]) .topmenu .mlist a.on{background:var(--wk-panel2);color:var(--wk-yellow);box-shadow:inset 3px 0 0 var(--wk-yellow)}
+html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic]) input[type=radio],html:not([data-look=classic]) input[type=range]{accent-color:var(--wk-yellow)}
+.wkside{display:none}
+/* iPad landscape and laptops: a sidebar like WING Edit's (HOME, MIXER, ...) instead of the menu at the top */
+@media (min-width:1000px){
+  html:not([data-look=classic]) .wkside{display:flex;flex-direction:column;gap:2px;position:fixed;left:0;top:0;bottom:0;width:132px !important;max-width:132px !important;margin:0 !important;padding:8px 6px 12px;box-sizing:border-box;background:#000;border-right:1px solid var(--wk-line);overflow-y:auto;z-index:30}
+  html:not([data-look=classic]) .wkside .wkbrand{font:700 24px var(--wk-cond);letter-spacing:.06em;color:var(--wk-yellow);padding:6px 8px 12px}
+  html:not([data-look=classic]) .wkside a{display:flex;align-items:center;gap:9px;min-height:46px;padding:0 8px;border-radius:4px;color:#D4D9E0;text-decoration:none;font:600 15px var(--wk-cond);text-transform:uppercase;letter-spacing:.04em}
+  html:not([data-look=classic]) .wkside a:hover{background:var(--wk-panel2)}
+  html:not([data-look=classic]) .wkside a.on{background:var(--wk-panel2);color:var(--wk-yellow);box-shadow:inset 3px 0 0 var(--wk-yellow)}
+  html:not([data-look=classic]) .wkside svg{flex:none}
+  html:not([data-look=classic]) .app{padding-left:132px;box-sizing:border-box !important}
+  html:not([data-look=classic]) .app > .topmenu{display:none}
+}
+/* look:end */
+</style>
+</helmet>
+<div class="web" style="width:100%;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;background:#0D1015;color:#ECEEF1;font-family:'IBM Plex Sans',system-ui,sans-serif">
+  <header class="top" style="display:flex;align-items:center;gap:12px 20px;padding:10px 20px;min-height:64px;box-sizing:border-box;border-bottom:1px solid #1E232C;flex:none;flex-wrap:wrap">
+    <div style="display:flex;align-items:baseline;gap:10px">
+      <h1 style="margin:0;font-size:22px;font-weight:600">{{appName}}</h1>
+      <span class="lbl">{{svcLabel}} · Live</span>
+    </div>
+    <nav class="webnav" style="display:flex;gap:2px" aria-label="Sections">
+      <a class="t on" href="Laptop.dc.html">Dashboard</a>
+      <a class="t" href="Wing.dc.html">Mixer</a>
+      <a class="t" href="RTA.dc.html">RTA</a>
+      <a class="t" href="Show.dc.html">Show</a>
+      <a class="t" href="Lights.dc.html">Lights</a>
+      <a class="t" href="Plan.dc.html">Plan</a>
+      <a class="t" href="Macros.dc.html">Macros</a>
+      <a class="t" href="Devices.dc.html">Devices</a>
+      <a class="t" href="Drivers.dc.html">Drivers</a>
+    </nav>
+    <div style="flex:1"></div>
+    <a href="Devices.dc.html" style="display:flex;align-items:center;gap:8px;background:#FF7A45;color:#1A0A03;text-decoration:none;border-radius:20px;padding:0 14px;min-height:40px;font-size:13px;font-weight:600"><span style="width:8px;height:8px;border-radius:50%;background:#1A0A03"></span>MacBook Pro disconnected</a>
+    <a href="User.dc.html" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:#ECEEF1;min-height:44px" aria-label="Signed in as FOH sound. Change user">
+      <span style="width:34px;height:34px;border-radius:50%;background:#F5C518;color:#1A1204;font-weight:600;font-size:13px;display:flex;align-items:center;justify-content:center">FS</span>
+      <span style="font-size:13px;line-height:1.25">FOH sound<br><span style="font-size:12px;color:#6CB4F5">Change user</span></span>
+    </a>
+  </header>
+
+  <div class="dash" style="flex:1;display:grid;gap:16px;padding:16px 20px">
+    <section class="card" style="display:flex;flex-direction:column;gap:12px;min-height:0">
+      <div style="display:flex;justify-content:space-between;align-items:baseline">
+        <div class="lbl">Mixer · Wing · scene Sunday AM</div>
+        <div style="font-size:12px;color:#A3ACB8">Faders open · <a href="Wing.dc.html">lock</a></div>
+      </div>
+      <div class="strips" style="flex:1;min-height:0;display:flex;gap:6px">
+        <sc-for list="{{strips}}" as="c" hint-placeholder-count="10">
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;align-items:stretch;background:#0F1318;border-radius:8px;padding:8px 4px">
+            <div style="font-size:11px;font-weight:600;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="{{c.name}}">{{c.short}}</div>
+            <div class="mono" style="font-size:11px;color:#A3ACB8;text-align:center">{{c.num}}</div>
+            <div style="flex:1;position:relative;min-height:200px">
+              <div style="position:absolute;left:4px;bottom:0;width:5px;border-radius:2px;background:#6CB4F5;height:{{c.meter}}%"></div>
+              <div style="position:absolute;left:50%;top:0;bottom:0;width:4px;margin-left:-2px;border-radius:2px;background:#262C36"></div>
+              <div style="position:absolute;left:50%;width:30px;height:14px;margin-left:-15px;border-radius:3px;background:#C9CFD7;border:1px solid #ECEEF1;box-sizing:border-box;bottom:{{c.pos}}%"></div>
+            </div>
+            <div class="mono" style="font-size:11px;text-align:center">{{c.db}}</div>
+            <sc-if value="{{c.muted}}" hint-placeholder-val="{{ false }}"><button class="m hot" onClick="{{c.toggle}}" aria-label="Unmute {{c.name}}">MUTE</button></sc-if>
+            <sc-if value="{{c.live}}" hint-placeholder-val="{{ true }}"><button class="m" onClick="{{c.toggle}}" aria-label="Mute {{c.name}}">Mute</button></sc-if>
+          </div>
+        </sc-for>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4, minmax(0, 1fr));gap:6px">
+        <sc-for list="{{dcas}}" as="d" hint-placeholder-count="4">
+          <sc-if value="{{d.muted}}" hint-placeholder-val="{{ false }}"><button class="m hot" style="min-height:40px" onClick="{{d.toggle}}">{{d.name}} · muted</button></sc-if>
+          <sc-if value="{{d.live}}" hint-placeholder-val="{{ true }}"><button class="m" style="min-height:40px" onClick="{{d.toggle}}">{{d.name}}</button></sc-if>
+        </sc-for>
+      </div>
+    </section>
+
+    <div style="display:flex;flex-direction:column;gap:16px;min-height:0;min-width:0">
+      <section class="card" style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline">
+          <div class="lbl">ProPresenter · Mac mini</div>
+          <div class="mono" style="font-size:12px;color:#A3ACB8">Slide {{slideNum}} / {{slideCount}}</div>
+        </div>
+        <div style="display:grid;grid-template-columns:2fr 1fr;gap:10px">
+          <div style="position:relative;background:#000;border-radius:10px;aspect-ratio:16 / 9;border:2px solid #F5C518;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px">
+            <div style="position:absolute;top:8px;left:8px;font-size:11px;font-weight:600;color:#1A1204;background:#F5C518;border-radius:4px;padding:2px 6px">LIVE</div>
+            <div style="font-size:14px;color:#F5C518">{{cur}}</div>
+            <div style="font-size:16px;color:#FFFFFF">[Slide image]</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="position:relative;background:#000;border-radius:8px;aspect-ratio:16 / 9;border:2px solid #6CB4F5;display:flex;align-items:center;justify-content:center">
+              <div style="position:absolute;top:4px;left:4px;font-size:11px;font-weight:600;color:#08131C;background:#6CB4F5;border-radius:3px;padding:1px 5px">PREVIEW</div>
+              <div style="font-size:12px;color:#FFFFFF">{{nxt}}</div>
+            </div>
+            <div style="background:#000;border-radius:8px;aspect-ratio:16 / 9;border:1px solid #333B47;display:flex;align-items:center;justify-content:center">
+              <div style="font-size:12px;color:#C9CFD7">{{after}}</div>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn" onClick="{{prev}}">Previous</button>
+          <button class="btn pri" style="flex:1" onClick="{{next}}">Next slide</button>
+          <button class="btn">Clear all</button>
+          <div style="display:flex;align-items:center;gap:6px;background:#0F1318;border-radius:10px;padding:0 12px"><span style="font-size:12px;color:#A3ACB8">Message</span><span class="mono" style="font-size:15px">25:00</span></div>
+        </div>
+      </section>
+
+      <section class="card" style="display:flex;flex-direction:column;gap:8px;border-color:#FF7A45">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div class="lbl" style="color:#FF7A45">Playback · MacBook Pro · disconnected since 10:06</div>
+          <button class="btn" style="min-height:36px;font-size:13px">Retry</button>
+        </div>
+        <div style="display:flex;gap:8px;opacity:.45">
+          <button class="btn" disabled="{{ true }}">Play</button>
+          <button class="btn" disabled="{{ true }}">Next section</button>
+          <button class="btn" disabled="{{ true }}">Next song</button>
+        </div>
+      </section>
+
+      <section style="display:flex;flex-direction:column;gap:8px">
+        <div class="lbl">Macros</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <sc-for list="{{macros}}" as="m" hint-placeholder-count="4">
+            <button class="{{m.cls}}" onClick="{{m.run}}"><span style="width:8px;height:8px;border-radius:2px;background:{{m.color}}"></span>{{m.label}}</button>
+          </sc-for>
+        </div>
+      </section>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:16px;min-height:0">
+      <section class="card" style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline">
+          <div class="lbl">RTA · room vs desk</div>
+          <div><span class="mono" style="font-size:22px;color:#F5C518">{{spl}}</span> <span style="font-size:12px;color:#A3ACB8">dB(A) · limit 90</span></div>
+        </div>
+        <svg viewBox="0 0 310 130" preserveAspectRatio="none" width="100%" height="130" role="img" aria-label="Room mic and desk output spectrum" style="display:block;background:linear-gradient(#222831 1px, transparent 1px) 0 0 / 100% 26px;border-bottom:1px solid #333B47">
+          <polygon points="{{roomArea}}" fill="#6CB4F5" fill-opacity="0.18"></polygon>
+          <polyline points="{{deskLine}}" fill="none" stroke="#F5C518" stroke-width="2.5" vector-effect="non-scaling-stroke"></polyline>
+          <polyline points="{{roomLine}}" fill="none" stroke="#6CB4F5" stroke-width="2.5" vector-effect="non-scaling-stroke"></polyline>
+        </svg>
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:#C9CFD7"><span>Low +4.8 boomy</span><span>Mid −0.6</span><span>High −3.1 dull</span></div>
+      </section>
+
+      <section class="card" style="display:flex;flex-direction:column;padding:10px 14px">
+        <div class="lbl" style="padding:2px 0 6px">Running order</div>
+        <sc-for list="{{plan}}" as="p" hint-placeholder-count="6">
+          <div style="display:flex;gap:10px;min-height:34px;align-items:center;border-top:1px solid #222831;font-size:13px">
+            <span class="mono" style="width:40px;font-size:12px;color:{{p.tc}}">{{p.time}}</span>
+            <span style="flex:1;font-weight:{{p.w}}">{{p.title}}</span>
+            <span style="font-size:11px;color:#A3ACB8">{{p.macro}}</span>
+          </div>
+        </sc-for>
+      </section>
+
+      <section class="card" style="flex:1;min-height:0;display:flex;flex-direction:column;gap:8px;padding:10px 14px;overflow:hidden">
+        <div class="lbl">Team chat</div>
+        <div style="font-size:13px"><span style="color:#6CB4F5;font-weight:600">Lyrics</span> Song 2 has an extra chorus today</div>
+        <div style="font-size:13px"><span style="color:#6CB4F5;font-weight:600">Stage</span> Acoustic wedge needs more vocal</div>
+        <div style="font-size:13px"><span style="color:#F5C518;font-weight:600">FOH</span> Done</div>
+      </section>
+    </div>
+  </div>
+
+  <footer style="flex:none;display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center;padding:10px 20px;border-top:1px solid #1E232C;font-size:12px;color:#A3ACB8">
+    <span>Keyboard:</span>
+    <span><span class="kbd">Space</span> next slide</span>
+    <span><span class="kbd">B</span> previous slide</span>
+    <span><span class="kbd">1</span>–<span class="kbd">4</span> run macro</span>
+    <span><span class="kbd">Z</span> undo last macro</span>
+    <span><span class="kbd">M</span> add log marker</span>
+    <span style="flex:1"></span>
+    <span>Same app as the phone · layout changes with screen size</span>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    const nums = [1, 2, 3, 4, 5, 6, 7, 9, 10, 15];
+    this.state = {
+      slide: 2, spl: 89.0, ran: '',
+      chans: nums.map((n, i) => ({ n, level: [78, 72, 72, 70, 68, 74, 73, 71, 66, 0][i], muted: i === 9, meter: 40 })),
+      dcas: [[1, false], [2, false], [3, true], [4, false]],
+      room: new Array(31).fill(70), desk: new Array(31).fill(70)
+    };
+  }
+  componentDidMount() {
+    this.timer = setInterval(() => {
+      const s = this.state;
+      const desk = s.desk.map((v, i) => v + ((80 - i * 0.35 + (i < 3 ? -8 : 0) + (i > 27 ? -6 : 0)) + (Math.random() - 0.5) * 6 - v) * 0.4);
+      const room = s.room.map((v, i) => v + (desk[i] + (i >= 4 && i <= 10 ? 5 : 0) + (i >= 23 ? -(i - 22) * 0.9 : 0) + (Math.random() - 0.5) * 5 - v) * 0.4);
+      this.setState({
+        desk, room, spl: Math.round((88 + Math.random() * 3) * 10) / 10,
+        chans: s.chans.map((c) => ({ ...c, meter: c.muted ? 0 : Math.round(c.level * (0.55 + Math.random() * 0.4)) }))
+      });
+    }, 160);
+  }
+  componentWillUnmount() { clearInterval(this.timer); clearTimeout(this.t); }
+  // Channel, bus and DCA names come from the Wing. Every screen reads this one list, so they always match the desk.
+  wnDefaults() {
+    return {
+      ch: { 1: 'Lead Vox', 2: 'BV 1', 3: 'BV 2', 4: 'Acoustic', 5: 'Keys', 6: 'Bass DI', 7: 'Kick', 8: 'RTA Mic', 9: 'Snare', 10: 'Playback L/R', 11: 'Band Leader', 12: 'MD Talkback', 13: 'Drummer TB', 14: 'Spare', 15: 'Pastor HH', 16: 'Pastor Lapel' },
+      aux: { 2: 'Walk-in', 3: 'MD Wireless', 4: 'Click' },
+      bus: { 1: 'Wedges', 2: 'IEM Band', 4: 'IEM Keys', 5: 'Stream L/R' },
+      dca: { 1: 'Band', 2: 'Vocals', 3: 'Speech', 4: 'PB' },
+      mtx: { 1: 'Foyer' },
+      at: '09:58'
+    };
+  }
+  wn() { try { const w = JSON.parse(localStorage.getItem('booth.wingnames') || 'null'); if (w && w.ch) return w; } catch (e) {} return this.wnDefaults(); }
+  chName(n) { return this.wn().ch[n] || 'Ch ' + String(n).padStart(2, '0'); }
+  chLabel(n) { return 'Ch ' + String(n).padStart(2, '0') + ' · ' + this.chName(n); }
+  wnSave(kind, n, name, by) {
+    const w = this.wn(); w[kind] = { ...w[kind], [n]: name };
+    const d = new Date(); w.at = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); w.by = by || '';
+    try { localStorage.setItem('booth.wingnames', JSON.stringify(w)); } catch (e) {}
+    return w;
+  }
+  // Services: each has its own times (the RTA report marks them), saved setup and running order.
+  svcDefaults() {
+    return [
+      { id: 's1', name: 'Sunday 10:00', start: '10:00', end: '12:10', setup: 'v12 · Sunday standard', order: 'Planning Center · Sunday Morning' },
+      { id: 's2', name: 'Sunday evening', start: '18:30', end: '19:45', setup: 'v9 · Evening acoustic', order: 'ProPresenter · Evening playlist' },
+      { id: 's3', name: 'Wednesday midweek', start: '19:30', end: '21:00', setup: 'v9 · Evening acoustic', order: 'Planning Center · Midweek' },
+      { id: 's4', name: 'Christmas Eve', start: '23:00', end: '00:15', setup: 'v10 · Christmas 2025', order: 'Planning Center · Christmas' }
+    ];
+  }
+  svcList() { try { const l = JSON.parse(localStorage.getItem('booth.services') || 'null'); if (Array.isArray(l) && l.length) return l; } catch (e) {} return this.svcDefaults(); }
+  svcCur() { const l = this.svcList(); let id = ''; try { id = localStorage.getItem('booth.service') || ''; } catch (e) {} return l.find((x) => x.id === id) || l[0]; }
+  renderVals() {
+    const s = this.state;
+    const slides = ['Verse 1', 'Verse 1', 'Chorus', 'Chorus', 'Verse 2', 'Chorus', 'Chorus', 'Bridge', 'Bridge', 'Chorus', 'Ending'];
+    const n = slides.length, i = s.slide;
+    const px = (v) => Math.max(0, Math.min(130, ((v - 40) / 70) * 130));
+    const line = (arr) => arr.map((v, k) => (k * 310 / 30).toFixed(1) + ',' + (130 - px(v)).toFixed(1)).join(' ');
+    const toDb = (l) => (l <= 0 ? '−∞' : (l >= 75 ? '+' + (((l - 75) / 25) * 10).toFixed(1) : (-((75 - l) * 1.2)).toFixed(1)));
+    const macros = [['Walk-in', '#F5C518'], ['Worship start', '#B48CF2'], ['Message', '#6CB4F5'], ['End of service', '#FF7A45']];
+    const plan = [['10:03', 'Song 1', 'Worship start'], ['10:08', 'Song 2', '', true], ['10:14', 'Song 3', ''], ['10:19', 'Song 4', ''], ['10:24', 'Announcements', ''], ['10:28', 'Message', 'Message']];
+    return {
+      svcLabel: this.svcCur().name,
+      appName: (() => { try { const n = (localStorage.getItem('booth.appname') || '').trim(); return n || 'C3 Life'; } catch (e) { return 'C3 Life'; } })(),
+      strips: s.chans.map((c, k) => ({
+        name: this.chName(c.n), short: this.chName(c.n), num: String(c.n).padStart(2, '0'), meter: c.meter, pos: Math.max(0, Math.min(92, c.level)),
+        db: toDb(c.level), muted: c.muted, live: !c.muted,
+        toggle: () => this.setState({ chans: s.chans.map((x, j) => (j === k ? { ...x, muted: !x.muted } : x)) })
+      })),
+      dcas: s.dcas.map(([d, muted], k) => ({
+        name: 'DCA ' + d + ' ' + (this.wn().dca[d] || ''), muted, live: !muted,
+        toggle: () => this.setState({ dcas: s.dcas.map((x, j) => (j === k ? [x[0], !x[1]] : x)) })
+      })),
+      slideNum: i + 1, slideCount: n, cur: slides[i],
+      nxt: i + 1 < n ? slides[i + 1] : 'End', after: i + 2 < n ? slides[i + 2] : 'End',
+      prev: () => this.setState({ slide: Math.max(0, i - 1) }),
+      next: () => this.setState({ slide: Math.min(n - 1, i + 1) }),
+      macros: macros.map(([label, color], k) => ({
+        label: (s.ran === label ? label + ' ✓' : label) + '  ' + (k + 1), color, cls: s.ran === label ? 'chip done' : 'chip',
+        run: () => { this.setState({ ran: label }); clearTimeout(this.t); this.t = setTimeout(() => this.setState({ ran: '' }), 2500); }
+      })),
+      spl: s.spl.toFixed(1),
+      roomLine: line(s.room), deskLine: line(s.desk), roomArea: '0,130 ' + line(s.room) + ' 310,130',
+      plan: plan.map(([time, title, macro, now]) => ({ time, title, macro: macro ? '▸ ' + macro : '', tc: now ? '#F5C518' : '#A3ACB8', w: now ? '600' : '400' }))
+    };
+  }
+}
+</script>
+</body>
+</html>

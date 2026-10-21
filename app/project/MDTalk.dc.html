@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>C3 Life – MD talking overlay</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet" data-look>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Safari / iPad: no zoom when typing, no double-tap zoom, no text-select or callout while dragging */
+html{-webkit-text-size-adjust:100%;touch-action:manipulation}
+input,select,textarea{font-size:16px!important}
+button,a,summary,label,[role=slider]{-webkit-tap-highlight-color:transparent}
+[role=slider],.fader,.pan{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+body{margin:0}
+/* look:start — the WING look (like WING Edit): near-black, outlined panels, condensed headings, yellow for active, blue for selected.
+   Settings › Look › Classic puts the old look back on this device (html[data-look=classic]). */
+:root{--wk-bg:#0A0B0D;--wk-panel:#121418;--wk-panel2:#181B20;--wk-line:#2E333A;--wk-yellow:#F5C518;--wk-blue:#2F6CC4;--wk-cond:'Barlow Condensed','IBM Plex Sans',system-ui,sans-serif}
+html:not([data-look=classic]) body{background:var(--wk-bg)}
+html:not([data-look=classic]) .app{background:var(--wk-bg) !important}
+html:not([data-look=classic]) .card{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .lbl{font-family:var(--wk-cond);font-size:13px;font-weight:600;letter-spacing:.07em;color:#D4D9E0}
+html:not([data-look=classic]) h1{font-family:var(--wk-cond);font-weight:600 !important;text-transform:uppercase;letter-spacing:.05em;font-size:21px !important;line-height:1.2;color:var(--wk-yellow);border:1.5px solid var(--wk-yellow);border-radius:3px;padding:2px 12px;display:inline-block}
+html:not([data-look=classic]) .btn,html:not([data-look=classic]) .lk,html:not([data-look=classic]) .mxb,html:not([data-look=classic]) .mxbk,html:not([data-look=classic]) .mute,html:not([data-look=classic]) .pbtn{font-family:var(--wk-cond);font-size:15px;letter-spacing:.02em;border-radius:4px}
+html:not([data-look=classic]) .btn.pri{background:var(--wk-yellow);border-color:var(--wk-yellow);color:#111}
+html:not([data-look=classic]) .seg{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .seg a{font-family:var(--wk-cond);font-size:15px;letter-spacing:.03em;border-radius:4px}
+html:not([data-look=classic]) .seg a.on,html:not([data-look=classic]) .lk.on{background:var(--wk-blue);color:#fff}
+html:not([data-look=classic]) .tab.on{color:var(--wk-yellow);border-top-color:var(--wk-yellow)}
+html:not([data-look=classic]) .topmenu{background:#000;border-bottom-color:var(--wk-line)}
+html:not([data-look=classic]) .topmenu summary{font-family:var(--wk-cond);font-size:16px;letter-spacing:.03em}
+html:not([data-look=classic]) .topmenu .mcur{color:var(--wk-yellow)}
+html:not([data-look=classic]) .topmenu .mlist{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .topmenu .mlist a{font-family:var(--wk-cond);font-size:16px;border-radius:4px}
+html:not([data-look=classic]) .topmenu .mlist a.on{background:var(--wk-panel2);color:var(--wk-yellow);box-shadow:inset 3px 0 0 var(--wk-yellow)}
+html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic]) input[type=radio],html:not([data-look=classic]) input[type=range]{accent-color:var(--wk-yellow)}
+.wkside{display:none}
+/* iPad landscape and laptops: a sidebar like WING Edit's (HOME, MIXER, ...) instead of the menu at the top */
+@media (min-width:1000px){
+  html:not([data-look=classic]) .wkside{display:flex;flex-direction:column;gap:2px;position:fixed;left:0;top:0;bottom:0;width:132px !important;max-width:132px !important;margin:0 !important;padding:8px 6px 12px;box-sizing:border-box;background:#000;border-right:1px solid var(--wk-line);overflow-y:auto;z-index:30}
+  html:not([data-look=classic]) .wkside .wkbrand{font:700 24px var(--wk-cond);letter-spacing:.06em;color:var(--wk-yellow);padding:6px 8px 12px}
+  html:not([data-look=classic]) .wkside a{display:flex;align-items:center;gap:9px;min-height:46px;padding:0 8px;border-radius:4px;color:#D4D9E0;text-decoration:none;font:600 15px var(--wk-cond);text-transform:uppercase;letter-spacing:.04em}
+  html:not([data-look=classic]) .wkside a:hover{background:var(--wk-panel2)}
+  html:not([data-look=classic]) .wkside a.on{background:var(--wk-panel2);color:var(--wk-yellow);box-shadow:inset 3px 0 0 var(--wk-yellow)}
+  html:not([data-look=classic]) .wkside svg{flex:none}
+  html:not([data-look=classic]) .app{padding-left:132px;box-sizing:border-box !important}
+  html:not([data-look=classic]) .app > .topmenu{display:none}
+}
+/* look:end */
+</style>
+</helmet>
+<div style="width:100%;height:100vh;height:100dvh;position:relative;pointer-events:none;font-family:'IBM Plex Sans',system-ui,sans-serif;color:#FFFFFF">
+  <sc-if value="{{talking}}" hint-placeholder-val="{{ false }}">
+    <sc-if value="{{tint}}" hint-placeholder-val="{{ true }}"><div style="position:absolute;inset:0;background:rgba(23,128,63,0.38);box-shadow:inset 0 0 0 6px #22A05A"></div></sc-if>
+    <div role="status" style="position:absolute;left:12px;right:12px;top:12px;pointer-events:auto;background:#17803F;border:2px solid #FFFFFF;border-radius:14px;padding:10px 12px;display:flex;align-items:center;gap:10px;box-shadow:0 8px 24px rgba(0,0,0,.45)">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:19px;font-weight:600">MD is talking</div>
+        <div style="font-size:12px">{{channel}} · {{secs}}s</div>
+        <div aria-live="polite" style="font-size:15px;line-height:1.35;margin-top:4px;font-weight:500">“{{caption}}…”</div>
+      </div>
+      <a href="Talkback.dc.html#mdlog" style="color:#FFFFFF;font-size:13px;font-weight:600;min-height:44px;display:flex;align-items:center;padding:0 6px">Log</a>
+      <button onClick="{{hide}}" aria-label="Hide this until the MD stops talking" style="flex:none;min-width:44px;min-height:44px;border-radius:10px;border:1px solid rgba(255,255,255,.7);background:transparent;color:#FFFFFF;font:600 13px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer;padding:0 10px">Hide</button>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { t: 0 };
+  }
+  componentDidMount() {
+    this.timer = setInterval(() => {
+      const t = (this.state.t + 1) % 18;
+      if (t === 15) this.saveLine();
+      this.setState({ t });
+    }, 1000);
+  }
+  phrase() {
+    const p = ['Go round the chorus one more time', 'Hold the ending and watch me for the cut', 'Just keys for the next verse please', 'Band back in after the prayer', 'Pastor wants one more song, go to Song 4'];
+    return p[Math.floor(Date.now() / 18000) % p.length];
+  }
+  // When the MD stops talking, the C3 Life server turns the speech into text and adds it to the shared MD log.
+  saveLine() {
+    const id = Math.floor(Date.now() / 18000);
+    let log = [];
+    try { log = JSON.parse(localStorage.getItem('booth.mdlog') || '[]'); } catch (e) {}
+    if (log.some((x) => x.id === id)) return;
+    const d = new Date();
+    log.unshift({ id, at: String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'), dur: 5, ch: this.props.channel ?? this.chLabel(12), text: this.phrase(), sure: id % 4 !== 0 });
+    try { localStorage.setItem('booth.mdlog', JSON.stringify(log.slice(0, 200))); } catch (e) {}
+  }
+  componentWillUnmount() { clearInterval(this.timer); }
+  // Channel, bus and DCA names come from the Wing. Every screen reads this one list, so they always match the desk.
+  wnDefaults() {
+    return {
+      ch: { 1: 'Lead Vox', 2: 'BV 1', 3: 'BV 2', 4: 'Acoustic', 5: 'Keys', 6: 'Bass DI', 7: 'Kick', 8: 'RTA Mic', 9: 'Snare', 10: 'Playback L/R', 11: 'Band Leader', 12: 'MD Talkback', 13: 'Drummer TB', 14: 'Spare', 15: 'Pastor HH', 16: 'Pastor Lapel' },
+      aux: { 2: 'Walk-in', 3: 'MD Wireless', 4: 'Click' },
+      bus: { 1: 'Wedges', 2: 'IEM Band', 4: 'IEM Keys', 5: 'Stream L/R' },
+      dca: { 1: 'Band', 2: 'Vocals', 3: 'Speech', 4: 'PB' },
+      mtx: { 1: 'Foyer' },
+      at: '09:58'
+    };
+  }
+  wn() { try { const w = JSON.parse(localStorage.getItem('booth.wingnames') || 'null'); if (w && w.ch) return w; } catch (e) {} return this.wnDefaults(); }
+  chName(n) { return this.wn().ch[n] || 'Ch ' + String(n).padStart(2, '0'); }
+  chLabel(n) { return 'Ch ' + String(n).padStart(2, '0') + ' · ' + this.chName(n); }
+  wnSave(kind, n, name, by) {
+    const w = this.wn(); w[kind] = { ...w[kind], [n]: name };
+    const d = new Date(); w.at = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); w.by = by || '';
+    try { localStorage.setItem('booth.wingnames', JSON.stringify(w)); } catch (e) {}
+    return w;
+  }
+  renderVals() {
+    const t = this.state.t;
+    const talking = t >= 10 && t < 15;
+    // Each phone or iPad chooses: green screen and banner, banner only, or off. The MD log still records either way.
+    let mode = 'full'; try { mode = localStorage.getItem('booth.mdbanner') || 'full'; } catch (e) {}
+    const talkId = Math.floor(Date.now() / 18000);
+    return {
+      talking: talking && mode !== 'off' && this.state.hiddenId !== talkId,
+      tint: mode === 'full',
+      hide: () => this.setState({ hiddenId: talkId }),
+      secs: talking ? t - 9 : 0,
+      caption: (() => { const w = this.phrase().split(' '); return w.slice(0, Math.max(1, Math.ceil(w.length * (t - 9) / 5))).join(' '); })(),
+      channel: this.props.channel ?? this.chLabel(12)
+    };
+  }
+}
+</script>
+</body>
+</html>

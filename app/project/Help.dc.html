@@ -1,0 +1,1253 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>C3 Life – Help</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet" data-look>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Safari / iPad: no zoom when typing, no double-tap zoom, no text-select or callout while dragging */
+html{-webkit-text-size-adjust:100%;touch-action:manipulation}
+input,select,textarea{font-size:16px!important}
+button,a,summary,label,[role=slider]{-webkit-tap-highlight-color:transparent}
+[role=slider],.fader,.pan{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+body{margin:0;background:#0D1015}
+a{color:#6CB4F5}a:hover{color:#9CCBF8}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:62px;color:#A3ACB8;text-decoration:none;font-size:12px;font-weight:500;border-top:2px solid transparent}
+.tab:hover{color:#ECEEF1}
+.tab.on{color:#F5C518;border-top-color:#F5C518}
+.card{background:#161A21;border:1px solid #262C36;border-radius:14px;padding:14px}
+.lbl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#A3ACB8;font-weight:500}
+.mono{font-family:'IBM Plex Mono',ui-monospace,monospace}
+.seg{display:flex;gap:4px;background:#161A21;border:1px solid #262C36;border-radius:12px;padding:4px}
+.seg button{flex:1;min-height:44px;border-radius:9px;border:0;background:transparent;color:#A3ACB8;font:500 14px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer}
+.seg button.on{background:#262C36;color:#ECEEF1}
+.cq{display:flex;flex-wrap:wrap;gap:8px}.cqb{flex:1 1 150px;text-align:left}
+.btn{min-height:48px;padding:0 16px;border-radius:12px;border:1px solid #333B47;background:#1E232C;color:#ECEEF1;font:500 15px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer}
+.btn.pri{background:#F5C518;border-color:#F5C518;color:#1A1204;font-weight:600}
+.q{width:100%;display:flex;align-items:center;gap:10px;min-height:56px;padding:6px 2px;border:0;border-top:1px solid #222831;background:transparent;color:#ECEEF1;font:500 15px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer;text-align:left}
+.ans{display:flex;flex-direction:column;gap:8px;padding:0 2px 14px 2px;font-size:14px;line-height:1.5;color:#C9CFD7}
+.ans ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+.go{align-self:flex-start;display:inline-flex;align-items:center;min-height:40px;padding:0 14px;border-radius:20px;border:1px solid #333B47;background:#1E232C;color:#6CB4F5;text-decoration:none;font-size:13px;font-weight:500}
+input[type=search]{width:100%;min-height:48px;border-radius:12px;border:1px solid #333B47;background:#0F1318;color:#ECEEF1;font:400 15px 'IBM Plex Sans',system-ui,sans-serif;padding:0 14px;box-sizing:border-box}
+.key{display:flex;align-items:center;gap:10px;font-size:13px;min-height:30px}
+.sw{width:14px;height:14px;border-radius:4px;flex:none}
+.cmd{font:500 13px 'IBM Plex Mono',ui-monospace,monospace;background:#0F1318;border:1px solid #333B47;border-radius:8px;padding:8px 10px;color:#ECEEF1;white-space:pre-wrap;word-break:break-word}
+.prow{display:flex;gap:10px;padding:8px 0;border-top:1px solid #222831;align-items:baseline}
+
+/* Fills any screen. Wider than 700px (iPad, laptop, web) the content sits in a centred column. */
+@media (min-width:700px){
+  .app > *:not(.bn):not([style*="position:absolute"]){width:100%;max-width:760px;margin-left:auto;margin-right:auto;box-sizing:border-box}
+}
+
+.app > .rtabar{max-width:none !important;margin-left:0 !important;margin-right:0 !important}
+
+/* Easy to use: every link, tick box and control is at least 40-44px tall, so it is easy to hit with a thumb. */
+a[style*="min-height:28px"]{min-height:44px !important}
+a[style*="font-size:12px"][style*="text-decoration:none"],a[style*="font-size:13px"][style*="text-decoration:none"]{display:inline-flex;align-items:center;min-height:40px}
+label:has(> input[type=checkbox]),label:has(> input[type=radio]){min-height:44px}
+input[type=checkbox],input[type=radio]{width:22px;height:22px;flex:none;accent-color:#F5C518}
+input[type=range]{min-height:40px}
+select{min-height:44px}
+button.sw::after,button.cell::after{content:'';position:absolute;inset:-7px -4px}
+.cell{position:relative}
+input[type=checkbox][aria-label]{width:32px;height:32px}
+
+/* Menu: a drop-down list at the top of every screen. Tap Menu to open it, tap again (or pick a page) to close. */
+.topmenu{position:relative;z-index:20;flex:none;background:#11151B;border-bottom:1px solid #262C36}
+.topmenu summary{list-style:none;display:flex;align-items:center;gap:10px;min-height:52px;padding:0 16px;cursor:pointer;color:#ECEEF1;font:600 15px 'IBM Plex Sans',system-ui,sans-serif;max-width:760px;margin:0 auto;box-sizing:border-box}
+.topmenu summary::-webkit-details-marker{display:none}
+.topmenu .mlabel{font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:#A3ACB8}
+.topmenu .mcur{flex:1;color:#F5C518}
+.topmenu .chev{transition:transform .15s}
+.topmenu details[open] .chev{transform:rotate(180deg)}
+.topmenu .mlist{position:absolute;left:8px;right:8px;top:calc(100% + 4px);background:#161A21;border:1px solid #333B47;border-radius:14px;box-shadow:0 14px 34px rgba(0,0,0,.55);padding:6px;display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.topmenu .mlist a{display:flex;align-items:center;gap:10px;min-height:52px;padding:0 12px;border-radius:10px;color:#ECEEF1;text-decoration:none;font:500 15px 'IBM Plex Sans',system-ui,sans-serif}
+.topmenu .mlist a:hover{background:#1E232C}
+.topmenu .mlist a.on{background:#262C36;color:#F5C518}
+@media (min-width:700px){.topmenu .mlist{left:calc(50% - 372px);right:auto;width:440px}}
+@media (min-width:700px) and (max-width:800px){.topmenu .mlist{left:16px}}
+/* wide:start — iPad landscape and laptops: use the width */
+@media (min-width:1000px){
+  .app > *:not(.bn):not([style*="position:absolute"]){max-width:1240px}
+  .topmenu summary{max-width:1240px}
+  .app main.wide2{display:grid !important;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:14px 18px !important}
+  .app main.wide2 > *{min-width:0}
+  .app main.wide2 > :not(section):not(.card):not(details):not(.wcol){grid-column:1 / -1}
+  .app main.wide2 > .wfull{grid-column:1 / -1}
+  .app main.wide1{max-width:980px !important}
+  .app:has(main.wide1) > *:not(.bn):not([style*="position:absolute"]){max-width:980px}
+  .app:has(main.wide1) .topmenu summary{max-width:980px}
+}
+@media (min-width:1500px){ .app main.wide2.wide3{grid-template-columns:repeat(3,minmax(0,1fr))} }
+/* wide:end */
+/* look:start — the WING look (like WING Edit): near-black, outlined panels, condensed headings, yellow for active, blue for selected.
+   Settings › Look › Classic puts the old look back on this device (html[data-look=classic]). */
+:root{--wk-bg:#0A0B0D;--wk-panel:#121418;--wk-panel2:#181B20;--wk-line:#2E333A;--wk-yellow:#F5C518;--wk-blue:#2F6CC4;--wk-cond:'Barlow Condensed','IBM Plex Sans',system-ui,sans-serif}
+html:not([data-look=classic]) body{background:var(--wk-bg)}
+html:not([data-look=classic]) .app{background:var(--wk-bg) !important}
+html:not([data-look=classic]) .card{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .lbl{font-family:var(--wk-cond);font-size:13px;font-weight:600;letter-spacing:.07em;color:#D4D9E0}
+html:not([data-look=classic]) h1{font-family:var(--wk-cond);font-weight:600 !important;text-transform:uppercase;letter-spacing:.05em;font-size:21px !important;line-height:1.2;color:var(--wk-yellow);border:1.5px solid var(--wk-yellow);border-radius:3px;padding:2px 12px;display:inline-block}
+html:not([data-look=classic]) .btn,html:not([data-look=classic]) .lk,html:not([data-look=classic]) .mxb,html:not([data-look=classic]) .mxbk,html:not([data-look=classic]) .mute,html:not([data-look=classic]) .pbtn{font-family:var(--wk-cond);font-size:15px;letter-spacing:.02em;border-radius:4px}
+html:not([data-look=classic]) .btn.pri{background:var(--wk-yellow);border-color:var(--wk-yellow);color:#111}
+html:not([data-look=classic]) .seg{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .seg a{font-family:var(--wk-cond);font-size:15px;letter-spacing:.03em;border-radius:4px}
+html:not([data-look=classic]) .seg a.on,html:not([data-look=classic]) .lk.on{background:var(--wk-blue);color:#fff}
+html:not([data-look=classic]) .tab.on{color:var(--wk-yellow);border-top-color:var(--wk-yellow)}
+html:not([data-look=classic]) .topmenu{background:#000;border-bottom-color:var(--wk-line)}
+html:not([data-look=classic]) .topmenu summary{font-family:var(--wk-cond);font-size:16px;letter-spacing:.03em}
+html:not([data-look=classic]) .topmenu .mcur{color:var(--wk-yellow)}
+html:not([data-look=classic]) .topmenu .mlist{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .topmenu .mlist a{font-family:var(--wk-cond);font-size:16px;border-radius:4px}
+html:not([data-look=classic]) .topmenu .mlist a.on{background:var(--wk-panel2);color:var(--wk-yellow);box-shadow:inset 3px 0 0 var(--wk-yellow)}
+html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic]) input[type=radio],html:not([data-look=classic]) input[type=range]{accent-color:var(--wk-yellow)}
+.wkside{display:none}
+/* iPad landscape and laptops: a sidebar like WING Edit's (HOME, MIXER, ...) instead of the menu at the top */
+@media (min-width:1000px){
+  html:not([data-look=classic]) .wkside{display:flex;flex-direction:column;gap:2px;position:fixed;left:0;top:0;bottom:0;width:132px !important;max-width:132px !important;margin:0 !important;padding:8px 6px 12px;box-sizing:border-box;background:#000;border-right:1px solid var(--wk-line);overflow-y:auto;z-index:30}
+  html:not([data-look=classic]) .wkside .wkbrand{font:700 24px var(--wk-cond);letter-spacing:.06em;color:var(--wk-yellow);padding:6px 8px 12px}
+  html:not([data-look=classic]) .wkside a{display:flex;align-items:center;gap:9px;min-height:46px;padding:0 8px;border-radius:4px;color:#D4D9E0;text-decoration:none;font:600 15px var(--wk-cond);text-transform:uppercase;letter-spacing:.04em}
+  html:not([data-look=classic]) .wkside a:hover{background:var(--wk-panel2)}
+  html:not([data-look=classic]) .wkside a.on{background:var(--wk-panel2);color:var(--wk-yellow);box-shadow:inset 3px 0 0 var(--wk-yellow)}
+  html:not([data-look=classic]) .wkside svg{flex:none}
+  html:not([data-look=classic]) .app{padding-left:132px;box-sizing:border-box !important}
+  html:not([data-look=classic]) .app > .topmenu{display:none}
+}
+/* look:end */
+</style>
+</helmet>
+<div class="app has-bn" style="width:100%;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;background:#0D1015;color:#ECEEF1;font-family:'IBM Plex Sans',system-ui,sans-serif;overflow:hidden">
+  
+  
+  
+  
+  <nav class="wkside" aria-label="Main menu (side)"><div class="wkbrand" aria-hidden="true">C3 LIFE</div><a href="Main.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Home</a>
+        <a href="Wing.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4v16M12 4v16M18 4v16"/><path d="M4 14h4M10 8h4M16 16h4"/></svg>Mixer</a>
+        <a href="RTA.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V12M9 20V6M14 20V10M19 20V4"/></svg>RTA</a>
+        <a href="Show.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M10 8l5 2-5 2z"/><path d="M8 20h8"/></svg>Show</a>
+        <a href="Lights.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>Lights</a>
+        <a href="Plan.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h1M4 12h1M4 18h1"/></svg>Plan</a>
+        <a href="Chat.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>Chat</a>
+        <a href="Listen.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="15" width="4" height="6" rx="1.5"/><rect x="17" y="15" width="4" height="6" rx="1.5"/><path d="M10 9.5a2.5 2.5 0 0 1 4 0"/></svg>Listen</a>
+        <a href="Help.dc.html" class="on" aria-current="page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2.5 2-2.5 3.5M12 17h.01"/></svg>Help</a>
+        <a href="Report.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4h11l-1.5 4L16 12H5"/></svg>Report an issue</a></nav>
+  <nav class="bn topmenu" aria-label="Main menu">
+    <details>
+      <summary aria-label="Menu. You are on Help"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span class="mlabel">Menu</span><span class="mcur">Help</span><svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+      <div class="mlist">
+        <a href="Main.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Home</a>
+        <a href="Wing.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4v16M12 4v16M18 4v16"/><path d="M4 14h4M10 8h4M16 16h4"/></svg>Mixer</a>
+        <a href="RTA.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V12M9 20V6M14 20V10M19 20V4"/></svg>RTA</a>
+        <a href="Show.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M10 8l5 2-5 2z"/><path d="M8 20h8"/></svg>Show</a>
+        <a href="Lights.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>Lights</a>
+        <a href="Plan.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h1M4 12h1M4 18h1"/></svg>Plan</a>
+        <a href="Chat.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>Chat</a>
+        <a href="Listen.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="15" width="4" height="6" rx="1.5"/><rect x="17" y="15" width="4" height="6" rx="1.5"/><path d="M10 9.5a2.5 2.5 0 0 1 4 0"/></svg>Listen</a>
+        <a href="Help.dc.html" class="on" aria-current="page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2.5 2-2.5 3.5M12 17h.01"/></svg>Help</a>
+        <a href="Report.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4h11l-1.5 4L16 12H5"/></svg>Report an issue</a>
+      </div>
+    </details>
+  </nav>
+  <header style="padding:18px 16px 12px;display:flex;flex-direction:column;gap:10px">
+    <a href="Main.dc.html" style="font-size:13px;text-decoration:none;min-height:28px;display:flex;align-items:center;padding:0 4px">← Home</a>
+    <h1 style="margin:0;font-size:26px;font-weight:600;padding:0 4px">Help</h1>
+    <div class="seg" role="group" aria-label="Help sections">
+      <sc-for list="{{views}}" as="v" hint-placeholder-count="3">
+        <button class="{{v.cls}}" onClick="{{v.pick}}" aria-pressed="{{v.on}}">{{v.name}}</button>
+      </sc-for>
+    </div>
+  </header>
+
+  <main class=" wide2" style="flex:1;overflow-y:auto;padding:0 16px 20px;display:flex;flex-direction:column;gap:12px">
+    <sc-if value="{{isFix}}" hint-placeholder-val="{{ true }}">
+      <sc-if value="{{ipChanged}}" hint-placeholder-val="{{ false }}">
+        <section class="card" style="display:flex;flex-direction:column;gap:6px;border-color:#F5C518;background:#1F1A10">
+          <div class="lbl" style="color:#F5C518">IP address changed</div>
+          <div style="font-size:13px;line-height:1.45">{{ipNote}}</div>
+          <a href="Wiring.dc.html" style="font-size:13px;text-decoration:none;min-height:32px;display:flex;align-items:center">See the wiring list ›</a>
+        </section>
+      </sc-if>
+      <sc-if value="{{hasScan}}" hint-placeholder-val="{{ false }}">
+        <section class="card" style="display:flex;flex-direction:column;gap:6px;border-color:{{scanEdge}}">
+          <div class="lbl">Last network scan · {{scanAt}}</div>
+          <div style="font-size:14px;font-weight:600">{{scanHead}}</div>
+          <sc-for list="{{scanProblems}}" as="sp" hint-placeholder-count="2">
+            <div style="display:flex;gap:8px;align-items:flex-start;font-size:13px;line-height:1.45">
+              <span style="width:8px;height:8px;border-radius:50%;margin-top:6px;flex:none;background:{{sp.dot}}"></span>
+              <div style="flex:1"><b>{{sp.name}}</b> {{sp.text}} <button onClick="{{sp.go}}" style="background:none;border:0;color:#6CB4F5;font:inherit;padding:0;cursor:pointer">{{sp.goLabel}}</button></div>
+            </div>
+          </sc-for>
+        </section>
+      </sc-if>
+      <section class="card" style="display:flex;flex-direction:column;gap:6px" aria-label="Common questions">
+        <div style="font-size:16px;font-weight:600">Common questions</div>
+        <div class="cq"><sc-for list="{{common}}" as="cq" hint-placeholder-count="4"><button class="btn cqb" onClick="{{cq.open}}">{{cq.name}}</button></sc-for></div>
+      </section>
+      <sc-if value="{{showTech}}" hint-placeholder-val="{{ true }}">
+      <section class="card" style="display:flex;flex-direction:column;gap:10px">
+        <div style="font-size:16px;font-weight:600">System check</div>
+        <div style="font-size:13px;color:#A3ACB8">Tests every device, the network, audio, the foyer and storage in about 10 seconds.</div>
+        <button class="btn pri" onClick="{{runCheck}}" disabled="{{checking}}">{{checkLabel}}</button>
+        <sc-if value="{{hasResults}}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column">
+            <sc-for list="{{results}}" as="r" hint-placeholder-count="8">
+              <div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-top:1px solid #222831">
+                <span style="width:10px;height:10px;border-radius:50%;margin-top:5px;flex:none;background:{{r.dot}}"></span>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:14px;display:flex;justify-content:space-between;gap:8px"><span>{{r.name}}</span><span style="font-size:12px;color:{{r.dot}}">{{r.state}}</span></div>
+                  <sc-if value="{{r.hasFix}}" hint-placeholder-val="{{ false }}"><div style="font-size:12px;color:#FF7A45;margin-top:2px">{{r.fix}}</div></sc-if>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+      </section>
+
+      </sc-if>
+      <label for="hs" class="lbl" style="padding:4px 4px 0">Search help</label>
+      <input id="hs" type="search" placeholder="e.g. no sound in my ears, subtitles, PIN" value="{{query}}" onChange="{{setQuery}}">
+
+      <section class="card" style="display:flex;flex-direction:column;padding:4px 14px">
+        <sc-if value="{{noMatch}}" hint-placeholder-val="{{ false }}"><div style="font-size:14px;color:#A3ACB8;padding:14px 0">Nothing matches. Try fewer words, or ask the sound desk.</div></sc-if>
+        <sc-for list="{{fixes}}" as="f" hint-placeholder-count="10">
+          <div>
+            <sc-if value="{{f.head}}" hint-placeholder-val="{{ false }}"><div class="lbl" style="padding:14px 0 4px">{{f.headText}}</div></sc-if>
+            <button class="q" onClick="{{f.toggle}}" aria-expanded="{{f.open}}">
+              <span style="flex:1">{{f.q}}</span>
+              <span style="color:#A3ACB8" aria-hidden="true">{{f.chev}}</span>
+            </button>
+            <sc-if value="{{f.open}}" hint-placeholder-val="{{ false }}">
+              <div class="ans">
+                <ol>
+                  <sc-for list="{{f.steps}}" as="st" hint-placeholder-count="4"><li>{{st}}</li></sc-for>
+                </ol>
+                <a class="go" href="{{f.href}}">{{f.go}} ›</a>
+              </div>
+            </sc-if>
+          </div>
+        </sc-for>
+      </section>
+
+      <section class="card" style="display:flex;flex-direction:column;gap:10px">
+        <div style="font-size:15px;font-weight:600">Still stuck?</div>
+        <ol style="margin:0;padding-left:20px;font-size:14px;line-height:1.5;color:#C9CFD7;display:flex;flex-direction:column;gap:6px">
+          <li>Carry on the service. The Wing, ProPresenter and Playback all still work on their own without the app.</li>
+          <li>Send a support report to the Admin. It includes the log and settings, but no PINs.</li>
+          <li>An Admin or FOH can restart the app. It takes about 10 seconds and doesn't touch the desk.</li>
+        </ol>
+        <button class="btn" onClick="{{askReport}}">Send support report…</button>
+        <sc-if value="{{canRestart}}" hint-placeholder-val="{{ true }}"><a class="btn" href="Shutdown.dc.html" style="display:flex;align-items:center;justify-content:center;text-decoration:none;box-sizing:border-box">Restart the app ›</a></sc-if>
+        <sc-if value="{{reportAsk}}" hint-placeholder-val="{{ false }}">
+          <div class="card" role="dialog" aria-label="Send a support report?" style="border-color:#F5C518;display:flex;flex-direction:column;gap:8px">
+            <div style="font-size:15px;font-weight:600">Send a support report?</div>
+            <div style="font-size:13px;color:#C9CFD7">It saves today’s log and settings (never PINs or passwords) on the C3 Life server, and emails them to the Admin when there’s internet.</div>
+            <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px"><button class="btn" onClick="{{reportNo}}">Cancel</button><button class="btn pri" onClick="{{reportYes}}">Yes, send it</button></div>
+          </div>
+        </sc-if>
+        <sc-if value="{{reportDone}}" hint-placeholder-val="{{ false }}"><div role="status" style="font-size:14px;color:#4FD18B">✓ Support report saved on the C3 Life server.</div></sc-if>
+      </section>
+    </sc-if>
+
+    <sc-if value="{{isNet}}" hint-placeholder-val="{{ false }}">
+      <section class="card" style="display:flex;flex-direction:column;gap:6px">
+        <div style="font-size:16px;font-weight:600">Find an IP address and port</div>
+        <div style="font-size:13px;color:#C9CFD7;line-height:1.5">Use this when you add or fix a driver. The IP address says which computer, and the port says which app on it.</div>
+        <a href="Drivers.dc.html" style="font-size:13px;line-height:1.45;text-decoration:none;background:#0F1318;border:1px solid #333B47;border-radius:10px;padding:10px 12px;color:#C9CFD7"><b style="color:#ECEEF1">Easiest: Drivers › Scan network.</b> It finds most gear and ports by itself. Use the steps below for anything it can’t find.</a>
+        <div style="font-size:13px;color:#C9CFD7">Pick the computer type:</div>
+        <div class="seg" role="group" aria-label="Computer type" style="margin-top:4px">
+          <sc-for list="{{oses}}" as="o" hint-placeholder-count="2">
+            <button class="{{o.cls}}" onClick="{{o.pick}}" aria-pressed="{{o.on}}">{{o.name}}</button>
+          </sc-for>
+        </div>
+      </section>
+
+      <section class="card" style="display:flex;flex-direction:column;padding:4px 14px">
+        <sc-for list="{{netItems}}" as="n" hint-placeholder-count="6">
+          <div>
+            <button class="q" onClick="{{n.toggle}}" aria-expanded="{{n.open}}">
+              <span style="flex:1">{{n.q}}</span>
+              <span style="color:#A3ACB8" aria-hidden="true">{{n.chev}}</span>
+            </button>
+            <sc-if value="{{n.open}}" hint-placeholder-val="{{ false }}">
+              <div class="ans">
+                <ol><sc-for list="{{n.steps}}" as="st" hint-placeholder-count="3"><li>{{st}}</li></sc-for></ol>
+                <sc-for list="{{n.cmds}}" as="c" hint-placeholder-count="1">
+                  <div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:12px;color:#A3ACB8">{{c.label}}</span><div class="cmd">{{c.text}}</div></div>
+                </sc-for>
+                <sc-if value="{{n.hasNote}}" hint-placeholder-val="{{ false }}"><div style="font-size:13px;color:#A3ACB8">{{n.note}}</div></sc-if>
+              </div>
+            </sc-if>
+          </div>
+        </sc-for>
+      </section>
+
+      <section class="card" style="display:flex;flex-direction:column;padding:6px 14px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;padding:8px 0">
+          <div class="lbl">What the booth expects</div><a href="Drivers.dc.html" style="font-size:13px;text-decoration:none">Drivers ›</a>
+        </div>
+        <sc-for list="{{expect}}" as="e" hint-placeholder-count="7">
+          <div class="prow">
+            <div style="flex:1;min-width:0"><div style="font-size:14px">{{e.name}}</div><div style="font-size:12px;color:#A3ACB8">{{e.where}}</div></div>
+            <span class="mono" style="font-size:12px;color:#C9CFD7;text-align:right">{{e.addr}}</span>
+          </div>
+        </sc-for>
+        <div style="font-size:12px;color:#A3ACB8;padding:8px 0;line-height:1.45">These come from Drivers. If the computer shows something different, change one of them so they match, then Test connection.</div>
+      </section>
+    </sc-if>
+
+    <sc-if value="{{isHow}}" hint-placeholder-val="{{ false }}">
+      <section class="card" style="display:flex;flex-direction:column;gap:6px">
+        <div style="font-size:16px;font-weight:600">The big picture</div>
+        <div style="font-size:14px;line-height:1.55;color:#C9CFD7">A small computer in the booth (the C3 Life server, a Dell OptiPlex Micro running Windows) talks to the Wing, Dante, ProPresenter, Playback and the lights. R Remote and Dante Controller run on it too. Every phone, iPad and laptop on the booth Wi-Fi opens <span class="mono">c3life.local</span> and sees the same thing, live. Nothing needs the internet. When there is internet, it syncs Planning Center and emails reports.</div>
+      </section>
+
+      <section class="card" style="display:flex;flex-direction:column;gap:2px">
+        <div class="lbl" style="padding-bottom:6px">What the colours mean</div>
+        <div class="key"><span class="sw" style="background:#6CB4F5"></span>Blue: connected and working</div>
+        <div class="key"><span class="sw" style="background:#FF7A45"></span>Orange: something is disconnected or needs attention</div>
+        <div class="key"><span class="sw" style="border:1.5px solid #A3ACB8;box-sizing:border-box"></span>Grey: left out on purpose (e.g. the events Mac)</div>
+        <div class="key"><span class="sw" style="background:#F5C518"></span>Amber: live, selected or locked</div>
+        <div class="key"><span class="sw" style="background:#8E1B12"></span>Red screen: the room is over the level limit</div>
+        <div class="key"><span class="sw" style="background:#17803F"></span>Green screen: the MD is talking</div>
+      </section>
+
+      <section class="card" style="display:flex;flex-direction:column;padding:4px 14px">
+        <sc-for list="{{guides}}" as="g" hint-placeholder-count="10">
+          <div>
+            <button class="q" onClick="{{g.toggle}}" aria-expanded="{{g.open}}">
+              <span style="flex:1">{{g.q}}</span>
+              <span style="color:#A3ACB8" aria-hidden="true">{{g.chev}}</span>
+            </button>
+            <sc-if value="{{g.open}}" hint-placeholder-val="{{ false }}">
+              <div class="ans">
+                <sc-for list="{{g.lines}}" as="ln" hint-placeholder-count="3"><div>{{ln}}</div></sc-for>
+                <a class="go" href="{{g.href}}">{{g.go}} ›</a>
+              </div>
+            </sc-if>
+          </div>
+        </sc-for>
+      </section>
+    </sc-if>
+  </main>
+
+  <div class="rtabar" style="flex:none">
+    <dc-import name="MiniRTA" hint-size="390px,48px"></dc-import>
+  </div>
+  <div style="position:absolute;inset:0;z-index:6;pointer-events:none">
+    <dc-import name="MDTalk" hint-size="390px,844px"></dc-import>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.fixList = [
+      { q: 'The app won’t open on my phone', c: '#FF7A45', href: 'Connect.dc.html', go: 'Internet & reports', steps: [
+        'Check the phone is on the Booth Control Wi-Fi, not the church guest Wi-Fi.',
+        'Type http://c3life.local in the browser. If that fails, try http://192.168.10.10. This works the same in Safari, Chrome or Edge on a phone, iPad or laptop.',
+        'Look at the C3 Life server: the power button glows white when it’s on. Its screen shows C3 Life when it’s working.',
+        'Still nothing? Use C3 Life server power › Restart C3 Life from any phone. If no phone can reach it, switch the smart plug off and on (its page is http://192.168.10.5), or hold the C3 Life server’s power button for 5 seconds and press it again. It takes about a minute to start.'] },
+      { q: 'A device shows orange', c: '#FF7A45', href: 'Devices.dc.html', go: 'Devices', steps: [
+        'Tap the orange banner to see which device and which cable (e.g. C06).',
+        'Check that device is switched on and its network cable is in at both ends.',
+        'Tap Retry. Most devices reconnect within a few seconds.',
+        'If it isn’t needed today, switch it off in Devices so it stops warning you.'] },
+      { q: 'Faders or mutes won’t move', c: '#F5C518', href: 'Wing.dc.html', go: 'Mixer', steps: [
+        'Look for the lock symbol. Fader lock may be on, or that channel may be locked.', 'If the lock says FOH phone + iPad, only those devices can move faders. FOH sound can add this device under FOH devices on the Mixer screen.',
+        'Check your role. A Viewer can look but not change anything (Change user on Home).',
+        'If everything is greyed out, the Wing may be disconnected. Check cable C02. The Wing\u2019s address should be {wing}.'] },
+      { q: 'The RTA shows nothing or a flat line', c: '#6CB4F5', href: 'RTA.dc.html', go: 'RTA', steps: [
+        'On the RTA screen, look at Where the RTA listens. Next to the room mic and the desk reference it says what Dante routes into that channel. A tick means the route is there; amber means nothing is routed yet: do the steps under it.',
+        'Check the mic\u2019s input on the Wing has 48V on (Mixer \u203a its channel \u203a Input).',
+        'For Dante Virtual Soundcard, check DVS is running on the C3 Life server (its icon by the clock) and the routing to “C3 Life server · DVS” is there (recall the Sunday preset). If DVS says its licence needs activating, connect the C3 Life server to the internet once.',
+        'For AES67, the clock should say Locked. If not, check the switch settings in the wiring list.'] },
+      { q: 'Change where the RTA mic or the desk reference comes from', c: '#6CB4F5', href: 'RTA.dc.html', go: 'RTA', steps: [
+        'Open RTA and tap the sliders at the top right (RTA settings) to find Where the RTA listens (RTA settings: Control, for example FOH sound or an Admin).',
+        'Room mic: choose where it comes from (any Wing input, a Tio1608-D input straight on Dante, or another Dante device) and the channel it reaches C3 Life on (Dante Virtual Soundcard, AES67 or Wing USB).',
+        'Desk reference: choose what the desk sends to compare against (Main, any bus, or a matrix) and its channel. Tap Save.',
+        'Either one can be Stereo: then the left and the right each have their own source and channel, from anywhere (for a main, bus or matrix, pick its L and R).',
+        'Subs: tick Add the subs (stereo) under the desk reference and choose where subs left and subs right come from, and their channels. The RTA then compares the room with mains and subs together.',
+        'This doesn\u2019t change the desk or Dante. Under each one are the steps to set: what to send on the Wing, and the route in Dante Controller. For Dante Virtual Soundcard it then shows the route Dante really has, with a tick.',
+        'Or tap Set it up for me: C3 Life shows exactly what it would change on the Wing and on Dante, from what to what, and only does it after Yes. Each change is read back, and Put it back undoes it.'] },
+      { q: 'Who can change the RTA settings', c: '#6CB4F5', href: 'Access.dc.html', go: 'Access levels', steps: [
+        'RTA settings has its own access level (Home \u203a Settings \u203a Access levels): where the RTA listens, Set it up for me, the level alert and the feedback watch.',
+        'Control: can change them (Admin and FOH sound to start with). View: can open the settings and look, but not change them (ProPresenter, Lighting, Viewer). None: the settings button isn\u2019t shown.',
+        'Anyone who can see the RTA can still pause it, compare with the desk, use ID and Ring-Out on their own screen.'] },
+      { q: 'Use stereo, or add the subs, for the RTA', c: '#6CB4F5', href: 'RTA.dc.html', go: 'RTA', steps: [
+        'On RTA, tap the sliders (RTA settings). Under Where the RTA listens, set Mono or stereo to Stereo for the room mic or the desk reference.',
+        'Choose where the left comes from and its channel, then where the right comes from and its channel. They can come from different places.',
+        'For the desk reference, tick Add the subs (stereo) and choose subs left and subs right, and their channels.',
+        'No two can use the same channel. Tap Save, then Set it up for me does every side: left, right, subs left and subs right.'] },
+      { q: 'Set up the RTA routing for me (Wing and Dante)', c: '#6CB4F5', href: 'RTA.dc.html', go: 'RTA', steps: [
+        'Choose and save where the room mic or desk reference comes from (RTA \u203a Where the RTA listens), then tap Set it up for me.',
+        'It lists what it would change: a Wing card output (one that already sends it, or the first that\u2019s Off) and the Dante route into the C3 Life server. Nothing changes until you tap Yes.',
+        'The Wing part needs the Wing in Control (Mixer screen) and Wing patch control. The Dante part needs Dante control (an Admin).',
+        'Each change is read back to check it took. If one doesn\u2019t, it stops. Put it back undoes what it did.',
+        'Not tried on our Wing and Dante yet: do it with FOH watching, never during a service. AES67 flows are still set up in Dante Controller.'] },
+      { q: 'Rename a Dante device or channel', c: '#6CB4F5', href: 'Dante.dc.html', go: 'Dante', steps: [
+        'Open Mixer \u203a Dante and scroll to Names on Dante.',
+        'Pick the device, then Device name, a transmit channel or a receive channel. Type the new name and tap Check.',
+        'It lists every route that uses the old name. Routes find their source by name, so C3 Life routes those again with the new name straight after.',
+        'An Admin taps Yes, rename. Those routes stop for a moment, so don\u2019t do it during a service.',
+        'Device names: letters, numbers and hyphens, no spaces, up to 31. Channel names: up to 31 characters, without = . or @.'] },
+      { q: 'The room level reading looks wrong', c: '#6CB4F5', href: 'Calibrate.dc.html', go: 'Mic calibration', steps: [
+        'Check for the "gain changed" warning. If the Ch 08 gain moved, set it back.',
+        'Make sure the mic is at its usual FOH spot, pointing up, not covered.',
+        'Recalibrate with the 94 dB calibrator or match a sound level meter.'] },
+      { q: 'Slides won’t change (ProPresenter)', c: '#B48CF2', href: 'Show.dc.html', go: 'Show', steps: [
+        'Check ProPresenter is open on the Mac mini.',
+        'In ProPresenter settings, Network must be turned on with the same port the app uses.',
+        'Check the Mac mini’s cable (C05). The Mac’s Ethernet address should be {pp}.'] },
+      { q: 'Playback or MIDI buttons do nothing', c: '#7FD1C1', href: 'NetMidi.dc.html', go: 'Network MIDI', steps: [
+        'Check the MacBook Pro is on and connected (cable C06, address {mbp}). If it’s orange on Home, fix that first.',
+        'On the MacBook Pro: Audio MIDI Setup → MIDI Network Setup. The session should show booth connected.',
+        'Check Live routings sends the USB controller into the session.',
+        'Check the button is marked App (not Playback) on the MIDI buttons screen.'] },
+      { q: 'Lights don’t respond', c: '#F5C518', href: 'Devices.dc.html', go: 'Devices', steps: [
+        'Turn on Events mode in Devices. The events Mac is left out the rest of the year.',
+        'Check the events Mac is switched on, plugged into cable C07 (address {events}), and Lightkey is open.',
+        'In Lightkey, make sure OSC or MIDI input is turned on: Lightkey \u203a Settings \u203a External Control \u203a Enable OSC.',
+        'On Lights \u203a Show setup, check the Lightkey link is on and the address is the Mac\u2019s (Find Lightkey looks for it). The dot at the top right of Lights is green when it\u2019s on.',
+        'If a cue or preset does nothing, its name must match Lightkey exactly, capitals included. Open Lightkey\u2019s Window \u203a External Control Log: it shows each message C3 Life sent and what Lightkey did with it. Lights \u203a Sent to Lightkey shows the same from this side.'] },
+      { q: 'Run the lights from a phone or iPad', c: '#F5C518', href: 'Lights.dc.html', go: 'Lights', steps: [
+        'Lightkey on the lighting Mac stays the lighting desk: its fixtures, its cues, its Preset Palette and its Art-Net or sACN output. C3 Life sends it OSC.',
+        'Live: Go fires the next cue (the last one lets go as it comes up), Back goes back, Release lets the live cue go. Tap a cue tile to fire that one, and a palette preset to turn it on (tap again for off).',
+        'Master and Blackout are along the top. Blackout puts Lightkey\u2019s master to 0, and tapping it again puts it back where it was. Tap tempo sets Lightkey\u2019s beat.',
+        'Lights control can fire and program (Lighting and Admin to start with). Lights view can only look (FOH sound).',
+        'The screen shows what C3 Life last sent. Lightkey doesn\u2019t tell C3 Life what it\u2019s doing, so a cue pressed on the Mac itself won\u2019t show here.'] },
+      { q: 'Program the moving heads, with a fade time', c: '#F5C518', href: 'Lights.dc.html', go: 'Lights', steps: [
+        'Lights \u203a Program. Tap fixtures on the stage to pick them, or tap All or Movers.',
+        'Pick a fade time (0 to 60 seconds). Every change then slides over that time: drag the pan and tilt pad and let go, set the intensity, tap a colour or slide Any colour, zoom, focus, iris, frost and haze.',
+        'Colour wheels, gobos, the shutter (Open, Closed, Strobe) and the prism can\u2019t slide, so they change at the start of the fade.',
+        'A fade starts from what C3 Life last set. A setting C3 Life hasn\u2019t touched yet jumps the first time.',
+        'These sit on top of Lightkey\u2019s cues. Give the picked ones back, or Give everything back to Lightkey (it asks first), to go back to what Lightkey\u2019s cues say.',
+        'Save as a look keeps the picked fixtures\u2019 settings and the fade. Fire it from Live \u203a Looks, or have a cue bring it (Show setup \u203a Cues).'] },
+      { q: 'Set up Lights: the Mac, cues, palette and fixtures', c: '#F5C518', href: 'Lights.dc.html', go: 'Lights', steps: [
+        'On the Mac: Lightkey \u203a Settings \u203a External Control \u203a Enable OSC (port 21600).',
+        'Lights \u203a Show setup (an Admin): Find Lightkey or type the Mac\u2019s address, then Turn the Lightkey link on. It asks first. Go runs C3 Life\u2019s cue list, or Lightkey\u2019s own cuelist.',
+        'Cues: type each cue\u2019s name exactly as it is in Lightkey\u2019s Live view, and its page. Leave the fade blank to use the cue\u2019s own fade.',
+        'Preset Palette: where each preset is, its groups then its name with / between, like Movers/Colors/Indigo.',
+        'Fixtures: Lightkey\u2019s short name for each (like F4, from its Design view), what kind it is, its pan and tilt range, and the names on its colour wheel and gobo wheel in order. Drag each one on the stage to where it hangs.',
+        'Check once with Lightkey\u2019s External Control Log open that the colour wheel and gobo land on the right slot. If they\u2019re one out, say so in Report an issue.'] },
+      { q: 'Planning Center isn’t updating', c: '#A3ACB8', href: 'Plan.dc.html', go: 'Running order', steps: [
+        'This needs internet. With no internet, the app uses the ProPresenter playlist instead. That’s normal.',
+        'Connect the C3 Life server to Wi-Fi in Internet & reports. Waiting changes sync on their own.',
+        'If it still fails, the Planning Center login may have expired. An Admin can sign in again.'] },
+      { q: 'The RTA report email didn’t arrive', c: '#A3ACB8', href: 'Connect.dc.html', go: 'Internet & reports', steps: [
+        'Check the Outbox. "Waiting" means it sends when there’s internet.',
+        'Check your spam or junk folder.',
+        'Check the email address in Internet & reports.'] },
+      { q: 'The screen is stuck green (MD talk)', c: '#22A05A', href: 'Talkback.dc.html', go: 'MD talk', steps: [
+        'Check the MD mic isn’t left unmuted or picking up the band.',
+        'If you use "MD is actually speaking", raise the threshold a little.',
+        'Check the right channel is picked (it may have been repatched).'] },
+      { q: 'Something changed by mistake', c: '#6CB4F5', href: 'Macros.dc.html', go: 'Macros', steps: [
+        'Macros and MIDI A/B switches have Undo for a short time after they run.',
+        'The Log (Plan → Log) shows what changed, when and from which device.',
+        'For the desk, recall the Sunday AM scene. For Dante, recall the Sunday service preset.'] },
+      { q: 'Walk-in music won\u2019t play', c: '#1ED760', href: 'Music.dc.html', go: 'Music', steps: [
+        'Check Spotify is open and signed in on the Mac mini.',
+        'Check the playlist says Downloaded. If it says re-sync, connect the Mac to internet and let Spotify finish downloading.',
+        'Use the Play button beside the playlist on the Music screen. The amber one is the playlist that\u2019s playing.',
+        'Check the Wing channel for the Mac (Aux 2 · Walk-in) is up and not muted.',
+        'If it plays in the booth but not the foyer, see "The foyer is silent".'] },
+      { q: 'The foyer mixes have the wrong names', c: '#F5C518', href: 'Foyer.dc.html', go: 'Foyer', steps: [
+        'The two mixes are called what the desk calls those two buses. Rename the bus on the Wing (or on Mixer) and the Foyer screens change within a few seconds.',
+        'If they say Spotify and Live service, the desk isn\u2019t connected (or those buses have no names yet).',
+        'Wrong buses altogether? An Admin picks them under Show \u203a Foyer \u203a setup.'] },
+      { q: 'Rename the foyer', c: '#F5C518', href: 'Foyer.dc.html', go: 'Foyer', steps: [
+        'Sign in as an Admin and open Show \u203a Foyer.',
+        'In the setup card, type the new name under Name of the foyer (for example Caf\u00e9 or Welcome area) and tap Rename.',
+        'Every device shows the new name: the Foyer team\u2019s screen, Show \u203a Foyer and the menus.'] },
+      { q: 'Turn team chat on or off for someone', c: '#6CB4F5', href: 'Users.dc.html', go: 'Users & PINs', steps: [
+        'Sign in as an Admin and open Users & PINs. Tap the person.',
+        'Tick or untick Can use team chat, then tap Save.',
+        'With it off, Chat disappears from their menu on every screen, and opening Chat says it\u2019s turned off for them.',
+        'Listeners don\u2019t have chat unless an Admin turns it on for them.'] },
+      { q: 'The foyer is silent or playing the wrong thing', c: '#F5C518', href: 'Foyer.dc.html', go: 'Foyer', steps: [
+        'On the Foyer screen, tap Spotify or Live service. The amber button is what the foyer hears.',
+        'Check the foyer isn\u2019t muted and the volume isn\u2019t at −∞.',
+        'For Spotify, check music is playing on the Music screen. For Live service, check the service mix is up on the desk.',
+        'Admin only: in Foyer setup, check the two aux outs and the matrix are the right ones on the Wing.'] },
+      { q: 'The foyer won\u2019t go any louder', c: '#F5C518', href: 'Foyer.dc.html', go: 'Foyer', steps: [
+        'The volume stops at the maximum an Admin has set (−5 dB to start with). That\u2019s on purpose.',
+        'If one source is quieter than the other, adjust Source levels on the Foyer screen.',
+        'An Admin can raise the maximum in Foyer setup.'] },
+      { q: 'My screen keeps locking', c: '#A3ACB8', href: 'Access.dc.html', go: 'Access levels', steps: [
+        'Each role has a screen timer. The Foyer team locks after 5 minutes of no use.',
+        'Tap Keep open, or tap anything on the screen, to restart the timer.',
+        'When the screen is locked the foyer and the desk carry on as they were. Enter your PIN to carry on.',
+        'An Admin can change the timer for each role in Access levels.'] },
+      { q: 'A MIDI A/B switch is on the wrong side', c: '#7FD1C1', href: 'Midi.dc.html', go: 'MIDI buttons', steps: [
+        'Press the switch again to flip back, or double-tap it to undo the last press.',
+        'On the MIDI buttons screen, tap Undo within 30 seconds to put back the exact mute, level and stage layout.',
+        'Turn on "Follow the desk" so the switch flips to A when someone mutes that channel on the Wing.',
+        'Wrong channel? Pick the right one under "Channel it controls". Both sides update.'] },
+      { q: 'A "Run …?" pop-up keeps appearing', c: '#F5C518', href: 'Plan.dc.html', go: 'Plan', steps: [
+        'Normally nothing runs by itself, so this pop-up never shows. It only appears if an Admin has ticked "Run macros by themselves" on the Plan screen. Untick it to stop the pop-ups.',
+        'When it does show, tap Run now, Skip this time, or Wait until all connected.',
+        'An orange step means its device isn\u2019t connected. Run now runs the rest and skips those steps.',
+        'Wait until all connected checks every 5 minutes and asks again once everything is back. Tap Check now to check straight away.'] },
+      { q: 'Settings went back after a restart', c: '#6CB4F5', href: 'Setup.dc.html', go: 'Saved setup', steps: [
+        'Every time the C3 Life server starts, it loads the saved setup. Changes made during a service are only temporary.',
+        'Ask an Admin to open Saved setup and tap Update, or save a new version, to keep changes.',
+        'An Admin can also load an older version, or pick which version loads at start-up.'] },
+      { q: 'The activity report didn\u2019t arrive', c: '#A3ACB8', href: 'Connect.dc.html', go: 'Internet & reports', steps: [
+        'It\u2019s a separate email from the RTA report, sent at 12:15 to the same address.',
+        'Check the Outbox. "Waiting" means it sends when there\u2019s internet.',
+        'Check your spam or junk folder.'] },
+      { q: 'Restart or shut down the C3 Life server', c: '#FF7A45', href: 'Shutdown.dc.html', go: 'C3 Life server power', steps: [
+        'Home › C3 Life server power. Pick one: Restart C3 Life (try this first), Restart the C3 Life server, Shut down, or Hard reset (Admin only, uses the smart plug).',
+        'Every one counts down so you can tap Undo, and they’re blocked during a service unless an Admin ticks to override.',
+        'If Windows is frozen and no phone can reach C3 Life, open the smart plug’s page (http://192.168.10.5) and switch it off, then on. The C3 Life server starts by itself.'] },
+      { q: 'I pressed Shut down by mistake', c: '#FF7A45', href: 'Shutdown.dc.html', go: 'C3 Life server power', steps: [
+        'Tap Undo during the 10-second countdown. Nothing is stopped.',
+        'If it already shut down, press the C3 Life server\u2019s power button (or switch the smart plug off and on). It loads the saved setup in about a minute.',
+        'The RTA and activity logs are auto-saved every 5 minutes, so at most a few minutes are missing.'] },
+      { q: 'A device changed its IP address', c: '#FF7A45', href: 'Drivers.dc.html', go: 'Drivers', steps: [
+        'Sign in as FOH sound or Admin and open Home › Drivers.',
+        'Tap Scan network to find where it moved to, then Use this address. Or tap the driver and type the new IP address and port.',
+        'Tap Test connection.',
+        'When it says Connected, tap Save. It loads the same way at every start-up.',
+        'The wiring list and the addresses in these Help pages update by themselves. Print a new wiring plan from the wiring list if you keep a paper copy.'] },
+      { q: 'I don\u2019t know a computer\u2019s IP address or port', c: '#6CB4F5', href: 'Drivers.dc.html', go: 'Drivers', steps: [
+        'Easiest: FOH sound or an Admin opens Drivers and taps Scan network. It lists what it finds and offers to fix any address that moved.',
+        'Or tap IP & ports at the top of Help, then pick Mac or Windows.',
+        'Follow "Find this computer\u2019s IP address", then "Find the port an app uses".',
+        'Compare with the list at the bottom. If they differ, FOH sound or an Admin updates the driver and taps Test connection.'] },
+      { q: 'I missed what the MD said', c: '#22A05A', href: 'Talkback.dc.html#mdlog', go: 'MD talk log', steps: [
+        'Tap Log on the green MD banner, or open Home › MD talk and scroll to What the MD said.',
+        'Each time the MD talks, the C3 Life server writes it down with the time. Newest is at the top.',
+        'If a line says "Not sure of every word", tap Play to hear the recording.',
+        'No lines appearing? Check "Write down what the MD says" is ticked and the MD mic is routed to C3 Life server · DVS on the Dante screen.'] },
+      { q: 'The MD\u2019s words are wrong or missing', c: '#22A05A', href: 'Talkback.dc.html#mdlog', go: 'MD talk', steps: [
+        'Tap Play on the line to hear what was really said. The recording is the safe copy.',
+        'Check the MD mic channel on the MD talk screen is the right one. The Signal meter should move when they speak.',
+        'Check the MD mic is routed to C3 Life server · DVS (Dante screen, Sunday preset). It is the third channel after the room mic and FOH mix.',
+        'Band noise behind the MD causes mistakes. A closer mic or a little less band in that mic helps most.'] },
+      { q: 'The screen doesn\u2019t fill my iPad or laptop', c: '#6CB4F5', href: 'Main.dc.html', go: 'Home', steps: [
+        'Open the app full screen: on an iPad use Safari, or Add to Home Screen so it opens like an app.',
+        'On a laptop, or an iPad held sideways, most pages show their cards in two columns side by side. Held upright, an iPad shows one column like a phone. A few pages (Listen, Chat, Users, Wiring) stay one wide column in the middle. All of that is normal. Tap Menu at the top to move between pages.',
+        'If it looks like a phone squeezed into the corner, reload the page (pull down, or Cmd/Ctrl + R).',
+        'Turning the iPad should change the layout straight away. If not, check Rotation Lock is off in Control Centre.'] },
+      { q: 'The internet keeps dropping', c: '#A3ACB8', href: 'Network.dc.html', go: 'Network connections', steps: [
+        'Open Home › Network connections. "Right now" shows which connection the internet is using.',
+        'Add a backup: plug the church network into Ethernet 2 (USB adapter, cable C12), or add another Wi-Fi network or a phone hotspot.',
+        'Put the most reliable one at the top of "Internet: try in this order". Leave "Switch to the next one by itself" ticked.',
+        'Booth gear never uses the internet, so the service carries on. Reports wait on the drive until a connection works.'] },
+      { q: 'A device is missing from the scan', c: '#FF7A45', href: 'Drivers.dc.html', go: 'Drivers', steps: [
+        'Check it is switched on and its network cable is in (the wiring list says which cable). Then tap Scan again.',
+        'It must be on the booth network, with an address like 192.168.10.x. A device on the church network or church Wi-Fi isn\u2019t scanned.',
+        'A Mac that is asleep doesn\u2019t answer. Wake it, then scan again. ProPresenter only answers when Network is turned on in its settings, on the port in its driver.',
+        'The Wing and the Tio answer on their own control ports. If the Wing\u2019s address was changed on the desk, the scan finds it again by its serial number.',
+        'Lightkey and Sennheiser receivers aren\u2019t found by the scan yet. Add their drivers by hand.'] },
+      { q: 'The scan found a device without a driver', c: '#F5C518', href: 'Drivers.dc.html', go: 'Drivers', steps: [
+        'A device you don\u2019t know shows on Drivers under No driver yet, with what the scan could tell: its name, who made its network card, or its web page title.',
+        'Nothing is sent to it. C3 Life only connects to gear it has a driver for.',
+        'Booth gear: an Admin taps Add as a driver, picks its type and port, then Test connection and Save.',
+        'Not booth gear (a phone, a printer, the router): an Admin taps Not booth gear and it isn\u2019t listed again.'] },
+      { q: 'C3 Life connected to something by itself', c: '#6CB4F5', href: 'Drivers.dc.html', go: 'Drivers', steps: [
+        'That\u2019s the network scan. It will connect by itself only to gear it recognises (the Wing, the Tio, ProPresenter), and only in Watch only, so it reads but never changes anything.',
+        'If the Wing or the Tio moves to a new address, it follows it by its hardware ID and puts it back to Watch only.',
+        'It never turns Control on by itself. An Admin does that on the Mixer screen, and it asks first.',
+        'Don\u2019t want it? Turn the Wing Off on the Mixer screen and it stays off, or an Admin can turn off Scan by itself on Drivers.'] },
+      { q: 'The scan found two Wings (or two of something)', c: '#F5C518', href: 'Drivers.dc.html', go: 'Drivers', steps: [
+        'C3 Life won\u2019t guess. Nothing changes until you choose.',
+        'On Drivers, tap Use this one on the right one (check the name and address on the desk: Setup › Network). It connects in Watch only.',
+        'An Admin can then turn Control on from the Mixer screen.'] },
+      { q: 'A ProPresenter timer is wrong', c: '#B48CF2', href: 'Show.dc.html', go: 'Show', steps: [
+        'Use \u22125, \u22121, +1 or +5 min under the timer, on Show or on Home. Or tap Set\u2026, type the time (for example 35:00) and tap Send.',
+        'The change goes straight to ProPresenter, so the stage display updates too. A message under the timers says it was sent.',
+        'Changed it in ProPresenter? It shows here within a second.',
+        'If the timer doesn\u2019t change in ProPresenter, check Network is turned on in ProPresenter settings and the Mac mini is connected (see Slides won\u2019t change).'] },
+      { q: 'My Home screen looks different or a section is missing', c: '#6CB4F5', href: 'Main.dc.html', go: 'Home', steps: [
+        'Each person has their own Home screen. Check you are signed in as yourself (top right on Home).',
+        'Tap Edit on Home. Tick a section to show it, and use \u2191 \u2193 to move it.',
+        'Pick up to 6 quick buttons. Tap Reset to go back to the normal layout for your role.',
+        'Warnings, like a device disconnected, always stay at the top and can\u2019t be hidden.'] },
+      { q: 'The RTA bar is in the way', c: '#6CB4F5', href: 'RTA.dc.html', go: 'RTA', steps: [
+        'Tap the arrow on the right of the RTA bar to make it smaller. It then shows just the level. Tap it again for the meters.',
+        'Your choice is remembered on that phone, iPad or laptop, on every screen.',
+        'Tap the level to open the full RTA. The bar turns red and says OVER when the room goes over the limit.',
+        'To turn it off on other screens, untick "RTA bar at the bottom of other screens" on the RTA screen.'] },
+      { q: 'The activity report has red lines', c: '#FF7A45', href: 'Connect.dc.html', go: 'Internet & reports', steps: [
+        'Red lines are errors: something failed or was stopped, such as a device dropping out or a macro stopping partway.',
+        'The Problems section at the top of the report says what happened and what to check for each one.',
+        'Amber lines are warnings: it worked, but is worth knowing (for example a fader move that was blocked).',
+        'Several wrong PINs in a row show in red in Users and sign-ins. Reset that person\u2019s PIN in Users & PINs if needed.'] },
+      { q: 'I can\u2019t find the buttons to change page', c: '#6CB4F5', href: 'Main.dc.html', go: 'Home', steps: [
+        'The page buttons are now in Menu at the very top of every screen.',
+        'Tap Menu. A list opens with Home, Mixer, RTA, Show, Lights, Plan, Chat and Help. The page you are on is highlighted.',
+        'Tap a page to go there, or tap Menu again to close the list.',
+        'The bar along the bottom is the room level (RTA bar). Tap it to open the full RTA.'] },
+      { q: 'A macro didn\u2019t run when the song started', c: '#F5C518', href: 'Plan.dc.html', go: 'Plan', steps: [
+        'That is normal. Nothing on the Sunday run sheet runs by itself.',
+        'Tap Run on the item in Plan, the macro button on Home, or run it from Macros.',
+        'Ran it too early? Tap Undo on Home or Macros within 60 seconds.'] },
+      { q: 'Join a new Wi-Fi network', c: '#6CB4F5', href: 'Network.dc.html', go: 'Network connections', steps: [
+        'Open Home \u203a Network connections (Admin), or the Wi-Fi card on Internet & reports.',
+        'Tap Scan for Wi-Fi. The networks the C3 Life server can hear are listed, strongest first. Saved ones say Saved.',
+        'Tap the network, type its password (Show lets you check it), then tap Join and save.',
+        'Wrong password? It says so and keeps the box open to try again. Can\u2019t see the network? Tap Join a hidden network and type its name.'] },
+      { q: 'Change the app name', c: '#6CB4F5', href: 'Setup.dc.html', go: 'Saved setup', steps: [
+        'Sign in as Admin and open Home \u203a Saved setup.',
+        'Type the new name in App name (up to 30 letters) and tap Save name. Undo puts the old one back.',
+        'The name shows at the top of Home, on the laptop dashboard and on both emailed reports. The web address stays c3life.local.'] },
+      { q: 'A channel name is wrong', c: '#F5C518', href: 'Wing.dc.html', go: 'Mixer', steps: [
+        'All channel, bus and DCA names come from the Wing, and every screen uses the same list.',
+        'Renamed it on the desk? It shows in the app by itself within seconds. Tap Read now on the Mixer to check straight away.',
+        'To rename from the app: on the Mixer tap the pencil next to the name, type the new name (up to 16 letters) and tap Next.',
+        'Check the before and after, then tap Yes, change it on the Wing. It only changes once the Wing confirms. Cancel or Back leaves it as it was.'] },
+      { q: 'Change the Dante routing', c: '#FF7A45', href: 'Dante.dc.html', go: 'Dante', steps: [
+        'Open Mixer \u203a Dante. Devices, channels and routes are read from the Dante network by itself every 10 seconds, so changes made in Dante Controller show up. Tap Read now to check straight away.',
+        'Tap Unlock, pick From and To, then tap a square (or Patch 1-to-1, or a preset).',
+        'Nothing changes yet. The panel shows each channel by name, what it gets now and what it will get after.',
+        'Tap Yes, change the routing. The app waits for the devices to confirm, then shows a tick. Cancel leaves everything as it was.'] },
+      { q: 'The times in the reports are wrong', c: '#A3ACB8', href: 'Wiring.dc.html', go: 'Wiring list', steps: [
+        'The C3 Life server keeps the time and its BIOS settings with a coin battery inside (B1 on the wiring list, a CR2032). If it’s flat, the time can be wrong after a power cut, and the C3 Life server may not switch itself back on.',
+        'Run the system check in Help. "C3 Life server clock" should say Battery OK.',
+        'If it says the battery is flat, replace the CR2032 inside the Dell (about £3), then set AC Recovery to Power On again in the BIOS (see Set up the C3 Life server).',
+        'Connecting to the internet once sets the time straight away. Reports already sent keep the times they had.'] },
+      { q: 'A mic battery is low', c: '#F5C518', href: 'Mics.dc.html', go: 'Mics', steps: [
+        'Mixer \u203a Mics shows every wireless mic with battery, time left and signal. Names match the Wing channel.',
+        'Below the warning level (25% unless you change it), an amber warning shows on Home for everyone.',
+        'Swap or charge it before it is needed. Mics on AA batteries show bars only, not time left.',
+        'No mics listed? The receivers need a network cable and adding in Drivers (type Wireless mic receiver).'] },
+      { q: 'The RTA says FEEDBACK', c: '#FF7A45', href: 'RTA.dc.html', go: 'RTA', steps: [
+        'One note is ringing in the room. The RTA bar on every screen shows FEEDBACK and the note, for example 2.5 kHz.',
+        'Find the mic that is feeding back (often a lectern, lapel or handheld near a speaker). Lower its fader a little, or cut that note by 3 to 6 dB on its EQ.',
+        'Tap It\u2019s sorted on the RTA screen once it has stopped. The app never changes the desk by itself.',
+        'Warns on a held note? Set How sensitive to Low.'] },
+      { q: 'A musician can\u2019t change their mix', c: '#E58FB5', href: 'Wing.dc.html', go: 'Mixer', steps: [
+        'Each musician signs in as themselves (role Musician) and sees only My mix and Chat.',
+        'If their sliders are grey, FOH has locked monitor mixes. Tick "Musicians can change their own monitor mix" on the Mixer.',
+        'They can only change their own bus. Nothing they do reaches the main speakers or the stream.',
+        'Mix sounds wrong? Tap Go back to FOH\u2019s starting mix.'] },
+      { q: 'Back up or restore the setup', c: '#6CB4F5', href: 'Setup.dc.html', go: 'Saved setup', steps: [
+        'Admin: Home \u203a Saved setup \u203a Backup and restore.',
+        'Back up to USB now, or Download to this device. Leave "Back up every time the setup is saved" ticked.',
+        'To go back, tap Restore on a backup and confirm. What you had is backed up first, as "Before restore".'] },
+      { q: 'Install an app update', c: '#6CB4F5', href: 'Setup.dc.html', go: 'Saved setup', steps: [
+        'Put the update file on the USB stick and plug it into the C3 Life server.',
+        'Admin: Saved setup \u203a App updates \u203a Check the USB stick. It checks the file is a genuine C3 Life update.',
+        'Install when no service is running. It backs up first, takes about 2 minutes, and the desk keeps working.',
+        'Something not right? Go back to the previous version straight away.'] },
+      { q: 'Switch to a different service (evening, midweek, Christmas)', c: '#B48CF2', href: 'Plan.dc.html', go: 'Plan', steps: [
+        'On Plan, pick it under Today\u2019s service. Home, the reports and the RTA service window follow.',
+        'It asks whether to load that service\u2019s saved setup. Then tap Load running order.',
+        'Admin: Edit services to change names, start and end times, or the setup each one uses, then Save services.'] },
+      { q: 'I can\u2019t hear anything in my ears', c: '#E58FB5', href: 'MyMix.dc.html', go: 'My mix', steps: [
+        'Check your in-ear pack is switched on, the volume knob is up, and the cable is pushed in all the way.',
+        'Open My mix. Make sure the big MUTE is not on, and My volume is up.',
+        'Check your own channel says ON (not OFF), and its fader is up.',
+        'If it says the sound desk has locked mixes, ask them.',
+        'Still nothing? My mix \u203a Settings (gear) \u203a Go back to the sound desk\u2019s starting mix. It asks first. Then tell the sound desk.'] },
+      { q: 'No sound / something went silent', c: '#FF7A45', href: 'Main.dc.html', go: 'Home', steps: [
+        'In my ears: see \u201cI can\u2019t hear anything in my ears\u201d.',
+        'On Listen (another room or my phone): see \u201cListen plays nothing\u201d.',
+        'In the room (the main speakers): tell the sound desk straight away. The Wing keeps working even if the app doesn\u2019t.'] },
+      { q: 'Using My mix (musicians)', c: '#E58FB5', href: 'MyMix.dc.html', go: 'My mix', steps: [
+        'My mix is what you hear in your ears or wedge. Changing it doesn\u2019t change the room or anyone else\u2019s mix.',
+        'Mix: each channel has a slider. Slide up to hear it more, down for less. ON/OFF takes it out completely. More me / Less me turns your own channel up or down.',
+        'Groups: put channels together (for example all the vocals) and move them with one slider.',
+        'Layout: hide channels you don\u2019t need and change their order. EQ: make your mix brighter or warmer (only you hear it).',
+        'Saved mixes: save your mix with a name and load it next week. Loading, updating and deleting always ask first, and you can undo.',
+        'Your mixes are kept on the C3 Life server under your name, so sign in on any phone or iPad to use them.'] },
+      { q: 'Using My mix: more detail for the sound team', c: '#E58FB5', href: 'MyMix.dc.html', go: 'My mix', steps: [
+        'The strips always fit your screen, upright or sideways, phone or iPad. If there are more channels than fit, swipe across the names or the ON buttons to see the rest, or use \u2039 \u203a to jump a screenful. Faders and pans don\u2019t move when you swipe.',
+        'MIX: a strip for each channel with names, colours and icons from the Wing. Drag a fader, tap ON to take a channel out, drag the pan (double-tap to centre). Your own volume and MUTE are on the right.',
+        'MCA: put channels in a group with GROUP on MIX, then move the whole group with its MCA fader. MCA SPILL shows just one group.',
+        'USER: the eye shows or hides a channel, \u2039 \u203a change the order, and you can add blank spaces. RESET puts the layout back.',
+        'EQ: shape your own mix only, with low cut, four bands and Flat. It uses your bus EQ on the Wing (low cut plus bands 1 to 4), so FOH and everyone else are not affected. Saved mixes are kept on the C3 Life server under your name, so sign in on any phone or iPad to use them. They\u2019re in the USB backup too. The Update button saves your mix as it is now over a saved mix, and asks first. SAVED: save your mix with a name, and Load it later. Load, replace and delete always ask first, and Undo is at the top.'] },
+      { q: 'A musician\u2019s mix moves when FOH moves a fader, or their pan won\u2019t change', c: '#E58FB5', href: 'Wing.dc.html', go: 'Mixer', steps: [
+        'Their bus sends are set to Post, or pan link is on. My mix needs Pre sends with pan link off.',
+        'FOH sound: Mixer \u203a Musician mixes on the Wing \u203a Check musician buses. It lists anything wrong.',
+        'Tap Fix these on the Wing, then Yes. Nothing changes on the Wing until you say Yes.'] },
+      { q: 'The app stops following the desk while another Wing app is open', c: '#6CB4F5', href: 'Drivers.dc.html', go: 'Drivers', steps: [
+        'The Wing only sends live changes to one OSC app at a time, and the last one to ask wins. C3 Life talks to the Wing over its own connection (port 2222) so it isn\u2019t knocked off.',
+        'If live changes stop, check nothing else (Mixing Station, WING-Q, a laptop script) has taken over. Close it, then tap Read now on the Mixer.',
+        'Faders and names still work; they just update every 10 seconds instead of straight away.'] },
+      { q: 'Using C3 Life on an iPad or iPhone (Safari)', c: '#A3ACB8', href: 'Connect.dc.html', go: 'Connect', steps: [
+        'Join the C3Life Wi-Fi, open Safari and go to the address on the Connect screen.',
+        'Tap Share \u203a Add to Home Screen. It then opens full screen like an app, with no address bar in the way.',
+        'Don\u2019t use a Private tab: Safari forgets your sign-in and Home layout when it closes.',
+        'Lock the screen rotation if the layout keeps flipping while you play.'] },
+      { q: 'Open the app and sign in', c: '#6CB4F5', href: 'Listen.dc.html', go: 'Listen', steps: [
+        'Type the C3 Life server\u2019s address (for example 192.168.10.10) into the phone\u2019s or iPad\u2019s browser. It opens Listen, so anyone can listen straight away.',
+        'To use the rest of the app, tap Sign in at the top right, tap your name and type your PIN (Admins: password).',
+        'It then opens your own first screen: Home for the booth team, My mix for musicians, Foyer for the foyer team.',
+        'Already signed in on that phone or iPad? Typing the address takes you straight to your own first screen.'] },
+      { q: 'Sign in and load my saved mix', c: '#E58FB5', href: 'User.dc.html', go: 'Change user', steps: [
+        'Open Change user and tap your name. A pop-up asks for your PIN.',
+        'If you have saved monitor mixes, it then asks: load one (pick which), or leave your mix as it is. Nothing changes until you tap Yes, load.',
+        'It opens My mix with that mix loaded. Undo is at the top if it\u2019s not right.'] },
+      { q: 'Where the monitor names, colours and icons come from', c: '#E58FB5', href: 'Wing.dc.html', go: 'Mixer', steps: [
+        'Everything on My mix comes from the Wing: channel names, your bus name (for example IEM Keys), the click (Aux 4), and the colour and icon set on each channel.',
+        'Rename a channel, or change its colour or icon, on the Wing (or with the pencil on the Mixer). My mix shows the change within 10 seconds.',
+        'If a strip shows "Ch 14" or "Aux 4" instead of a name, that channel has no name on the Wing yet.'] },
+      { q: 'Turn off the green \u201cMD is talking\u201d box', c: '#22A05A', href: 'Talkback.dc.html', go: 'Talkback', steps: [
+        'To hide it just this once, tap Hide on the box. It comes back next time the MD talks.',
+        'To change it on this phone or iPad: Home \u203a Talkback \u203a Green \u201cMD is talking\u201d box. Pick Green screen and box, Box only, or Off.',
+        'It only changes the device you\u2019re holding. What the MD says is still written to the MD log.'] },
+      { q: 'Change the Tio1608-D gain or phantom power', c: '#FF7A45', href: 'Dante.dc.html', go: 'Dante', steps: [
+        'On Mixer, tap the name of a channel fed by the Tio, then Input. It says Tio1608-D input 1 (and so on), with the Tio\u2019s gain (\u22126 to +66 dB), 48 V phantom power and the Tio\u2019s low cut. Phantom power asks first.',
+        'The first time, an Admin sets the Tio\u2019s address on Mixer\u2019s Tio1608-D card (192.168.10.41 unless it was changed) and chooses Control (it asks first). It starts as Watch only.',
+        'If the gains show on the wrong channels, Tio input 1 isn\u2019t arriving on Wing card input 1. Change it on the Tio card (The Tio\u2019s address \u203a input 1 is Wing card input) to match the Dante screen.',
+        'R Remote still works at the same time (Dante \u203a Open R Remote on the C3 Life server), and what you change there shows in C3 Life within a moment.',
+        'Gain on the Tio comes before everything else, including every musician\u2019s mix, so change it carefully during a service.',
+        'Gain went back to default after a power cut? The Tio\u2019s DIP switches 7 and 8 should be on Resume. See the one-time setup on the Dante screen.',
+        'Routing wiped after switching on? Quick Config is still on. Turn it off on the Tio\u2019s back panel.'] },
+      { q: 'Open R Remote (or Dante Controller) on the C3 Life server', c: '#FF7A45', href: 'Dante.dc.html', go: 'Dante', steps: [
+        'Dante \u203a Open R Remote on the C3 Life server. It opens on the C3 Life server\u2019s screen, next to C3 Life.',
+        'Nothing changes on the Tio until someone changes it in R Remote.',
+        'If it doesn\u2019t open, check R Remote is installed on the C3 Life server (Yamaha website, R Remote V6).',
+        'The Mac mini has its own small helper for ProPresenter and Spotify. C3 Life on the C3 Life server asks it when needed.'] },
+      { q: 'Change another monitor mix (wedges, band IEMs)', c: '#E58FB5', href: 'MyMix.dc.html', go: 'My mix', steps: [
+        'On My mix, tap the mix name at the top of the right-hand strip (for example IEM KEYS \u25be), or Settings \u203a Change to another mix.',
+        'Pick the mix. It asks first; tap Yes, open. A blue bar shows you\u2019re changing someone else\u2019s mix.',
+        'Tap Back to my mix (it asks first) to go back. You can also pick the mix when you sign in.',
+        'FOH sound and Admin can open every monitor mix. Musicians only see the mixes FOH has given them. Mix names come from the Wing.'] },
+      { q: 'Set up the C3 Life server (Dell OptiPlex Micro)', c: '#6CB4F5', href: 'Shutdown.dc.html', go: 'C3 Life server power', steps: [
+        'Windows: use Windows 10 IoT Enterprise LTSC 2021 (security updates to January 2032, works on the 6th-gen i7). Normal Windows 11 doesn\u2019t support this processor.',
+        'BIOS (press F2 as it starts): Power Management \u203a AC Recovery = Power On. Deep Sleep Control = Disabled. Wake on LAN = LAN Only. Replace the CR2032 battery on a used PC.',
+        'Windows: sleep and screen off = Never. Sign in automatically as the booth user. Set active hours to cover services, and don\u2019t allow restarts on Sundays.',
+        'Start at sign-in: C3 Life (full screen on the HDMI screen), Companion and Dante Virtual Soundcard. R Remote and Dante Controller are opened when needed.',
+        'Network: Ethernet port = booth switch (P1, 192.168.10.10). Internet = Wi-Fi or a USB Ethernet adapter (C12).',
+        'Power: wall \u2192 small UPS \u2192 smart plug (192.168.10.5) \u2192 the Dell. The UPS covers blips; the smart plug is the hard reset.'] },
+      { q: 'Keep my mixes the same on my phone and iPad', c: '#E58FB5', href: 'MyMix.dc.html', go: 'My mix', steps: [
+        'Sign in as yourself on each device (Change user). On the C3 Life server, your PIN is checked there.',
+        'My mix \u203a Settings \u203a tick Keep my mixes in sync on all my devices (on unless you turned it off). SAVED then says In sync.',
+        'Save, update or delete a mix, or move a fader in your own mix, and it shows on your other devices within about 4 seconds.',
+        'Turn it off to keep a device separate: its changes then stay on that device only. It says Sign in again if the C3 Life server was restarted.'] },
+      { q: 'Listen in another room (cr\u00e8che, kids, overflow)', c: '#4FD18B', href: 'Listen.dc.html', go: 'Listen', steps: [
+        'Open Listen on a phone, tablet or laptop on the booth Wi-Fi and tap Play. You only see what your groups allow. It\u2019s about 1 to 3 seconds behind the room.',
+        'On an iPhone it keeps playing with the screen locked. Use headphones or a speaker.',
+        'Not listed? Ask an Admin to add you to a group on Listen settings \u203a Groups.'] },
+      { q: 'Set up a room player', c: '#4FD18B', href: 'Listen.dc.html', go: 'Listen', steps: [
+        'Use a spare tablet or phone that stays in the room, plugged into a speaker and a charger, on the booth Wi-Fi.',
+        'Sign in as an Admin on it, open Listen settings \u203a Rooms \u203a Make this device a room player, pick the room and confirm. It then plays without anyone signing in.',
+        'Change what a room hears on Listen settings \u203a Rooms (it asks first). The room player switches within a few seconds.'] },
+      { q: 'Add a new sound to listen to', c: '#4FD18B', href: 'Listen.dc.html', go: 'Listen', steps: [
+        'Admin: Listen settings \u203a Sources \u203a Add source. Pick mono or stereo, and a free Dante Virtual Soundcard channel (4 to 16).',
+        'On the Dante screen (or Dante Controller), route what you want to that C3 Life server \u00b7 DVS channel. Anything on the Wing can be sent out of the Wing\u2019s Dante card.',
+        'Save sources, then tick it for the groups that may hear it.'] },
+      { q: 'Listen from home', c: '#4FD18B', href: 'Listen.dc.html', go: 'Listen', steps: [
+        'It works through Tailscale, a private network only invited people can join. Set-up is on Listen settings \u203a From home.',
+        'From home, people can only open Listen and hear what a group with Can listen from home allows. No controls, no mixes, no other screens.',
+        'In Tailscale, never turn on subnet routes or an exit node for the C3 Life server: those would open more than Listen.'] },
+      { q: 'Listen plays nothing', c: '#4FD18B', href: 'Listen.dc.html', go: 'Listen', steps: [
+        'On your phone: turn the volume up, check it isn\u2019t on silent, and tap Play again. Try headphones.',
+        'Still nothing? Tell the sound desk which one you were playing.',
+        'For the sound team: check Dante Virtual Soundcard is running on the C3 Life server and something is routed to that source\u2019s DVS channels (Mixer \u203a Dante). Help \u203a Run system check: Listen audio should be OK.'] },
+      { q: 'Subtitles on Listen', c: '#4FD18B', href: 'Listen.dc.html', go: 'Listen', steps: [
+        'Play a source that has subtitles (normally Pastor and speech mics) and tick Subtitles under the volume. A\u2212 and A+ change the size. Each device remembers its own choice.',
+        'They\u2019re made on the C3 Life server itself (Vosk speech-to-text), so they work without the internet and nothing leaves the building. They also show on room players.',
+        'They\u2019re about 1 to 2 seconds behind and not perfect: names and Bible references can come out wrong. They work on speech, not on songs.',
+        'Scroll up in the subtitles to read back to the start of the service. It stops following new lines until you scroll back down.',
+        'Every line is saved on the C3 Life server, one file per day, so subtitles carry on after a restart. Admin: Listen settings \u203a Sources \u203a Saved subtitles \u203a Keep saved subtitles for: don\u2019t save, 7, 30 (the start), 90 days or a year. Fewer days deletes the older ones straight away, after asking.',
+        'Admin: download or delete a day\u2019s subtitles from Listen settings \u203a Sources \u203a Saved subtitles (deleting asks first). Turn subtitles on or off for each source on Listen settings \u203a Sources \u203a Subtitles, then Save sources.'] },
+      { q: 'Subtitles in another language', c: '#4FD18B', href: 'Listen.dc.html', go: 'Listen', steps: [
+        'Play the speech source, tick Subtitles, then pick a language next to it (English is as spoken). Each phone remembers its own choice.',
+        'Each line is translated on the C3 Life server (Argos Translate), with no internet. A line shows once it\u2019s finished, so it\u2019s 2 to 4 seconds behind.',
+        'Computer translation gets things wrong at times, especially Bible verses, names and church words. The screen says so. For important services, a human interpreter on a mic (as a Listen source) is better.',
+        'Admin: add languages by running Install-C3Life.ps1 -Languages es,fa,zh on the C3 Life server (needs the internet once, about 100 MB each). Help \u203a Run system check shows which are installed.'] },
+      { q: 'Subtitles don\u2019t appear', c: '#4FD18B', href: 'Listen.dc.html', go: 'Listen', steps: [
+        'Subtitles only come with the speech source (normally Pastor and speech mics). Play that, then tick Subtitles under the volume.',
+        'They appear when someone speaks. During songs there are none.',
+        'For the sound team: check the source has Subtitles ticked on Listen settings \u203a Sources.',
+        'If it says Subtitles aren\u2019t set up, the speech model isn\u2019t installed: on the C3 Life server, run Install-C3Life.ps1 again with the internet connected (once).',
+        'Help \u203a Run system check: Listen \u00b7 subtitles should say Speech model ready.',
+        'Nothing being said into a mic routed to that source\u2019s DVS channel means no words.'] },
+      { q: 'Put the service on the internet (public link)', c: '#4FD18B', href: 'Listen.dc.html', go: 'Listen', steps: [
+        'Admin: Listen settings \u203a Public. Fill in the internet radio service details (address, port, mount, user name, password) from your Icecast service, and Save settings.',
+        'Put the web address people listen on in Public link and tap Save link. Change it there whenever you need to: people see the new link straight away, without restarting the feed.',
+        'Tap Start public feed and confirm. Anyone with the link can listen, with no sign-in. Tap Stop afterwards. It never starts by itself.',
+        'The C3 Life server sends one stream to the service, so 5 or 500 listeners use the same church internet. The password stays on the C3 Life server and is never shown again.',
+        'Only stream what you\u2019re licensed for (for example CCLI Streaming for worship songs).'] },
+      { q: 'Public feed won\u2019t connect', c: '#4FD18B', href: 'Listen.dc.html', go: 'Listen', steps: [
+        'Listen settings \u203a Public shows the reason in red and tries again every 10 seconds by itself.',
+        '401 or Unauthorized: the user name or password is wrong. Re-type the password and Save settings, then Stop and Start.',
+        'Can\u2019t find the address, or it times out: check the church internet (Help \u203a Run system check \u203a Internet) and the service address and port.',
+        'Changed the settings while it was on? It says Stop and start the feed to use them. Changing only the public link never needs a restart.'] },
+      { q: 'Listen without signing in (the livestream)', c: '#4FD18B', href: 'Listen.dc.html', go: 'Listen', steps: [
+        'Anyone on the church Wi-Fi can open Listen and tap Play, with no sign-in, to hear the groups an Admin has opened to everyone. At first that\u2019s the Stream mix (the livestream sound).',
+        'Subtitles and translated subtitles work too: the stream takes its subtitles from the pastor and speech mics, so songs don\u2019t fill them with nonsense.',
+        'Admin: Listen settings \u203a Groups \u203a tick or untick Anyone can listen without signing in on a group. It only works in the building; from home people still sign in, and the public feed is for everyone else.',
+        'To hear more, sign in: helpers can use the Listener account (no PIN), or their own name.'] },
+      { q: 'The Listener account and Listen permissions', c: '#4FD18B', href: 'Access.dc.html', go: 'Access levels', steps: [
+        'Listener is a role for helpers who only listen (cr\u00e8che, kids, welcome, overflow). The Listener account has no PIN and hears Main mix at first. Change what it hears on Users & PINs.',
+        'Access levels \u203a Listen sets, for each role: None (no Listen at all), View (can listen to what their groups and Users & PINs allow) or Control (Admins: Listen settings too).',
+        'Access levels are kept on the C3 Life server, so every phone and iPad follows the same ones, and the server refuses what a role isn\u2019t allowed (Listen and monitor mixes). Only an Admin can change them, and saving asks for the Admin password.',
+        'Musicians start with Listen off, so their screens stay simple. Turn it on for them in Access levels if you need to.'] },
+      { q: 'Subtitles on the livestream', c: '#4FD18B', href: 'ListenAdmin.dc.html', go: 'Listen settings', steps: [
+        'Listen settings \u203a Sources \u203a Subtitles: Off, On (from this sound) or From another source.',
+        'The Stream mix is set to From Pastor and speech mics: people hear the stream and read what\u2019s said, in their own language if they choose one.'] },
+      { q: 'Choose what one person can listen to', c: '#4FD18B', href: 'Users.dc.html', go: 'Users & PINs', steps: [
+        'Admin: Home \u203a Users & PINs, tap the person, then the Listen box.',
+        'Only what their Listen groups allow: the normal setting. Their groups, plus these: tick extra things just for them. Keep them to one thing only: their Listen page shows just that one, whatever their groups say.',
+        'Tap Save and type your Admin password. They can\u2019t change it themselves, and nobody can change it on an iPad that\u2019s been left signed in.',
+        'Admins always hear everything. From home, people still only hear what a group with Can listen from home allows.'] },
+      { q: 'Listen settings (Admins)', c: '#4FD18B', href: 'ListenAdmin.dc.html', go: 'Listen settings', steps: [
+        'Listen is just for listening. Everything an Admin sets up is on Listen settings: Rooms, Groups, Sources, From home and Public. Open it from Listen (Listen settings \u203a) or Home \u203a Settings.',
+        'Anyone who isn\u2019t an Admin is told to sign in as an Admin, and can\u2019t see or change anything there.'] },
+      { q: 'Name a Listen source from Dante', c: '#4FD18B', href: 'ListenAdmin.dc.html', go: 'Listen settings', steps: [
+        'Listen settings \u203a Sources shows what Dante routes into each source\u2019s DVS channels and what Dante Controller calls them, for example WING \u201cFOH L\u201d + \u201cFOH R\u201d. On the C3 Life server it reads this from the Dante network itself every 30 seconds (it only reads; it never changes a route).',
+        'If it says Couldn\u2019t read Dante: check Dante Virtual Soundcard is running and still called C3LIFE in Dante Controller (Dante names can only use letters, numbers and hyphens). Help \u203a Run system check shows Dante names.',
+        'Tick Use the name from Dante and the source is called what Dante calls it (FOH L + FOH R becomes FOH). Untick it to type your own name.',
+        'If the Dante route changes, it says Dante now calls this \u2026: tap Save sources to use the new name.'] },
+      { q: 'Admin password (instead of a PIN)', c: '#A3ACB8', href: 'User.dc.html', go: 'Change user', steps: [
+        'Admins sign in with a password, not a 4-digit PIN: 8 or more characters, with a letter and a number or symbol. Everyone else keeps their PIN.',
+        'Change yours: Change user \u203a Change my password. Another Admin can set one for you on Users & PINs.',
+        'On the C3 Life server itself: python c3life_server.py --set-pin "Admin" asks for the new password (it checks the same rules).',
+        'Five wrong tries locks that name for 5 minutes.'] },
+      { q: 'Listen with hearing aids', c: '#4FD18B', href: 'Listen.dc.html', go: 'Listen', steps: [
+        'Hearing aids that connect to a phone by Bluetooth (iPhone Made for iPhone, Android ASHA or LE Audio) play Listen straight into the aids, like a phone call.',
+        'Connect the aids to the phone first (iPhone: Settings \u203a Accessibility \u203a Hearing Devices), then open Listen and tap Play.',
+        'In the same room as the speaker there\u2019s an echo, because Listen is 1 to 3 seconds behind. Set the aids to stream only (mute the aid microphones), or use the hall\u2019s hearing loop instead.',
+        'In another room or at home it just works. Subtitles help too.'] },
+      { q: 'I forgot my PIN', c: '#A3ACB8', href: 'Users.dc.html', go: 'Users & PINs', steps: [
+        'Ask the sound desk or an Admin to open Home › Users & PINs and set a new PIN for you. Admins use a password instead of a PIN.',
+        'They can tick "Ask them to choose their own PIN", so you pick a new one when you next sign in.',
+        'If you know your PIN and just want a new one, tap Change my PIN on the Change user screen.'] },
+      { q: 'Sign in or out of Planning Center (Admins)', c: '#7FD1C1', href: 'Plan.dc.html', go: 'Running order', steps: [
+        'Open Running order. The Planning Center card says who is signed in.',
+        'To change account: make a Personal Access Token in Planning Center (api.planningcenteronline.com › Personal Access Tokens › New, with Services), tap Switch account and type its Application ID and Secret. C3 Life checks it with Planning Center before it’s used.',
+        'Sign out asks first. The running order, name tags and Planning Center timers stop updating until someone signs in again.',
+        'Plans from picks the service type (Sunday Morning, Carols, …).'] },
+      { q: 'Planning Center timers', c: '#7FD1C1', href: 'Show.dc.html', go: 'Show', steps: [
+        'On Show, under the ProPresenter timers: the service and band-call times count down, then NOW shows the item happening now with a big timer of its planned length, and UP NEXT shows what’s coming and about when it starts.',
+        'Tap Start with… when the first item begins, then Next › as each one starts. Nothing moves on by itself. ‹ Previous goes back if you tapped too soon; the one you left keeps its time.',
+        'Start, Stop, Reset, ±1 or ±5 minutes and Set… work like the ProPresenter timers, and every device shows the same.',
+        'To change another item, open All items: jump to one with Go, or change its time there. The rest stay folded away so it isn’t one long list.',
+        'Change its length in Planning Center… asks first, then changes the item in Planning Center itself, so everyone using the plan sees it. The account needs permission to edit plans.',
+        'Don’t need them? Hide on either timer card (Planning Center or ProPresenter) folds it away on this device, and Show brings it back. Each phone or iPad remembers its own choice.'] },
+      { q: 'Hide the timers', c: '#7FD1C1', href: 'Show.dc.html', go: 'Show', steps: [
+        'On Show, tap Hide on the ProPresenter timers or the Planning Center timers card. Only this device hides it, and it stays hidden after a reload.',
+        'Tap Show on the same card to bring it back. Hiding doesn’t stop or change any timer.'] },
+      { q: 'Planning Center times look wrong', c: '#7FD1C1', href: 'Plan.dc.html', go: 'Running order', steps: [
+        'C3 Life shows Planning Center’s times in this network’s time zone (the C3 Life server’s), whatever region the Planning Center account is set to. The Running order card says which time zone that is, and warns if Planning Center is set to another one.',
+        'If every time is an hour or more out, the C3 Life server’s clock is in the wrong time zone: Windows Settings › Time & language › Date & time › Set time zone automatically.',
+        'If one service is wrong, check its time in Planning Center.'] },
+      { q: 'Report an issue', c: '#FF7A45', href: 'Report.dc.html', go: 'Report an issue', steps: [
+        'Open Menu › Report an issue. Give it a subject, say what happened and who is reporting, and add up to 4 photos (they’re made smaller on your phone first).',
+        'Tap Send report. The C3 Life server keeps it and emails it on its own as soon as there’s internet, so you can send it even when the booth is offline. Your reports shows when it has gone.',
+        'To send one somewhere else, tick Send this one to a different address and type the address.',
+        'No internet in the booth and it’s urgent? Tap Send from this phone instead: it opens your phone’s own email or messages with the photos, over mobile data. Turn Wi-Fi off first if it won’t send.'] },
+      { q: 'Set up issue reports (Admins)', c: '#FF7A45', href: 'Report.dc.html', go: 'Report an issue', steps: [
+        'Run Install-C3Life.ps1 -SmtpHost smtp.office365.com -SmtpUser booth@yourchurch.org (or your email provider’s details). It asks for the password; use an app password if the account has two-step sign-in. It stays on the C3 Life server.',
+        'On Report an issue (signed in as an Admin), type where reports go and tap Save. Change it there whenever you need to.',
+        'monday.com (optional): make an API token (monday.com › your picture › Developers) and run Install-C3Life.ps1 -MondayToken … Then turn on Also add them to a monday.com board and type the board id (the number in the board’s web address). Each report becomes an item, with the text and photos as an update.',
+        'Check-C3LifeServer.ps1 says if any reports are waiting to send.'] },
+      { q: 'A report hasn’t been emailed', c: '#FF7A45', href: 'Report.dc.html', go: 'Report an issue', steps: [
+        '“Waiting for internet”: the C3 Life server tries every minute. It goes on its own once the internet is back. Nothing is lost if the C3 Life server restarts.',
+        '“Email isn’t set up”: an Admin runs Install-C3Life.ps1 -SmtpHost … (Help › Set up issue reports).',
+        '“Couldn’t email it”: the email account said no, usually a changed password. Run the installer again with -SmtpHost and -SmtpUser to type the new one.',
+        'Need it now? Use Send from this phone instead.'] },
+      { q: 'Slide cues: sound changes when a slide goes live', c: '#B48CF2', href: 'Cues.dc.html', go: 'Slide cues', steps: [
+        'Open Mixer › Cues. Each cue says when (a presentation, a slide group like Chorus, or a slide label), what (channels on or off, faders to a level) and how it runs.',
+        'On fades in and Off fades out when you give it a time. Everything in one cue happens together, so one channel fading out while another fades in is a crossfade (+ Add a crossfade).',
+        'When the slide goes live, Admin and FOH sound see a countdown (5 seconds unless the cue says otherwise) with Cancel and Run now. Ask first cues wait for Run. Only an Admin can make a cue run straight away; it still shows Undo.',
+        'Tap Run check to see that ProPresenter is there and every cue matches something in today’s playlist. Check and save runs it too, and nothing is saved if a cue can’t work.',
+        'Test this cue shows its countdown and moves the mixer, with Undo. With the Wing connected and set to Control, cues move the desk itself (the fades run on the C3 Life server, so they finish even if a phone locks). Set to Watch only, they move the app’s mixer instead.'] },
+      { q: 'Connect C3 Life to the Wing', c: '#F5C518', href: 'Wing.dc.html', go: 'Mixer', steps: [
+        'Open Mixer. The card at the top says whether the app is talking to the Wing.',
+        'An Admin opens The Wing’s address and taps Find the Wing on the network, or types the IP address shown on the Wing under Setup › Network, then taps Save.',
+        'It starts as Watch only: every screen shows the desk’s names, colours, faders, mutes, gain and meters, but nothing is sent to the Wing.',
+        'When you’re happy, an Admin taps Control (it asks first). Faders, mutes and gain then move the real desk, and slide cues do too. Watch only switches it back straight away.'] },
+      { q: 'Check the real gear before using it (hardware check)', c: '#6CB4F5', href: 'Drivers.dc.html', go: 'Drivers', steps: [
+        'On a laptop plugged into the booth switch, open the c3life-server folder and run hwcheck.py (Mac: python3 hwcheck.py; Windows: py hwcheck.py). HARDWARE-CHECK.md in that folder has the steps.',
+        'It scans the network, then watches the Wing and the Tio for 20 seconds each, in Watch only. It changes nothing: it refuses to send anything that would.',
+        'Compare the names, faders, gain and 48 V it shows with the desk and R Remote. Move one fader, run it again, and check the new value shows.',
+        'Send back the report it saves (hwcheck-report-date.txt). Changing things from C3 Life (Control) is tested later, with FOH watching and never during a service.'] },
+      { q: 'The Wing isn’t answering', c: '#F5C518', href: 'Wing.dc.html', go: 'Mixer', steps: [
+        'Check the Wing is switched on and its network cable goes to the booth switch (the same network as the C3 Life server).',
+        'On the Wing, Setup › Network: check the IP address matches the one on the Mixer card. If the Wing gets its address automatically, it may have changed. Give it a fixed address, or tap Find the Wing again.',
+        'Meters not coming through but everything else works? The Wing allows 16 connected apps at once. Close one you don’t need (an old laptop running Wing Edit, for example).',
+        'Another app (Mixing Station, Co-Pilot) can be connected at the same time. C3 Life still keeps up, because it asks the Wing for every value every few seconds as well as listening for changes.'] },
+      { q: 'Gain and phantom power on the Wing', c: '#F5C518', href: 'Wing.dc.html', go: 'Mixer', steps: [
+        'On Mixer, tap 48V on a channel. It shows which input feeds the channel (on the Wing, or an AES50 stagebox) with its gain and phantom power.',
+        'Gain moves straight away in 1 or 3 dB steps. Phantom power always asks first: pull the fader down before you switch it, as it can thump.',
+        'Phantom power can damage some ribbon mics and kit that isn’t made for it. Dynamic and condenser mics and DI boxes are fine.',
+        'Channels from the Tio1608-D show the Tio’s own gain and phantom power (see Change the Tio1608-D gain or phantom power). Channels fed from USB or nothing have none.',
+        'It works the same from home through remote support, so be extra careful during a service.'] },
+      { q: 'EQ, gate and compressor', c: '#F5C518', href: 'Wing.dc.html', go: 'Mixer', steps: [
+        'On Mixer, tap a channel’s name, then EQ, Gate or Comp. Each says in plain words what it’s doing.',
+        'EQ: drag a point on the curve (left and right is the frequency, up and down is boost or cut), or pick a band (Low, 1 to 4, High) and use − and +. Width (Q): a small number is wide and gentle, a big number is narrow.',
+        'RTA (under the EQ curve): On shows what the channel sounds like, before or after the EQ, behind the curve. It uses the Wing’s own RTA, so the desk’s RTA screen moves to this channel too. It needs Control.',
+        'Gate: turns quiet sounds down. Good for drums and noisy mics; leave it off for speech.',
+        'Comp: turns loud moments down. For speech, about 3:1 starting around −18 dB is a good start. Auto sets attack and release for you.',
+        'Gate and Comp show the last 8 seconds: grey is what goes in, white is what comes out, and the red line hanging from the top is how much it’s turning down. The dashed line is the threshold. On the left, the green curve shows what it does to each level, with a yellow dot where the sound is now; IN, OUT and GR meters are on the right.',
+        'Turn a knob by dragging up or down (Fine makes it slower), or with the arrow keys.',
+        'Input has trim, polarity and the Wing’s low and high cut. Fine makes every − and + a smaller step.',
+        'If a channel uses one of the Wing’s other plugin models (for example SOUL), the app says so: on and off work here, and its settings are changed on the desk.'] },
+      { q: 'Mixer strips, layers, Fine and Mute enable', c: '#F5C518', href: 'Wing.dc.html', go: 'Mixer', steps: [
+        'Mixer opens as strips, like a desk: name (in the Wing’s colour), pan, MUTE, the level, and a fader with its scale and meter.',
+        'Drag a fader up or down. It moves from where it is, so touching it never makes it jump. Fine makes it move a quarter as far, for small changes.',
+        'Mute enable (red when on) lets the MUTE buttons work. Turn it off so a stray tap can’t mute anything.',
+        'Pick a layer at the bottom: Channels, DCAs, Buses, Aux, Main, or your own. ‹ › pages through when there are more strips than fit.',
+        '+ Layer makes your own (for example Instruments, Microphones, MD, Media): give it a name and tick what goes on it, in the order you want. Layout… › Change the … layer edits or deletes it. Layers are kept on this phone, iPad or laptop.',
+        'Turn a phone sideways, or use an iPad or laptop, for more strips at once. Layout… sets the strip width (Auto, Narrow, Normal, Wide), or shows the mixer as a list instead.',
+        'Tap a strip’s name for its gain, phantom power, rename and fader lock.'] },
+      { q: 'Change the look (WING or Classic)', c: '#F5C518', href: 'User.dc.html', go: 'Change user', steps: [
+        'C3 Life looks like WING Edit: black, with outlined panels and yellow for what’s active. On an iPad held sideways or a laptop, the menu is a sidebar on the left.',
+        'To go back to the earlier look on one device, open Change user and pick Look on this device › Classic. Only that phone, iPad or laptop changes.',
+        'More faders on a bigger screen happens by itself on Mixer. Layout… › Narrow fits even more.'] },
+      { q: 'Sends on faders (a monitor mix on the strips)', c: '#F5C518', href: 'Wing.dc.html', go: 'Mixer', steps: [
+        'On Mixer, under the strips, change Faders show from Main mix to a bus (for example Sends to Bus 4 IEM Keys).',
+        'Now each channel’s fader is its send to that bus, ON puts it in or takes it out of that mix, and pan is its pan in that mix (only when pan link is off).',
+        'For a musician’s mix, they hear it straight away. Set Faders show back to Main mix when you’re done.'] },
+      { q: 'My mix on the real Wing', c: '#F5C518', href: 'MyMix.dc.html', go: 'My mix', steps: [
+        'When the Wing is connected and set to Control, each musician’s My mix is their own bus on the Wing: their faders are the sends, ON is the send on, and their volume, MUTE and pan are the bus itself.',
+        'The Wi-Fi icon on My mix says Live on the Wing when it is. If it says Not live, changes are kept on their device until the Wing is in Control.',
+        'A change made at FOH (or on the desk) shows in their My mix within a couple of seconds.',
+        'Who has which bus is set on the C3 Life server (Mixer › Musician mixes on the Wing), so a musician can only change their own mix and any FOH has given them.',
+        'Untick Musicians can change their own monitor mix on Mixer to lock every musician mix for a quiet moment. The C3 Life server enforces it, not just the screen.'] },
+      { q: 'Watch only or Control', c: '#F5C518', href: 'Wing.dc.html', go: 'Mixer', steps: [
+        'Watch only: the app shows the desk live but sends nothing. Use it while you get used to C3 Life, or when someone mixes on the desk itself.',
+        'Control: faders, mutes and gain moved in the app move the desk, and slide cues run on the Wing. Phantom power and renames still ask first.',
+        'Off: the app doesn’t talk to the Wing at all.',
+        'Only an Admin can change it. Who may move faders is still set by Access levels and the fader lock.'] },
+      { q: 'A slide cue didn’t run', c: '#B48CF2', href: 'Cues.dc.html', go: 'Slide cues', steps: [
+        'Tap Run check on Mixer › Cues. It says which cues match today’s playlist and suggests a name when one is close (e.g. “Mesage” → Message).',
+        'The name must match ProPresenter exactly, apart from capitals: the presentation’s name, the slide group (Verse 1, Chorus, Bridge) or the slide’s label.',
+        'Check the cue and Slide cues are both On, and look at Recent: it shows if someone tapped Cancel or Skip.',
+        'Only Admin and FOH sound (Control on Mixer or Macros) see the countdown. On other phones nothing shows.'] },
+      { q: 'Run check won’t let me save the cues', c: '#B48CF2', href: 'Cues.dc.html', go: 'Slide cues', steps: [
+        'Saving only works when every cue that’s On can work. The lines marked ! say what’s wrong.',
+        '“No presentation called …”: fix the spelling, or switch that cue Off until the presentation is in the playlist.',
+        '“ProPresenter didn’t answer”: the check needs ProPresenter open on the Mac mini with Settings › Network › Enable Network on. Try again once it is.'] },
+      { q: 'Fix things from home (remote support)', c: '#A3ACB8', href: 'Shutdown.dc.html', go: 'C3 Life server power', steps: [
+        'The app: on your phone or laptop, turn Tailscale on (signed in with the church account), open the C3 Life server’s Tailscale address (Check-C3LifeServer.ps1 shows it, e.g. http://100.x.x.x) and sign in as an Admin. You get the whole app; a purple “Remote support” label shows on every screen.',
+        'Everyone else who connects from outside still only gets Listen.',
+        'The computer itself: open Chrome Remote Desktop (remotedesktop.google.com/access, or its phone app), signed in with the church Google account, pick C3 Life server and type its PIN. You see the real booth screen, and it stays on in the booth.',
+        'During a service, tell the booth before you change anything: they see every change you make.',
+        'When you’re done, sign out of the app and close Chrome Remote Desktop. Every remote sign-in and page is in the C3 Life log.'] },
+      { q: 'I can’t reach the C3 Life server from home', c: '#A3ACB8', href: 'Shutdown.dc.html', go: 'C3 Life server power', steps: [
+        'Check Tailscale is on, on your device and signed in with the church account. Both devices show in the Tailscale app.',
+        'Only Listen opens? You’re signed in with a role that isn’t allowed remote support (only Admins), or remote support is off (Install-C3Life.ps1 -RemoteSupport).',
+        'Nothing answers after a power cut: Tailscale needs Run unattended turned on, so it connects before anyone signs in. Check-C3LifeServer.ps1 says if it’s off.',
+        'Chrome Remote Desktop shows the C3 Life server as offline: it may still be starting. Wait 2 minutes. If it\u2019s off, the smart plug can turn it back on (Help › Restart or shut down the C3 Life server).'] },
+      { q: 'Set up remote support (Admins)', c: '#A3ACB8', href: 'Shutdown.dc.html', go: 'C3 Life server power', steps: [
+        'Install Tailscale on the C3 Life server and sign in with the church account. Then run Install-C3Life.ps1 -RemoteSupport, which turns on Run unattended so it reconnects after a restart.',
+        'Install Tailscale on each Admin’s phone or laptop with the same account. Tailscale’s free plan has 6 users; check with Tailscale that church use is fine, or use its charity discount.',
+        'On the C3 Life server, signed in as booth, open remotedesktop.google.com/access in Chrome with the church Google account, choose Set up remote access, name it C3 Life server and pick a PIN of 6 or more digits. Give the PIN to Admins only.',
+        'Test both after a restart with nobody touching the C3 Life server, then run Check-C3LifeServer.ps1.',
+        'Avoid TeamViewer and AnyDesk free (they block church use as commercial) and Windows Remote Desktop (it locks the booth screen while you’re connected).'] },
+      { q: 'Put a Bible passage into ProPresenter (Bible Scripture)', c: '#B48CF2', href: 'Bible.dc.html', go: 'Bible Scripture', steps: [
+        'Open Show › Bible, or use Bible Scripture on Home.',
+        'Type the passage the way you’d say it: john3:16, John 3:16-18, 1 Cor 13:4-7, Psalm 23 or Rom 8:38-9:1. Pick the version (NIV, ESV, NLT, KJV or WEBBE) and the look (full screen or lower third).',
+        'Tap Preview. Each slide shows in the preview window; use ‹ › to check them all. Long passages are split into slides for you, with verse numbers.',
+        'Choose the playlist and where it goes (it starts after Bible Scripture), then tap Add to ProPresenter playlist. It asks first, then adds a line called “Scripture: John 3:16 (NIV)” so everyone can see where it comes.',
+        'When it’s time, open Bible Scripture, tap Show… next to it, then Show slide 1 and Next slide. Hide takes it off. Nothing goes on screen by itself.'] },
+      { q: 'Bible Scripture won’t find a passage', c: '#B48CF2', href: 'Bible.dc.html', go: 'Bible Scripture', steps: [
+        '“Which book is …?”: use more of the book’s name, e.g. Phil for Philippians, Phlm for Philemon, Judg for Judges.',
+        '“… isn’t set up”: that version needs a key on the C3 Life server (Help › Set up Bible Scripture). KJV and WEBBE always work.',
+        '“Couldn’t get … from the internet”: NIV, ESV and NLT need the internet. Use KJV or WEBBE until it’s back.',
+        'More than 60 verses is too many for one go. Split it into two.'] },
+      { q: 'Bible Scripture won’t add or show in ProPresenter', c: '#B48CF2', href: 'Bible.dc.html', go: 'Bible Scripture', steps: [
+        'The Look list is empty: ProPresenter needs at least one message whose name starts with Scripture, e.g. “Scripture - Full screen” and “Scripture - Lower third”, each with text tokens called Reference and Text.',
+        '“ProPresenter didn’t answer”: check the Mac mini is on, ProPresenter is open and Settings › Network › Enable Network is on (port 50001). Check cable C05.',
+        '“ProPresenter didn’t keep the new line”: the playlist may be locked or synced from Planning Center. Pick another playlist or add it to the plan instead.',
+        '“Your role can’t do this”: adding and showing need Control on Show (Access levels). Viewers can still preview.'] },
+      { q: 'Set up Bible Scripture (Admins)', c: '#B48CF2', href: 'Bible.dc.html', go: 'Bible Scripture', steps: [
+        'In ProPresenter, make a message for each look, named “Scripture - Full screen”, “Scripture - Lower third” and so on. Give each two text tokens, Reference and Text, and style it with the theme you want. These are the Looks in the app.',
+        'KJV and WEBBE (World English Bible, British Edition) are on the C3 Life server already. No internet needed.',
+        'ESV: get a free API key at api.esv.org (non-commercial use) and run Install-C3Life.ps1 -EsvKey …',
+        'NLT: get an API key at api.nlt.to and run Install-C3Life.ps1 -NltKey …',
+        'NIV: the NIV belongs to Biblica, so the church needs permission and an API.Bible account that includes it (api.bible). Then run Install-C3Life.ps1 -ApiBibleKey … -NivBibleId … The keys stay on the C3 Life server and never reach phones.',
+        'Bibles you’ve bought inside ProPresenter can’t be read from outside it, so C3 Life uses its own copies.'] },
+      { q: 'Name tags (lower thirds) from Planning Center', c: '#B48CF2', href: 'Show.dc.html', go: 'Show', steps: [
+        'Each week C3 Life reads the plan’s 9 - Ministry team in Planning Center: who is on Welcome, Prayer, Pastoral, Offering, Preach and Close, and the Meeting Leader.',
+        'Each position goes with its item in the plan: Welcome › Welcome, Prayer › 60 Secs of Prayer, Pastoral › PASTORAL Welcome, Preach › Message, Close › CLOSE. Two people on one position become one tag, e.g. Billy & Sophie Tagg.',
+        'If 9 - Ministry says Guest Preacher, the name in that item’s Hosting note is used instead. “Joel Burden - Chris to intro” gives Joel Burden.',
+        'Each name is matched to the ProPresenter prop with the same name, e.g. a prop called Chris Denham. Anyone without a prop (a guest, or a couple) goes into the “Name tag” message with their name filled in.',
+        'Check them on Running order › Name tags. To put one on screen, tap Show next to it on the Show screen, and tap Hide to take it off. Nothing goes on screen by itself.'] },
+      { q: 'A name tag is wrong or missing', c: '#B48CF2', href: 'Plan.dc.html', go: 'Running order', steps: [
+        'Open Running order › Name tags. Anything in orange needs a look.',
+        '“Needs a name”: no one is on that position in 9 - Ministry (or it says Guest Preacher) and the item has no Hosting note. Tap Type the name, or add the person in Planning Center and tap Read Planning Center again.',
+        'Wrong person: change it in Planning Center (9 - Ministry), then tap Read Planning Center again. Or tap Change to type the name for this week only. Use the Planning Center name puts it back.',
+        'On the wrong item: an Admin taps Which item goes with each position and picks the right item. That’s used every week.',
+        'Planning Center is read every 15 minutes. With no internet, the last good read is kept and the list says so.'] },
+      { q: 'A name tag won’t show in ProPresenter', c: '#B48CF2', href: 'Show.dc.html', go: 'Show', steps: [
+        '“Name tag message” means there’s no prop with exactly that name. That’s fine for guests. For regulars, make a prop in ProPresenter named exactly as in Planning Center (e.g. Chris Denham), then tap Read Planning Center again on Running order.',
+        'Guests and couples need a ProPresenter message called Name tag with a text token called Name. Style it like the other lower thirds.',
+        '“ProPresenter didn’t answer”: check the Mac mini is on, ProPresenter is open and Settings › Network › Enable Network is on (port 50001). Check cable C05.',
+        '“Your role can’t do this”: showing name tags needs Control on Show in Access levels. The ProPresenter and Admin roles have it.'] },
+      { q: 'Set up name tags (Admins)', c: '#B48CF2', href: 'Plan.dc.html', go: 'Running order', steps: [
+        'In Planning Center, make a Personal Access Token at api.planningcenteronline.com › Personal Access Tokens. It only needs to read Services.',
+        'On the C3 Life server, run the installer again with it: Install-C3Life.ps1 -PlanningCenterAppId … -PlanningCenterSecret … The token stays on the C3 Life server and never reaches phones.',
+        'In ProPresenter, make a prop for each regular person (Props), named exactly as in Planning Center, and one message called Name tag with a text token called Name.',
+        'Turn on ProPresenter’s network: Settings › Network › Enable Network, port 50001. C3 Life looks for it at 192.168.10.30:50001.',
+        'Open Running order › Name tags and check every line says ✓ Prop or Name tag message.'] },
+      { q: 'Dante audio is missing', c: '#FF7A45', href: 'Dante.dc.html', go: 'Dante', steps: [
+        'Recall the Sunday service preset on the Dante screen.',
+        'Check the Tio and Wing Dante card cables (C03, C04) and that the Tio is powered.',
+        'If audio crackles or drops out, check energy saving (EEE) is off on the switch.'] }
+    ];
+    this.guideList = [
+      { q: 'Home', href: 'Main.dc.html', go: 'Open Home', lines: ['Tap Menu at the top of any screen to go to another page. The page you are on is shown next to it.', 'Shows where you are in the service, the room level, quick buttons and any problems.', 'Orange banners at the top mean something needs attention. Tap them for details.', 'Each person has their own Home. Tap Edit to choose which sections show, put them in your order, and pick up to 6 quick buttons. Reset goes back to the normal layout for your role.'] },
+      { q: 'Mixer, patch and Dante', href: 'Wing.dc.html', go: 'Open Mixer', lines: ['Faders, mutes and names come straight from the Wing. Every screen uses the same names.', 'Rename a channel with the pencil on the Mixer. It asks you to confirm, then changes it on the Wing too.', 'Patch and Dante routing are locked by default. Every change asks you to confirm.', 'Fader lock stops accidental moves from other devices. FOH phone + iPad lets FOH sound use both at the same time; they stay in step.'] },
+      { q: 'RTA and level alerts', href: 'RTA.dc.html', go: 'Open RTA', lines: ['Two tabs. RTA: the room mic\u2019s spectrum in green with a red peak hold, the 1-minute and 15-minute average, and the spectrograph underneath (newest at the bottom). SPL: the level in big numbers, the 1m to 8h averages, and a history you start and stop.', 'Along the top: Play and Pause, the waveform button to compare with the desk reference (amber, with a room vs desk summary), ID to mark the loudest frequency, Ring-Out to watch for feedback, and the sliders for RTA settings.', 'Drag the two handles on the right of the graph (or use the arrow keys) to move the top and bottom of the scale.', 'Over the limit (90 dB by default), every screen turns red. The RTA bar along the bottom of every screen shows the room level and meters. Tap it to open the full RTA, or tap the arrow to make it smaller.', 'The RTA log runs from start-up to shut down, saves every 5 minutes, marks the service time and is emailed at shut down.'] },
+      { q: 'Show: slides, timers and macros', href: 'Show.dc.html', go: 'Open Show', lines: ['Live and Preview slides from ProPresenter. Tap a preview to send it live.', 'ProPresenter timers and macros are on the same screen. Add or take off time with \u22125, \u22121, +1 and +5 min, or tap Set\u2026 to type an exact time. Changes go straight to ProPresenter and its stage display.', 'Timers can also go on your Home screen (Edit on Home).', 'The Show tab has five sections: Show, Music, Foyer, MIDI and Buttons.'] },
+      { q: 'Music and the foyer', href: 'Foyer.dc.html', go: 'Open Foyer', lines: ['Music plays your offline Spotify playlists on the Mac mini. Each playlist has its own Play and Stop buttons.', 'The Foyer screen switches the foyer speakers between its two mixes (named as the desk names those buses) and sets the foyer volume.', 'The volume can\u2019t go above the maximum an Admin sets. Only an Admin can change which buses feed the foyer, or rename the foyer (for example Caf\u00e9).', 'Re-sync Spotify downloads now and then while the Mac has internet.'] },
+      { q: 'MIDI buttons and A/B switches', href: 'Midi.dc.html', go: 'Open MIDI buttons', lines: ['The MIDI controller plugs into the MacBook Pro. Buttons marked App reach the booth app over network MIDI.', 'An A/B switch flips between two sets of actions, such as mute the pastor\u2019s mic and change the stage layout.', 'Pick which channel it controls at any time. Undo with the Undo button or a double-tap.'] },
+      { q: 'Lights', href: 'Lights.dc.html', go: 'Open Lights', lines: ['Laid out like Lightkey: the stage with each fixture\u2019s beam, Go, Back and Release, the master, Blackout and Tap along the top.', 'Live: cue tiles, the Preset Palette, looks, cues linked to the plan and lighting macros. Program: the moving heads and colours, with a fade time. Show setup: the lighting Mac, cues, palette and fixtures.', 'Everything goes to Lightkey on the lighting Mac as OSC. Only active when Events mode is on.'] },
+      { q: 'Running order and log', href: 'Plan.dc.html', go: 'Open Plan', lines: ['Comes from Planning Center when there’s internet, or from the ProPresenter playlist when there isn’t.', 'Attach a macro to any item. Nothing runs by itself: tap Run on the item when you are ready.', 'The log records everything that happens, with times.'] },
+      { q: 'Macros and Undo', href: 'Macros.dc.html', go: 'Open Macros', lines: ['A macro runs several steps across devices in one tap.', 'Stop it partway through, or Undo it for 60 seconds afterwards.', 'Macros only run when someone presses Run. An Admin can turn on automatic macros in Plan, but it is off.'] },
+      { q: 'Users, PINs and access', href: 'User.dc.html', go: 'Change user', lines: ['Each person signs in with a role and PIN. The role decides what they can see and change.', 'The Foyer team role only sees the Foyer screen and chat.', 'Each role has a screen timer that locks the screen when it\u2019s left idle. Locking never stops the sound.', 'Admins set roles, PINs and screen timers in Access levels, and create users in Users & PINs.', 'FOH sound can also scan the network and change IP addresses and ports in Drivers. Only an Admin can add or delete drivers.'] },
+      { q: 'Saved setup and reports', href: 'Setup.dc.html', go: 'Open Saved setup', lines: ['Everything is kept in one saved setup. The C3 Life server loads it every time it starts.', 'Only an Admin can save or update it. Changes made during a service stay until the next restart, unless an Admin saves them.', 'Two emails after each service: the RTA report and the activity report (every press, who, which device, what changed).', 'The activity report starts with users and sign-ins (never the PINs), then any problems. Errors are red, warnings are amber.'] },
+      { q: 'Wiring list and IP addresses', href: 'Wiring.dc.html', go: 'Open Wiring list', lines: ['Every cable (C01\u2013C12), where it plugs in, and each device\u2019s IP address.', 'It comes from Drivers. When FOH sound or an Admin saves a new address, the wiring list and these Help pages change to match, and the change shows in amber.', 'After a network scan each cable shows whether its device answered.'] },
+      { q: 'Drivers and network scan', href: 'Drivers.dc.html', go: 'Open Drivers', lines: ['Drivers are how the app talks to each piece of gear: type, IP address and port.', 'Scan network runs on the C3 Life server. It looks at every address on the booth network and asks each device what it is. It only asks: nothing on any device changes.', 'Gear it recognises (the Wing, the Tio, ProPresenter) connects in Watch only by itself. If one moves address, C3 Life follows it by its hardware ID, back in Watch only. A scan never turns Control on.', 'Two of the same? It asks which one. Something without a driver? It\u2019s listed under No driver yet.', 'It scans by itself at start-up and every 5 minutes (an Admin can turn that off). Help and the wiring list show the result.'] },
+      { q: 'Network and internet', href: 'Network.dc.html', go: 'Open Network connections', lines: ['Ethernet 1 is the booth network: the Wing, Dante, the Macs and the phones. It never changes.', 'For internet the C3 Life server can use Ethernet 2 (a USB adapter on the church network) and a list of Wi-Fi networks, including a phone hotspot.', 'It tries them in your order and moves to the next one by itself if the internet stops. Reports wait on the drive until one works.', 'Backup Wi-Fi: if the booth access point stops, the C3 Life server can turn on Windows Mobile hotspot, called C3Life-Backup, for phones.'] },
+      { q: 'Chat and MD talk', href: 'Chat.dc.html', go: 'Open Chat', lines: ['Team chat works with no internet and can show on the ProPresenter stage display.', 'An Admin turns chat on or off for each person in Users & PINs. Listeners don\u2019t have it unless it\u2019s turned on.', 'When the MD talks, every screen turns green and shows their words as they speak.', 'Each time is written down with the time in What the MD said (MD talk screen, or tap Log on the green banner), with a recording to play back.'] },
+      { q: 'Phones, iPads and laptops', href: 'Main.dc.html', go: 'Open Home', lines: ['The same app works on any device on the booth Wi-Fi: phone, iPad or laptop, in any web browser.', 'Tap Menu at the top of any screen for the list of pages: Home, Mixer, RTA, Show, Lights, Plan, Chat and Help. Tap it again to close it.', 'Turn the iPad and the layout changes to fit, in landscape or portrait.', 'Add it to the Home Screen on an iPad or phone to open it like an app.'] }
+    ];
+    const C = (label, text) => ({ label, text });
+    this.netList = {
+      mac: [
+        { q: 'Find this Mac\u2019s IP address', steps: [
+          'Click the Apple menu › System Settings › Network.',
+          'Click Ethernet (or Wi-Fi if the Mac isn\u2019t on a cable), then Details… › TCP/IP.',
+          'The IP address is shown there. On the booth network it starts 192.168.10.'],
+          cmds: [C('Or in Terminal (Applications › Utilities):', 'ipconfig getifaddr en0')],
+          note: 'If that shows nothing, try en1, en2 and so on. A USB-C Ethernet adapter often has a higher number.' },
+        { q: 'Find the port an app uses', steps: [
+          'Open Terminal (Applications › Utilities).',
+          'Type the line below and press Return. Enter the Mac\u2019s password if it asks.',
+          'Each line shows the app name, then the address and port, e.g. ProPresenter … *:50001.'],
+          cmds: [C('Apps waiting for connections (TCP):', 'sudo lsof -nP -iTCP -sTCP:LISTEN'), C('OSC and network MIDI (UDP):', 'sudo lsof -nP -iUDP'), C('Just one app, e.g. ProPresenter:', 'sudo lsof -nP -iTCP -sTCP:LISTEN | grep -i propresenter')],
+          note: '' },
+        { q: 'Ports inside each app (Mac)', steps: [
+          'ProPresenter 7: open Settings and choose Network. Network must be turned on. The port is shown next to it.',
+          'Playback / network MIDI: open Audio MIDI Setup › Window › Show MIDI Studio, double-click Network and select the session. The port is shown (usually 5004).',
+          'Lightkey: open Lightkey\u2019s settings and find the OSC section. The incoming port is shown there.',
+          'Companion: the Companion window shows its address and port (8000 by default).',
+          'Mac helper (Spotify and ProPresenter): on the Mac mini, open Terminal and type  curl http://127.0.0.1:8099/hello  . It shows the port.'],
+          cmds: [], note: '' },
+        { q: 'Companion: IP address and port', steps: [
+          'On the booth, Companion runs on the C3 Life server. Its address is the C3 Life server\u2019s: 192.168.10.10, port 8000. Open http://c3life.local:8000 in a browser.',
+          'If Companion runs on this Mac instead: the small Companion window that opens with it shows the address (Interface) and the port. Click Launch GUI to open it.',
+          'The Mac\u2019s IP address is under "Find this Mac\u2019s IP address" above.',
+          'Inside Companion, open Settings to see the ports other devices use to press buttons: TCP and UDP (16759 by default) and OSC (12321 by default).'],
+          cmds: [C('Check Companion is listening (Terminal):', 'sudo lsof -nP -i | grep -i companion')],
+          note: 'Port 8000 is the web page you use to set it up. The other ports are only needed if another app presses Companion buttons.' },
+        { q: 'Spotify: IP address and port', steps: [
+          'Spotify itself has no address or port for the booth. The booth talks to the small C3 Life helper on the Mac mini, and the helper controls Spotify.',
+          'The IP address is the Mac mini\u2019s ({spot}). Find it with "Find this Mac\u2019s IP address" above.',
+          'The port: the Mac helper uses 8099. On the Mac mini, run  curl http://127.0.0.1:8099/hello  in Terminal to check it\u2019s running.',
+          'In Spotify, choose File › Offline Mode (Spotify menu bar at the top). The playlists must be downloaded first.'],
+          cmds: [C('Check the helper is listening (Terminal):', 'sudo lsof -nP -iTCP:8099 -sTCP:LISTEN')],
+          note: 'If nothing shows, the helper isn\u2019t running. Run the installer again from the helper folder.' },
+        { q: 'It still won\u2019t connect', steps: [
+          'System Settings › Network › Firewall: if it\u2019s on, allow the app (Options…).',
+          'Check the Mac isn\u2019t asleep: System Settings › Energy, turn on "Prevent automatic sleeping".',
+          'Make sure the IP isn\u2019t set to change by itself: in Details… › TCP/IP, Configure IPv4 should be Manually.'],
+          cmds: [], note: '' }
+      ],
+      win: [
+        { q: 'Find a Windows computer\u2019s IP address', steps: [
+          'Start › Settings › Network & internet.',
+          'Click Ethernet (or Wi-Fi), then click the connection name.',
+          'Scroll down to IPv4 address. On the booth network it starts 192.168.10.'],
+          cmds: [C('Or in Command Prompt (Start, type cmd):', 'ipconfig')],
+          note: 'Look for IPv4 Address under "Ethernet adapter" (or "Wireless LAN adapter" for Wi-Fi).' },
+        { q: 'Find the port an app uses', steps: [
+          'Easiest: Start, type resmon and press Enter to open Resource Monitor.',
+          'Open the Network tab, then Listening Ports.',
+          'Find the app under Image. Its port is in the Port column, with TCP or UDP next to it.'],
+          cmds: [C('Or in Command Prompt (right-click › Run as administrator):', 'netstat -abno'), C('Just one app, e.g. ProPresenter:', 'netstat -abno | findstr /i /c:"propresenter" /c:"LISTENING"')],
+          note: 'In netstat the app name appears on the line under its port. 0.0.0.0:50001 means port 50001 on every network.' },
+        { q: 'Ports inside each app (Windows)', steps: [
+          'ProPresenter 7: open Settings and choose Network. Network must be turned on. The port is shown next to it.',
+          'Network MIDI: Windows needs the free rtpMIDI app. Its window shows the session and port (usually 5004).',
+          'Companion: the Companion window shows its address and port (8000 by default).',
+          'Lightkey only runs on a Mac.'],
+          cmds: [], note: '' },
+        { q: 'Companion: IP address and port', steps: [
+          'On the booth, Companion runs on the C3 Life server. Its address is the C3 Life server\u2019s: 192.168.10.10, port 8000. Open http://c3life.local:8000 in a browser.',
+          'If Companion runs on the C3 Life server instead: the small Companion window that opens with it shows the address (Interface) and the port. Click Launch GUI to open it.',
+          'The C3 Life server\u2019s IP address is under "Find a Windows computer\u2019s IP address" above.',
+          'Inside Companion, open Settings to see the ports other devices use to press buttons: TCP and UDP (16759 by default) and OSC (12321 by default).'],
+          cmds: [C('Check Companion is listening (Command Prompt):', 'netstat -abno | findstr /i /c:"companion" /c:"LISTENING"')],
+          note: 'Port 8000 is the web page you use to set it up. The other ports are only needed if another app presses Companion buttons.' },
+        { q: 'Spotify: IP address and port', steps: [
+          'Spotify itself has no address or port for the booth. The booth talks to the small C3 Life helper on the Mac mini, and the helper controls Spotify.',
+          'The IP address is the Mac mini\u2019s ({spot}). Find it with "Find a Windows computer\u2019s IP address" above.',
+          'The port: the helper uses 8099. If Spotify runs on a Windows PC instead, install the helper there with install.ps1, then run  curl http://127.0.0.1:8099/hello  in PowerShell to check it.',
+          'In Spotify, click the ••• menu (top left) › File › Offline mode. The playlists must be downloaded first.'],
+          cmds: [C('Check the helper is listening (Command Prompt):', 'netstat -ano | findstr :8099')],
+          note: 'If nothing shows, the helper isn\u2019t running. Run the installer again from the helper folder.' },
+        { q: 'It still won\u2019t connect', steps: [
+          'Windows Security › Firewall & network protection › Allow an app through firewall. Tick the app for Private.',
+          'Make sure the booth network is set as Private, not Public: Settings › Network & internet › the connection › Network profile type.',
+          'Set a fixed IP: in the connection settings, IP assignment › Edit › Manual, so the address doesn\u2019t change.'],
+          cmds: [], note: '' }
+      ]
+    };
+    this.expectList = [
+      { id: 1, name: 'Behringer Wing', where: 'On the desk: Setup › Network', ip: '192.168.10.20', port: '2223' },
+      { id: 4, name: 'ProPresenter · Mac mini', where: 'ProPresenter › Settings › Network', ip: '192.168.10.30', port: '50001' },
+      { id: 9, name: 'Smart plug · C3 Life server power', where: 'Its own page: http://192.168.10.5', ip: '192.168.10.5', port: '80' },
+      { id: 5, name: 'C3 Life helper · Mac mini (Spotify, ProPresenter)', where: 'Terminal: curl http://127.0.0.1:8099/hello', ip: '192.168.10.30', port: '8099' },
+      { id: 6, name: 'Playback · MacBook Pro', where: 'Audio MIDI Setup › Network', ip: '192.168.10.31', port: '5004' },
+      { id: 7, name: 'Lightkey · events Mac', where: 'Lightkey settings › OSC', ip: '192.168.10.32', port: '21600' },
+      { id: 0, name: 'C3 Life app · C3 Life server', where: 'http://c3life.local', ip: '192.168.10.10', port: '80' },
+      { id: 8, name: 'Companion · C3 Life server', where: 'http://c3life.local:8000', ip: '192.168.10.10', port: '8000' }
+    ];
+    this.state = { view: 0, open: -1, gOpen: 0, query: '', checking: false, step: -1, d: this.readDrivers(), scan: this.readScan(), os: 'mac', nOpen: 0 };
+  }
+  // Addresses come from Drivers, so the steps always show the saved IPs.
+  readScan() { try { return JSON.parse(localStorage.getItem('booth.scan') || 'null'); } catch (e) { return null; } }
+  readDrivers() { try { return JSON.parse(localStorage.getItem('booth.drivers') || 'null'); } catch (e) { return null; } }
+  componentDidMount() {
+    this.raw = null;
+    const check = () => { let r = null; try { r = localStorage.getItem('booth.drivers'); } catch (e) {} let r2 = null; try { r2 = localStorage.getItem('booth.scan'); } catch (e) {} if (r !== this.raw || r2 !== this.raw2) { this.raw = r; this.raw2 = r2; this.setState({ d: this.readDrivers(), scan: this.readScan() }); } };
+    check();
+    this.poll = setInterval(check, 1000);
+  }
+  ips() {
+    const ip = { wing: '192.168.10.20', pp: '192.168.10.30', spot: '192.168.10.30', mbp: '192.168.10.31', events: '192.168.10.32' };
+    const keys = { 1: 'wing', 4: 'pp', 5: 'spot', 6: 'mbp', 7: 'events' };
+    const d = this.state.d;
+    if (d && d.list) d.list.forEach((x) => { if (keys[x.id]) ip[keys[x.id]] = x.ip; });
+    return ip;
+  }
+  componentWillUnmount() { clearTimeout(this.t); clearInterval(this.poll); }
+  runCheck() {
+    this.setState({ checking: true, step: 0 });
+    const next = (k) => {
+      if (k >= this.checks().length) { this.setState({ checking: false }); return; }
+      this.setState({ step: k + 1 });
+      this.t = setTimeout(() => next(k + 1), 450);
+    };
+    this.t = setTimeout(() => next(0), 450);
+  }
+  checks() {
+    return [
+      ['C3 Life app on the C3 Life server', 'OK', ''],
+      ['Dante Virtual Soundcard', 'Running · licence OK · 3 channels in', ''],
+      ['Booth Wi-Fi and network', 'OK', ''],
+      ['Behringer Wing', 'OK', ''],
+      ['Dante · Wing card + Tio', 'OK', ''],
+      ['RTA mic audio', 'Receiving', ''],
+      ['ProPresenter · Mac mini', 'OK', ''],
+      ['Playback · MacBook Pro', 'Not found', 'Check cable C06 and that the MacBook Pro is awake.'],
+      ['Network MIDI', 'Not found', 'Needs the MacBook Pro. Fix that first.'],
+      ['Spotify · Mac mini', 'Ready · offline', ''],
+      ['Foyer · Mtx 1', 'Spotify · −10 dB', ''],
+      ['Storage on the C3 Life server', '91% free of 2 TB', ''],
+      ['C3 Life server clock', 'Battery OK \u00b7 time correct', ''],
+      ['C3 Life server power', 'On the UPS · smart plug answering', ''],
+      ['Internet', 'No internet \u00b7 reports wait on the drive', ''],
+      ['Last network scan', '7 match \u00b7 1 not found', 'Playback \u00b7 MacBook Pro didn\u2019t answer. Check cable C06.'],
+      ['ProPresenter timers', 'In sync', ''],
+      ['Listen audio', 'OK \u00b7 2 people listening', ''],
+      ['Listen \u00b7 subtitles', 'Speech model ready \u00b7 no internet needed', ''],
+      ['Listen \u00b7 translation', 'Spanish, Persian \u00b7 no internet needed', ''],
+      ['Dante names', 'Read from the Dante network \u00b7 C3LIFE', ''],
+      ['Listen \u00b7 public feed', 'Off \u00b7 starts only when someone presses Start', '']
+    ];
+  }
+  // Search: every word must appear (in any order), ignoring case, accents and apostrophes, with everyday words
+  // mapped to the ones Help uses. Titles that match come first.
+  norm(t) { return String(t).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\u2019'\u2018`]/g, '').replace(/[^a-z0-9 ]+/g, ' '); }
+  search(all, q, grouped) {
+    const SYN = { ears: 'ears in-ear iem monitor my mix hear', ear: 'ears in-ear iem monitor my mix hear', iem: 'iem in-ear ears my mix', inears: 'in-ear ears my mix', monitor: 'monitor my mix in-ear wedge', hear: 'hear sound listen ears', cant: 'cant can not', captions: 'subtitles captions', caption: 'subtitles', creche: 'creche', password: 'pin password', pin: 'pin password', silent: 'silent no sound nothing quiet', nothing: 'nothing no sound silent', quiet: 'quiet no sound silent', sound: 'sound audio hear', forgot: 'forgot forgotten pin', hearing: 'hearing aids', nametag: 'name tag lower third', bible: 'bible scripture verse passage', remote: 'remote home support tailscale', cue: 'cue cues slide automation', report: 'report issue problem', planning: 'planning center pco', pco: 'planning center pco', timezone: 'time zone planning', timer: 'timer timers', timers: 'timer timers', issue: 'issue report problem', problem: 'problem issue report', broken: 'problem issue report', monday: 'monday report', email: 'email report', cues: 'cue cues slide automation', automation: 'cue cues automation slide', crossfade: 'crossfade fade cue', fade: 'fade crossfade cue', home: 'home remote', tailscale: 'tailscale remote', teamviewer: 'remote support', anydesk: 'remote support', scripture: 'scripture bible verse passage', verse: 'verse scripture bible passage', passage: 'passage scripture bible verse', niv: 'niv bible version', esv: 'esv bible version', kjv: 'kjv bible version', nametags: 'name tag lower third', lower: 'lower third name tag', third: 'lower third name tag', translate: 'translated language', language: 'language translated', phantom: 'phantom power 48v gain', '48v': 'phantom power 48v', gain: 'gain phantom power trim', preamp: 'gain phantom power', wing: 'wing mixer desk', desk: 'wing mixer desk', mixingstation: 'wing mixer control', connect: 'connect wing answering', control: 'control watch wing', strips: 'strips layers fader', layer: 'layer layers strips', layers: 'layers layer strips', fader: 'fader strips fine', fine: 'fine fader strips', mute: 'mute enable strips', sends: 'sends on faders monitor mix', look: 'look wing classic design colours', classic: 'look classic', design: 'look wing classic', sidebar: 'look sidebar menu', colours: 'look colours', send: 'sends on faders monitor mix', monitor: 'monitor my mix in-ear wedge sends', eq: 'eq equaliser curve', equaliser: 'eq equaliser', equalizer: 'eq equaliser', gate: 'gate noise', compressor: 'compressor comp dynamics', comp: 'compressor comp', tio: 'tio stagebox r remote gain phantom', spectrograph: 'spectrograph rta', lightkey: 'lightkey lights', lighting: 'lights lighting', light: 'lights', mover: 'moving heads movers', movers: 'moving heads movers', moving: 'moving heads', heads: 'moving heads', programmer: 'program moving heads', programme: 'program', palette: 'palette preset', preset: 'palette preset', presets: 'palette preset', gobo: 'moving heads gobo', pan: 'moving heads pan tilt', tilt: 'moving heads pan tilt', osc: 'osc lightkey', dmx: 'lights lightkey', fixture: 'fixtures', fixture2: 'fixtures', spl: 'spl level', leq: 'average leq level', settings: 'settings', scan: 'scan network driver devices', driver: 'driver drivers scan', drivers: 'drivers driver scan', unknown: 'without a driver scan', chat: 'chat', change: 'change rename', dante: 'dante', patch: 'patch route set up', setup: 'set up', network: 'network dante', reference: 'reference desk', stereo: 'stereo left right', subs: 'subs sub subwoofer', sub: 'subs sub subwoofer', subwoofer: 'subs subwoofer', two: 'two stereo', left: 'left stereo', right: 'right stereo', route: 'route routing comes from', routing: 'route routing', router: 'route routing', comes: 'comes from', mic: 'mic microphone', microphone: 'mic microphone', rename: 'rename name', names: 'names name', app: 'app', first: 'first opens', page: 'screen page first opens', cafe: 'foyer cafe', found: 'found scan', ip: 'ip address scan', address: 'address scan', moved: 'moved scan address', missing: 'missing scan', two: 'two scan', rremote: 'tio r remote gain phantom', rta: 'rta spectrum eq', spectrum: 'rta spectrum eq', knob: 'knob compressor gate', reduction: 'gain reduction compressor gate', stagebox: 'tio stagebox gain phantom', trim: 'trim gain input', polarity: 'polarity phase input' };
+    const STOP = { my: 1, the: 1, a: 1, an: 1, in: 1, is: 1, i: 1, to: 1, of: 1, on: 1, it: 1, and: 1, how: 1, do: 1, why: 1, what: 1, will: 1, by: 1, does: 1, when: 1 };
+    const words = this.norm(q).split(/\s+/).filter((w) => w && !STOP[w]);
+    const items = all.map((f, i) => ({ f, i, t: this.norm(f.q), b: this.norm(f.q + ' ' + f.steps.join(' ')) }));
+    if (!words.length) {
+      if (!grouped) return items.map(({ f, i }) => ({ f, i }));
+      // two groups: problems first, then how to set things up
+      const how = (t) => /^(set |add |change |make |join |install |rename |use |using |turn |keep |put |find |load |sign in|update |send |move |copy |back up|choose |listen |subtitles in|start )/.test(t);
+      const probs = items.filter((x) => !how(x.t)), hows = items.filter((x) => how(x.t));
+      return probs.map((x, k) => ({ f: x.f, i: x.i, head: k === 0 ? 'Something\u2019s not working' : '' })).concat(hows.map((x, k) => ({ f: x.f, i: x.i, head: k === 0 ? 'How do I\u2026' : '' })));
+    }
+    const has = (txt, w) => { const alts = (SYN[w] || w).split(' ').map((a) => this.norm(a).trim()).filter(Boolean); return alts.some((a) => txt.indexOf(a) > -1 || (a.length > 3 && txt.indexOf(a.slice(0, -1)) > -1)); };
+    const hits = items.filter((x) => words.every((w) => has(x.b, w)));
+    const score = (x) => words.filter((w) => has(x.t, w)).length;
+    return hits.sort((a, b) => score(b) - score(a)).map(({ f, i }) => ({ f, i }));
+  }
+  renderVals() {
+    const s = this.state;
+    const q = s.query.trim().toLowerCase();
+    const me = (() => { try { return JSON.parse(localStorage.getItem('booth.user') || 'null'); } catch (e) { return null; } })();
+    const role = me ? me.role : '', volunteer = ['Musician', 'Foyer team', 'Viewer'].indexOf(role) >= 0;  // no one signed in: the booth screen, so show everything
+    const openTopic = (title) => { const k = this.fixList.findIndex((f) => f.q.indexOf(title) === 0); this.setState({ view: 0, query: '', open: k }); };
+    const ip = this.ips();
+    const fill = (t) => t.replace(/\{(\w+)\}/g, (m, k) => ip[k] || m);
+    const fixAll = this.fixList.map((f) => ({ ...f, steps: f.steps.map(fill) }));
+    const list = this.search(fixAll, q, s.view === 0 && !q);
+    const dc = (s.d && s.d.changes) || [];
+    const checks = this.checks();
+    return {
+      ...(() => {
+        const sc = s.scan;
+        if (!sc) return { hasScan: false, scanProblems: [] };
+        // Which troubleshooting topic helps for each driver.
+        const topic = { 1: 'Faders or mutes won', 4: 'Slides won', 5: 'Walk-in music', 6: 'Playback or MIDI', 7: 'Lights don' };
+        const probs = sc.rows.filter((x) => x.kind === 'missing' || x.kind === 'moved').map((x) => {
+          const idx = this.fixList.findIndex((f) => topic[x.id] && f.q.indexOf(topic[x.id]) === 0);
+          const go = idx > -1 ? () => this.setState({ open: idx, query: '' }) : () => this.setState({ view: 2 });
+          return { name: x.name, dot: x.kind === 'missing' ? '#FF7A45' : '#F5C518',
+            text: x.kind === 'missing' ? 'didn\u2019t answer at ' + x.addr + '.' : 'was found at ' + x.addr + ' (driver says ' + x.was + ').',
+            goLabel: idx > -1 ? 'What to check ›' : 'IP & ports ›', go };
+        });
+        return { hasScan: true, scanAt: sc.at, scanProblems: probs,
+          scanHead: probs.length ? sc.summary : 'Everything answered \u2713 ' + sc.summary,
+          scanEdge: probs.some((p) => p.dot === '#FF7A45') ? '#FF7A45' : (probs.length ? '#F5C518' : '#6CB4F5') };
+      })(),
+      ipChanged: dc.length > 0,
+      ipNote: dc.length ? 'Addresses updated from Drivers at ' + s.d.at + ': ' + dc.map((c) => c.name + ' is now ' + c.to).join(', ') + '. The steps below already use the new addresses.' : '',
+      isNet: s.view === 2,
+      oses: [['mac', 'Mac'], ['win', 'Windows']].map(([k, n]) => ({ name: n, on: s.os === k, cls: s.os === k ? 'on' : '', pick: () => this.setState({ os: k, nOpen: 0 }) })),
+      netItems: this.netList[s.os].map((n, i) => ({
+        q: n.q, steps: n.steps.map(fill), cmds: n.cmds, note: n.note, hasNote: !!n.note,
+        open: s.nOpen === i, chev: s.nOpen === i ? '\u2212' : '+',
+        toggle: () => this.setState({ nOpen: s.nOpen === i ? -1 : i })
+      })),
+      expect: this.expectList.map((e) => {
+        const d = s.d && s.d.list ? s.d.list.find((x) => x.id === e.id) : null;
+        const ip2 = d && d.ip !== '127.0.0.1' ? d.ip : e.ip, port2 = d ? d.port : e.port;
+        return { name: e.name, where: e.where, addr: ip2 + ' : ' + port2 };
+      }),
+      showTech: !volunteer, canRestart: role === 'Admin' || role === 'FOH sound',
+      common: [['No sound in my ears', 'I can\u2019t hear anything in my ears'], ['Listen and subtitles', 'Listen plays nothing'], ['Hearing aids', 'Listen with hearing aids'], ['Bible verse on screen', 'Put a Bible passage into ProPresenter (Bible Scripture)'], ['Report a problem', 'Report an issue'], ['Forgot my PIN', 'I forgot my PIN']].map(([n, t]) => ({ name: n, open: () => openTopic(t) })),
+      askReport: () => this.setState({ reportAsk: true, reportDone: false }), reportAsk: !!s.reportAsk, reportDone: !!s.reportDone,
+      reportNo: () => this.setState({ reportAsk: false }), reportYes: () => this.setState({ reportAsk: false, reportDone: true }),
+      views: (volunteer ? ['Troubleshoot', 'How it works'] : ['Troubleshoot', 'How it works', 'IP & ports']).map((n, i) => ({ name: n, on: s.view === i, cls: s.view === i ? 'on' : '', pick: () => this.setState({ view: i }) })),
+      isFix: s.view === 0, isHow: s.view === 1,
+      runCheck: () => this.runCheck(),
+      checking: s.checking,
+      checkLabel: s.checking ? 'Checking…' : (s.step > 0 ? 'Run the check again' : 'Run system check'),
+      hasResults: s.step > 0,
+      results: checks.slice(0, Math.max(0, s.step)).map(([name, state, fix]) => ({
+        name, state, fix, hasFix: !!fix,
+        dot: fix ? '#FF7A45' : (state === 'Off' ? '#A3ACB8' : '#6CB4F5')
+      })),
+      query: s.query,
+      setQuery: (e) => this.setState({ query: e.target.value, open: -1 }),
+      noMatch: list.length === 0,
+      fixes: list.map(({ f, i, head }) => ({
+        q: f.q, steps: f.steps, href: f.href, go: f.go, color: f.c, head: !!head, headText: head || '',
+        open: s.open === i, chev: s.open === i ? '−' : '+',
+        toggle: () => this.setState({ open: s.open === i ? -1 : i })
+      })),
+      guides: this.guideList.map((g, i) => ({
+        q: g.q, lines: g.lines, href: g.href, go: g.go,
+        open: s.gOpen === i, chev: s.gOpen === i ? '−' : '+',
+        toggle: () => this.setState({ gOpen: s.gOpen === i ? -1 : i })
+      }))
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,471 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>C3 Life – Slide cues</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet" data-look>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Safari / iPad: no zoom when typing, no double-tap zoom, no text-select or callout while dragging */
+html{-webkit-text-size-adjust:100%;touch-action:manipulation}
+input,select,textarea{font-size:16px!important}
+button,a,summary,label,[role=slider]{-webkit-tap-highlight-color:transparent}
+[role=slider],.fader,.pan{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+body{margin:0;background:#0D1015}
+a{color:#6CB4F5}a:hover{color:#9CCBF8}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:62px;color:#A3ACB8;text-decoration:none;font-size:12px;font-weight:500;border-top:2px solid transparent}
+.tab:hover{color:#ECEEF1}
+.tab.on{color:#F5C518;border-top-color:#F5C518}
+.card{background:#161A21;border:1px solid #262C36;border-radius:14px;padding:14px}
+.lbl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#A3ACB8;font-weight:500}
+.mono{font-family:'IBM Plex Mono',ui-monospace,monospace}
+.seg{display:flex;gap:4px;background:#161A21;border:1px solid #262C36;border-radius:12px;padding:4px}
+.seg a{flex:1;display:flex;align-items:center;justify-content:center;min-height:44px;border-radius:9px;color:#A3ACB8;text-decoration:none;font-size:14px;font-weight:500}
+.seg a.on{background:#262C36;color:#ECEEF1}
+.mute{width:64px;min-height:44px;border-radius:10px;border:1px solid #333B47;background:#1E232C;color:#ECEEF1;font:500 13px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer}
+.mute.hot{background:#FF7A45;border-color:#FF7A45;color:#1A0A03}
+input[type=range]{width:100%;accent-color:#F5C518;height:28px}
+input[type=range]:disabled{opacity:.35;cursor:not-allowed}
+.mute:disabled{opacity:.4;cursor:not-allowed}
+.lk{flex:1;min-height:44px;border-radius:9px;border:0;background:transparent;color:#A3ACB8;font:500 13px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer}
+.lk.on{background:#262C36;color:#ECEEF1}
+.lkb{width:36px;height:36px;border-radius:8px;border:1px solid #333B47;background:transparent;color:#A3ACB8;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;flex:none}
+.lkb.on{background:#F5C518;border-color:#F5C518;color:#1A1204}
+.btn{min-height:44px;padding:0 16px;border-radius:10px;border:1px solid #333B47;background:#1E232C;color:#ECEEF1;font:500 14px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer}
+.btn.pri{background:#F5C518;border-color:#F5C518;color:#1A1204}
+input[type=checkbox]{width:20px;height:20px;accent-color:#F5C518;flex:none}
+
+/* Fills any screen. Wider than 700px (iPad, laptop, web) the content sits in a centred column. */
+@media (min-width:700px){
+  .app > *:not(.bn):not([style*="position:absolute"]){width:100%;max-width:760px;margin-left:auto;margin-right:auto;box-sizing:border-box}
+}
+
+.app > .rtabar{max-width:none !important;margin-left:0 !important;margin-right:0 !important}
+
+/* Easy to use: every link, tick box and control is at least 40-44px tall, so it is easy to hit with a thumb. */
+a[style*="min-height:28px"]{min-height:44px !important}
+a[style*="font-size:12px"][style*="text-decoration:none"],a[style*="font-size:13px"][style*="text-decoration:none"]{display:inline-flex;align-items:center;min-height:40px}
+label:has(> input[type=checkbox]),label:has(> input[type=radio]){min-height:44px}
+input[type=checkbox],input[type=radio]{width:22px;height:22px;flex:none;accent-color:#F5C518}
+input[type=range]{min-height:40px}
+select{min-height:44px}
+button.sw::after,button.cell::after{content:'';position:absolute;inset:-7px -4px}
+.cell{position:relative}
+input[type=checkbox][aria-label]{width:32px;height:32px}
+
+/* Menu: a drop-down list at the top of every screen. Tap Menu to open it, tap again (or pick a page) to close. */
+.topmenu{position:relative;z-index:20;flex:none;background:#11151B;border-bottom:1px solid #262C36}
+.topmenu summary{list-style:none;display:flex;align-items:center;gap:10px;min-height:52px;padding:0 16px;cursor:pointer;color:#ECEEF1;font:600 15px 'IBM Plex Sans',system-ui,sans-serif;max-width:760px;margin:0 auto;box-sizing:border-box}
+.topmenu summary::-webkit-details-marker{display:none}
+.topmenu .mlabel{font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:#A3ACB8}
+.topmenu .mcur{flex:1;color:#F5C518}
+.topmenu .chev{transition:transform .15s}
+.topmenu details[open] .chev{transform:rotate(180deg)}
+.topmenu .mlist{position:absolute;left:8px;right:8px;top:calc(100% + 4px);background:#161A21;border:1px solid #333B47;border-radius:14px;box-shadow:0 14px 34px rgba(0,0,0,.55);padding:6px;display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.topmenu .mlist a{display:flex;align-items:center;gap:10px;min-height:52px;padding:0 12px;border-radius:10px;color:#ECEEF1;text-decoration:none;font:500 15px 'IBM Plex Sans',system-ui,sans-serif}
+.topmenu .mlist a:hover{background:#1E232C}
+.topmenu .mlist a.on{background:#262C36;color:#F5C518}
+@media (min-width:700px){.topmenu .mlist{left:calc(50% - 372px);right:auto;width:440px}}
+@media (min-width:700px) and (max-width:800px){.topmenu .mlist{left:16px}}
+
+.ren{width:36px;height:36px;margin:-6px 0 -6px 2px;border-radius:8px;border:0;background:none;color:#A3ACB8;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;padding:0}
+.ren:hover{background:#1E232C;color:#ECEEF1}
+.send{min-height:48px;border-radius:10px;border:1px solid #F5C518;background:#F5C518;color:#1A1204;font:600 14px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer}
+.lk:disabled{opacity:.45;cursor:not-allowed}
+.bsel{min-height:44px;border-radius:10px;border:1px solid #333B47;background:#0F1318;color:#ECEEF1;font:500 14px 'IBM Plex Sans',system-ui,sans-serif;padding:0 8px;box-sizing:border-box;min-width:0;width:100%}
+.cqin{width:100%;min-height:44px;border-radius:10px;border:1px solid #333B47;background:#0F1318;color:#ECEEF1;font:500 15px 'IBM Plex Sans',system-ui,sans-serif;padding:0 10px;box-sizing:border-box;min-width:0}
+.cqsw{min-width:64px;min-height:44px;border-radius:22px;border:1px solid #333B47;background:#1E232C;color:#A3ACB8;font:600 13px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer}
+.cqsw[aria-pressed=true]{background:#B48CF2;border-color:#B48CF2;color:#0D1015}
+/* wide:start — iPad landscape and laptops: use the width */
+@media (min-width:1000px){
+  .app > *:not(.bn):not([style*="position:absolute"]){max-width:1240px}
+  .topmenu summary{max-width:1240px}
+  .app main.wide2{display:grid !important;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:14px 18px !important}
+  .app main.wide2 > *{min-width:0}
+  .app main.wide2 > :not(section):not(.card):not(details):not(.wcol){grid-column:1 / -1}
+  .app main.wide2 > .wfull{grid-column:1 / -1}
+  .app main.wide1{max-width:980px !important}
+  .app:has(main.wide1) > *:not(.bn):not([style*="position:absolute"]){max-width:980px}
+  .app:has(main.wide1) .topmenu summary{max-width:980px}
+}
+@media (min-width:1500px){ .app main.wide2.wide3{grid-template-columns:repeat(3,minmax(0,1fr))} }
+/* wide:end */
+/* look:start — the WING look (like WING Edit): near-black, outlined panels, condensed headings, yellow for active, blue for selected.
+   Settings › Look › Classic puts the old look back on this device (html[data-look=classic]). */
+:root{--wk-bg:#0A0B0D;--wk-panel:#121418;--wk-panel2:#181B20;--wk-line:#2E333A;--wk-yellow:#F5C518;--wk-blue:#2F6CC4;--wk-cond:'Barlow Condensed','IBM Plex Sans',system-ui,sans-serif}
+html:not([data-look=classic]) body{background:var(--wk-bg)}
+html:not([data-look=classic]) .app{background:var(--wk-bg) !important}
+html:not([data-look=classic]) .card{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .lbl{font-family:var(--wk-cond);font-size:13px;font-weight:600;letter-spacing:.07em;color:#D4D9E0}
+html:not([data-look=classic]) h1{font-family:var(--wk-cond);font-weight:600 !important;text-transform:uppercase;letter-spacing:.05em;font-size:21px !important;line-height:1.2;color:var(--wk-yellow);border:1.5px solid var(--wk-yellow);border-radius:3px;padding:2px 12px;display:inline-block}
+html:not([data-look=classic]) .btn,html:not([data-look=classic]) .lk,html:not([data-look=classic]) .mxb,html:not([data-look=classic]) .mxbk,html:not([data-look=classic]) .mute,html:not([data-look=classic]) .pbtn{font-family:var(--wk-cond);font-size:15px;letter-spacing:.02em;border-radius:4px}
+html:not([data-look=classic]) .btn.pri{background:var(--wk-yellow);border-color:var(--wk-yellow);color:#111}
+html:not([data-look=classic]) .seg{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .seg a{font-family:var(--wk-cond);font-size:15px;letter-spacing:.03em;border-radius:4px}
+html:not([data-look=classic]) .seg a.on,html:not([data-look=classic]) .lk.on{background:var(--wk-blue);color:#fff}
+html:not([data-look=classic]) .tab.on{color:var(--wk-yellow);border-top-color:var(--wk-yellow)}
+html:not([data-look=classic]) .topmenu{background:#000;border-bottom-color:var(--wk-line)}
+html:not([data-look=classic]) .topmenu summary{font-family:var(--wk-cond);font-size:16px;letter-spacing:.03em}
+html:not([data-look=classic]) .topmenu .mcur{color:var(--wk-yellow)}
+html:not([data-look=classic]) .topmenu .mlist{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .topmenu .mlist a{font-family:var(--wk-cond);font-size:16px;border-radius:4px}
+html:not([data-look=classic]) .topmenu .mlist a.on{background:var(--wk-panel2);color:var(--wk-yellow);box-shadow:inset 3px 0 0 var(--wk-yellow)}
+html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic]) input[type=radio],html:not([data-look=classic]) input[type=range]{accent-color:var(--wk-yellow)}
+.wkside{display:none}
+/* iPad landscape and laptops: a sidebar like WING Edit's (HOME, MIXER, ...) instead of the menu at the top */
+@media (min-width:1000px){
+  html:not([data-look=classic]) .wkside{display:flex;flex-direction:column;gap:2px;position:fixed;left:0;top:0;bottom:0;width:132px !important;max-width:132px !important;margin:0 !important;padding:8px 6px 12px;box-sizing:border-box;background:#000;border-right:1px solid var(--wk-line);overflow-y:auto;z-index:30}
+  html:not([data-look=classic]) .wkside .wkbrand{font:700 24px var(--wk-cond);letter-spacing:.06em;color:var(--wk-yellow);padding:6px 8px 12px}
+  html:not([data-look=classic]) .wkside a{display:flex;align-items:center;gap:9px;min-height:46px;padding:0 8px;border-radius:4px;color:#D4D9E0;text-decoration:none;font:600 15px var(--wk-cond);text-transform:uppercase;letter-spacing:.04em}
+  html:not([data-look=classic]) .wkside a:hover{background:var(--wk-panel2)}
+  html:not([data-look=classic]) .wkside a.on{background:var(--wk-panel2);color:var(--wk-yellow);box-shadow:inset 3px 0 0 var(--wk-yellow)}
+  html:not([data-look=classic]) .wkside svg{flex:none}
+  html:not([data-look=classic]) .app{padding-left:132px;box-sizing:border-box !important}
+  html:not([data-look=classic]) .app > .topmenu{display:none}
+}
+/* look:end */
+</style>
+</helmet>
+<div class="app has-bn" style="width:100%;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;background:#0D1015;color:#ECEEF1;font-family:'IBM Plex Sans',system-ui,sans-serif;overflow:hidden">
+  
+  
+  
+  
+  <nav class="wkside" aria-label="Main menu (side)"><div class="wkbrand" aria-hidden="true">C3 LIFE</div><a href="Main.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Home</a>
+        <a href="Wing.dc.html" class="on" aria-current="page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4v16M12 4v16M18 4v16"/><path d="M4 14h4M10 8h4M16 16h4"/></svg>Mixer</a>
+        <a href="RTA.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V12M9 20V6M14 20V10M19 20V4"/></svg>RTA</a>
+        <a href="Show.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M10 8l5 2-5 2z"/><path d="M8 20h8"/></svg>Show</a>
+        <a href="Lights.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>Lights</a>
+        <a href="Plan.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h1M4 12h1M4 18h1"/></svg>Plan</a>
+        <a href="Chat.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>Chat</a>
+        <a href="Listen.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="15" width="4" height="6" rx="1.5"/><rect x="17" y="15" width="4" height="6" rx="1.5"/><path d="M10 9.5a2.5 2.5 0 0 1 4 0"/></svg>Listen</a>
+        <a href="Help.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2.5 2-2.5 3.5M12 17h.01"/></svg>Help</a>
+        <a href="Report.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4h11l-1.5 4L16 12H5"/></svg>Report an issue</a></nav>
+  <nav class="bn topmenu" aria-label="Main menu">
+    <details>
+      <summary aria-label="Menu. You are on Slide cues"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span class="mlabel">Menu</span><span class="mcur">Slide cues</span><svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+      <div class="mlist">
+        <a href="Main.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Home</a>
+        <a href="Wing.dc.html" class="on" aria-current="page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4v16M12 4v16M18 4v16"/><path d="M4 14h4M10 8h4M16 16h4"/></svg>Mixer</a>
+        <a href="RTA.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V12M9 20V6M14 20V10M19 20V4"/></svg>RTA</a>
+        <a href="Show.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M10 8l5 2-5 2z"/><path d="M8 20h8"/></svg>Show</a>
+        <a href="Lights.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>Lights</a>
+        <a href="Plan.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h1M4 12h1M4 18h1"/></svg>Plan</a>
+        <a href="Chat.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>Chat</a>
+        <a href="Listen.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="15" width="4" height="6" rx="1.5"/><rect x="17" y="15" width="4" height="6" rx="1.5"/><path d="M10 9.5a2.5 2.5 0 0 1 4 0"/></svg>Listen</a>
+        <a href="Help.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2.5 2-2.5 3.5M12 17h.01"/></svg>Help</a>
+        <a href="Report.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4h11l-1.5 4L16 12H5"/></svg>Report an issue</a>
+      </div>
+    </details>
+  </nav>
+  <header style="padding:22px 16px 12px;display:flex;flex-direction:column;gap:12px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;padding:0 4px">
+      <h1 style="margin:0;font-size:26px;font-weight:600">Mixer</h1>
+      <div style="font-size:12px;color:#A3ACB8;text-align:right">When a slide goes live<br>in ProPresenter</div>
+    </div>
+    <nav class="seg" aria-label="Mixer sections">
+      <a href="Wing.dc.html">Channels</a>
+      <a href="Patch.dc.html">Patch</a>
+      <a href="Dante.dc.html">Dante</a>
+      <a href="Mics.dc.html">Mics</a>
+      <a href="Cues.dc.html" class="on">Cues</a>
+    </nav>
+  </header>
+
+  <main class=" wide2" style="flex:1;overflow-y:auto;padding:0 16px 16px;display:flex;flex-direction:column;gap:12px">
+    <section class="card wfull" aria-label="Slide cues settings" style="display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:16px;font-weight:600">Slide cues</div>
+          <div style="font-size:13px;color:#A3ACB8;line-height:1.45">{{enabledText}}</div>
+        </div>
+        <button class="cqsw" onClick="{{toggleEnabled}}" disabled="{{notEdit}}" aria-pressed="{{enabled}}" aria-label="Slide cues {{enabledLabel}}">{{enabledLabel}}</button>
+      </div>
+      <label for="cq-def" style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#A3ACB8">Usually
+        <select id="cq-def" class="bsel" value="{{defHow}}" onChange="{{setDefHow}}" disabled="{{notEdit}}">
+          <sc-for list="{{defOpts}}" as="o" hint-placeholder-count="4"><option value="{{o.v}}">{{o.label}}</option></sc-for>
+        </select>
+      </label>
+      <div style="font-size:12px;color:#A3ACB8;line-height:1.45">A countdown shows on Home, Mixer, Show and Running order for Admin and FOH sound, with Cancel and Run now. Each cue can ask instead, or count for longer. Only an Admin can make one run straight away (it still has Undo).</div>
+      <sc-if value="{{cantEdit}}" hint-placeholder-val="{{ false }}"><div style="font-size:13px;color:#F5C518">You can look. Changing cues needs Control on Macros (Access levels).</div></sc-if>
+    </section>
+    <section class="card wfull" aria-label="Run check" style="display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:600">Run check</div><div style="font-size:12px;color:#A3ACB8;line-height:1.45">Checks ProPresenter is there and each cue matches something in today’s playlist. Nothing changes and nothing runs. Saving runs it too, and only saves if it passes.</div></div>
+        <button class="btn pri" onClick="{{runCheckFn}}" disabled="{{chkBusy}}">{{chkLabel}}</button>
+      </div>
+      <sc-if value="{{hasChk}}" hint-placeholder-val="{{ false }}">
+        <div role="status" aria-label="Run check result" style="display:flex;flex-direction:column;gap:2px">
+          <div style="font-size:14px;font-weight:600;color:{{chkColor}};padding:4px 0">{{chkHead}}</div>
+          <sc-for list="{{chkLines}}" as="l" hint-placeholder-count="5">
+            <div style="display:flex;gap:10px;padding:6px 0;border-top:1px solid #222831"><div style="width:18px;flex:none;font-weight:700;color:{{l.color}};text-align:center">{{l.mark}}</div><div style="flex:1;min-width:0;font-size:13px;line-height:1.4"><b>{{l.what}}</b> · {{l.text}}</div></div>
+          </sc-for>
+          <div style="font-size:12px;color:#A3ACB8;padding-top:4px">To see one run, use Test this cue: it shows the countdown and moves the mixer, with Undo.</div>
+        </div>
+      </sc-if>
+    </section>
+    <sc-for list="{{cues}}" as="c" hint-placeholder-count="3">
+      <section class="card" aria-label="Cue: {{c.name}}" style="display:flex;flex-direction:column;gap:10px;border-color:{{c.border}};opacity:{{c.opacity}}">
+        <div style="display:flex;gap:8px;align-items:flex-end">
+          <label for="{{c.idName}}" style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px;font-size:12px;color:#A3ACB8">Cue name
+            <input id="{{c.idName}}" type="text" value="{{c.name}}" onInput="{{c.setName}}" onChange="{{c.setName}}" maxlength="80" disabled="{{notEdit}}" class="cqin">
+          </label>
+          <button class="cqsw" onClick="{{c.toggle}}" disabled="{{notEdit}}" aria-pressed="{{c.on}}" aria-label="{{c.name}} {{c.onLabel}}">{{c.onLabel}}</button>
+        </div>
+        <div class="lbl">When ProPresenter shows</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));gap:8px">
+          <select id="{{c.idKind}}" class="bsel" value="{{c.kind}}" onChange="{{c.setKind}}" disabled="{{notEdit}}" aria-label="What sets {{c.name}} off">
+            <option value="presentation">Presentation</option><option value="group">Slide group</option><option value="label">Slide label</option>
+          </select>
+          <input id="{{c.idText}}" type="text" value="{{c.text}}" onInput="{{c.setText}}" onChange="{{c.setText}}" maxlength="80" placeholder="{{c.ph}}" disabled="{{notEdit}}" class="cqin" aria-label="Name of the presentation, group or label for {{c.name}}">
+        </div>
+        <div class="lbl">Then</div>
+        <sc-for list="{{c.acts}}" as="a" hint-placeholder-count="2">
+          <div role="group" aria-label="{{a.label}}" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(110px, 1fr));gap:6px;align-items:center;background:#0F1318;border:1px solid #262C36;border-radius:10px;padding:6px">
+            <select class="bsel" value="{{a.ch}}" onChange="{{a.setCh}}" disabled="{{notEdit}}" aria-label="Channel">
+              <sc-for list="{{a.chOpts}}" as="o" hint-placeholder-count="16"><option value="{{o.v}}">{{o.label}}</option></sc-for>
+            </select>
+            <select class="bsel" value="{{a.act}}" onChange="{{a.setAct}}" disabled="{{notEdit}}" aria-label="What happens">
+              <option value="on">On</option><option value="off">Off</option><option value="fader">Fader to</option>
+            </select>
+            <sc-if value="{{a.isFader}}" hint-placeholder-val="{{ true }}">
+              <input type="number" class="cqin" step="0.5" min="-90" max="10" value="{{a.db}}" onChange="{{a.setDb}}" disabled="{{notEdit}}" aria-label="Fader level in dB">
+            </sc-if>
+            <select class="bsel" value="{{a.fade}}" onChange="{{a.setFade}}" disabled="{{notEdit}}" aria-label="{{a.fadeName}}">
+              <option value="0">No fade</option><option value="1">{{a.fadeName}} 1 s</option><option value="2">{{a.fadeName}} 2 s</option><option value="3">{{a.fadeName}} 3 s</option><option value="5">{{a.fadeName}} 5 s</option><option value="10">{{a.fadeName}} 10 s</option>
+            </select>
+            <button class="btn" style="min-height:44px" onClick="{{a.remove}}" disabled="{{notEdit}}" aria-label="{{a.aria}}">Remove</button>
+          </div>
+        </sc-for>
+        <div style="display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:8px">
+          <button class="btn" style="min-height:40px;font-size:13px" onClick="{{c.addAct}}" disabled="{{notEdit}}">+ Add a channel change</button>
+          <button class="btn" style="min-height:40px;font-size:13px" onClick="{{c.addCross}}" disabled="{{notEdit}}">+ Add a crossfade</button>
+        </div>
+        <div style="font-size:12px;color:#A3ACB8;line-height:1.45">All the changes in a cue happen together, so one channel fading out while another fades in is a crossfade.</div>
+        <sc-if value="{{c.cross}}" hint-placeholder-val="{{ false }}"><div style="font-size:12px;color:#B48CF2">Crossfade: one fades out as the other fades in.</div></sc-if>
+        <label for="{{c.idHow}}" style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#A3ACB8">How it runs
+          <select id="{{c.idHow}}" class="bsel" value="{{c.how}}" onChange="{{c.setHow}}" disabled="{{notEdit}}">
+            <sc-for list="{{c.howOpts}}" as="o" hint-placeholder-count="5"><option value="{{o.v}}" disabled="{{o.off}}">{{o.label}}</option></sc-for>
+          </select>
+        </label>
+        <sc-if value="{{c.nowWarn}}" hint-placeholder-val="{{ false }}"><div style="font-size:12px;color:#F5C518">Runs as soon as the slide is live, without asking. The sound desk can still tap Undo.</div></sc-if>
+        <div style="font-size:12px;color:#C9CFD7;line-height:1.45">{{c.summary}}</div>
+        <div style="display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:8px">
+          <button class="btn" onClick="{{c.test}}">Test this cue</button>
+          <button class="btn" onClick="{{c.openDel}}" disabled="{{notEdit}}">Delete</button>
+        </div>
+        <sc-if value="{{c.askDel}}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:8px;border:1px solid #F5C518;border-radius:10px;padding:10px">
+            <div style="font-size:14px;font-weight:600">Delete “{{c.name}}”?</div>
+            <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px"><button class="btn" onClick="{{c.noDel}}">Keep it</button><button class="btn pri" onClick="{{c.del}}">Delete it</button></div>
+          </div>
+        </sc-if>
+      </section>
+    </sc-for>
+    <button class="btn wfull" onClick="{{addCue}}" disabled="{{notEdit}}">+ Add a cue</button>
+    <sc-if value="{{hasErr}}" hint-placeholder-val="{{ false }}"><div role="alert" class="wfull" style="font-size:13px;color:#FF7A45">{{err}}</div></sc-if>
+    <sc-if value="{{hasMsg}}" hint-placeholder-val="{{ false }}"><div role="status" class="wfull" style="font-size:13px;color:#6CB4F5">{{msg}}</div></sc-if>
+    <sc-if value="{{dirty}}" hint-placeholder-val="{{ false }}">
+      <div class="wfull" style="display:grid;grid-template-columns:1fr 2fr;gap:8px;position:sticky;bottom:0;background:#0D1015;padding:8px 0">
+        <button class="btn" onClick="{{discard}}">Discard</button><button class="btn pri" onClick="{{saveFn}}" disabled="{{chkBusy}}">Check and save</button>
+      </div>
+    </sc-if>
+    <section class="card wfull" aria-label="Recent slide cues" style="display:flex;flex-direction:column;gap:4px;padding:10px 14px">
+      <div class="lbl" style="padding-bottom:4px">Recent</div>
+      <sc-if value="{{noLog}}" hint-placeholder-val="{{ false }}"><div style="font-size:13px;color:#A3ACB8">No cues yet today.</div></sc-if>
+      <sc-for list="{{log}}" as="x" hint-placeholder-count="3">
+        <div style="display:flex;gap:10px;padding:6px 0;border-top:1px solid #222831"><div class="mono" style="font-size:12px;color:#A3ACB8;width:64px;flex:none">{{x.t}}</div><div style="flex:1;min-width:0;font-size:13px"><b>{{x.cue}}</b> · {{x.what}}</div></div>
+      </sc-for>
+    </section>
+  </main>
+
+  <div style="position:absolute;inset:0;z-index:6;pointer-events:none">
+    <dc-import name="MDTalk" hint-size="390px,844px"></dc-import>
+  </div>
+  <div style="position:absolute;inset:0;z-index:7;pointer-events:none">
+    <dc-import name="CueBar" hint-size="390px,844px"></dc-import>
+  </div>
+  <div class="rtabar" style="flex:none">
+    <dc-import name="MiniRTA" hint-size="390px,48px"></dc-import>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    const d = this.cqRead();
+    this.state = { saved: d, draft: JSON.parse(JSON.stringify(d)), msg: '', err: '', askDel: '' };
+  }
+  componentDidMount() {
+    this.cqFetch().then((d) => { if (d && JSON.stringify(this.state.draft) === JSON.stringify(this.state.saved)) this.setState({ saved: d, draft: JSON.parse(JSON.stringify(d)) }); });
+    this.timer = setInterval(() => this.setState({ t: Date.now() }), 1000);  // the Recent list
+  }
+  componentWillUnmount() { clearInterval(this.timer); }
+  // Slide cues: audio changes when a ProPresenter slide goes live (a presentation, a slide group or a label).
+  // Each cue asks, counts down with Cancel (5 s unless it says otherwise) or, if an Admin chose it, runs
+  // straight away with Undo. The cues live on the C3 Life server (/api/cues); the mixer here shows the result.
+  cqToken() { try { const x = JSON.parse(localStorage.getItem('booth.session') || 'null'); return x ? x.token : ''; } catch (e) { return ''; } }
+  cqDefaults() { return JSON.parse(JSON.stringify({"enabled": true, "default_how": "count5", "cues": [{"id": "c1", "name": "Pastor mic on for the Message", "on": true, "when": {"kind": "presentation", "text": "Message"}, "how": "count5", "do": [{"ch": 15, "act": "on", "fade": 2}, {"ch": 1, "act": "fader", "db": -10.0, "fade": 3}]}, {"id": "c2", "name": "Lead Vox up for the bridge", "on": true, "when": {"kind": "group", "text": "Bridge"}, "how": "count5", "do": [{"ch": 1, "act": "fader", "db": 2.0, "fade": 2}]}, {"id": "c3", "name": "Walk-in music off at the Welcome", "on": true, "when": {"kind": "presentation", "text": "Welcome"}, "how": "ask", "do": [{"ch": 10, "act": "off", "fade": 3}]}]})); }
+  cqRead() { try { const d = JSON.parse(localStorage.getItem('booth.cues') || 'null'); if (d && Array.isArray(d.cues)) return d; } catch (e) {} return this.cqDefaults(); }
+  cqWrite(d) { try { localStorage.setItem('booth.cues', JSON.stringify(d)); } catch (e) {} }
+  cqFetch() {
+    // On the C3 Life server, the shared cues; this device keeps a copy for the countdown bar.
+    try {
+      const t = this.cqToken();
+      return fetch('/api/cues', { headers: t ? { Authorization: 'Bearer ' + t } : {} }).then((r) => r.json().catch(() => ({})).then((j) => ({ code: r.status, j: j })))
+        .then(({ code, j }) => { if (code === 200 && j.ok) { this.cqServer = true; const d = { enabled: j.enabled, default_how: j.default_how, cues: j.cues }; this.cqWrite(d); return d; } if (code === 401 || code === 403) this.cqServer = true; return null; })
+        .catch(() => null);
+    } catch (e) { return Promise.resolve(null); }
+  }
+  cqNames() {
+    const d = { 1: 'Lead Vox', 2: 'BV 1', 3: 'BV 2', 4: 'Acoustic', 5: 'Keys', 6: 'Bass DI', 7: 'Kick', 8: 'RTA Mic', 9: 'Snare', 10: 'Playback L/R', 11: 'Band Leader', 12: 'MD Talkback', 13: 'Drummer TB', 14: 'Spare', 15: 'Pastor HH', 16: 'Pastor Lapel' };
+    try { const w = JSON.parse(localStorage.getItem('booth.wingnames') || 'null'); if (w && w.ch) return { ...d, ...w.ch }; } catch (e) {}
+    return d;
+  }
+  cqCh(n) { return 'Ch ' + String(n).padStart(2, '0') + ' ' + (this.cqNames()[n] || ''); }
+  // fader position (0-100, as the mixer screen draws it) <-> dB
+  cqToDb(l) { return l <= 0 ? -90 : (l >= 75 ? ((l - 75) / 25) * 10 : -((75 - l) * 1.2)); }
+  cqToLevel(db) { return db <= -90 ? 0 : Math.max(0, Math.min(100, db >= 0 ? 75 + (db / 10) * 25 : 75 + db / 1.2)); }
+  cqDb(db) { return db <= -90 ? '−∞ dB' : (db > 0 ? '+' : (db < 0 ? '−' : '')) + Math.abs(db).toFixed(1) + ' dB'; }
+  cqMix() {
+    // The mixer as everyone sees it: channel -> {level, muted}. The Mixer screen shares the same.
+    const base = {}; const lv = [78, 72, 72, 70, 68, 74, 73, 0, 71, 66, 70, 70, 70, 0, 75, 75];
+    for (let n = 1; n <= 16; n++) base[n] = { level: lv[n - 1], muted: n === 8 || n === 14 || n === 15 || n === 16 };
+    try { const m = JSON.parse(localStorage.getItem('booth.mix') || 'null'); if (m && m.ch) { Object.keys(m.ch).forEach((k) => { base[k] = { ...base[k], ...m.ch[k] }; }); return { v: m.v || 0, ch: base }; } } catch (e) {}
+    return { v: 0, ch: base };
+  }
+  cqSetMix(changes) {
+    const m = this.cqMix();
+    Object.keys(changes).forEach((k) => { m.ch[k] = { ...m.ch[k], ...changes[k] }; });
+    m.v = (m.v || 0) + 1;
+    try { localStorage.setItem('booth.mix', JSON.stringify(m)); } catch (e) {}
+  }
+  cqHowName(h) { return { ask: 'Ask first', count3: '3-second countdown', count5: '5-second countdown', count10: '10-second countdown', now: 'Straight away (with Undo)' }[h] || h; }
+  cqWhenName(w) { return ({ presentation: 'Presentation', group: 'Slide group', label: 'Slide label' }[w.kind] || '') + ' “' + w.text + '”'; }
+  cqDo(a) {
+    if (a.act === 'on') return this.cqCh(a.ch) + (a.fade ? ' fades in over ' + a.fade + ' s' : ' on');
+    if (a.act === 'off') return this.cqCh(a.ch) + (a.fade ? ' fades out over ' + a.fade + ' s' : ' off');
+    return this.cqCh(a.ch) + ' to ' + this.cqDb(a.db) + (a.fade ? ' over ' + a.fade + ' s' : '');
+  }
+  cqSummary(c) { return c.do.map((a) => this.cqDo(a)).join(' · '); }
+  cqLog(entry) {
+    let l = []; try { l = JSON.parse(localStorage.getItem('booth.cuelog') || '[]'); } catch (e) {}
+    const d = new Date(); l.unshift({ t: String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') + ':' + String(d.getSeconds()).padStart(2, '0'), ...entry });
+    try { localStorage.setItem('booth.cuelog', JSON.stringify(l.slice(0, 30))); } catch (e) {}
+  }
+  cqSlide(slide) {
+    // What ProPresenter just put live. On the C3 Life server this comes from ProPresenter; here, from the Show screen.
+    try { localStorage.setItem('booth.ppslide', JSON.stringify({ ...slide, at: Date.now() })); } catch (e) {}
+  }
+  user() { try { return JSON.parse(localStorage.getItem('booth.user') || 'null'); } catch (e) { return null; } }
+  canEdit() {
+    const u = this.user(); if (!u) return true;  // the preview, nobody signed in
+    try { const r = JSON.parse(localStorage.getItem('booth.access') || 'null'); const role = Array.isArray(r) && r.find((x) => x.name === (u.role || u.name)); if (role) return role.p[7] === 2; } catch (e) {}
+    return ['Admin', 'FOH sound'].indexOf(u.role || u.name) > -1;
+  }
+  isAdmin() { const u = this.user(); return !u || (u.role || u.name) === 'Admin'; }
+  save() {
+    // the Run check first: nothing is saved unless every cue can work
+    const d = this.state.draft;
+    const done = (saved, chk) => { this.cqWrite(saved); this.setState({ saved: saved, draft: JSON.parse(JSON.stringify(saved)), msg: '\u2713 Checked and saved. Every device uses these cues now.', err: '', chk: chk, chkBusy: false }); };
+    const failed = (chk) => this.setState({ chk: chk, chkBusy: false, msg: '', err: 'Run check found problems, so nothing was saved. Fix them, or switch that cue off.' });
+    this.setState({ chkBusy: true, msg: '', err: '' });
+    if (this.cqServer) {
+      const t = this.cqToken();
+      fetch('/api/cues', { method: 'PUT', headers: { 'Content-Type': 'application/json', ...(t ? { Authorization: 'Bearer ' + t } : {}) }, body: JSON.stringify(d) })
+        .then((r) => r.json().then((j) => ({ code: r.status, j: j }))).then(({ code, j }) => {
+          if (code === 200) this.check(d).then((chk) => done({ enabled: j.enabled, default_how: j.default_how, cues: j.cues }, chk));
+          else if (code === 409 && j.check) failed(j.check);
+          else this.setState({ chkBusy: false, err: j.error || 'Couldn\u2019t save.', msg: '' });
+        }).catch(() => this.setState({ chkBusy: false, err: 'The C3 Life server didn\u2019t answer.', msg: '' }));
+      return;
+    }
+    this.check(d).then((chk) => (chk.ok_all ? done(JSON.parse(JSON.stringify(d)), chk) : failed(chk)));
+  }
+
+  check(d) {
+    // Run check on these cues (saved or not): a promise of {ok_all, lines}. Nothing changes and nothing runs.
+    if (this.cqServer) {
+      const t = this.cqToken();
+      return fetch('/api/cues/check', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(t ? { Authorization: 'Bearer ' + t } : {}) }, body: JSON.stringify(d) })
+        .then((r) => r.json().then((j) => (r.status === 200 ? j : { ok_all: false, lines: [{ ok: false, what: 'Cues', text: j.error || 'Not understood.' }] })));
+    }
+    // the preview: this Sunday's playlist as ProPresenter would have it
+    const pres = ['Pre & Post Service', 'Countdown', 'Welcome', 'Washed', '60 Secs of Prayer', 'Song 2', 'PASTORAL Welcome', 'Offering', 'Message', 'Salvation Prayer', 'CLOSE'];
+    const groups = { 'verse 1': 'Verse 1 (Song 2)', chorus: 'Chorus (Song 2)', 'verse 2': 'Verse 2 (Song 2)', bridge: 'Bridge (Song 2)', ending: 'Ending (Song 2)' };
+    const shown = { presentation: {}, group: groups, label: {} }; pres.forEach((x) => { shown.presentation[x.toLowerCase()] = x; });
+    const kinds = { presentation: 'presentation', group: 'slide group', label: 'slide label' };
+    const lines = [{ ok: true, what: 'ProPresenter', text: 'Connected. Today\u2019s playlist has ' + pres.length + ' presentations.' },
+      { ok: null, what: 'Wing', text: 'Demo: not connected to a real Wing, so cues move the app\u2019s mixer. On the C3 Life server with the Wing set to Control, they move the desk.' }];
+    if (!d.enabled) lines.push({ ok: null, what: 'Slide cues', text: 'Switched off, so none will run.' });
+    d.cues.forEach((c) => {
+      const k = c.when.text.trim().toLowerCase();
+      if (!c.on) lines.push({ ok: null, what: c.name, text: 'Off, so it won\u2019t run.' });
+      else if (!k || !c.do.length || !c.name.trim()) lines.push({ ok: false, what: c.name || 'A cue', text: 'Needs a name, what sets it off and at least one channel change.' });
+      else if (shown[c.when.kind][k]) lines.push({ ok: true, what: c.name, text: 'Will run when ' + shown[c.when.kind][k] + ' goes live.' });
+      else { const near = Object.keys(shown[c.when.kind]).filter((x) => x.slice(0, 3) === k.slice(0, 3)).map((x) => shown[c.when.kind][x]); lines.push({ ok: false, what: c.name, text: 'No ' + kinds[c.when.kind] + ' called \u201c' + c.when.text + '\u201d in today\u2019s playlist' + (near.length ? '. Did you mean ' + near[0] + '?' : '.') }); }
+    });
+    return new Promise((res) => setTimeout(() => res({ ok_all: lines.every((x) => x.ok !== false), lines: lines }), 300));
+  }
+  runCheck() {
+    this.setState({ chkBusy: true, chk: null, err: '', msg: '' });
+    this.check(this.state.draft).then((j) => this.setState({ chkBusy: false, chk: j })).catch(() => this.setState({ chkBusy: false, err: 'The C3 Life server didn\u2019t answer.' }));
+  }
+  renderVals() {
+    const s = this.state, d = s.draft, edit = this.canEdit(), admin = this.isAdmin();
+    const set = (f) => { const n = JSON.parse(JSON.stringify(s.draft)); f(n); this.setState({ draft: n, msg: '', err: '' }); };
+    const names = this.cqNames();
+    const chOpts = Array.from({ length: 16 }, (_, i) => ({ v: String(i + 1), label: 'Ch ' + String(i + 1).padStart(2, '0') + ' · ' + (names[i + 1] || '') }));
+    const howOpts = (cur) => ['ask', 'count3', 'count5', 'count10', 'now'].map((h) => ({ v: h, label: this.cqHowName(h) + (h === 'now' && !admin ? ' (Admin)' : '') + (h === s.draft.default_how ? ' · usual' : ''), off: h === 'now' && !admin && cur !== 'now' }));
+    const dirty = JSON.stringify(s.draft) !== JSON.stringify(s.saved);
+    let log = []; try { log = JSON.parse(localStorage.getItem('booth.cuelog') || '[]'); } catch (e) {}
+    const ph = { presentation: 'e.g. Message', group: 'e.g. Chorus', label: 'e.g. Pastor mic' };
+    return {
+      canEdit: edit, cantEdit: !edit, notEdit: !edit,
+      enabled: d.enabled, enabledLabel: d.enabled ? 'On' : 'Off', toggleEnabled: () => set((n) => { n.enabled = !n.enabled; }),
+      enabledText: d.enabled ? 'When ProPresenter puts a matching slide live, the sound desk sees the cue.' : 'Off: nothing happens when slides change.',
+      defHow: d.default_how, defOpts: ['ask', 'count3', 'count5', 'count10'].map((h) => ({ v: h, label: this.cqHowName(h) })),
+      setDefHow: (e) => set((n) => { n.default_how = e.target.value; }),
+      cues: d.cues.map((c, i) => ({
+        id: c.id, name: c.name, on: c.on, onLabel: c.on ? 'On' : 'Off', idName: 'cq-name-' + c.id, idKind: 'cq-kind-' + c.id, idText: 'cq-text-' + c.id, idHow: 'cq-how-' + c.id,
+        setName: (e) => set((n) => { n.cues[i].name = e.target.value; }),
+        toggle: () => set((n) => { n.cues[i].on = !n.cues[i].on; }),
+        kind: c.when.kind, setKind: (e) => set((n) => { n.cues[i].when.kind = e.target.value; }),
+        text: c.when.text, setText: (e) => set((n) => { n.cues[i].when.text = e.target.value; }), ph: ph[c.when.kind],
+        how: c.how, howOpts: howOpts(c.how), setHow: (e) => set((n) => { n.cues[i].how = e.target.value; }),
+        nowWarn: c.how === 'now', summary: this.cqWhenName(c.when) + ' → ' + this.cqSummary(c),
+        acts: c.do.map((a, j) => ({
+          ch: String(a.ch), chOpts: chOpts, setCh: (e) => set((n) => { n.cues[i].do[j].ch = +e.target.value; }),
+          act: a.act, setAct: (e) => set((n) => { const x = n.cues[i].do[j]; x.act = e.target.value; if (x.act === 'fader') { if (x.db === undefined) x.db = 0; if (x.fade === undefined) x.fade = 2; } else { delete x.db; } }),
+          isFader: a.act === 'fader', fadeName: a.act === 'on' ? 'Fade in' : (a.act === 'off' ? 'Fade out' : 'Fade time'), db: a.act === 'fader' ? String(a.db) : '', setDb: (e) => set((n) => { const v = parseFloat(e.target.value); n.cues[i].do[j].db = isNaN(v) ? 0 : Math.max(-90, Math.min(10, v)); }),
+          fade: String(a.fade || 0), setFade: (e) => set((n) => { n.cues[i].do[j].fade = +e.target.value; }),
+          remove: () => set((n) => { n.cues[i].do.splice(j, 1); }), aria: 'Remove ' + this.cqDo(a), label: 'Change ' + (j + 1)
+        })),
+        addAct: () => set((n) => { n.cues[i].do.push({ ch: 15, act: 'on' }); }),
+        addCross: () => set((n) => { n.cues[i].do.push({ ch: 10, act: 'off', fade: 3 }, { ch: 15, act: 'on', fade: 3 }); }),
+        cross: c.do.some((a) => a.act === 'off' && a.fade) && c.do.some((a) => a.act === 'on' && a.fade),
+        test: () => { this.cqWrite(s.draft); this.cqSlide({ presentation: c.when.kind === 'presentation' ? c.when.text : 'Test', group: c.when.kind === 'group' ? c.when.text : '', label: c.when.kind === 'label' ? c.when.text : '' }); this.setState({ msg: 'Testing “' + c.name + '” as if ProPresenter put ' + this.cqWhenName(c.when) + ' live.' }); },
+        askDel: s.askDel === c.id, openDel: () => this.setState({ askDel: c.id }), noDel: () => this.setState({ askDel: '' }),
+        del: () => { this.setState({ askDel: '' }); set((n) => { n.cues.splice(i, 1); }); },
+        border: c.on && d.enabled ? '#262C36' : '#1E232C', opacity: c.on && d.enabled ? '1' : '0.7'
+      })),
+      addCue: () => set((n) => { n.cues.push({ id: 'c' + Date.now().toString(36), name: 'New cue', on: true, when: { kind: 'presentation', text: '' }, how: n.default_how, do: [{ ch: 15, act: 'on' }] }); }),
+      dirty: dirty, notDirty: !dirty, discard: () => this.setState({ draft: JSON.parse(JSON.stringify(s.saved)), msg: '', err: '' }), saveFn: () => this.save(),
+      msg: s.msg || '', hasMsg: !!s.msg, err: s.err || '', hasErr: !!s.err,
+      runCheckFn: () => this.runCheck(), chkLabel: s.chkBusy ? 'Checking\u2026' : 'Run check', chkBusy: !!s.chkBusy,
+      hasChk: !!s.chk, chkHead: s.chk ? (s.chk.ok_all ? '\u2713 Everything the cues need is there' : 'Some cues won\u2019t run as things are') : '',
+      chkColor: s.chk && s.chk.ok_all ? '#6CB4F5' : '#F5C518',
+      chkLines: s.chk ? s.chk.lines.map((x) => ({ what: x.what, text: x.text, mark: x.ok === true ? '\u2713' : (x.ok === false ? '!' : '\u2022'), color: x.ok === true ? '#6CB4F5' : (x.ok === false ? '#FF7A45' : '#A3ACB8') })) : [],
+      log: log.slice(0, 8).map((x) => ({ t: x.t, cue: x.cue, what: x.what })), hasLog: log.length > 0, noLog: !log.length
+    };
+  }
+}
+</script>
+</body>
+</html>

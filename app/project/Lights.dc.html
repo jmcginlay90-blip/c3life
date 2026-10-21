@@ -1,0 +1,995 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>C3 Life – Lights</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet" data-look>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Safari / iPad: no zoom when typing, no double-tap zoom, no text-select or callout while dragging */
+html{-webkit-text-size-adjust:100%;touch-action:manipulation}
+input,select,textarea{font-size:16px!important}
+button,a,summary,label,[role=slider]{-webkit-tap-highlight-color:transparent}
+[role=slider],.fader,.pan{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+body{margin:0;background:#0D1015}
+a{color:#6CB4F5}a:hover{color:#9CCBF8}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:62px;color:#A3ACB8;text-decoration:none;font-size:12px;font-weight:500;border-top:2px solid transparent}
+.tab:hover{color:#ECEEF1}
+.tab.on{color:#F5C518;border-top-color:#F5C518}
+.card{background:#161A21;border:1px solid #262C36;border-radius:14px;padding:14px}
+.lbl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#A3ACB8;font-weight:500}
+.mono{font-family:'IBM Plex Mono',ui-monospace,monospace}
+.btn{min-height:44px;padding:0 14px;border-radius:10px;border:1px solid #333B47;background:#1E232C;color:#ECEEF1;font:500 14px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer}
+.btn.pri{background:#F5C518;border-color:#F5C518;color:#1A1204}
+.btn.hot{background:#FF7A45;border-color:#FF7A45;color:#1A0A03}
+.cue{width:100%;display:flex;align-items:center;gap:10px;min-height:48px;padding:0 10px;border-radius:10px;border:1px solid transparent;background:transparent;color:#ECEEF1;font:400 14px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer;text-align:left}
+.cue:hover{background:#1E232C}
+.cue.live{background:#262C36;border-color:#F5C518}
+select{min-height:40px;border-radius:9px;border:1px solid #333B47;background:#0F1318;color:#ECEEF1;font:400 13px 'IBM Plex Sans',system-ui,sans-serif;padding:0 6px;max-width:150px}
+input[type=range]{width:100%;accent-color:#F5C518;height:28px}
+input[type=checkbox]{width:20px;height:20px;accent-color:#F5C518}
+
+/* Fills any screen. Wider than 700px (iPad, laptop, web) the content sits in a centred column. */
+@media (min-width:700px){
+  .app > *:not(.bn):not([style*="position:absolute"]){width:100%;max-width:760px;margin-left:auto;margin-right:auto;box-sizing:border-box}
+}
+
+.app > .rtabar{max-width:none !important;margin-left:0 !important;margin-right:0 !important}
+
+/* Easy to use: every link, tick box and control is at least 40-44px tall, so it is easy to hit with a thumb. */
+a[style*="min-height:28px"]{min-height:44px !important}
+a[style*="font-size:12px"][style*="text-decoration:none"],a[style*="font-size:13px"][style*="text-decoration:none"]{display:inline-flex;align-items:center;min-height:40px}
+label:has(> input[type=checkbox]),label:has(> input[type=radio]){min-height:44px}
+input[type=checkbox],input[type=radio]{width:22px;height:22px;flex:none;accent-color:#F5C518}
+input[type=range]{min-height:40px}
+select{min-height:44px}
+button.sw::after,button.cell::after{content:'';position:absolute;inset:-7px -4px}
+.cell{position:relative}
+input[type=checkbox][aria-label]{width:32px;height:32px}
+
+/* Menu: a drop-down list at the top of every screen. Tap Menu to open it, tap again (or pick a page) to close. */
+.topmenu{position:relative;z-index:20;flex:none;background:#11151B;border-bottom:1px solid #262C36}
+.topmenu summary{list-style:none;display:flex;align-items:center;gap:10px;min-height:52px;padding:0 16px;cursor:pointer;color:#ECEEF1;font:600 15px 'IBM Plex Sans',system-ui,sans-serif;max-width:760px;margin:0 auto;box-sizing:border-box}
+.topmenu summary::-webkit-details-marker{display:none}
+.topmenu .mlabel{font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:#A3ACB8}
+.topmenu .mcur{flex:1;color:#F5C518}
+.topmenu .chev{transition:transform .15s}
+.topmenu details[open] .chev{transform:rotate(180deg)}
+.topmenu .mlist{position:absolute;left:8px;right:8px;top:calc(100% + 4px);background:#161A21;border:1px solid #333B47;border-radius:14px;box-shadow:0 14px 34px rgba(0,0,0,.55);padding:6px;display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.topmenu .mlist a{display:flex;align-items:center;gap:10px;min-height:52px;padding:0 12px;border-radius:10px;color:#ECEEF1;text-decoration:none;font:500 15px 'IBM Plex Sans',system-ui,sans-serif}
+.topmenu .mlist a:hover{background:#1E232C}
+.topmenu .mlist a.on{background:#262C36;color:#F5C518}
+@media (min-width:700px){.topmenu .mlist{left:calc(50% - 372px);right:auto;width:440px}}
+@media (min-width:700px) and (max-width:800px){.topmenu .mlist{left:16px}}
+/* wide:start — iPad landscape and laptops: use the width */
+@media (min-width:1000px){
+  .app > *:not(.bn):not([style*="position:absolute"]){max-width:1240px}
+  .topmenu summary{max-width:1240px}
+  .app main.wide2{display:grid !important;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:14px 18px !important}
+  .app main.wide2 > *{min-width:0}
+  .app main.wide2 > :not(section):not(.card):not(details):not(.wcol){grid-column:1 / -1}
+  .app main.wide2 > .wfull{grid-column:1 / -1}
+  .app main.wide1{max-width:980px !important}
+  .app:has(main.wide1) > *:not(.bn):not([style*="position:absolute"]){max-width:980px}
+  .app:has(main.wide1) .topmenu summary{max-width:980px}
+}
+@media (min-width:1500px){ .app main.wide2.wide3{grid-template-columns:repeat(3,minmax(0,1fr))} }
+/* wide:end */
+/* look:start — the WING look (like WING Edit): near-black, outlined panels, condensed headings, yellow for active, blue for selected.
+   Settings › Look › Classic puts the old look back on this device (html[data-look=classic]). */
+:root{--wk-bg:#0A0B0D;--wk-panel:#121418;--wk-panel2:#181B20;--wk-line:#2E333A;--wk-yellow:#F5C518;--wk-blue:#2F6CC4;--wk-cond:'Barlow Condensed','IBM Plex Sans',system-ui,sans-serif}
+html:not([data-look=classic]) body{background:var(--wk-bg)}
+html:not([data-look=classic]) .app{background:var(--wk-bg) !important}
+html:not([data-look=classic]) .card{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .lbl{font-family:var(--wk-cond);font-size:13px;font-weight:600;letter-spacing:.07em;color:#D4D9E0}
+html:not([data-look=classic]) h1{font-family:var(--wk-cond);font-weight:600 !important;text-transform:uppercase;letter-spacing:.05em;font-size:21px !important;line-height:1.2;color:var(--wk-yellow);border:1.5px solid var(--wk-yellow);border-radius:3px;padding:2px 12px;display:inline-block}
+html:not([data-look=classic]) .btn,html:not([data-look=classic]) .lk,html:not([data-look=classic]) .mxb,html:not([data-look=classic]) .mxbk,html:not([data-look=classic]) .mute,html:not([data-look=classic]) .pbtn{font-family:var(--wk-cond);font-size:15px;letter-spacing:.02em;border-radius:4px}
+html:not([data-look=classic]) .btn.pri{background:var(--wk-yellow);border-color:var(--wk-yellow);color:#111}
+html:not([data-look=classic]) .seg{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .seg a{font-family:var(--wk-cond);font-size:15px;letter-spacing:.03em;border-radius:4px}
+html:not([data-look=classic]) .seg a.on,html:not([data-look=classic]) .lk.on{background:var(--wk-blue);color:#fff}
+html:not([data-look=classic]) .tab.on{color:var(--wk-yellow);border-top-color:var(--wk-yellow)}
+html:not([data-look=classic]) .topmenu{background:#000;border-bottom-color:var(--wk-line)}
+html:not([data-look=classic]) .topmenu summary{font-family:var(--wk-cond);font-size:16px;letter-spacing:.03em}
+html:not([data-look=classic]) .topmenu .mcur{color:var(--wk-yellow)}
+html:not([data-look=classic]) .topmenu .mlist{background:var(--wk-panel);border-color:var(--wk-line);border-radius:6px}
+html:not([data-look=classic]) .topmenu .mlist a{font-family:var(--wk-cond);font-size:16px;border-radius:4px}
+html:not([data-look=classic]) .topmenu .mlist a.on{background:var(--wk-panel2);color:var(--wk-yellow);box-shadow:inset 3px 0 0 var(--wk-yellow)}
+html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic]) input[type=radio],html:not([data-look=classic]) input[type=range]{accent-color:var(--wk-yellow)}
+.wkside{display:none}
+/* iPad landscape and laptops: a sidebar like WING Edit's (HOME, MIXER, ...) instead of the menu at the top */
+@media (min-width:1000px){
+  html:not([data-look=classic]) .wkside{display:flex;flex-direction:column;gap:2px;position:fixed;left:0;top:0;bottom:0;width:132px !important;max-width:132px !important;margin:0 !important;padding:8px 6px 12px;box-sizing:border-box;background:#000;border-right:1px solid var(--wk-line);overflow-y:auto;z-index:30}
+  html:not([data-look=classic]) .wkside .wkbrand{font:700 24px var(--wk-cond);letter-spacing:.06em;color:var(--wk-yellow);padding:6px 8px 12px}
+  html:not([data-look=classic]) .wkside a{display:flex;align-items:center;gap:9px;min-height:46px;padding:0 8px;border-radius:4px;color:#D4D9E0;text-decoration:none;font:600 15px var(--wk-cond);text-transform:uppercase;letter-spacing:.04em}
+  html:not([data-look=classic]) .wkside a:hover{background:var(--wk-panel2)}
+  html:not([data-look=classic]) .wkside a.on{background:var(--wk-panel2);color:var(--wk-yellow);box-shadow:inset 3px 0 0 var(--wk-yellow)}
+  html:not([data-look=classic]) .wkside svg{flex:none}
+  html:not([data-look=classic]) .app{padding-left:132px;box-sizing:border-box !important}
+  html:not([data-look=classic]) .app > .topmenu{display:none}
+}
+/* look:end */
+/* lightkey:start — Lights, laid out like Lightkey's Live view: the stage with its beams, cue tiles, the Preset Palette */
+.lklink{display:flex;align-items:center;gap:8px;font-size:12px;line-height:1.3;color:#ECEEF1;text-align:right;min-width:0}
+.lklink .sub{color:#A3ACB8}
+.lklink .dot{width:10px;height:10px;border-radius:50%;flex:none;background:#4A525E}
+.lklink.on .dot{background:#4CD964;box-shadow:0 0 8px #4CD964}
+.lklink.demo .dot{background:#F5C518}
+.lkbar{flex:none;display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:0 16px 10px;box-sizing:border-box}
+.lkgo{display:grid;grid-template-columns:1fr 1.6fr 1fr;gap:8px;flex:1 1 300px}
+.lkb{min-height:52px;border-radius:6px;border:1px solid #333B47;background:#1E232C;color:#ECEEF1;font:600 15px var(--wk-cond,'IBM Plex Sans'),system-ui,sans-serif;letter-spacing:.03em;cursor:pointer;padding:0 10px}
+.lkb.sm{min-height:44px;font-size:14px}
+.lkb.go{background:#F5C518;border-color:#F5C518;color:#111;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.05}
+.lkb.go span{font-size:22px;font-weight:700;letter-spacing:.1em}
+.lkb.go small{font:500 11px 'IBM Plex Sans',system-ui,sans-serif;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lkb.bo{background:#1E232C}
+.lkb.bo.on{background:#FF453A;border-color:#FF453A;color:#fff}
+.lkb:disabled{opacity:.45;cursor:default}
+.lkmaster{display:flex;align-items:center;gap:8px;flex:1 1 300px;min-width:0}
+.lkmaster label{font-size:13px;color:#A3ACB8}
+.lkmaster input[type=range]{flex:1;min-width:60px}
+.lkmaster .mono{width:40px;text-align:right;font-size:13px}
+.lktabs{flex:none;display:flex;gap:4px;margin:0 16px 10px;padding:4px;background:#121418;border:1px solid #2E333A;border-radius:6px;box-sizing:border-box}
+.lktabs button{flex:1;min-height:44px;border:0;border-radius:4px;background:transparent;color:#A3ACB8;font:600 15px var(--wk-cond,'IBM Plex Sans'),system-ui,sans-serif;letter-spacing:.04em;text-transform:uppercase;cursor:pointer}
+.lktabs button.on{background:#2F6CC4;color:#fff}
+.lkmsg{font-size:13px;color:#ECEEF1;background:#1A2230;border:1px solid #2F6CC4;border-radius:6px;padding:10px 12px}
+.lkmsg.bad{background:#2A1615;border-color:#FF453A}
+.lkstage{position:relative;height:260px;border-radius:6px;overflow:hidden;background:radial-gradient(120% 90% at 50% 100%,#1b1f27 0%,#0b0d10 70%);border:1px solid #2E333A;touch-action:pan-y}
+.lkstage.edit{touch-action:none;cursor:move}
+.lkstage .truss{position:absolute;left:4%;right:4%;height:4px;margin-top:-2px;background:repeating-linear-gradient(90deg,#3a4049 0 6px,#23272e 6px 10px);border-radius:2px}
+.lkstage .floor{position:absolute;left:0;right:0;bottom:0;height:22%;background:linear-gradient(#11141a,#181c23);border-top:1px solid #262c36}
+.lkfx{position:absolute;width:0;height:0}
+.lkfx .beam{position:absolute;left:0;top:0;width:var(--w,46px);height:var(--h,150px);transform-origin:50% 0;transform:translateX(-50%) rotate(var(--r,0deg));clip-path:polygon(42% 0,58% 0,100% 100%,0 100%);background:linear-gradient(var(--c,#fff),transparent 92%);opacity:var(--o,0);mix-blend-mode:screen;pointer-events:none;transition:opacity .25s,transform .25s}
+.lkfx .body{position:absolute;left:-17px;top:-17px;width:34px;height:34px;border-radius:50%;border:2px solid #4A525E;background:#15181d;color:#D4D9E0;font:600 11px 'IBM Plex Mono',monospace;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 0 transparent}
+.lkfx .body span{max-width:30px;overflow:hidden;white-space:nowrap}
+.lkfx.mover .body,.lkfx.wash .body{border-radius:8px}
+.lkfx.sel .body{border-color:#6CB4F5;box-shadow:0 0 0 3px rgba(47,108,196,.55)}
+.lkfx.over .body{border-style:solid;border-color:#F5C518}
+.lkfx.sel.over .body{border-color:#6CB4F5}
+.lkfx.hazer .body{border-radius:4px}
+.lkempty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#A3ACB8;font-size:13px;text-align:center;padding:20px}
+.lkselbar{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;font-size:13px;color:#A3ACB8}
+.lkchip{min-height:40px;padding:0 12px;border-radius:4px;border:1px solid #333B47;background:#1E232C;color:#ECEEF1;font:500 13px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer}
+.lkchip:disabled{opacity:.45;cursor:default}
+.lkcues{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:8px}
+.lkcue{position:relative;min-height:78px;border-radius:6px;border:1px solid #333B47;background:linear-gradient(160deg,color-mix(in srgb,var(--cc,#888) 32%,#1a1d22),#15181d 70%);color:#ECEEF1;text-align:left;padding:8px 10px;display:flex;flex-direction:column;gap:2px;cursor:pointer;font:500 14px 'IBM Plex Sans',system-ui,sans-serif;overflow:hidden}
+.lkcue::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--cc,#888)}
+.lkcue .n{font-size:11px;color:#A3ACB8}
+.lkcue .nm{font-weight:600;line-height:1.2;overflow-wrap:break-word;hyphens:auto}
+.lkcue .ft{font-size:11px;color:#A3ACB8;margin-top:auto}
+.lkcue.live{border-color:#F5C518;box-shadow:0 0 0 2px #F5C518 inset,0 0 18px color-mix(in srgb,var(--cc,#F5C518) 45%,transparent)}
+.lkcue.live .ft{color:#F5C518;font-weight:600}
+.lkcue.next{border-color:#2F6CC4}
+.lkcue.next .ft{color:#6CB4F5}
+.lkcue:disabled{cursor:default}
+.lkpg{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#A3ACB8;margin:10px 0 6px}
+.lkpal{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px}
+.lkpre{min-height:52px;border-radius:6px;border:1px solid #333B47;background:#181B20;color:#ECEEF1;display:flex;align-items:center;gap:8px;padding:6px 8px;text-align:left;font:500 13px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer;line-height:1.2}
+.lkpre .sw{width:22px;height:22px;border-radius:4px;flex:none;border:1px solid rgba(255,255,255,.15)}
+.lkpre small{color:#A3ACB8;font-size:11px}
+.lkpre.on{border-color:#F5C518;box-shadow:0 0 0 1px #F5C518 inset}
+.lksent summary{display:flex;justify-content:space-between;align-items:center;min-height:40px;cursor:pointer;list-style:none}
+.lksent summary::-webkit-details-marker{display:none}
+.lkosc{font-size:12px;color:#C9CFD8;padding:3px 0;border-top:1px solid #1f242c;overflow-wrap:anywhere}
+.lkosc span{color:#6A7380}
+.lkseg{display:flex;flex-wrap:wrap;gap:4px}
+.lkseg button{flex:1 1 48px;min-height:44px;border-radius:4px;border:1px solid #333B47;background:#1E232C;color:#ECEEF1;font:600 14px 'IBM Plex Mono',monospace;cursor:pointer}
+.lkseg button.on{background:#2F6CC4;border-color:#2F6CC4;color:#fff}
+.lkpadwrap{display:grid;grid-template-columns:minmax(0,260px) minmax(0,1fr);gap:12px;margin-top:8px;align-items:start}
+.lkpad{position:relative;aspect-ratio:1;border-radius:6px;background:#0F1318;border:1px solid #333B47;touch-action:none;cursor:crosshair}
+.lkpad .gx,.lkpad .gy{position:absolute;background:#262C36}
+.lkpad .gx{left:0;right:0;top:50%;height:1px}
+.lkpad .gy{top:0;bottom:0;left:50%;width:1px}
+.lkpad .dot{position:absolute;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;background:#F5C518;box-shadow:0 0 12px rgba(245,197,24,.7);pointer-events:none}
+.lkpad:focus-visible{outline:2px solid #6CB4F5}
+.lkswatches{display:grid;grid-template-columns:repeat(auto-fill,minmax(40px,1fr));gap:6px}
+.lksw{height:40px;border-radius:5px;border:1px solid rgba(255,255,255,.18);cursor:pointer}
+.lksw:disabled{opacity:.45}
+.lkhue{background:linear-gradient(90deg,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00);border-radius:6px;height:14px;-webkit-appearance:none;appearance:none}
+.lkrow{display:grid;grid-template-columns:90px minmax(0,1fr) 56px;gap:8px;align-items:center;margin-top:8px;font-size:13px;color:#A3ACB8}
+.lkrow .mono{text-align:right;color:#ECEEF1}
+.lkin{min-height:44px;border-radius:6px;border:1px solid #333B47;background:#0F1318;color:#ECEEF1;font:400 15px 'IBM Plex Sans',system-ui,sans-serif;padding:0 10px;box-sizing:border-box;min-width:0}
+.lkgrid2{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px}
+.lkfld{display:flex;flex-direction:column;gap:4px;font-size:12px;color:#A3ACB8;min-width:0}
+.lkfld select{max-width:none}
+.lkfld.sm{flex:1 1 70px}
+.lkfld.sm .lkin{width:100%}
+.lkfld.lkck{flex-direction:row;align-items:center;gap:8px;font-size:14px;color:#ECEEF1}
+.lkedrow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px 0;border-top:1px solid #1f242c}
+.lkedrow select{flex:1 1 100px;max-width:none}
+.lkedfx{border-top:1px solid #262C36}
+.lkedfx .lkedrow{border-top:0}
+.lkbtns{display:flex;gap:4px;flex:none}
+.lkbtns .lkchip{min-width:40px;padding:0 8px}
+.lkask{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center}
+@media (max-width:520px){ .lkpadwrap{grid-template-columns:1fr} .lkpad{max-width:300px} }
+@media (min-width:1000px){
+  .lkbar,.lktabs{max-width:1240px;margin-left:auto !important;margin-right:auto !important;width:100%}
+  .lktabs{width:calc(100% - 32px)}
+  .lkstage{height:340px}
+  /* like Lightkey: the stage on the left (pick and drag fixtures), everything else beside it */
+  .app main.lkmain{display:grid !important;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);align-items:start;column-gap:16px;row-gap:0 !important}
+  .lkmain section,.lkmain details,.lkmain .lkmsg{grid-column:2;margin-bottom:12px;min-width:0}
+  .lkmain section.lkstagecard{grid-column:1;grid-row:1 / span 60;position:sticky;top:0}
+}
+.app .btn:disabled{opacity:.45;cursor:default}
+/* lightkey:end */
+</style>
+</helmet>
+<div class="app has-bn" style="width:100%;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;background:#0D1015;color:#ECEEF1;font-family:'IBM Plex Sans',system-ui,sans-serif;overflow:hidden">
+  
+  
+  
+  
+  <nav class="wkside" aria-label="Main menu (side)"><div class="wkbrand" aria-hidden="true">C3 LIFE</div><a href="Main.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Home</a>
+        <a href="Wing.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4v16M12 4v16M18 4v16"/><path d="M4 14h4M10 8h4M16 16h4"/></svg>Mixer</a>
+        <a href="RTA.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V12M9 20V6M14 20V10M19 20V4"/></svg>RTA</a>
+        <a href="Show.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M10 8l5 2-5 2z"/><path d="M8 20h8"/></svg>Show</a>
+        <a href="Lights.dc.html" class="on" aria-current="page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>Lights</a>
+        <a href="Plan.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h1M4 12h1M4 18h1"/></svg>Plan</a>
+        <a href="Chat.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>Chat</a>
+        <a href="Listen.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="15" width="4" height="6" rx="1.5"/><rect x="17" y="15" width="4" height="6" rx="1.5"/><path d="M10 9.5a2.5 2.5 0 0 1 4 0"/></svg>Listen</a>
+        <a href="Help.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2.5 2-2.5 3.5M12 17h.01"/></svg>Help</a>
+        <a href="Report.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4h11l-1.5 4L16 12H5"/></svg>Report an issue</a></nav>
+  <nav class="bn topmenu" aria-label="Main menu">
+    <details>
+      <summary aria-label="Menu. You are on Lights"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span class="mlabel">Menu</span><span class="mcur">Lights</span><svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+      <div class="mlist">
+        <a href="Main.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Home</a>
+        <a href="Wing.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4v16M12 4v16M18 4v16"/><path d="M4 14h4M10 8h4M16 16h4"/></svg>Mixer</a>
+        <a href="RTA.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V12M9 20V6M14 20V10M19 20V4"/></svg>RTA</a>
+        <a href="Show.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M10 8l5 2-5 2z"/><path d="M8 20h8"/></svg>Show</a>
+        <a href="Lights.dc.html" class="on" aria-current="page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>Lights</a>
+        <a href="Plan.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h1M4 12h1M4 18h1"/></svg>Plan</a>
+        <a href="Chat.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>Chat</a>
+        <a href="Listen.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="15" width="4" height="6" rx="1.5"/><rect x="17" y="15" width="4" height="6" rx="1.5"/><path d="M10 9.5a2.5 2.5 0 0 1 4 0"/></svg>Listen</a>
+        <a href="Help.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2.5 2-2.5 3.5M12 17h.01"/></svg>Help</a>
+        <a href="Report.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4h11l-1.5 4L16 12H5"/></svg>Report an issue</a>
+      </div>
+    </details>
+  </nav>
+  <header style="padding:18px 20px 10px;display:flex;justify-content:space-between;align-items:flex-end;gap:10px">
+    <h1 style="margin:0;font-size:26px;font-weight:600">Lights</h1>
+    <div class="lklink {{linkCls}}" role="status" aria-label="Lightkey link"><span class="dot"></span><span><b>{{linkTitle}}</b><br><span class="sub">{{linkSub}}</span></span></div>
+  </header>
+
+  <div class="lkbar" role="toolbar" aria-label="Playback">
+    <div class="lkgo">
+      <button class="lkb" onClick="{{back}}" disabled="{{noCtl}}" aria-label="Back">Back</button>
+      <button class="lkb go" onClick="{{go}}" disabled="{{noCtl}}" aria-label="Go"><span>GO</span><small>{{nextLine}}</small></button>
+      <button class="lkb" onClick="{{release}}" disabled="{{noCtl}}" aria-label="Release the live cue">Release</button>
+    </div>
+    <div class="lkmaster">
+      <label for="lk-master">Master</label>
+      <input id="lk-master" type="range" min="0" max="100" value="{{masterPct}}" onChange="{{masterDraft}}" onPointerUp="{{sendMaster}}" onKeyUp="{{sendMaster}}" disabled="{{noCtl}}" aria-label="Master">
+      <span class="mono">{{masterPct}}%</span>
+      <button class="{{boCls}}" onClick="{{toggleBlackout}}" disabled="{{noCtl}}" aria-pressed="{{blackout}}" aria-label="Blackout">{{boText}}</button>
+      <button class="lkb sm" onClick="{{tap}}" disabled="{{noCtl}}" aria-label="Tap tempo">Tap <span class="mono">{{bpmText}}</span></button>
+    </div>
+  </div>
+
+  <div class="lktabs" role="tablist" aria-label="Lights">
+    <button role="tab" class="{{tabLive}}" aria-selected="{{onLive}}" onClick="{{showLive}}">Live</button>
+    <button role="tab" class="{{tabProg}}" aria-selected="{{onProg}}" onClick="{{showProg}}">Program</button>
+    <button role="tab" class="{{tabSet}}" aria-selected="{{onSet}}" onClick="{{showSet}}">Show setup</button>
+  </div>
+
+  <main class="lkmain" style="flex:1;overflow-y:auto;padding:0 16px 16px;display:flex;flex-direction:column;gap:12px">
+    <div style="display:contents"><sc-if value="{{msg}}" hint-placeholder-val="{{ false }}"><div class="lkmsg {{msgCls}}" role="status">{{msg}}</div></sc-if></div>
+    <div style="display:contents"><sc-if value="{{noAccess}}" hint-placeholder-val="{{ false }}"><section class="card"><div style="font-size:15px;font-weight:600">Your role can’t use Lights</div><div style="font-size:13px;color:#A3ACB8;margin-top:4px">An Admin can give it View or Control in Settings › Access levels.</div></section></sc-if></div>
+    <div style="display:contents"><sc-if value="{{lookOnly}}" hint-placeholder-val="{{ false }}"><div class="lkmsg">You can look. Firing cues and programming needs Lights control (Access levels).</div></sc-if></div>
+
+    <section class="card lkstagecard {{stageWide}}" aria-label="Stage">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:8px">
+        <div class="lbl">Stage</div>
+        <div style="font-size:12px;color:#A3ACB8;text-align:right">{{stageHint}}</div>
+      </div>
+      <div class="lkstage {{stageCls}}" onPointerMove="{{stageMove}}" onPointerUp="{{stageUp}}" onPointerLeave="{{stageUp}}">
+        <div class="truss" style="top:9%"></div><div class="truss" style="top:40%"></div>
+        <div class="floor"></div>
+        <sc-for list="{{fixtures}}" as="f" hint-placeholder-count="8">
+          <div class="lkfx {{f.cls}}" style="left:{{f.x}}%;top:{{f.y}}%">
+            <div class="beam" style="{{f.beam}}"></div>
+            <button class="body" onPointerDown="{{f.down}}" onClick="{{f.tap}}" aria-pressed="{{f.sel}}" aria-label="{{f.aria}}" style="{{f.dot}}"><span>{{f.short}}</span></button>
+          </div>
+        </sc-for>
+        <div style="display:contents"><sc-if value="{{noFixtures}}" hint-placeholder-val="{{ false }}"><div class="lkempty">No fixtures yet. Add Lightkey’s fixtures in Show setup.</div></sc-if></div>
+      </div>
+      <div class="lkselbar">
+        <span>{{selLine}}</span>
+        <span style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="lkchip" onClick="{{selAll}}">All</button>
+          <button class="lkchip" onClick="{{selMovers}}">Movers</button>
+          <button class="lkchip" onClick="{{selNone}}">None</button>
+        </span>
+      </div>
+    </section>
+
+    <!-- ===== Live ===== -->
+    <div style="display:contents"><sc-if value="{{onLive}}" hint-placeholder-val="{{ true }}">
+      <section class="card" aria-label="Cues">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px"><div class="lbl">Cues · tap to fire</div><div class="mono" style="font-size:12px;color:#A3ACB8">{{liveLine}}</div></div>
+        <div class="lkcues">
+          <sc-for list="{{cues}}" as="c" hint-placeholder-count="9">
+            <button class="lkcue {{c.cls}}" onClick="{{c.fire}}" disabled="{{noCtl}}" style="--cc:{{c.color}}" aria-label="{{c.aria}}">
+              <span class="n mono">{{c.n}}</span><span class="nm">{{c.name}}</span><span class="ft mono">{{c.tag}}</span>
+            </button>
+          </sc-for>
+        </div>
+        <div style="display:contents"><sc-if value="{{noCues}}" hint-placeholder-val="{{ false }}"><div style="font-size:13px;color:#A3ACB8">No cues yet. Add Lightkey’s cue names in Show setup.</div></sc-if></div>
+      </section>
+
+      <section class="card" aria-label="Preset Palette">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px"><div class="lbl">Preset Palette</div><div style="font-size:12px;color:#A3ACB8">Tap on · tap again off</div></div>
+        <sc-for list="{{palGroups}}" as="g" hint-placeholder-count="3">
+          <div class="lkpg">{{g.name}}</div>
+          <div class="lkpal">
+            <sc-for list="{{g.items}}" as="p" hint-placeholder-count="5">
+              <button class="lkpre {{p.cls}}" onClick="{{p.tap}}" disabled="{{noCtl}}" aria-pressed="{{p.on}}" aria-label="{{p.aria}}"><span class="sw" style="{{p.sw}}"></span><span>{{p.name}}</span></button>
+            </sc-for>
+          </div>
+        </sc-for>
+      </section>
+
+      <section class="card" aria-label="Looks">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px"><div class="lbl">Looks · made in Program</div><div style="font-size:12px;color:#A3ACB8">Each with its own fade</div></div>
+        <div class="lkpal">
+          <sc-for list="{{looks}}" as="l" hint-placeholder-count="2">
+            <button class="lkpre" onClick="{{l.recall}}" disabled="{{noCtl}}" aria-label="{{l.aria}}"><span class="sw" style="background:#2F6CC4"></span><span>{{l.name}}<br><small class="mono">{{l.sub}}</small></span></button>
+          </sc-for>
+        </div>
+        <div style="display:contents"><sc-if value="{{noLooks}}" hint-placeholder-val="{{ false }}"><div style="font-size:13px;color:#A3ACB8">None yet. Set up the movers in Program, then Save as a look.</div></sc-if></div>
+      </section>
+
+      <section class="card" style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+          <div>
+            <div style="font-size:15px;font-weight:600">Cues linked to the plan</div>
+            <div style="font-size:12px;color:#A3ACB8">Off: press Go yourself. On: fires when the item goes live</div>
+          </div>
+          <input type="checkbox" checked="{{auto}}" onChange="{{toggleAuto}}" aria-label="Auto-fire linked cues">
+        </div>
+        <sc-for list="{{links}}" as="l" hint-placeholder-count="6">
+          <div style="display:flex;align-items:center;gap:8px;min-height:48px;border-top:1px solid #222831">
+            <label for="{{l.id}}" style="flex:1;font-size:14px">{{l.item}}</label>
+            <select id="{{l.id}}" value="{{l.cue}}" onChange="{{l.pick}}">
+              <sc-for list="{{l.opts}}" as="o" hint-placeholder-count="9"><option value="{{o}}">{{o}}</option></sc-for>
+            </select>
+          </div>
+        </sc-for>
+        <button class="btn" onClick="{{addLink}}">+ Add cue to a plan item</button>
+      </section>
+
+      <section class="card" style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline">
+          <div class="lbl">Lighting macros</div>
+          <div style="font-size:12px;color:#A3ACB8">{{macroHint}} · <a href="Macros.dc.html">All-device macros</a></div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:8px">
+          <sc-for list="{{macros}}" as="mc" hint-placeholder-count="6">
+            <button class="btn" style="min-height:60px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:2px;text-align:left;padding:8px 12px" onClick="{{mc.run}}" disabled="{{noCtl}}">
+              <span style="display:flex;align-items:center;gap:8px;font-weight:600"><span style="width:10px;height:10px;border-radius:3px;flex:none;background:{{mc.color}}"></span>{{mc.name}}</span>
+              <span style="font-size:12px;color:#A3ACB8">{{mc.does}}</span>
+            </button>
+          </sc-for>
+        </div>
+        <button class="btn" onClick="{{newMacro}}">+ New macro</button>
+      </section>
+
+      <details class="card lksent">
+        <summary><span class="lbl">Sent to Lightkey</span><span style="font-size:12px;color:#A3ACB8">{{sentCount}}</span></summary>
+        <div style="font-size:12px;color:#A3ACB8;margin:6px 0">The OSC messages C3 Life sent, newest first. Lightkey’s Window › External Control Log shows what it did with them.</div>
+        <sc-for list="{{sent}}" as="m" hint-placeholder-count="4"><div class="mono lkosc"><span>{{m.t}}</span> {{m.text}}</div></sc-for>
+      </details>
+    </sc-if></div>
+
+    <!-- ===== Program ===== -->
+    <div style="display:contents"><sc-if value="{{onProg}}" hint-placeholder-val="{{ false }}">
+      <section class="card" aria-label="Fade time">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><div class="lbl">Fade time</div><div class="mono" style="font-size:13px;color:#F5C518">{{fadeText}}</div></div>
+        <div style="font-size:12px;color:#A3ACB8;margin:4px 0 8px">Every change below slides over this time, and a look you save keeps it. Colour wheels, gobos, the shutter and the prism can’t slide, so they change at the start.</div>
+        <div class="lkseg" role="radiogroup" aria-label="Fade time">
+          <sc-for list="{{fades}}" as="fd" hint-placeholder-count="7"><button role="radio" class="{{fd.cls}}" aria-checked="{{fd.on}}" onClick="{{fd.pick}}">{{fd.label}}</button></sc-for>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:8px"><label for="lk-fade" style="font-size:13px;color:#A3ACB8">Other (seconds)</label><input id="lk-fade" class="lkin" type="number" min="0" max="60" step="0.1" value="{{fadeVal}}" onChange="{{setFade}}" style="width:90px"></div>
+      </section>
+
+      <div style="display:contents"><sc-if value="{{noSel}}" hint-placeholder-val="{{ false }}"><div class="lkmsg">Pick fixtures on the stage above (or All / Movers) to program them.</div></sc-if></div>
+
+      <section class="card" aria-label="Position">
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><div class="lbl">Position · pan and tilt</div><div class="mono" style="font-size:12px;color:#A3ACB8">{{padText}}</div></div>
+        <div class="lkpadwrap">
+          <div class="lkpad" role="slider" tabindex="0" aria-label="Pan and tilt" aria-valuetext="{{padText}}" onPointerDown="{{pad.down}}" onPointerMove="{{pad.move}}" onPointerUp="{{pad.up}}" onKeyDown="{{pad.key}}">
+            <div class="gx"></div><div class="gy"></div>
+            <div class="dot" style="left:{{padX}}%;top:{{padY}}%"></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;min-width:0">
+            <div style="font-size:12px;color:#A3ACB8">Drag, then let go to send. Arrow keys move it a little.</div>
+            <button class="lkchip" onClick="{{pad.centre}}" disabled="{{noProg}}">Centre</button>
+            <button class="lkchip" onClick="{{pad.clear}}" disabled="{{noProg}}">Give position back</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="card" aria-label="Intensity">
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><div class="lbl">Intensity</div><div class="mono" style="font-size:13px">{{dimText}}</div></div>
+        <input type="range" min="0" max="100" value="{{dimVal}}" onChange="{{setDimDraft}}" onPointerUp="{{sendDim}}" onKeyUp="{{sendDim}}" disabled="{{noProg}}" aria-label="Intensity">
+        <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="lkchip" onClick="{{dim0}}" disabled="{{noProg}}">Out</button><button class="lkchip" onClick="{{dim50}}" disabled="{{noProg}}">50%</button><button class="lkchip" onClick="{{dim100}}" disabled="{{noProg}}">Full</button></div>
+      </section>
+
+      <section class="card" aria-label="Colour">
+        <div class="lbl" style="margin-bottom:8px">Colour</div>
+        <div class="lkswatches">
+          <sc-for list="{{swatches}}" as="w" hint-placeholder-count="12"><button class="lksw" style="background:{{w.hex}}" onClick="{{w.pick}}" disabled="{{noProg}}" aria-label="{{w.name}}" title="{{w.name}}"></button></sc-for>
+        </div>
+        <label for="lk-hue" style="font-size:13px;color:#A3ACB8;display:block;margin-top:8px">Any colour</label>
+        <input id="lk-hue" class="lkhue" type="range" min="0" max="359" value="{{hueVal}}" onChange="{{setHueDraft}}" onPointerUp="{{sendHue}}" onKeyUp="{{sendHue}}" disabled="{{noProg}}" aria-label="Hue">
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"><button class="lkchip" onClick="{{warm}}" disabled="{{noProg}}">Warm white 3200 K</button><button class="lkchip" onClick="{{cool}}" disabled="{{noProg}}">Cool white 5600 K</button></div>
+        <div style="display:contents"><sc-if value="{{hasWheel}}" hint-placeholder-val="{{ false }}">
+          <div class="lkpg">Colour wheel · {{wheelOf}}</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap"><sc-for list="{{wheel}}" as="cw" hint-placeholder-count="6"><button class="lkchip" onClick="{{cw.pick}}" disabled="{{noProg}}">{{cw.name}}</button></sc-for></div>
+        </sc-if></div>
+      </section>
+
+      <section class="card" aria-label="Beam">
+        <div class="lbl" style="margin-bottom:6px">Beam</div>
+        <div style="display:contents"><sc-if value="{{hasGobos}}" hint-placeholder-val="{{ false }}">
+          <div class="lkpg">Gobo · {{wheelOf}}</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap"><sc-for list="{{gobos}}" as="gb" hint-placeholder-count="5"><button class="lkchip" onClick="{{gb.pick}}" disabled="{{noProg}}">{{gb.name}}</button></sc-for></div>
+        </sc-if></div>
+        <div class="lkpg">Shutter</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="lkchip" onClick="{{shOpen}}" disabled="{{noProg}}">Open</button><button class="lkchip" onClick="{{shClosed}}" disabled="{{noProg}}">Closed</button><button class="lkchip" onClick="{{shStrobe}}" disabled="{{noProg}}">Strobe</button></div>
+        <sc-for list="{{beamSliders}}" as="b" hint-placeholder-count="5">
+          <div class="lkrow"><label for="{{b.id}}">{{b.label}}</label><input id="{{b.id}}" type="range" min="{{b.min}}" max="{{b.max}}" value="{{b.val}}" onChange="{{b.draft}}" onPointerUp="{{b.send}}" onKeyUp="{{b.send}}" disabled="{{noProg}}" aria-label="{{b.label}}"><span class="mono">{{b.text}}</span></div>
+        </sc-for>
+        <div class="lkrow"><label for="lk-prism">Prism</label><select id="lk-prism" value="{{prismVal}}" onChange="{{setPrism}}" disabled="{{noProg}}"><option value="none">None</option><option value="threeFacet">3-facet</option><option value="fiveFacet">5-facet</option><option value="eightFacet">8-facet</option><option value="frost">Frost</option></select><span></span></div>
+      </section>
+
+      <section class="card" aria-label="Save">
+        <div class="lbl" style="margin-bottom:6px">Keep it</div>
+        <div style="font-size:12px;color:#A3ACB8;margin-bottom:8px">Everything here sits on top of Lightkey’s cues until it’s given back. Save it as a look to bring it back with one tap (on Live, or with a cue).</div>
+        <div style="display:flex;gap:8px"><input id="lk-lookname" class="lkin" type="text" maxlength="40" placeholder="Look name, like Movers on the cross" value="{{lookName}}" onChange="{{setLookName}}" disabled="{{noProg}}" style="flex:1;min-width:0"><button class="btn pri" onClick="{{saveLook}}" disabled="{{noProg}}">Save as a look</button></div>
+        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><button class="btn" onClick="{{clearSel}}" disabled="{{noProg}}">Give the picked ones back</button><button class="btn hot" onClick="{{clearAll}}" disabled="{{noCtl}}">Give everything back to Lightkey</button></div>
+        <div style="font-size:12px;color:#A3ACB8;margin-top:8px">{{progLine}}</div>
+      </section>
+    </sc-if></div>
+
+    <!-- ===== Show setup ===== -->
+    <div style="display:contents"><sc-if value="{{onSet}}" hint-placeholder-val="{{ false }}">
+      <section class="card" aria-label="Lightkey link">
+        <div class="lbl" style="margin-bottom:6px">The lighting Mac</div>
+        <div style="font-size:12px;color:#A3ACB8;margin-bottom:8px">Lightkey runs the lights. On the Mac: Lightkey › Settings › External Control › Enable OSC. C3 Life sends it OSC on port 21600.</div>
+        <div class="lkgrid2">
+          <label class="lkfld">Name<input id="lk-mac" class="lkin" type="text" maxlength="40" value="{{setMac}}" onChange="{{edMac}}" disabled="{{notAdmin}}"></label>
+          <label class="lkfld">Address<input id="lk-ip" class="lkin" type="text" maxlength="64" placeholder="192.168.10.32" value="{{setIp}}" onChange="{{edIp}}" disabled="{{notAdmin}}"></label>
+          <label class="lkfld">Port<input id="lk-port" class="lkin" type="number" min="1" max="65535" value="{{setPort}}" onChange="{{edPort}}" disabled="{{notAdmin}}"></label>
+          <label class="lkfld">Live page in Lightkey<input id="lk-page" class="lkin" type="text" maxlength="60" value="{{setPage}}" onChange="{{edPage}}" disabled="{{notAdmin}}"></label>
+          <label class="lkfld">Go runs<select id="lk-gomode" value="{{setGo}}" onChange="{{edGo}}" disabled="{{notAdmin}}"><option value="app">C3 Life’s cue list</option><option value="lightkey">Lightkey’s own cuelist</option></select></label>
+          <label class="lkfld lkck"><input type="checkbox" checked="{{setReplace}}" onChange="{{edReplace}}" disabled="{{notAdmin}}" aria-label="Go lets the last cue go"> Go lets the last cue go</label>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+          <button class="btn" onClick="{{findLk}}" disabled="{{notAdmin}}">Find Lightkey</button>
+          <button class="{{modeCls}}" onClick="{{toggleMode}}" disabled="{{notAdmin}}" aria-pressed="{{linkOn}}">{{modeText}}</button>
+        </div>
+        <sc-for list="{{found}}" as="fd" hint-placeholder-count="0"><button class="lkchip" style="margin-top:6px" onClick="{{fd.use}}">Use {{fd.name}} · {{fd.ip}}</button></sc-for>
+        <div style="font-size:12px;color:#A3ACB8;margin-top:8px">{{setNote}}</div>
+      </section>
+
+      <section class="card" aria-label="Cue list">
+        <div class="lbl">Cues · as named in Lightkey</div>
+        <div style="font-size:12px;color:#A3ACB8;margin:4px 0 6px">Type each cue’s name exactly as it is in Lightkey’s Live view (capitals count). Fade blank = the cue’s own fade in Lightkey. A cue can bring a look with it.</div>
+        <sc-for list="{{edCues}}" as="c" hint-placeholder-count="3">
+          <div class="lkedrow">
+            <input id="{{c.idName}}" class="lkin" type="text" maxlength="60" value="{{c.name}}" onChange="{{c.setName}}" disabled="{{noCtl}}" aria-label="Cue name" style="flex:2 1 140px">
+            <input id="{{c.idPage}}" class="lkin" type="text" maxlength="60" value="{{c.page}}" onChange="{{c.setPage}}" disabled="{{noCtl}}" aria-label="Live page" style="flex:1 1 90px">
+            <input id="{{c.idFade}}" class="lkin" type="number" min="0" max="600" step="0.5" placeholder="fade" value="{{c.fade}}" onChange="{{c.setFade}}" disabled="{{noCtl}}" aria-label="Fade seconds" style="flex:0 0 76px">
+            <select value="{{c.color}}" onChange="{{c.setColor}}" disabled="{{noCtl}}" aria-label="Tile colour"><sc-for list="{{tileColors}}" as="o" hint-placeholder-count="9"><option value="{{o.hex}}">{{o.name}}</option></sc-for></select>
+            <select value="{{c.look}}" onChange="{{c.setLook}}" disabled="{{noCtl}}" aria-label="Brings a look"><sc-for list="{{c.lookOpts}}" as="o" hint-placeholder-count="2"><option value="{{o.id}}">{{o.name}}</option></sc-for></select>
+            <span class="lkbtns"><button class="lkchip" onClick="{{c.up}}" disabled="{{noCtl}}" aria-label="Move up">↑</button><button class="lkchip" onClick="{{c.down}}" disabled="{{noCtl}}" aria-label="Move down">↓</button><button class="lkchip" onClick="{{c.test}}" disabled="{{noCtl}}">Test</button><button class="lkchip" onClick="{{c.del}}" disabled="{{noCtl}}" aria-label="Remove">✕</button></span>
+          </div>
+        </sc-for>
+        <button class="btn" onClick="{{addCue}}" disabled="{{noCtl}}">+ Cue</button>
+      </section>
+
+      <section class="card" aria-label="Palette list">
+        <div class="lbl">Preset Palette · where each one is in Lightkey</div>
+        <div style="font-size:12px;color:#A3ACB8;margin:4px 0 6px">Its groups, then its name, with / between: Movers/Colors/Indigo. //Indigo finds Indigo in any group.</div>
+        <sc-for list="{{edPresets}}" as="p" hint-placeholder-count="3">
+          <div class="lkedrow">
+            <input id="{{p.idName}}" class="lkin" type="text" maxlength="40" value="{{p.name}}" onChange="{{p.setName}}" disabled="{{noCtl}}" aria-label="Button name" style="flex:1 1 100px">
+            <input id="{{p.idPath}}" class="lkin" type="text" maxlength="160" value="{{p.path}}" onChange="{{p.setPath}}" disabled="{{noCtl}}" aria-label="Place in the Preset Palette" style="flex:2 1 160px">
+            <input id="{{p.idGroup}}" class="lkin" type="text" maxlength="30" value="{{p.group}}" onChange="{{p.setGroup}}" disabled="{{noCtl}}" aria-label="Shown under" style="flex:1 1 90px">
+            <select value="{{p.color}}" onChange="{{p.setColor}}" disabled="{{noCtl}}" aria-label="Swatch colour"><sc-for list="{{swatchOpts}}" as="o" hint-placeholder-count="13"><option value="{{o.hex}}">{{o.name}}</option></sc-for></select>
+            <span class="lkbtns"><button class="lkchip" onClick="{{p.del}}" disabled="{{noCtl}}" aria-label="Remove">✕</button></span>
+          </div>
+        </sc-for>
+        <button class="btn" onClick="{{addPreset}}" disabled="{{noCtl}}">+ Preset</button>
+      </section>
+
+      <section class="card" aria-label="Fixture list">
+        <div class="lbl">Fixtures · Lightkey’s short names</div>
+        <div style="font-size:12px;color:#A3ACB8;margin:4px 0 6px">The short name from Lightkey’s Design view (like F4). Drag them on the stage above to where they hang. Colour wheel and gobos: their names in order, with commas, as Lightkey lists them.</div>
+        <sc-for list="{{edFix}}" as="f" hint-placeholder-count="3">
+          <div class="lkedfx">
+            <div class="lkedrow">
+              <input id="{{f.idName}}" class="lkin" type="text" maxlength="40" value="{{f.name}}" onChange="{{f.setName}}" disabled="{{noCtl}}" aria-label="Short name" style="flex:0 1 80px">
+              <input id="{{f.idLabel}}" class="lkin" type="text" maxlength="40" value="{{f.label}}" onChange="{{f.setLabel}}" disabled="{{noCtl}}" aria-label="What it’s called" style="flex:2 1 120px">
+              <select value="{{f.kind}}" onChange="{{f.setKind}}" disabled="{{noCtl}}" aria-label="Kind"><option value="mover">Moving head spot</option><option value="wash">Moving head wash</option><option value="par">Colour par</option><option value="dimmer">Dimmer</option><option value="hazer">Hazer</option></select>
+              <input id="{{f.idGroup}}" class="lkin" type="text" maxlength="30" value="{{f.group}}" onChange="{{f.setGroup}}" disabled="{{noCtl}}" aria-label="Group" style="flex:1 1 80px">
+              <span class="lkbtns"><button class="lkchip" onClick="{{f.del}}" disabled="{{noCtl}}" aria-label="Remove">✕</button></span>
+            </div>
+            <div style="display:contents"><sc-if value="{{f.moves}}" hint-placeholder-val="{{ false }}">
+              <div class="lkedrow">
+                <label class="lkfld sm">Pan from<input id="{{f.idP0}}" class="lkin" type="number" value="{{f.p0}}" onChange="{{f.setP0}}" disabled="{{noCtl}}"></label>
+                <label class="lkfld sm">to<input id="{{f.idP1}}" class="lkin" type="number" value="{{f.p1}}" onChange="{{f.setP1}}" disabled="{{noCtl}}"></label>
+                <label class="lkfld sm">Tilt from<input id="{{f.idT0}}" class="lkin" type="number" value="{{f.t0}}" onChange="{{f.setT0}}" disabled="{{noCtl}}"></label>
+                <label class="lkfld sm">to<input id="{{f.idT1}}" class="lkin" type="number" value="{{f.t1}}" onChange="{{f.setT1}}" disabled="{{noCtl}}"></label>
+              </div>
+              <div class="lkedrow">
+                <label class="lkfld" style="flex:1 1 160px">Colour wheel<input id="{{f.idWheel}}" class="lkin" type="text" value="{{f.wheel}}" onChange="{{f.setWheel}}" disabled="{{noCtl}}"></label>
+                <label class="lkfld" style="flex:1 1 160px">Gobos<input id="{{f.idGobos}}" class="lkin" type="text" value="{{f.gobos}}" onChange="{{f.setGobos}}" disabled="{{noCtl}}"></label>
+              </div>
+            </sc-if></div>
+          </div>
+        </sc-for>
+        <button class="btn" onClick="{{addFix}}" disabled="{{noCtl}}">+ Fixture</button>
+      </section>
+
+      <section class="card" aria-label="Look list">
+        <div class="lbl">Looks</div>
+        <sc-for list="{{edLooks}}" as="l" hint-placeholder-count="2">
+          <div class="lkedrow">
+            <input id="{{l.idName}}" class="lkin" type="text" maxlength="40" value="{{l.name}}" onChange="{{l.setName}}" disabled="{{noCtl}}" aria-label="Look name" style="flex:2 1 140px">
+            <label class="lkfld sm">Fade<input id="{{l.idFade}}" class="lkin" type="number" min="0" max="60" step="0.5" value="{{l.fade}}" onChange="{{l.setFade}}" disabled="{{noCtl}}"></label>
+            <span style="font-size:12px;color:#A3ACB8;flex:1 1 120px">{{l.sub}}</span>
+            <span class="lkbtns"><button class="lkchip" onClick="{{l.del}}" disabled="{{noCtl}}" aria-label="Remove">✕</button></span>
+          </div>
+        </sc-for>
+        <div style="display:contents"><sc-if value="{{noLooks}}" hint-placeholder-val="{{ false }}"><div style="font-size:13px;color:#A3ACB8">Make looks in Program.</div></sc-if></div>
+      </section>
+    </sc-if></div>
+  </main>
+
+  <div style="display:contents"><sc-if value="{{ask}}" hint-placeholder-val="{{ false }}">
+    <div class="lkask" role="dialog" aria-modal="true" aria-label="{{askTitle}}">
+      <div class="card" style="max-width:420px;width:calc(100% - 32px)">
+        <div style="font-size:17px;font-weight:600;margin-bottom:6px">{{askTitle}}</div>
+        <div style="font-size:14px;color:#C9CFD8;margin-bottom:14px">{{askText}}</div>
+        <div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn" onClick="{{askNo}}">Cancel</button><button class="btn pri" onClick="{{askYes}}">{{askBtn}}</button></div>
+      </div>
+    </div>
+  </sc-if></div>
+
+  <div style="position:absolute;inset:0;z-index:6;pointer-events:none">
+    <dc-import name="MDTalk" hint-size="390px,844px"></dc-import>
+  </div>
+  <div class="rtabar" style="flex:none">
+    <dc-import name="MiniRTA" hint-size="390px,48px"></dc-import>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      tab: 'live', lk: null, lkDemo: false, msg: '', msgBad: false, sel: [], fade: 0, ask: null, lookName: '', found: [],
+      auto: false, lastMacro: '',
+      macros: [
+        ['House up', 'Cue 1 · master 100%', '#F5C518', 0, 1],
+        ['Worship', 'Cue 3 · its own fade', '#B48CF2', 2, 1],
+        ['Prayer', 'Master to 40%', '#6CB4F5', null, 0.4],
+        ['Message', 'Cue 7 · stage wash', '#6CB4F5', 6, 0.9],
+        ['End of service', 'Cue 9 · house up', '#F5C518', 8, 1],
+        ['Fade to black', 'Master to 0', '#FF7A45', null, 0]
+      ],
+      links: [
+        ['Welcome', 'Welcome'], ['Song 1', 'Worship warm'], ['Song 2', 'Worship big'],
+        ['Announcements', 'Announcements'], ['Message', 'Message'], ['Close', 'Close']
+      ]
+    };
+    this.dr = {};
+  }
+
+  // ---- the show: kept on the C3 Life server (or, in the preview, on this device) ------------------
+  static demoShow() {
+    const mover = (id, name, label, x) => ({ id, name, label, kind: 'mover', group: 'Movers', x, y: 12, pan: [-270, 270], tilt: [-135, 135], wheel: ['Open', 'Red', 'Orange', 'Yellow', 'Green', 'Blue', 'Magenta'], gobos: ['Open', 'Dots', 'Breakup', 'Cross', 'Rings'] });
+    const par = (i) => ({ id: 'p' + i, name: 'P' + i, label: 'Front ' + i, kind: 'par', group: 'Front', x: 12 + (i - 1) * 15, y: 42, pan: [-1, 1], tilt: [-1, 1], wheel: [], gobos: [] });
+    const cue = (id, name, fade, color, look) => ({ id, name, page: 'Main Page', fade, color, look: look || '' });
+    return {
+      fixtures: [mover('m1', 'M1', 'Spot 1', 22), mover('m2', 'M2', 'Spot 2', 41), mover('m3', 'M3', 'Spot 3', 59), mover('m4', 'M4', 'Spot 4', 78),
+        { id: 'w1', name: 'W1', label: 'Wash left', kind: 'wash', group: 'Washes', x: 8, y: 18, pan: [-270, 270], tilt: [-135, 135], wheel: [], gobos: [] },
+        { id: 'w2', name: 'W2', label: 'Wash right', kind: 'wash', group: 'Washes', x: 92, y: 18, pan: [-270, 270], tilt: [-135, 135], wheel: [], gobos: [] },
+        par(1), par(2), par(3), par(4), par(5), par(6),
+        { id: 'h1', name: 'H1', label: 'House left', kind: 'dimmer', group: 'House', x: 25, y: 70, pan: [-1, 1], tilt: [-1, 1], wheel: [], gobos: [] },
+        { id: 'h2', name: 'H2', label: 'House right', kind: 'dimmer', group: 'House', x: 75, y: 70, pan: [-1, 1], tilt: [-1, 1], wheel: [], gobos: [] },
+        { id: 'hz', name: 'Haze', label: 'Hazer', kind: 'hazer', group: 'Effects', x: 94, y: 84, pan: [-1, 1], tilt: [-1, 1], wheel: [], gobos: [] }],
+      cues: [cue('c1', 'Pre-service', 3, '#FFB25B'), cue('c2', 'Welcome', 2, '#FFD9A0'), cue('c3', 'Worship warm', 2, '#FF8A3D'),
+        cue('c4', 'Worship big', 1, '#7B5CFF', 'lk1'), cue('c5', 'Chorus hit', 0, '#FF3D7F'), cue('c6', 'Announcements', 2, '#FFD9A0'),
+        cue('c7', 'Message', 3, '#F4EBDD'), cue('c8', 'Response', 4, '#3D7BFF', 'lk2'), cue('c9', 'Close', 3, '#FFD9A0')],
+      presets: [
+        { id: 'r1', name: 'Red', path: 'All/Colors/Red', group: 'Colours', color: '#FF2A2A' },
+        { id: 'r2', name: 'Amber', path: 'All/Colors/Amber', group: 'Colours', color: '#FFB000' },
+        { id: 'r3', name: 'Blue', path: 'All/Colors/Blue', group: 'Colours', color: '#2050FF' },
+        { id: 'r4', name: 'Indigo', path: 'All/Colors/Indigo', group: 'Colours', color: '#4B0082' },
+        { id: 'r5', name: 'Magenta', path: 'All/Colors/Magenta', group: 'Colours', color: '#FF00C8' },
+        { id: 'r6', name: 'Warm white', path: 'All/Colors/Warm White', group: 'Colours', color: '#FFE3C0' },
+        { id: 'q1', name: 'Cross', path: 'Movers/Positions/Cross', group: 'Positions', color: '' },
+        { id: 'q2', name: 'Audience', path: 'Movers/Positions/Audience', group: 'Positions', color: '' },
+        { id: 'q3', name: 'Stage', path: 'Movers/Positions/Stage', group: 'Positions', color: '' },
+        { id: 'e1', name: 'Slow sweep', path: 'Movers/Effects/Slow Sweep', group: 'Effects', color: '' },
+        { id: 'e2', name: 'Ballyhoo', path: 'Movers/Effects/Ballyhoo', group: 'Effects', color: '' },
+        { id: 'e3', name: 'Pulse', path: 'All/Effects/Pulse', group: 'Effects', color: '' }],
+      looks: [
+        { id: 'lk1', name: 'Movers on the cross', fade: 2, sets: ['M1', 'M2', 'M3', 'M4'].map((n, i) => ({ fx: n, prop: 'panAngle', value: [-28, -10, 10, 28][i] })).concat(['M1', 'M2', 'M3', 'M4'].map((n) => ({ fx: n, prop: 'tiltAngle', value: 40 })), ['M1', 'M2', 'M3', 'M4'].map((n) => ({ fx: n, prop: 'color', value: '#FFFFFF' }))) },
+        { id: 'lk2', name: 'Prayer blue', fade: 4, sets: [1, 2, 3, 4, 5, 6].map((i) => ({ fx: 'P' + i, prop: 'color', value: '#2050FF' })).concat([1, 2, 3, 4, 5, 6].map((i) => ({ fx: 'P' + i, prop: 'dimmer', value: 0.4 }))) }]
+    };
+  }
+  lkTok() { try { const x = JSON.parse(localStorage.getItem('booth.session') || 'null'); return x ? x.token : ''; } catch (e) { return ''; } }
+  lkApi(path, method, body) {
+    const t = this.lkTok(), h = t ? { Authorization: 'Bearer ' + t } : {};
+    if (body) h['Content-Type'] = 'application/json';
+    return fetch(path, { method: method || 'GET', headers: h, body: body ? JSON.stringify(body) : undefined })
+      .then((r) => r.json().catch(() => ({})).then((j) => ({ code: r.status, j: j })));
+  }
+  demoLoad() {
+    let show = null, set = null;
+    try { show = JSON.parse(localStorage.getItem('booth.lights') || 'null'); set = JSON.parse(localStorage.getItem('booth.lightkey') || 'null'); } catch (e) {}
+    if (!this.dm) this.dm = { live: null, master: 1, blackout: false, bpm: null, overrides: {}, presets_on: [], fading: [], sent: [], taps: [] };
+    return { show: show && show.cues ? show : Component.demoShow(), settings: { ip: '192.168.10.32', port: 21600, mode: 'control', page: 'selected', go: 'app', replace: true, mac: 'Events Mac', ...(set || {}) } };
+  }
+  demoView() {
+    const d = this.demoLoad(), cues = d.show.cues, i = cues.findIndex((c) => c.id === this.dm.live);
+    return { settings: d.settings, show: d.show, on: d.settings.mode === 'control', demo: true,
+      state: { live: this.dm.live, next: i > -1 ? (cues[i + 1] || {}).id || null : (cues[0] || {}).id || null, master: this.dm.master, blackout: this.dm.blackout, bpm: this.dm.bpm,
+        overrides: this.dm.overrides, presets_on: this.dm.presets_on, fading: this.dm.fading.filter((f) => f.ends > Date.now() / 1000) },
+      sent: this.dm.sent.slice(-20) };
+  }
+  lkLoad() {
+    if (this.dirty) return; // an edit not saved yet
+    if (this.state.lkDemo) { this.setState({ lk: this.demoView() }); return; }
+    if (this.busy) return;
+    this.busy = true;
+    this.lkApi('/api/lights').then(({ code, j }) => {
+      this.busy = false;
+      if (code === 404) { this.setState({ lkDemo: true, lk: this.demoView() }); return; }
+      if (code === 403) { this.setState({ lk: null, noApi: true }); return; }
+      if (code === 200 && j.ok && !this.dirty) this.setState({ lk: j, noApi: false });
+    }).catch(() => { this.busy = false; if (!this.state.lk) this.setState({ lkDemo: true, lk: this.demoView() }); });
+  }
+  view() { return this.state.lk || this.demoView(); }
+  say(msg, bad) { this.setState({ msg, msgBad: !!bad }); clearTimeout(this.msgT); this.msgT = setTimeout(() => this.setState({ msg: '' }), bad ? 9000 : 4000); }
+
+  // ---- what each action sends: the same rules as the server's lightkey.py ----------------------
+  oscPart(n) { return [...String(n).trim()].map((c) => c === ' ' ? '_' : (c.charCodeAt(0) >= 33 && c.charCodeAt(0) <= 126 && '#*,/?[]{}'.indexOf(c) < 0 ? c : '?')).join(''); }
+  palAddr(p) { const t = p.trim(); const parts = t.startsWith('//') ? [''].concat(t.slice(2).split('/')) : t.replace(/^\/+|\/+$/g, '').split('/'); return '/palette/' + parts.map((x) => x.trim() ? this.oscPart(x.trim()) : '').join('/'); }
+  argOf(prop, v) { return prop === 'color' ? [String(v).replace('#', '').toLowerCase()] : (['shutterState', 'prismType1', 'on'].indexOf(prop) > -1 ? [v] : [Number(v)]); }
+  demoDo(act) {
+    const v = this.demoView(), show = v.show, set = v.settings, dm = this.dm, cues = show.cues, msgs = [];
+    const page = (c) => this.oscPart(c.page || set.page || 'selected');
+    const cueMsg = (c, on, fade) => { const f = fade === undefined ? c.fade : fade; msgs.push(['/live/' + page(c) + '/cue/' + this.oscPart(c.name) + '/' + (on ? 'activate' : 'deactivate'), f === null || f === undefined || f === '' ? [] : [Number(f)]]); };
+    const lookMsgs = (lk, fade) => { lk.sets.forEach((st) => { msgs.push(['/fixture/' + this.oscPart(st.fx) + '/overrides/' + st.prop, this.argOf(st.prop, st.value), fade]); (dm.overrides[st.fx] = dm.overrides[st.fx] || {})[st.prop] = st.value; }); if (fade) dm.fading = lk.sets.map((st) => ({ fx: st.fx, prop: st.prop, ends: Date.now() / 1000 + fade })); };
+    const fire = (c) => {
+      const prev = cues.find((x) => x.id === dm.live);
+      if (set.replace && prev && prev.id !== c.id) cueMsg(prev, false, c.fade);
+      cueMsg(c, true);
+      const lk = c.look && show.looks.find((x) => x.id === c.look);
+      if (lk) lookMsgs(lk, lk.fade || 0);
+      dm.live = c.id;
+      return null;
+    };
+    let err = null;
+    const a = act.do;
+    if (a === 'cue') { const c = cues.find((x) => x.id === act.id); err = c ? fire(c) : 'That cue has gone.'; }
+    else if (a === 'go' || a === 'back') {
+      if (set.go === 'lightkey') msgs.push([a === 'go' ? '/live/nextCue' : '/live/previousCue', []]);
+      else { const i = cues.findIndex((x) => x.id === dm.live), j = i < 0 ? 0 : (a === 'go' ? i + 1 : i - 1); err = !cues.length ? 'There are no cues yet. Add Lightkey’s cues in Show setup.' : (j < 0 ? 'That’s the first cue.' : (j >= cues.length ? 'That’s the end of the cue list.' : fire(cues[j]))); }
+    } else if (a === 'release') { const c = cues.find((x) => x.id === dm.live); if (c) cueMsg(c, false); dm.live = null; }
+    else if (a === 'preset') { const p = show.presets.find((x) => x.id === act.id); msgs.push([this.palAddr(p.path) + (act.on === false ? '/deactivate' : '/activate'), []]); dm.presets_on = dm.presets_on.filter((x) => x !== p.id).concat(act.on === false ? [] : [p.id]); }
+    else if (a === 'look') { const lk = show.looks.find((x) => x.id === act.id); lookMsgs(lk, act.fade !== undefined ? act.fade : (lk.fade || 0)); }
+    else if (a === 'master') { if (!dm.blackout) msgs.push(['/output/master', [act.value]]); dm.master = act.value; }
+    else if (a === 'blackout') { msgs.push(['/output/master', [act.on ? 0 : dm.master]]); dm.blackout = act.on; }
+    else if (a === 'tap') { msgs.push(['/beat/tap', []]); const t = Date.now(); dm.taps = dm.taps.filter((x) => t - x < 3000).concat([t]); if (dm.taps.length > 1) dm.bpm = Math.round(60000 * (dm.taps.length - 1) / (t - dm.taps[0])); }
+    else if (a === 'fixture') { act.fx.forEach((n) => { msgs.push(['/fixture/' + this.oscPart(n) + '/overrides/' + act.prop, this.argOf(act.prop, act.value), act.fade]); (dm.overrides[n] = dm.overrides[n] || {})[act.prop] = act.value; }); if (act.fade) dm.fading = act.fx.map((n) => ({ fx: n, prop: act.prop, ends: Date.now() / 1000 + act.fade })); }
+    else if (a === 'clear') {
+      if (act.fx === 'all') { msgs.push(['/fixture/*/overrides/clear', []]); dm.overrides = {}; }
+      else act.fx.forEach((n) => { const cl = { panAngle: 'position', tiltAngle: 'position' }[act.prop] || act.prop; msgs.push(['/fixture/' + this.oscPart(n) + (act.prop ? '/overrides/' + cl + '/clear' : '/overrides/clear'), []]); if (!act.prop) delete dm.overrides[n]; else if (dm.overrides[n]) { if (cl === 'position') { delete dm.overrides[n].panAngle; delete dm.overrides[n].tiltAngle; } else delete dm.overrides[n][act.prop]; } });
+    }
+    if (err) return { ok: false, error: err };
+    const t = Date.now() / 1000;
+    dm.sent = dm.sent.concat(msgs.map((m) => ({ t, addr: m[0], args: m[1], fade: m[2] || undefined }))).slice(-40);
+    return { ok: true, messages: msgs };
+  }
+  lkDo(act, okMsg) {
+    if (this.lightsLevel() < 2) return;
+    if (this.state.lkDemo) {
+      const r = this.demoDo(act);
+      this.setState({ lk: this.demoView() });
+      if (!r.ok) this.say(r.error, true); else if (okMsg) this.say(okMsg);
+      return;
+    }
+    this.lkApi('/api/lights/do', 'POST', act).then(({ code, j }) => {
+      if (j && j.state) this.setState({ lk: j });
+      if (j && j.ok) { if (okMsg) this.say(okMsg); return; }
+      if (code === 409 && j.messages && j.messages.length) this.say((j.error || 'Not sent.') + ' It would send: ' + j.messages.map((m) => m.addr + (m.args.length ? ' ' + m.args.join(' ') : '')).slice(0, 3).join(' · '), true);
+      else this.say((j && j.error) || 'Not sent. Try again.', true);
+    }).catch(() => this.say('Not sent: the C3 Life server didn’t answer.', true));
+  }
+  // The show's lists: changed here, saved a moment after the last change.
+  editShow(fn) {
+    const v = this.view(), show = JSON.parse(JSON.stringify(v.show));
+    fn(show);
+    this.dirty = true;
+    this.setState({ lk: { ...v, show } });
+    clearTimeout(this.saveT);
+    this.saveT = setTimeout(() => this.saveShow(), 700);
+  }
+  saveShow() {
+    const show = this.view().show;
+    if (this.state.lkDemo) { try { localStorage.setItem('booth.lights', JSON.stringify(show)); } catch (e) {} this.dirty = false; return; }
+    this.lkApi('/api/lights/show', 'PUT', show).then(({ j }) => {
+      this.dirty = false;
+      if (j && j.ok) this.setState({ lk: j });
+      else { this.say((j && j.error) || 'Not saved.', true); this.lkLoad(); }
+    }).catch(() => { this.dirty = false; this.say('Not saved: the C3 Life server didn’t answer.', true); });
+  }
+  saveSettings(patch, okMsg) {
+    if (!this.isAdmin()) return;
+    const v = this.view(), next = { ...v.settings, ...patch };
+    if (this.state.lkDemo) { try { localStorage.setItem('booth.lightkey', JSON.stringify(next)); } catch (e) {} this.setState({ lk: this.demoView() }); if (okMsg) this.say(okMsg); return; }
+    this.setState({ lk: { ...v, settings: next } });
+    clearTimeout(this.setT);
+    this.setT = setTimeout(() => this.lkApi('/api/lights/settings', 'PUT', next).then(({ j }) => {
+      if (j && j.ok) { this.setState({ lk: j }); if (okMsg) this.say(okMsg); } else this.say((j && j.error) || 'Not saved.', true);
+    }).catch(() => this.say('Not saved: the C3 Life server didn’t answer.', true)), patch.mode ? 0 : 600);
+  }
+
+  // ---- who may do what (Access levels › Lights) ---------------------------------------------------
+  user() { try { return JSON.parse(localStorage.getItem('booth.user') || 'null'); } catch (e) { return null; } }
+  isAdmin() { const u = this.user(); return !!u && (u.role || u.name) === 'Admin'; }
+  lightsLevel() {
+    let u = this.user(), r = null; try { r = JSON.parse(localStorage.getItem('booth.access') || 'null'); } catch (e) {}
+    if (!u) return 2; // the preview, before anyone signs in
+    const role = u.role || u.name;
+    if (role === 'Admin') return 2;
+    const row = Array.isArray(r) ? r.find((x) => x.name === role) : null;
+    if (row && row.p && row.p.length > 5) return row.p[5];
+    return { Lighting: 2, 'FOH sound': 1 }[role] || 0;
+  }
+
+  componentDidMount() { this.lkLoad(); this.loadT = setInterval(() => this.lkLoad(), 3000); }
+  componentWillUnmount() { clearInterval(this.loadT); clearTimeout(this.saveT); clearTimeout(this.msgT); clearTimeout(this.setT); }
+
+  // ---- colours ----------------------------------------------------------------------------------
+  hsv(h) { const f = (n) => { const k = (n + h / 60) % 6; return Math.round(255 * (1 - Math.max(0, Math.min(k, 4 - k, 1)))); }; return '#' + [f(5), f(3), f(1)].map((x) => x.toString(16).padStart(2, '0')).join('').toUpperCase(); }
+  hueOf(hex) { const n = parseInt(String(hex).replace('#', ''), 16), r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255, mx = Math.max(r, g, b), mn = Math.min(r, g, b); if (mx === mn) return 0; let h = mx === r ? (g - b) / (mx - mn) : mx === g ? 2 + (b - r) / (mx - mn) : 4 + (r - g) / (mx - mn); return Math.round((h * 60 + 360) % 360); }
+  wheelHex(name) { const m = { open: '#FFFFFF', white: '#FFFFFF', red: '#FF2A2A', orange: '#FF8A00', yellow: '#FFE600', green: '#22DD44', blue: '#2050FF', magenta: '#FF00C8', pink: '#FF7AC8', cyan: '#00E5FF', amber: '#FFB000', purple: '#8A2BE2', uv: '#6A00FF', ctb: '#CFE3FF', cto: '#FFD08A' }; return m[String(name).toLowerCase()] || '#FFFFFF'; }
+
+  renderVals() {
+    const s = this.state, v = this.view(), show = v.show, st = v.state, set = v.settings;
+    const lvl = this.lightsLevel(), ctl = lvl >= 2, admin = this.isAdmin();
+    const cues = show.cues, fxs = show.fixtures, sel = s.sel.filter((n) => fxs.some((f) => f.name === n));
+    const live = cues.find((c) => c.id === st.live), nxt = cues.find((c) => c.id === st.next);
+    const over = st.overrides || {};
+    const first = fxs.find((f) => f.name === sel[0]);
+    const firstMover = fxs.find((f) => sel.indexOf(f.name) > -1 && (f.kind === 'mover' || f.kind === 'wash'));
+    const ov = (first && over[first.name]) || {};
+    const progOk = ctl && sel.length > 0;
+    const fade = s.fade;
+    const setFx = (prop, value, label) => { if (!progOk) return; this.lkDo({ do: 'fixture', fx: sel, prop, value, fade }, label ? label + (fade ? ' · fading ' + fade + ' s' : '') : ''); };
+    const tab = (k) => (s.tab === k ? 'on' : '');
+    // ---- the stage: what C3 Life last set, drawn like Lightkey's Live Preview
+    const master = st.blackout ? 0 : st.master;
+    const fixtures = fxs.map((f) => {
+      const o = over[f.name] || {};
+      const wheelC = o.color1 !== undefined && f.wheel[o.color1] ? this.wheelHex(f.wheel[o.color1]) : null;
+      const col = o.color || wheelC || (o.colorTemperature ? (o.colorTemperature < 4500 ? '#FFD7A0' : '#E8F0FF') : null) || (live && live.color) || (f.kind === 'dimmer' ? '#FFE3C0' : '#FFFFFF');
+      const lit = o.dimmer !== undefined ? o.dimmer : (live ? 0.85 : (f.kind === 'dimmer' ? 0.6 : 0));
+      const shut = o.shutterState === 'closed' ? 0 : 1;
+      const pan = o.panAngle !== undefined ? o.panAngle : 0, tilt = o.tiltAngle !== undefined ? o.tiltAngle : 0;
+      const moves = f.kind === 'mover' || f.kind === 'wash';
+      const r = moves ? Math.max(-45, Math.min(45, (pan / Math.max(1, f.pan[1])) * 45)) : 0;
+      const hgt = f.kind === 'hazer' ? 0 : (moves ? 120 + Math.max(-60, Math.min(60, tilt / 2)) : (f.kind === 'dimmer' ? 70 : 140));
+      const w = f.kind === 'wash' ? 90 : (f.kind === 'mover' ? 26 + (o.zoomAngle || 18) : (f.kind === 'dimmer' ? 120 : 70));
+      const op = f.kind === 'hazer' ? 0 : Math.max(0, Math.min(1, lit * master * shut)) * 0.85;
+      const isSel = sel.indexOf(f.name) > -1;
+      return {
+        x: f.x, y: f.y, short: f.name.length > 4 ? f.name.slice(0, 4) : f.name, sel: isSel,
+        cls: [f.kind, isSel ? 'sel' : '', Object.keys(o).length ? 'over' : ''].join(' '),
+        beam: '--c:' + col + ';--o:' + op.toFixed(2) + ';--r:' + r.toFixed(1) + 'deg;--h:' + hgt + 'px;--w:' + w + 'px',
+        dot: op > 0.05 ? 'background:' + col + '33' : '',
+        aria: f.label + ' (' + f.name + ')' + (isSel ? ', picked' : ''),
+        down: (e) => { if (s.tab !== 'set' || !ctl) return; e.preventDefault(); this.drag = { id: f.id, rect: e.currentTarget.closest('.lkstage').getBoundingClientRect(), moved: false }; },
+        tap: () => { if (this.drag && this.drag.moved) { this.drag = null; return; } this.drag = null; this.setState({ sel: isSel ? sel.filter((n) => n !== f.name) : sel.concat([f.name]) }); }
+      };
+    });
+    const groups = [];
+    show.presets.forEach((p) => { let g = groups.find((x) => x.name === (p.group || 'Palette')); if (!g) groups.push(g = { name: p.group || 'Palette', items: [] }); g.items.push(p); });
+    const lookSub = (lk) => lk.sets.length + ' setting' + (lk.sets.length === 1 ? '' : 's') + ' · ' + (lk.fade ? lk.fade + ' s' : 'snap');
+    const fadeOpts = [0, 0.5, 1, 2, 3, 5, 10];
+    // pan/tilt pad: x = pan across the fixture's range, y = tilt (top = the top of its range)
+    const pr = firstMover ? firstMover.pan : [-270, 270], tr = firstMover ? firstMover.tilt : [-135, 135];
+    const po = (firstMover && over[firstMover.name]) || {};
+    const pp = this.padPrev || { pan: po.panAngle !== undefined ? po.panAngle : 0, tilt: po.tiltAngle !== undefined ? po.tiltAngle : 0 };
+    const padX = ((pp.pan - pr[0]) / (pr[1] - pr[0])) * 100, padY = (1 - (pp.tilt - tr[0]) / (tr[1] - tr[0])) * 100;
+    const padAt = (e) => { const b = e.currentTarget.getBoundingClientRect(); const fx = Math.max(0, Math.min(1, (e.clientX - b.left) / b.width)), fy = Math.max(0, Math.min(1, (e.clientY - b.top) / b.height)); return { pan: Math.round(pr[0] + fx * (pr[1] - pr[0])), tilt: Math.round(tr[1] - fy * (tr[1] - tr[0])) }; };
+    const movers = () => sel.filter((n) => { const f = fxs.find((x) => x.name === n); return f && (f.kind === 'mover' || f.kind === 'wash'); });
+    const sendPad = (p) => {
+      const ms = movers();
+      if (!ctl || !ms.length) { this.padPrev = null; this.setState({}); if (ctl && sel.length) this.say('Pan and tilt are for moving heads. Pick a mover or a wash.', true); return; }
+      const clampP = (f, x) => Math.max(f.pan[0], Math.min(f.pan[1], x)), clampT = (f, x) => Math.max(f.tilt[0], Math.min(f.tilt[1], x));
+      const f0 = fxs.find((x) => x.name === ms[0]);
+      this.lkDo({ do: 'fixture', fx: ms, prop: 'panAngle', value: clampP(f0, p.pan), fade });
+      this.lkDo({ do: 'fixture', fx: ms, prop: 'tiltAngle', value: clampT(f0, p.tilt), fade }, 'Pan ' + p.pan + '°, tilt ' + p.tilt + '°' + (fade ? ' · fading ' + fade + ' s' : ''));
+      this.padPrev = null;
+    };
+    const dimNow = this.dr.dim !== undefined ? this.dr.dim : Math.round((ov.dimmer !== undefined ? ov.dimmer : 1) * 100);
+    const hueNow = this.dr.hue !== undefined ? this.dr.hue : (ov.color ? this.hueOf(ov.color) : 30);
+    const wheelFx = fxs.find((f) => sel.indexOf(f.name) > -1 && f.wheel.length), goboFx = fxs.find((f) => sel.indexOf(f.name) > -1 && f.gobos.length);
+    const beam = [
+      ['zoomAngle', 'Zoom', 2, 60, 18, (x) => x + '°', 1], ['focus', 'Focus', 0, 100, 50, (x) => x + '%', 100], ['irisSize', 'Iris', 0, 100, 100, (x) => x + '%', 100],
+      ['frostAmount', 'Frost', 0, 100, 0, (x) => x + '%', 100], ['strobeSpeed', 'Strobe speed', 1, 25, 5, (x) => x + ' Hz', 1], ['fogAmount', 'Haze', 0, 100, 0, (x) => x + '%', 100]
+    ].map(([prop, label, mn, mx, d, fmt, k]) => {
+      const cur = this.dr[prop] !== undefined ? this.dr[prop] : (ov[prop] !== undefined ? Math.round(ov[prop] * (k === 100 ? 100 : 1)) : d);
+      return { id: 'lk-' + prop, label, min: mn, max: mx, val: cur, text: fmt(cur),
+        draft: (e) => { this.dr[prop] = Number(e.target.value); const t = e.target.nextElementSibling; if (t) t.textContent = fmt(this.dr[prop]); },
+        send: () => { if (this.dr[prop] === undefined) return; const x = this.dr[prop]; delete this.dr[prop]; setFx(prop, k === 100 ? x / 100 : x, label + ' ' + fmt(x)); } };
+    });
+    const lookOpts = [{ id: '', name: 'No look' }].concat(show.looks.map((l) => ({ id: l.id, name: 'Brings: ' + l.name })));
+    const idx = (arr, id) => arr.findIndex((x) => x.id === id);
+    const move = (key, id, d) => this.editShow((sh) => { const a = sh[key], i = idx(a, id), j = i + d; if (j < 0 || j >= a.length) return; const t = a[i]; a[i] = a[j]; a[j] = t; });
+    const edit = (key, id, field, val) => this.editShow((sh) => { const x = sh[key].find((y) => y.id === id); if (x) x[field] = val; });
+    const uid = () => Math.random().toString(36).slice(2, 10);
+    const numOrNull = (t) => (t === '' ? null : Number(t));
+    const list = (t) => t.split(',').map((x) => x.trim()).filter(Boolean);
+    const tileColors = [['Amber', '#FFB25B'], ['Warm', '#FFD9A0'], ['White', '#F4EBDD'], ['Orange', '#FF8A3D'], ['Red', '#FF3B30'], ['Pink', '#FF3D7F'], ['Purple', '#7B5CFF'], ['Blue', '#3D7BFF'], ['Cyan', '#00C7E6'], ['Green', '#34C759']].map(([name, hex]) => ({ name, hex }));
+    const swatches = [['Red', '#FF2A2A'], ['Orange', '#FF7A00'], ['Amber', '#FFB000'], ['Yellow', '#FFE600'], ['Green', '#22DD44'], ['Cyan', '#00E5FF'], ['Blue', '#2050FF'], ['Indigo', '#4B0082'], ['Purple', '#8A2BE2'], ['Magenta', '#FF00C8'], ['Pink', '#FF7AC8'], ['White', '#FFFFFF']];
+    const fmtT = (t) => { const d = new Date(t * 1000); return d.toTimeString().slice(0, 8); };
+    const linkOn = v.on;
+    const ask = (title, text, btn, yes) => this.setState({ ask: { title, text, btn, yes } });
+    return {
+      // header and bar
+      linkCls: s.lkDemo ? 'demo' : (linkOn ? 'on' : ''),
+      linkTitle: s.lkDemo ? 'Demo' : (linkOn ? 'Lightkey · ' + set.mac : 'Lightkey link off'),
+      linkSub: s.lkDemo ? 'Nothing is sent from the preview' : (linkOn ? set.ip + ' · OSC ' + set.port : (admin ? 'Turn it on in Show setup' : 'An Admin turns it on')),
+      noCtl: !ctl, noProg: !progOk, notAdmin: !admin, noAccess: lvl === 0, lookOnly: lvl === 1,
+      nextLine: set.go === 'lightkey' ? 'Lightkey’s cuelist' : (nxt ? 'Next: ' + nxt.name : 'End of list'),
+      go: () => this.lkDo({ do: 'go' }), back: () => this.lkDo({ do: 'back' }), release: () => this.lkDo({ do: 'release' }, 'Let go of the live cue.'),
+      masterPct: this.dr.master !== undefined ? this.dr.master : Math.round(st.master * 100),
+      masterDraft: (e) => { this.dr.master = Number(e.target.value); const t = e.target.nextElementSibling; if (t) t.textContent = this.dr.master + '%'; },
+      sendMaster: () => { if (this.dr.master === undefined) return; const x = this.dr.master; delete this.dr.master; this.lkDo({ do: 'master', value: x / 100 }); },
+      blackout: !!st.blackout, boCls: 'lkb sm bo' + (st.blackout ? ' on' : ''), boText: st.blackout ? 'Blackout on' : 'Blackout',
+      toggleBlackout: () => this.lkDo({ do: 'blackout', on: !st.blackout }, st.blackout ? 'Back up to ' + Math.round(st.master * 100) + '%.' : 'Blackout: the master is at 0.'),
+      tap: () => this.lkDo({ do: 'tap' }), bpmText: st.bpm ? Math.round(st.bpm) + ' BPM' : '',
+      onLive: s.tab === 'live', onProg: s.tab === 'prog', onSet: s.tab === 'set',
+      tabLive: tab('live'), tabProg: tab('prog'), tabSet: tab('set'),
+      showLive: () => this.setState({ tab: 'live' }), showProg: () => this.setState({ tab: 'prog' }), showSet: () => this.setState({ tab: 'set' }),
+      msg: s.msg, msgCls: s.msgBad ? 'bad' : '',
+      // stage
+      fixtures, noFixtures: !fxs.length, stageCls: s.tab === 'set' && ctl ? 'edit' : '', stageWide: '',
+      stageHint: s.tab === 'set' ? 'Drag a fixture to where it hangs' : (Object.keys(over).length ? 'What C3 Life set · the Mac may show more' : 'Tap fixtures to pick them'),
+      stageMove: (e) => { const d = this.drag; if (!d) return; const x = Math.round(Math.max(0, Math.min(100, ((e.clientX - d.rect.left) / d.rect.width) * 100))), y = Math.round(Math.max(0, Math.min(100, ((e.clientY - d.rect.top) / d.rect.height) * 100))); d.moved = true; const v2 = this.view(), sh = JSON.parse(JSON.stringify(v2.show)); const f = sh.fixtures.find((q) => q.id === d.id); if (f) { f.x = x; f.y = y; } this.dirty = true; this.setState({ lk: { ...v2, show: sh } }); },
+      stageUp: () => { const d = this.drag; if (d && d.moved) { clearTimeout(this.saveT); this.saveT = setTimeout(() => this.saveShow(), 100); setTimeout(() => { this.drag = null; }, 50); } else if (d) this.drag = d; },
+      selLine: sel.length ? sel.length + ' picked: ' + sel.slice(0, 6).join(', ') + (sel.length > 6 ? '…' : '') : 'None picked',
+      selAll: () => this.setState({ sel: fxs.map((f) => f.name) }), selNone: () => this.setState({ sel: [] }),
+      selMovers: () => this.setState({ sel: fxs.filter((f) => f.kind === 'mover' || f.kind === 'wash').map((f) => f.name) }),
+      // live
+      liveLine: live ? 'Live: ' + live.name : 'Nothing live from here',
+      cues: cues.map((c, i) => ({ n: i + 1, name: c.name, color: c.color || '#888888', cls: c.id === st.live ? 'live' : (c.id === st.next ? 'next' : ''),
+        tag: c.id === st.live ? 'LIVE' : (c.id === st.next ? 'NEXT' : (c.fade === null || c.fade === undefined || c.fade === '' ? 'its fade' : c.fade + ' s')),
+        aria: 'Cue ' + (i + 1) + ', ' + c.name + (c.id === st.live ? ', live' : ''), fire: () => this.lkDo({ do: 'cue', id: c.id }) })),
+      noCues: !cues.length,
+      palGroups: groups.map((g) => ({ name: g.name, items: g.items.map((p) => { const on = (st.presets_on || []).indexOf(p.id) > -1; return { name: p.name, on, cls: on ? 'on' : '', aria: p.name + (on ? ', on' : ''),
+        sw: p.color ? 'background:' + p.color : 'background:repeating-linear-gradient(45deg,#3a4049 0 4px,#23272e 4px 8px)', tap: () => this.lkDo({ do: 'preset', id: p.id, on: !on }) }; }) })),
+      looks: show.looks.map((l) => ({ name: l.name, sub: lookSub(l), aria: 'Look ' + l.name, recall: () => this.lkDo({ do: 'look', id: l.id }, l.name + (l.fade ? ' · fading ' + l.fade + ' s' : '')) })),
+      noLooks: !show.looks.length,
+      sentCount: (v.sent || []).length ? (v.sent || []).length + ' recent' : 'None yet',
+      sent: (v.sent || []).slice().reverse().map((m) => ({ t: fmtT(m.t), text: m.addr + (m.args && m.args.length ? ' ' + m.args.map((x) => typeof x === 'number' ? +x.toFixed(3) : '"' + x + '"').join(' ') : '') + (m.fade ? '  · fading ' + m.fade + ' s' : '') })),
+      auto: s.auto, toggleAuto: () => this.setState({ auto: !s.auto }),
+      links: s.links.map(([item, cue], i) => ({ id: 'lk-link-' + i, item, cue, opts: ['None'].concat(cues.map((c) => c.name)),
+        pick: (e) => this.setState({ links: s.links.map((l, j) => (j === i ? [l[0], e.target.value] : l)) }) })),
+      addLink: () => this.setState({ links: s.links.concat([['Response song', 'Response']]) }),
+      macroHint: s.lastMacro ? 'Ran: ' + s.lastMacro : 'One tap, several steps',
+      macros: s.macros.map(([name, does, color, ci, m]) => ({ name, does, color,
+        run: () => { if (ci !== null && cues[ci]) this.lkDo({ do: 'cue', id: cues[ci].id }); if (m !== null) this.lkDo({ do: 'master', value: m }); this.setState({ lastMacro: name }); } })),
+      newMacro: () => this.setState({ macros: s.macros.concat([['New macro', 'Tap to set up', '#A3ACB8', null, null]]) }),
+      // program
+      fadeText: fade ? fade + ' s' : 'Snap (0 s)', fadeVal: fade,
+      fades: fadeOpts.map((f) => ({ label: f ? f + 's' : '0', on: fade === f, cls: fade === f ? 'on' : '', pick: () => this.setState({ fade: f }) })),
+      setFade: (e) => { const x = Number(e.target.value); if (!isNaN(x) && x >= 0 && x <= 60) this.setState({ fade: x }); },
+      noSel: !sel.length && ctl,
+      padX: Math.max(0, Math.min(100, padX)).toFixed(1), padY: Math.max(0, Math.min(100, padY)).toFixed(1),
+      padText: firstMover ? 'Pan ' + pp.pan + '° · Tilt ' + pp.tilt + '°' : 'Pick a mover',
+      pad: {
+        down: (e) => { if (!progOk) return; e.preventDefault(); this.padDrag = true; this.padPrev = padAt(e); this.setState({}); },
+        move: (e) => { if (!this.padDrag) return; this.padPrev = padAt(e); this.setState({}); },
+        up: (e) => { if (!this.padDrag) return; this.padDrag = false; sendPad(padAt(e)); },
+        key: (e) => { const k = { ArrowLeft: [-5, 0], ArrowRight: [5, 0], ArrowUp: [0, 5], ArrowDown: [0, -5] }[e.key]; if (!k || !progOk) return; e.preventDefault(); sendPad({ pan: pp.pan + k[0], tilt: pp.tilt + k[1] }); },
+        centre: () => sendPad({ pan: 0, tilt: 0 }),
+        clear: () => { const ms = movers(); if (ms.length) this.lkDo({ do: 'clear', fx: ms, prop: 'panAngle' }, 'Position given back to Lightkey.'); }
+      },
+      dimVal: dimNow, dimText: dimNow + '%',
+      setDimDraft: (e) => { this.dr.dim = Number(e.target.value); const t = e.target.closest('section').querySelector('.mono'); if (t) t.textContent = this.dr.dim + '%'; },
+      sendDim: () => { if (this.dr.dim === undefined) return; const x = this.dr.dim; delete this.dr.dim; setFx('dimmer', x / 100, 'Intensity ' + x + '%'); },
+      dim0: () => setFx('dimmer', 0, 'Intensity out'), dim50: () => setFx('dimmer', 0.5, 'Intensity 50%'), dim100: () => setFx('dimmer', 1, 'Intensity full'),
+      swatches: swatches.map(([name, hex]) => ({ name, hex, pick: () => setFx('color', hex, name) })),
+      hueVal: hueNow,
+      setHueDraft: (e) => { this.dr.hue = Number(e.target.value); },
+      sendHue: () => { if (this.dr.hue === undefined) return; const h = this.dr.hue; delete this.dr.hue; setFx('color', this.hsv(h), 'Colour ' + this.hsv(h)); },
+      warm: () => setFx('colorTemperature', 3200, 'Warm white'), cool: () => setFx('colorTemperature', 5600, 'Cool white'),
+      hasWheel: !!wheelFx, wheelOf: (wheelFx || goboFx || {}).label || '',
+      wheel: wheelFx ? wheelFx.wheel.map((n, i) => ({ name: n, pick: () => { const fx = sel.filter((x) => { const f = fxs.find((q) => q.name === x); return f && f.wheel.length; }); this.lkDo({ do: 'fixture', fx, prop: 'color1', value: i, fade: 0 }, 'Colour wheel: ' + n); } })) : [],
+      hasGobos: !!goboFx,
+      gobos: goboFx ? goboFx.gobos.map((n, i) => ({ name: n, pick: () => { const fx = sel.filter((x) => { const f = fxs.find((q) => q.name === x); return f && f.gobos.length; }); this.lkDo({ do: 'fixture', fx, prop: 'gobo1', value: i, fade: 0 }, 'Gobo: ' + n); } })) : [],
+      shOpen: () => setFx('shutterState', 'open', 'Shutter open'), shClosed: () => setFx('shutterState', 'closed', 'Shutter closed'), shStrobe: () => setFx('shutterState', 'strobe', 'Strobe'),
+      beamSliders: beam, prismVal: ov.prismType1 || 'none', setPrism: (e) => setFx('prismType1', e.target.value, 'Prism ' + e.target.value),
+      lookName: s.lookName, setLookName: (e) => this.setState({ lookName: e.target.value }),
+      saveLook: () => {
+        const name = s.lookName.trim();
+        const sets = []; sel.forEach((n) => Object.entries(over[n] || {}).forEach(([prop, value]) => sets.push({ fx: n, prop, value })));
+        if (!name) { this.say('Give the look a name first.', true); return; }
+        if (!sets.length) { this.say('Nothing to keep yet: change the picked fixtures first.', true); return; }
+        this.editShow((sh) => { sh.looks.push({ id: uid(), name, fade, sets }); });
+        this.setState({ lookName: '' });
+        this.say('Saved “' + name + '”: ' + sets.length + ' settings, ' + (fade ? fade + ' s fade' : 'snap') + '. It’s on Live › Looks.');
+      },
+      clearSel: () => { if (sel.length) this.lkDo({ do: 'clear', fx: sel }, 'Given back to Lightkey: ' + sel.join(', ') + '.'); },
+      clearAll: () => ask('Give everything back to Lightkey?', 'Every fixture C3 Life has changed goes back to what Lightkey’s cues say. The lights will change.', 'Give it all back', () => this.lkDo({ do: 'clear', fx: 'all' }, 'Everything is back to Lightkey’s cues.')),
+      progLine: Object.keys(over).length ? 'Changed from here: ' + Object.keys(over).join(', ') + (st.fading && st.fading.length ? ' · fading now' : '') : 'Nothing changed from here.',
+      // setup: the link
+      setMac: set.mac, setIp: set.ip, setPort: set.port, setPage: set.page, setGo: set.go, setReplace: !!set.replace, linkOn,
+      edMac: (e) => this.saveSettings({ mac: e.target.value }), edIp: (e) => this.saveSettings({ ip: e.target.value.trim() }),
+      edPort: (e) => this.saveSettings({ port: Number(e.target.value) || 21600 }), edPage: (e) => this.saveSettings({ page: e.target.value }),
+      edGo: (e) => this.saveSettings({ go: e.target.value }), edReplace: () => this.saveSettings({ replace: !set.replace }),
+      modeCls: linkOn ? 'btn hot' : 'btn pri', modeText: linkOn ? 'Turn the Lightkey link off' : 'Turn the Lightkey link on',
+      toggleMode: () => linkOn ? this.saveSettings({ mode: 'off' }, 'The Lightkey link is off. Nothing more is sent to ' + set.mac + '.')
+        : ask('Turn on the Lightkey link?', 'From now on Go, the cues, the palette, the master and the programmer change the lights through Lightkey on ' + set.mac + ' (' + (set.ip || 'no address yet') + '). Lightkey needs Enable OSC ticked.', 'Turn it on', () => this.saveSettings({ mode: 'control' }, 'The Lightkey link is on.')),
+      findLk: () => {
+        if (s.lkDemo) { this.setState({ found: [{ name: 'Lightkey (Events Mac)', ip: '192.168.10.32', port: 21600 }] }); return; }
+        this.say('Looking for Lightkey…');
+        this.lkApi('/api/lights/find', 'POST', {}).then(({ j }) => { const f = (j && j.found) || []; this.setState({ found: f }); this.say(f.length ? 'Found ' + f.length + '. Tap one to use it.' : 'Lightkey wasn’t found. Is Enable OSC ticked on the Mac? You can type its address.', !f.length); })
+          .catch(() => this.say('The C3 Life server didn’t answer.', true));
+      },
+      found: (s.found || []).map((f) => ({ name: f.name, ip: f.ip, use: () => { this.saveSettings({ ip: f.ip, port: f.port || 21600 }, 'Using ' + f.ip + '.'); this.setState({ found: [] }); } })),
+      setNote: admin ? (linkOn ? 'On: C3 Life sends to ' + set.mac + '. Lightkey doesn’t answer over OSC, so if someone presses a cue on the Mac itself, this screen won’t know.' : 'Off: nothing is sent. Buttons say what they would send.') : 'Only an Admin can change the lighting Mac and turn the link on or off.',
+      // setup: lists
+      tileColors, swatchOpts: [{ name: 'No swatch', hex: '' }].concat(swatches.map(([name, hex]) => ({ name, hex }))),
+      edCues: cues.map((c) => ({ idName: 'lkc-n-' + c.id, idPage: 'lkc-p-' + c.id, idFade: 'lkc-f-' + c.id, name: c.name, page: c.page || '', fade: c.fade === null || c.fade === undefined ? '' : c.fade, color: c.color || '#FFB25B', look: c.look || '', lookOpts,
+        setName: (e) => edit('cues', c.id, 'name', e.target.value), setPage: (e) => edit('cues', c.id, 'page', e.target.value || 'selected'),
+        setFade: (e) => edit('cues', c.id, 'fade', numOrNull(e.target.value)), setColor: (e) => edit('cues', c.id, 'color', e.target.value), setLook: (e) => edit('cues', c.id, 'look', e.target.value),
+        up: () => move('cues', c.id, -1), down: () => move('cues', c.id, 1), test: () => this.lkDo({ do: 'cue', id: c.id }, 'Sent ' + c.name + '.'),
+        del: () => this.editShow((sh) => { sh.cues = sh.cues.filter((x) => x.id !== c.id); }) })),
+      addCue: () => this.editShow((sh) => { sh.cues.push({ id: uid(), name: 'New cue', page: set.page || 'selected', fade: null, color: '#FFB25B', look: '' }); }),
+      edPresets: show.presets.map((p) => ({ idName: 'lkp-n-' + p.id, idPath: 'lkp-p-' + p.id, idGroup: 'lkp-g-' + p.id, name: p.name, path: p.path, group: p.group || '', color: p.color || '',
+        setName: (e) => edit('presets', p.id, 'name', e.target.value), setPath: (e) => edit('presets', p.id, 'path', e.target.value),
+        setGroup: (e) => edit('presets', p.id, 'group', e.target.value || 'Palette'), setColor: (e) => edit('presets', p.id, 'color', e.target.value),
+        del: () => this.editShow((sh) => { sh.presets = sh.presets.filter((x) => x.id !== p.id); }) })),
+      addPreset: () => this.editShow((sh) => { sh.presets.push({ id: uid(), name: 'New preset', path: 'Group/New Preset', group: 'Palette', color: '' }); }),
+      edFix: fxs.map((f) => ({ idName: 'lkf-n-' + f.id, idLabel: 'lkf-l-' + f.id, idGroup: 'lkf-g-' + f.id, idP0: 'lkf-p0-' + f.id, idP1: 'lkf-p1-' + f.id, idT0: 'lkf-t0-' + f.id, idT1: 'lkf-t1-' + f.id, idWheel: 'lkf-w-' + f.id, idGobos: 'lkf-b-' + f.id,
+        name: f.name, label: f.label || '', kind: f.kind, group: f.group || '', moves: f.kind === 'mover' || f.kind === 'wash',
+        p0: f.pan[0], p1: f.pan[1], t0: f.tilt[0], t1: f.tilt[1], wheel: f.wheel.join(', '), gobos: f.gobos.join(', '),
+        setName: (e) => edit('fixtures', f.id, 'name', e.target.value), setLabel: (e) => edit('fixtures', f.id, 'label', e.target.value || f.name),
+        setKind: (e) => this.editShow((sh) => { const x = sh.fixtures.find((y) => y.id === f.id); x.kind = e.target.value; if (x.kind === 'mover' || x.kind === 'wash') { if (x.pan[1] <= 1) { x.pan = [-270, 270]; x.tilt = [-135, 135]; } } }),
+        setGroup: (e) => edit('fixtures', f.id, 'group', e.target.value || 'All'),
+        setP0: (e) => this.editShow((sh) => { sh.fixtures.find((y) => y.id === f.id).pan[0] = Number(e.target.value); }), setP1: (e) => this.editShow((sh) => { sh.fixtures.find((y) => y.id === f.id).pan[1] = Number(e.target.value); }),
+        setT0: (e) => this.editShow((sh) => { sh.fixtures.find((y) => y.id === f.id).tilt[0] = Number(e.target.value); }), setT1: (e) => this.editShow((sh) => { sh.fixtures.find((y) => y.id === f.id).tilt[1] = Number(e.target.value); }),
+        setWheel: (e) => edit('fixtures', f.id, 'wheel', list(e.target.value)), setGobos: (e) => edit('fixtures', f.id, 'gobos', list(e.target.value)),
+        del: () => this.editShow((sh) => { sh.fixtures = sh.fixtures.filter((x) => x.id !== f.id); sh.looks.forEach((l) => { l.sets = l.sets.filter((q) => q.fx !== f.name); }); sh.looks = sh.looks.filter((l) => l.sets.length); }) })),
+      addFix: () => this.editShow((sh) => { let n = 1; while (sh.fixtures.some((x) => x.name === 'F' + n)) n++; sh.fixtures.push({ id: uid(), name: 'F' + n, label: 'Fixture ' + n, kind: 'mover', group: 'Movers', x: 50, y: 30, pan: [-270, 270], tilt: [-135, 135], wheel: [], gobos: [] }); }),
+      edLooks: show.looks.map((l) => ({ idName: 'lkl-n-' + l.id, idFade: 'lkl-f-' + l.id, name: l.name, fade: l.fade || 0, sub: lookSub(l),
+        setName: (e) => edit('looks', l.id, 'name', e.target.value), setFade: (e) => edit('looks', l.id, 'fade', Math.max(0, Math.min(60, Number(e.target.value) || 0))),
+        del: () => this.editShow((sh) => { sh.looks = sh.looks.filter((x) => x.id !== l.id); sh.cues.forEach((c) => { if (c.look === l.id) c.look = ''; }); }) })),
+      // the confirm box
+      ask: !!s.ask, askTitle: s.ask ? s.ask.title : '', askText: s.ask ? s.ask.text : '', askBtn: s.ask ? s.ask.btn : '',
+      askNo: () => this.setState({ ask: null }), askYes: () => { const a = s.ask; this.setState({ ask: null }); if (a) a.yes(); }
+    };
+  }
+}
+</script>
+</body>
+</html>
