@@ -97,5 +97,71 @@ class Api(unittest.TestCase):
         self.assertEqual(self.call("/api/foyer", who="Foyer team")[1]["name"], "Café")  # every device sees it
 
 
+class OnTheWing(Api):
+    """The Foyer screens move the Wing: which mix the foyer hears, its volume and mute (Control only)."""
+
+    def setUp(self):
+        super().setUp()
+        self.fw.vals.update({"/bus/7/send/1/on": 1, "/bus/7/send/1/lvl": 0.0, "/bus/8/send/1/on": 0, "/bus/8/send/1/lvl": 0.0})
+        self.fw.vals.update({"/mtx/1/fdr": -10.0, "/mtx/1/mute": 0})
+
+    def live(self, ok=lambda l: l["source"] is not None):
+        for _ in range(80):
+            st, j = self.call("/api/foyer", who="Foyer team")
+            if j.get("live") and ok(j["live"]):
+                return j["live"]
+            time.sleep(0.25)
+        return j.get("live")
+
+    def test_it_shows_what_the_desk_is_doing(self):
+        lv = self.live(lambda l: l["source"] is not None and l["fdr"] is not None)
+        self.assertEqual((lv["connected"], lv["source"], lv["a_on"], lv["b_on"], lv["fdr"], lv["mute"], lv["mode"]), (True, "a", 1, 0, -10.0, 0, "watch"))
+
+    def test_watch_only_changes_nothing(self):
+        self.live()
+        st, j = self.call("/api/foyer/do", "POST", {"do": "source", "to": "b"}, who="Foyer team")
+        self.assertEqual(st, 409); self.assertIn("watch the Wing only", j["error"])
+        self.assertFalse([x for x in self.fw.sets if x[0].startswith(("/bus/", "/mtx/"))])
+
+    def test_switch_volume_and_mute_on_the_wing(self):
+        self.httpd.wing.configure(mode="control")
+        self.live()
+        st, j = self.call("/api/foyer/do", "POST", {"do": "source", "to": "b"}, who="Foyer team")
+        self.assertEqual(st, 200, j)
+        for _ in range(40):
+            sets = [x for x in self.fw.sets if x[0].startswith("/bus/")]
+            if len(sets) >= 2:
+                break
+            time.sleep(0.05)
+        self.assertEqual(sets[:2], [("/bus/8/send/1/on", 1), ("/bus/7/send/1/on", 0)])  # the new one on first: no gap
+        self.assertEqual(self.live(lambda l: l["source"] == "b")["source"], "b")
+        st, j = self.call("/api/foyer/do", "POST", {"do": "volume", "db": -2.0}, who="Foyer team")  # above the maximum (−5)
+        self.assertEqual(st, 409); self.assertIn("can't go above -5 dB", j["error"])
+        self.assertEqual(self.call("/api/foyer/do", "POST", {"do": "volume", "db": -12.5}, who="Foyer team")[0], 200)
+        self.assertEqual(self.call("/api/foyer/do", "POST", {"do": "mute", "on": True}, who="FOH sound")[0], 200)
+        for _ in range(40):
+            if ("/mtx/1/mute", 1) in self.fw.sets:
+                break
+            time.sleep(0.05)
+        self.assertIn(("/mtx/1/fdr", -12.5), self.fw.sets)
+        self.assertIn(("/mtx/1/mute", 1), self.fw.sets)
+        lv = self.live(lambda l: l["mute"] == 1 and l["fdr"] == -12.5)
+        self.assertEqual((lv["fdr"], lv["mute"]), (-12.5, 1))
+
+    def test_balance_is_foyer_setup(self):
+        self.httpd.wing.configure(mode="control")
+        self.live()
+        self.assertEqual(self.call("/api/foyer/do", "POST", {"do": "balance", "mix": "b", "db": -4.0}, who="Foyer team")[0], 403)
+        self.assertEqual(self.call("/api/foyer/do", "POST", {"do": "balance", "mix": "b", "db": -4.0})[0], 200)
+        lv = self.live(lambda l: l["b_lvl"] == -4.0)
+        self.assertEqual((lv["a_lvl"], lv["b_lvl"]), (0.0, -4.0))
+
+    def test_who_may(self):
+        self.httpd.wing.configure(mode="control")
+        self.assertEqual(self.call("/api/foyer/do", "POST", {"do": "mute", "on": True}, who="Keys (musician)")[0], 403)
+        self.assertEqual(self.call("/api/foyer/do", "POST", {"do": "source", "to": "c"}, who="Foyer team")[0], 409)
+        self.assertFalse([x for x in self.fw.sets if x[0].startswith(("/bus/", "/mtx/"))])
+
+
 if __name__ == "__main__":
     unittest.main()

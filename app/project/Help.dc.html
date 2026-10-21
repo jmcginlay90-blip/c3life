@@ -514,13 +514,15 @@ class Component extends DCLogic {
         'With it off, Chat disappears from their menu on every screen, and opening Chat says it\u2019s turned off for them.',
         'Listeners don\u2019t have chat unless an Admin turns it on for them.'] },
       { q: 'The foyer is silent or playing the wrong thing', c: '#F5C518', href: 'Foyer.dc.html', go: 'Foyer', steps: [
-        'On the Foyer screen, tap Spotify or Live service. The amber button is what the foyer hears.',
+        'On the Foyer screen, tap Spotify or Live service, then Switch (it asks first). The amber button is what the foyer hears: it\u2019s read from the Wing, so it\u2019s right even if someone changed it on the desk.',
+        'If it says the desk is on Watch only, nothing can be changed from the Foyer screens: FOH switches the Mixer to Control. If it says the desk isn\u2019t answering, see the warning at the top of the screen.',
+        'If it says both mixes (or neither) are going to the foyer, tap the one it should play.',
         'Check the foyer isn\u2019t muted and the volume isn\u2019t at −∞.',
         'For Spotify, check music is playing on the Music screen. For Live service, check the service mix is up on the desk.',
-        'Admin only: in Foyer setup, check the two aux outs and the matrix are the right ones on the Wing.'] },
+        'Admin only: in Foyer setup, check the two buses and the matrix are the right ones on the Wing. On the Wing, each of the two buses sends to that matrix, and the matrix feeds the foyer speakers.'] },
       { q: 'The foyer won\u2019t go any louder', c: '#F5C518', href: 'Foyer.dc.html', go: 'Foyer', steps: [
         'The volume stops at the maximum an Admin has set (−5 dB to start with). That\u2019s on purpose.',
-        'If one source is quieter than the other, adjust Source levels on the Foyer screen.',
+        'If one source is quieter than the other, an Admin adjusts Source levels on Show \u203a Foyer (each bus\u2019s send to the foyer matrix on the Wing).',
         'An Admin can raise the maximum in Foyer setup.'] },
       { q: 'My screen keeps locking', c: '#A3ACB8', href: 'Access.dc.html', go: 'Access levels', steps: [
         'Each role has a screen timer. The Foyer team locks after 5 minutes of no use.',

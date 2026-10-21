@@ -54,6 +54,10 @@ API (JSON):
   PUT  /api/music {"playlists","fade_seconds","walk_in_volume"}   (Music control) the playlists: {"name", "uri"}
   POST /api/music/do {"do": "play|pause|next|previous|volume|playlist|fade", ...}   (Music control) passed to the helper
   POST /api/music/propresenter             (Music control) open ProPresenter (on its computer's helper)
+  POST /api/foyer/do {"do": "source", "to": "a"|"b"} | {"do": "volume", "db"} | {"do": "mute", "on"}   (Foyer control),
+                     {"do": "balance", "mix": "a"|"b", "db"}  (Foyer setup control: each mix's send level to the matrix)
+                                           which mix the foyer hears, its volume (never above the maximum) and mute,
+                                           on the Wing (Control); GET /api/foyer has "live", what the desk is doing now
   GET  /api/devices                        (signed in) what's set up and whether it's answering, for the warning on
                                            every screen: only what this role can see (Wing and Tio: Mixer or Own monitor mix)
   POST /api/helpers/find                   (Music or Settings control) scan the network now for C3 Life helpers
@@ -1059,6 +1063,17 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 ok, msg = rta_live.calibrate(float(spl), weight)
                 log.info("rta: %s calibrating: %s", s["name"], msg)
                 self.send_json(200 if ok else 409, dict(rta_live.state(), ok=ok, message=msg, **({} if ok else {"error": msg})))
+                return
+            if path == "/api/foyer/do":
+                body = self.read_json()
+                s = self.level("Foyer setup" if isinstance(body, dict) and body.get("do") == "balance" else "Foyer", need=2)
+                if not s:
+                    return
+                err = foyer.do(desk, body, s["name"], log)
+                out = dict(foyer.view(desk), ok=not err)
+                if err:
+                    out["error"] = err
+                self.send_json(200 if not err else 409, out)
                 return
             if path in ("/api/helpers/key", "/api/helpers/forget"):
                 s = self.admin()
