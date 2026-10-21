@@ -171,7 +171,8 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
       <div class="card wfull" role="alert" style="border-color:#FF7A45;display:flex;flex-direction:column;gap:6px">
         <div style="font-weight:600;color:#FF9C70">Can’t reach Spotify</div>
         <div style="font-size:13px;color:#C9CFD7;line-height:1.45">{{helperErr}}</div>
-        <a href="Help.dc.html" style="font-size:13px">Help › Music › The C3 Life helper on the Mac mini</a>
+        <sc-if value="{{showFind}}" hint-placeholder-val="{{ false }}"><button class="btn" style="align-self:flex-start" onClick="{{findNow}}" disabled="{{finding}}">{{findLabel}}</button></sc-if>
+        <a href="Help.dc.html" style="font-size:13px">Help › Music › The C3 Life helpers</a>
       </div>
     </sc-if>
     <sc-if value="{{msg}}" hint-placeholder-val="{{ false }}">
@@ -188,6 +189,7 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
           <div style="font-size:13px;color:#A3ACB8">{{subLine}}</div>
         </div>
       </div>
+      <sc-if value="{{winNote}}" hint-placeholder-val="{{ false }}"><div style="font-size:12px;color:#A3ACB8;line-height:1.45">{{winNote}}</div></sc-if>
       <div style="display:flex;flex-direction:column;gap:4px">
         <div style="height:4px;border-radius:2px;background:#0F1318;overflow:hidden"><div style="height:4px;background:#F5C518;width:{{progress}}%"></div></div>
         <div class="mono" style="display:flex;justify-content:space-between;font-size:11px;color:#A3ACB8"><span>{{elapsed}}</span><span>{{durLabel}}</span></div>
@@ -202,7 +204,7 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
       </div>
       <div style="display:flex;align-items:center;gap:10px">
         <label for="vol" style="font-size:13px;color:#A3ACB8;width:56px">Volume</label>
-        <input id="vol" type="range" min="0" max="100" value="{{vol}}" onChange="{{setVol}}" disabled="{{noCtl}}">
+        <input id="vol" type="range" min="0" max="100" value="{{vol}}" onChange="{{setVol}}" disabled="{{noMore}}">
         <span class="mono" style="font-size:13px;width:40px;text-align:right">{{vol}}%</span>
       </div>
       <div style="display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:8px">
@@ -231,8 +233,8 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
           <span style="flex:1;min-width:0"><span style="font-weight:{{p.weight}}">{{p.name}}</span><br><span style="font-size:12px;color:{{p.subColor}}">{{p.sub}}</span></span>
           <sc-if value="{{p.editing}}" hint-placeholder-val="{{ false }}"><button class="btn" style="min-height:44px" onClick="{{p.remove}}" aria-label="Remove {{p.name}}">Remove</button></sc-if>
           <sc-if value="{{p.notEditing}}" hint-placeholder-val="{{ true }}">
-          <button class="{{p.playCls}}" onClick="{{p.play}}" aria-label="Play {{p.name}}" aria-pressed="{{p.on}}" disabled="{{noCtl}}"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></button>
-          <button class="pb" onClick="{{p.stop}}" aria-label="Stop {{p.name}}" disabled="{{noCtl}}"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1"/></svg></button>
+          <button class="{{p.playCls}}" onClick="{{p.play}}" aria-label="Play {{p.name}}" aria-pressed="{{p.on}}" disabled="{{noMore}}"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></button>
+          <button class="pb" onClick="{{p.stop}}" aria-label="Stop {{p.name}}" disabled="{{noMore}}"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1"/></svg></button>
           </sc-if>
         </div>
       </sc-for>
@@ -268,15 +270,20 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
           <sc-for list="{{macs}}" as="m" hint-placeholder-count="2"><option value="{{m}}">{{m}}</option></sc-for>
         </select>
         </sc-if>
-        <sc-if value="{{live}}" hint-placeholder-val="{{ false }}"><span class="mono" style="font-size:12px;color:#C9CFD7">{{helperUrl}}</span></sc-if>
+        <sc-if value="{{pickHelper}}" hint-placeholder-val="{{ false }}">
+        <select aria-label="Computer that plays the music" value="{{helperId}}" onChange="{{setHelper}}">
+          <sc-for list="{{helperOpts}}" as="o" hint-placeholder-count="2"><option value="{{o.v}}">{{o.t}}</option></sc-for>
+        </select>
+        </sc-if>
+        <sc-if value="{{showHelperName}}" hint-placeholder-val="{{ false }}"><span style="font-size:13px;color:#C9CFD7;text-align:right">{{helperName}}</span></sc-if>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-        <span style="flex:1;font-size:14px;min-width:150px">ProPresenter on that Mac<br><span style="font-size:12px;color:{{ppColor}}">{{ppLabel}}</span></span>
+        <span style="flex:1;font-size:14px;min-width:150px">ProPresenter on {{ppWhere}}<br><span style="font-size:12px;color:{{ppColor}}">{{ppLabel}}</span></span>
         <button class="btn" onClick="{{askPP}}" disabled="{{ppOff}}">Open ProPresenter</button>
       </div>
       <sc-if value="{{ppAsk}}" hint-placeholder-val="{{ false }}">
         <div role="alertdialog" aria-label="Open ProPresenter?" style="display:flex;flex-direction:column;gap:8px;border:1px solid #F5C518;border-radius:8px;padding:10px">
-          <div style="font-size:14px">Open ProPresenter on the Mac mini? It starts ProPresenter there; nothing goes on screen.</div>
+          <div style="font-size:14px">Open ProPresenter on {{ppWhere}}? It starts ProPresenter there; nothing goes on screen.</div>
           <div style="display:flex;gap:8px"><button class="btn pri" style="flex:1" onClick="{{openPP}}">Open it</button><button class="btn" style="flex:1" onClick="{{cancelPP}}">Cancel</button></div>
         </div>
       </sc-if>
@@ -290,6 +297,39 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
       </div>
       <div style="font-size:12px;color:#A3ACB8;line-height:1.45">Re-sync downloads on the Mac every few weeks while it has internet. Make sure your church's music licences cover playing recorded music in services.</div>
     </section>
+
+    <sc-if value="{{live}}" hint-placeholder-val="{{ false }}">
+    <section class="card" aria-label="Computers with the C3 Life helper" style="display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="lbl" style="flex:1">Computers with the C3 Life helper</div>
+        <sc-if value="{{canFind}}" hint-placeholder-val="{{ false }}"><button class="btn" style="min-height:36px;padding:0 10px;font-size:13px" onClick="{{findNow}}" disabled="{{finding}}">{{findLabel}}</button></sc-if>
+      </div>
+      <div style="font-size:12px;color:#A3ACB8;line-height:1.45">Found by the network scan, and followed if a computer’s address changes. Each one is checked every minute; one that stops answering makes C3 Life look for it straight away.</div>
+      <sc-if value="{{noHelpers}}" hint-placeholder-val="{{ false }}"><div style="font-size:13px;color:#C9CFD7;line-height:1.45">None found yet. On the Mac (or Windows PC) with Spotify, start the helper: python3 c3life_helper.py</div></sc-if>
+      <sc-for list="{{helperRows}}" as="h" hint-placeholder-count="1">
+        <div style="display:flex;flex-direction:column;gap:6px;border-top:1px solid #222831;padding-top:8px">
+          <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+            <span style="font-weight:600;flex:1;min-width:120px">{{h.name}}</span>
+            <span style="font-size:12px;color:{{h.stateColor}}">{{h.state}}</span>
+          </div>
+          <div style="font-size:12px;color:#A3ACB8">{{h.what}}</div>
+          <sc-if value="{{h.askKey}}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <input id="{{h.keyId}}" type="password" aria-label="Helper key for {{h.name}}" placeholder="Its key, from the helper’s window" value="{{h.key}}" onChange="{{h.setKey}}" autocomplete="off" autocapitalize="off" spellcheck="false" style="flex:1;min-width:180px;min-height:44px;border-radius:9px;border:1px solid #333B47;background:#0F1318;color:#ECEEF1;padding:0 10px">
+              <button class="btn pri" onClick="{{h.saveKey}}">Save key</button>
+            </div>
+          </sc-if>
+          <sc-if value="{{h.adminRow}}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <sc-if value="{{h.paired}}" hint-placeholder-val="{{ false }}"><button class="btn" style="min-height:40px" onClick="{{h.changeKey}}">Change key</button></sc-if>
+              <button class="btn" style="min-height:40px" onClick="{{h.forget}}" aria-label="Forget {{h.name}}">Forget</button>
+            </div>
+          </sc-if>
+          <sc-if value="{{h.noAdmin}}" hint-placeholder-val="{{ false }}"><div style="font-size:12px;color:#A3ACB8">An Admin types its key once, here.</div></sc-if>
+        </div>
+      </sc-for>
+    </section>
+    </sc-if>
   </main>
 
   <div style="position:absolute;inset:0;z-index:6;pointer-events:none">
@@ -323,7 +363,11 @@ class Component extends DCLogic {
     return fetch(path, { method: method || 'GET', headers: h, body: body ? JSON.stringify(body) : undefined })
       .then((r) => r.json().catch(() => ({})).then((j) => ({ code: r.status, j: j })));
   }
-  muGot(j) { if (j && j.playlists) this.setState({ mu: j, muAt: Date.now() }); }
+  muGot(j) {
+    if (!j || !j.playlists) return;
+    const was = this.state.mu || {};  // a button's answer doesn't repeat who you are: keep it from the last look
+    this.setState({ mu: Object.assign({ can: was.can, admin: was.admin, scanning: was.scanning }, j), muAt: Date.now() });
+  }
   muLoad() {
     if (this.demo || this.muBusy) return;
     this.muBusy = true;
@@ -340,9 +384,9 @@ class Component extends DCLogic {
       this.setState({ msg: (j && j.error) || (done || '') });
     }).catch(() => this.setState({ msg: 'The C3 Life server didn’t answer. Try again.' }));
   }
-  muSave(lists, done) {
+  muSave(lists, done, extra) {
     const m = this.state.mu;
-    return this.muApi('/api/music', 'PUT', { playlists: lists, fade_seconds: m.fade_seconds, walk_in_volume: m.walk_in_volume }).then(({ j }) => {
+    return this.muApi('/api/music', 'PUT', Object.assign({ playlists: lists, fade_seconds: m.fade_seconds, walk_in_volume: m.walk_in_volume, helper_id: m.helper_id || '' }, extra || {})).then(({ j }) => {
       if (j && j.ok) { this.muGot(j); this.setState({ msg: done || 'Saved.' }); return true; }
       this.setState({ msg: (j && j.error) || 'Not saved. Try again.' }); return false;
     }).catch(() => { this.setState({ msg: 'Not saved: the C3 Life server didn’t answer.' }); return false; });
@@ -377,23 +421,71 @@ class Component extends DCLogic {
   liveVals() {
     const s = this.state, m = s.mu, sp = m.spotify || {}, up = m.helper && m.helper.ok, on = up && sp.running;
     const playing = on && sp.state === 'playing', ctl = !!m.can && on;
+    const H = m.helper || {}, more = (H.can || []).indexOf('spotify_more') >= 0, where = H.name || H.address || 'the Mac mini';
+    const win = H.os === 'windows';
+    const hs = m.helpers || [], spot = hs.filter((h) => (h.can || []).indexOf('spotify') >= 0);
+    const P = (m.propresenter && m.propresenter.helper) || null;
+    const ago = (t) => { if (!t) return ''; const mins = Math.round((Date.now() / 1000 - t) / 60); return mins < 1 ? 'just now' : mins < 60 ? mins + ' min ago' : new Date(t * 1000).toTimeString().slice(0, 5); };
+    const osName = { mac: 'Mac', windows: 'Windows PC' };
     const pos = playing ? Math.min(sp.duration || 0, (sp.position || 0) + (Date.now() - s.muAt) / 1000) : (sp.position || 0);
     const held = s.volHeld && Date.now() - s.volHeld.at < 1500 ? s.volHeld.v : null;
     const vol = held != null ? held : (sp.volume || 0);
     const kind = (u) => (u.split(':')[1] || 'playlist');
     return {
       statusLine: !up ? 'Spotify · not reachable' : (!sp.running ? 'Spotify · not open' : 'Spotify · ' + (sp.fading ? 'fading' : sp.state)),
-      statusWhere: 'on Mac mini', statusColor: up && sp.running ? '#A3ACB8' : '#FF9C70',
+      statusWhere: H.found ? 'on ' + where : 'no helper yet', statusColor: up && sp.running ? '#A3ACB8' : '#FF9C70',
       helperDown: !up, helperErr: up ? '' : m.helper.error,
-      demo: false, live: true, helperUrl: (m.helper && m.helper.url || '').replace(/^https?:\/\//, ''),
+      showFind: !up && !!m.can && !(m.helpers || []).length, canFind: !!m.can, finding: !!(m.scanning || s.finding),
+      findLabel: (m.scanning || s.finding) ? 'Looking…' : 'Find it now',
+      findNow: () => {
+        this.setState({ finding: true, msg: 'Looking for C3 Life helpers on the booth network (about 10 seconds)…' });
+        this.muApi('/api/helpers/find', 'POST', {}).then(() => setTimeout(() => { this.setState({ finding: false, msg: '' }); this.muLoad(); }, 12000))
+          .catch(() => this.setState({ finding: false, msg: 'The C3 Life server didn’t answer. Try again.' }));
+      },
+      demo: false, live: true,
+      winNote: up && win ? 'On a Windows PC C3 Life can press Play/Pause, Next and Previous for Spotify, but can’t show what’s playing, pick a playlist, set the volume or fade. Do those in Spotify on ' + where + '.' : '',
+      noMore: !ctl || !more,
+      pickHelper: !!m.can && spot.length > 1, showHelperName: !(m.can && spot.length > 1),
+      helperName: H.found ? where + (H.os ? ' (' + (osName[H.os] || H.os) + ')' : '') : 'Not found yet',
+      helperId: H.id || '', helperOpts: [{ v: '', t: 'Choose a computer' }].concat(spot.map((h) => ({ v: h.id, t: (h.name || h.address) + ' (' + (osName[h.os] || h.os || '?') + ')' }))),
+      setHelper: (e) => this.muSave(m.playlists, 'Music now plays on ' + ((spot.find((h) => h.id === e.target.value) || {}).name || 'that computer') + '.', { helper_id: e.target.value }),
+      ppWhere: P ? (P.name || P.address) : 'the Mac mini',
+      noHelpers: !hs.length,
+      helperRows: hs.map((h) => {
+        const editing = !!(s.keyEdit || {})[h.id];
+        return {
+          name: h.name || h.address, keyId: 'hk-' + h.id,
+          what: (osName[h.os] || h.os || 'Computer') + ' · ' + h.address + ' · ' + ((h.can || []).indexOf('spotify') >= 0 ? 'Spotify' + ((h.can || []).indexOf('spotify_more') >= 0 ? '' : ' (Play/Pause, Next, Previous)') : '') +
+            ((h.can || []).indexOf('propresenter') >= 0 ? ((h.can || []).indexOf('spotify') >= 0 ? ', ' : '') + 'ProPresenter' : ''),
+          state: !h.paired ? 'Key needed' : h.ok === false ? 'Not answering' + (h.last_ok ? ' · last answered ' + ago(h.last_ok) : '') : h.ok ? 'Answering · ' + ago(h.last_ok) : 'Key set',
+          stateColor: !h.paired || h.ok === false ? '#FF9C70' : '#7FD1C1',
+          paired: h.paired, askKey: !!m.admin && (!h.paired || editing), adminRow: !!m.admin, noAdmin: !m.admin && !h.paired,
+          key: (s.keys || {})[h.id] || '',
+          setKey: (e) => this.setState({ keys: Object.assign({}, s.keys, { [h.id]: e.target.value }) }),
+          changeKey: () => this.setState({ keyEdit: Object.assign({}, s.keyEdit, { [h.id]: !editing }) }),
+          saveKey: () => {
+            const k = ((this.state.keys || {})[h.id] || '').trim();
+            if (!k) { this.setState({ msg: 'Paste the key from the helper’s window on ' + (h.name || h.address) + '.' }); return; }
+            this.muApi('/api/helpers/key', 'POST', { id: h.id, key: k }).then(({ j }) => {
+              this.muGot(j);
+              if (j && j.ok) this.setState({ msg: 'Key saved for ' + (h.name || h.address) + '. It stays on the C3 Life server.', keys: Object.assign({}, this.state.keys, { [h.id]: '' }), keyEdit: Object.assign({}, this.state.keyEdit, { [h.id]: false }) });
+              else this.setState({ msg: (j && j.error) || 'Not saved. Try again.' });
+            }).catch(() => this.setState({ msg: 'The C3 Life server didn’t answer. Try again.' }));
+          },
+          forget: () => {
+            if (!window.confirm('Forget the helper on ' + (h.name || h.address) + '? Its key is removed; the next scan finds it again, and it needs its key again.')) return;
+            this.muApi('/api/helpers/forget', 'POST', { id: h.id }).then(({ j }) => { this.muGot(j); this.setState({ msg: (j && j.error) || 'Forgot ' + (h.name || h.address) + '.' }); });
+          }
+        };
+      }),
       art: (m.playlists.findIndex((p) => p.name === m.now) >= 0) ? this.colors[m.playlists.findIndex((p) => p.name === m.now) % this.colors.length] : '#333B47',
-      stateLabel: !on ? 'Not playing' : (sp.fading ? 'Fading' : (playing ? 'Playing' : 'Paused')),
-      playlistName: m.now || 'Spotify',
-      track: on ? (sp.track || 'Nothing playing') : (up ? 'Spotify isn’t open on the Mac' : '—'),
-      subLine: on && sp.artist ? sp.artist + (sp.album ? ' · ' + sp.album : '') : (m.can ? 'Tap a playlist to start' : ''),
+      stateLabel: !on ? 'Not playing' : win ? 'Can’t see what’s playing' : (sp.fading ? 'Fading' : (playing ? 'Playing' : 'Paused')),
+      playlistName: win ? where : (m.now || 'Spotify'),
+      track: on ? (sp.track || (win ? 'Spotify on ' + where : 'Nothing playing')) : (up ? 'Spotify isn’t open on ' + where : '—'),
+      subLine: on && sp.artist ? sp.artist + (sp.album ? ' · ' + sp.album : '') : (m.can && !win ? 'Tap a playlist to start' : ''),
       progress: sp.duration ? Math.round(pos / sp.duration * 100) : 0,
       elapsed: this.clock(pos), durLabel: this.clock(sp.duration),
-      playing: playing, paused: !playing, playAria: playing ? 'Pause' : 'Play',
+      playing: playing, paused: !playing, playAria: win ? 'Play or pause' : playing ? 'Pause' : 'Play',
       noCtl: !ctl,
       togglePlay: () => this.muDo({ do: playing ? 'pause' : 'play' }),
       prev: () => this.muDo({ do: 'previous' }),
@@ -405,7 +497,7 @@ class Component extends DCLogic {
         clearTimeout(this.volT);
         this.volT = setTimeout(() => this.muDo({ do: 'volume', value: v }), 250);
       },
-      fading: !!sp.fading, fadeOff: !ctl || !!sp.fading,
+      fading: !!sp.fading, fadeOff: !ctl || !more || !!sp.fading,
       fadeOutLabel: sp.fading ? 'Fading…' : 'Fade out · ' + m.fade_seconds + 's',
       fadeOut: () => this.muDo({ do: 'fade', to: 0, then: 'pause' }, 'Fading out over ' + m.fade_seconds + ' seconds, then it pauses.'),
       fadeIn: () => this.muDo({ do: 'fade', to: m.walk_in_volume }, 'Fading in to ' + m.walk_in_volume + '%.'),
@@ -432,9 +524,9 @@ class Component extends DCLogic {
         if (!n || !u) { this.setState({ msg: 'Give the playlist a name and paste its Spotify link.' }); return; }
         this.muSave(m.playlists.concat([{ name: n, uri: u }]), 'Added ' + n + '.').then((ok) => { if (ok) this.setState({ addName: '', addUri: '' }); });
       },
-      ppLabel: m.propresenter.running === true ? 'Open' : (m.propresenter.running === false ? 'Not open' : 'Not known (the helper isn’t answering)'),
+      ppLabel: !P ? 'No helper there yet' : m.propresenter.running === true ? 'Open' : (m.propresenter.running === false ? 'Not open' : 'Not known (the helper isn’t answering)'),
       ppColor: m.propresenter.running === true ? '#7FD1C1' : '#A3ACB8',
-      ppOff: !m.can || !up || m.propresenter.running === true,
+      ppOff: !m.can || !P || m.propresenter.running !== false,
       ppAsk: s.ppAsk,
       askPP: () => this.setState({ ppAsk: true }),
       cancelPP: () => this.setState({ ppAsk: false }),
@@ -453,7 +545,10 @@ class Component extends DCLogic {
     const base = {
       art: L.color,
       statusLine: 'Spotify · offline', statusWhere: 'on Mac mini (demo)', statusColor: '#A3ACB8',
-      helperDown: false, helperErr: '', msg: s.msg, demo: true, live: false, helperUrl: '',
+      helperDown: false, helperErr: '', msg: s.msg, demo: true, live: false,
+      showFind: false, canFind: false, finding: false, findLabel: '', findNow: () => {}, winNote: '', noMore: false,
+      pickHelper: false, showHelperName: false, helperName: '', helperId: '', helperOpts: [], setHelper: () => {},
+      ppWhere: 'the Mac mini', noHelpers: false, helperRows: [],
       stateLabel: s.fading ? 'Fading' : (s.playing ? 'Playing' : 'Paused'),
       playlistName: L.name,
       track: 'Walk-in track ' + s.track,

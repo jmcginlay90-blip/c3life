@@ -16,6 +16,7 @@ import os
 import re
 import threading
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
@@ -345,7 +346,9 @@ class Scripture:
 
     # ---- ProPresenter ----
     def pp(self, method, path, body=None):
-        url = (self.cfg.get("propresenter") or "").rstrip("/") + path
+        if not self.cfg.get("propresenter"):
+            raise urllib.error.URLError("ProPresenter hasn't been found on the network yet. Open it with Settings > Network turned on; the network scan finds it.")
+        url = self.cfg["propresenter"].rstrip("/") + path
         req = urllib.request.Request(url, method=method, data=None if body is None else json.dumps(body).encode(),
                                      headers={"Content-Type": "application/json"} if body is not None else {})
         with urllib.request.urlopen(req, timeout=5) as r:

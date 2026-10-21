@@ -87,6 +87,44 @@ class Addresses(unittest.TestCase):
         self.assertIsNotNone(lk.valid_value("blink", 1))
 
 
+class FoundByTheScan(unittest.TestCase):
+    """Lightkey offers its OSC over Bonjour: the network scan fills in its address, and follows the lighting Mac."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_found_then_followed(self):
+        import scan as sm
+        L = lk.Lightkey(self.tmp)
+        mac = {"10.0.0.32": {"names": {"Events-Mac.local"}, "services": {"_osc._udp.local": "Lightkey (Events Mac)._osc._udp.local"}}}
+        sc = sm.Scanner(self.tmp, {"scan_hosts": [], "scan_ports": {}}, None)
+        sc.arp, sc.mdns, sc.on_found = (lambda: {}), (lambda: mac), [L.found]
+        sc.log = type("Log", (), {"info": lambda *a: None, "warning": lambda *a: None})()
+        sc.run()
+        self.assertEqual((L.settings["ip"], L.settings["mode"], L.bonjour, L.seen), ("10.0.0.32", "off", "Lightkey (Events Mac)", True))  # Off: Control is an Admin's
+        self.assertIn("Found Lightkey (Lightkey (Events Mac)) at 10.0.0.32", sc.result["changes"][0])
+        L.settings["mode"] = "control"
+        mac = {"10.0.0.47": mac["10.0.0.32"]}  # the Mac got a new address
+        sc.mdns = lambda: mac
+        sc.run()
+        self.assertEqual((L.settings["ip"], L.settings["mode"]), ("10.0.0.47", "control"))
+        self.assertIn("moved from 10.0.0.32 to 10.0.0.47", sc.result["changes"][0])
+        self.assertEqual(lk.Lightkey(self.tmp).settings["ip"], "10.0.0.47")  # kept after a restart
+        sc.mdns = lambda: {}
+        sc.run()
+        self.assertEqual((L.settings["ip"], L.seen), ("10.0.0.47", False))  # not seen: kept, and the warning says so
+
+    def test_two_lightkeys_and_none_set_changes_nothing(self):
+        L = lk.Lightkey(self.tmp)
+        two = [{"kind": "lightkey", "ip": "10.0.0.%d" % n, "port": 21600, "name": "Lightkey (%d)" % n} for n in (5, 6)]
+        self.assertEqual((L.found(two), L.settings["ip"]), ([], ""))
+        L.settings["ip"] = "10.0.0.9"; L.bonjour = "Other"
+        self.assertEqual((L.found(two), L.settings["ip"], L.seen), ([], "10.0.0.9", False))
+
+
 class Sending(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp()

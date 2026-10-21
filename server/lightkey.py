@@ -233,6 +233,40 @@ class Lightkey:
         self.fades = {}  # (fixture, prop) -> [from, to, start, seconds]
         self.fader = None
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        # The lighting Mac as Bonjour names it, so the network scan can follow it to a new address; and whether the
+        # last scan saw it (Lightkey doesn't answer OSC, so its Bonjour announcement is the only sign it's there).
+        self.bonjour = self._read("lightkey-seen.json", {}).get("name", "")
+        self.seen = None
+
+    def found(self, finds):
+        """The network scan's finds (kind "lightkey", from Bonjour). -> changes in words. Fills in the address when there's
+        exactly one Lightkey and none is set (it stays Off: an Admin turns Control on, which asks first), and follows the one
+        set up to a new address by its Bonjour name."""
+        lk = [f for f in finds if f.get("kind") == "lightkey"]
+        changes = []
+        with self.lock:
+            cur = self.settings
+            at = next((f for f in lk if f["ip"] == cur["ip"]), None)
+            same = [f for f in lk if self.bonjour and f.get("name") == self.bonjour]
+            pick = None
+            if at:
+                pick = at
+            elif cur["ip"] and len(same) == 1:
+                pick = same[0]
+                changes.append("Lightkey (%s) moved from %s to %s, so C3 Life followed it" % (pick["name"], cur["ip"], pick["ip"]))
+            elif not cur["ip"] and len(lk) == 1:
+                pick = lk[0]
+                changes.append("Found Lightkey (%s) at %s. It's Off until an Admin turns Control on (Lights › Show setup)" % (pick["name"], pick["ip"]))
+            self.seen = bool(at or pick) if cur["ip"] or pick else None
+            if pick and (pick["ip"] != cur["ip"] or pick.get("name", "") != self.bonjour):
+                self.settings = dict(cur, ip=pick["ip"])
+                self.bonjour = pick.get("name", "")
+                self._write("lightkey.json", self.settings)
+                self._write("lightkey-seen.json", {"name": self.bonjour})
+        for c in changes:
+            if self.log:
+                self.log.info("lights: %s", c)
+        return changes
 
     def _read(self, name, dflt):
         try:

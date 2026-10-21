@@ -25,6 +25,8 @@ LIST = "spotify:playlist:37i9dQZF1DXcBWIGoYBM5M"
 class FakeSpotify:
     """Spotify, as the helper sees it through AppleScript."""
 
+    CAN = ("spotify", "spotify_more")
+
     def __init__(self):
         self.st = {"running": True, "state": "paused", "volume": 50, "position": 12.0, "track": "Way Maker", "artist": "Sinach",
                    "album": "Way Maker", "duration": 300.0, "id": "spotify:track:abc"}
@@ -54,6 +56,9 @@ class FakeSpotify:
     def pause(self):
         return self._do("pause")
 
+    def playpause(self):
+        return self._do("playpause")
+
     def next(self):
         return self._do("next")
 
@@ -68,6 +73,8 @@ class FakeSpotify:
 
 
 class FakePP:
+    CAN = ("propresenter",)
+
     def __init__(self):
         self.up = False
         self.opened = 0
@@ -182,7 +189,7 @@ def call(port, path, body=None, key=None, method=None, tok=None):
 class HelperServer(unittest.TestCase):
     def setUp(self):
         self.sp, self.pp = FakeSpotify(), FakePP()
-        self.cfg = dict(hp.DEFAULT, key="k" * 32, name="Mac mini", _quiet=True, _any_os=True)
+        self.cfg = dict(hp.DEFAULT, key="k" * 32, name="Mac mini", _quiet=True)
         self.httpd = hp.serve(self.cfg, hp.Helper(spotify=self.sp, propresenter=self.pp, sleep=lambda t: None), port=0)
         self.port = self.httpd.server_address[1]
         threading.Thread(target=self.httpd.serve_forever, daemon=True).start()
@@ -222,6 +229,31 @@ class HelperServer(unittest.TestCase):
         finally:
             httpd.shutdown(); httpd.server_close()
 
+    def test_it_answers_any_private_network_but_not_the_internet(self):
+        self.assertIsNone(hp.DEFAULT["allowed_networks"])  # nothing to set, unless helper.json says otherwise
+        nets = [s.ipaddress.ip_network(n) for n in hp.PRIVATE]
+        for ip in ("192.168.10.30", "192.168.1.20", "10.0.0.5", "10.20.30.40", "172.16.4.2", "127.0.0.1"):
+            self.assertTrue(any(s.ipaddress.ip_address(ip) in n for n in nets), ip)
+        for ip in ("8.8.8.8", "81.2.69.160", "172.32.0.1"):
+            self.assertFalse(any(s.ipaddress.ip_address(ip) in n for n in nets), ip)
+        self.assertTrue(all(s.ipaddress.ip_network(n).is_private for n in hp.my_networks()))
+
+    def test_show_key_shows_it_and_stops(self):
+        tmp = tempfile.mkdtemp()
+        try:
+            path = os.path.join(tmp, "helper.json")
+            r = subprocess.run([sys.executable, os.path.join(os.path.dirname(hp.__file__), "c3life_helper.py"), "--config", path, "--show-key"],
+                               capture_output=True, text=True, timeout=30)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            c = hp.load(path)
+            self.assertEqual(r.stdout.strip(), c["key"])
+            self.assertEqual(len(c["id"]), 16)
+            r2 = subprocess.run([sys.executable, os.path.join(os.path.dirname(hp.__file__), "c3life_helper.py"), "--config", path, "--show-key"],
+                                capture_output=True, text=True, timeout=30)
+            self.assertEqual((r2.stdout.strip(), hp.load(path)["id"]), (c["key"], c["id"]))  # the same next time
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
     def test_key_made_once_and_kept(self):
         tmp = tempfile.mkdtemp()
         try:
@@ -242,7 +274,7 @@ class Api(unittest.TestCase):
 
     def setUp(self):
         self.sp, self.pp = FakeSpotify(), FakePP()
-        self.hcfg = dict(hp.DEFAULT, key="secret-helper-key-123456", _quiet=True, _any_os=True)
+        self.hcfg = dict(hp.DEFAULT, key="secret-helper-key-123456", id="a1b2c3d4", name="Mac mini", _os="mac", _quiet=True)
         self.helper = hp.serve(self.hcfg, hp.Helper(spotify=self.sp, propresenter=self.pp, sleep=lambda t: None), port=0)
         threading.Thread(target=self.helper.serve_forever, daemon=True).start()
         self.tmp = tempfile.mkdtemp()
@@ -251,8 +283,7 @@ class Api(unittest.TestCase):
         with open(os.path.join(app, "player.html"), "w") as fh:
             fh.write("<!doctype html>")
         cfg = s.load_config(None)
-        cfg.update(port=0, bind="127.0.0.1", app_dir=app, data_dir=os.path.join(self.tmp, "data"), propresenter="", desk="none",
-                   helper="http://127.0.0.1:%d" % self.helper.server_address[1], helper_key=self.hcfg["key"])
+        cfg.update(port=0, bind="127.0.0.1", app_dir=app, data_dir=os.path.join(self.tmp, "data"), propresenter="", desk="none")
         cfg["_nets"] = [s.ipaddress.ip_network("127.0.0.0/8")]
         self.cfg = cfg
         self.httpd = s.serve(cfg)
@@ -262,6 +293,11 @@ class Api(unittest.TestCase):
         for n in ("Admin", "ProPresenter", "FOH sound", "Lighting", "Foyer team", "Listener"):
             body = {"name": n, "password": "c3life-admin"} if n == "Admin" else {"name": n, "pin": "" if n == "Listener" else "1234"}
             self.tok[n] = call(self.port, "/api/login", body)[1]["token"]
+        # what a network scan hands over when it finds the helper; then an Admin types its key on Music
+        self.hport = self.helper.server_address[1]
+        self.assertEqual(len(self.httpd.helpers.found([{"kind": "helper", "ip": "127.0.0.1", "port": self.hport}])), 1)
+        code, j = call(self.port, "/api/helpers/key", {"id": "a1b2c3d4", "key": self.hcfg["key"]}, tok=self.tok["Admin"])
+        self.assertEqual(code, 200, j)
 
     def tearDown(self):
         for h in (self.httpd, self.helper):
@@ -295,7 +331,7 @@ class Api(unittest.TestCase):
         code, j = self.api("/api/music/do", {"do": "playlist", "name": "Gone"})
         self.assertEqual((code, j["error"]), (409, "That playlist isn't on the list any more."))
         # kept after a restart
-        m = mm.Music(self.cfg["data_dir"], self.cfg, s.log)
+        m = mm.Music(self.cfg["data_dir"], self.cfg, s.log, self.httpd.helpers)
         self.assertEqual((m.get()["playlists"][0]["name"], m.now), ("Walk-in", "Walk-in"))
 
     def test_opening_propresenter(self):
@@ -325,16 +361,157 @@ class Api(unittest.TestCase):
         self.assertNotIn(self.hcfg["key"], json.dumps(self.api("/api/music/do", {"do": "play"})[1]))
 
     def test_no_key_and_helper_down(self):
-        self.cfg["helper_key"] = ""
+        hs = self.httpd.helpers
+        hs.d["a1b2c3d4"]["key"] = ""
         code, j = self.api("/api/music")
-        self.assertEqual((code, j["helper"]["ok"]), (200, False)); self.assertIn("key isn't set", j["helper"]["error"])
-        self.cfg["helper_key"] = "wrong"
-        self.assertIn("key is wrong", self.api("/api/music")[1]["helper"]["error"])
-        code, j = self.api("/api/music/do", {"do": "play"})
+        self.assertEqual((code, j["helper"]["ok"], j["helper"]["paired"]), (200, False, False)); self.assertIn("key isn't set", j["helper"]["error"])
+        code, j = self.api("/api/helpers/key", {"id": "a1b2c3d4", "key": "not-the-right-key"})
         self.assertEqual(code, 409); self.assertIn("key is wrong", j["error"])
-        self.cfg.update(helper_key=self.hcfg["key"], helper="http://127.0.0.1:9")
+        self.assertEqual(hs.d["a1b2c3d4"]["key"], "")  # a wrong key isn't kept
+        hs.d["a1b2c3d4"].update(key=self.hcfg["key"], url="http://127.0.0.1:9")
         self.assertIn("didn't answer", self.api("/api/music")[1]["helper"]["error"])
         self.assertEqual(self.sp.calls, [])
+
+    def test_only_an_admin_types_a_key_or_forgets_one(self):
+        for who in ("FOH sound", "ProPresenter"):
+            self.assertEqual(self.api("/api/helpers/key", {"id": "a1b2c3d4", "key": self.hcfg["key"]}, who=who)[0], 403)
+            self.assertEqual(self.api("/api/helpers/forget", {"id": "a1b2c3d4"}, who=who)[0], 403)
+        self.assertEqual(self.api("/api/helpers/find", {}, who="Lighting")[0], 403)
+        self.assertEqual(self.api("/api/helpers/find", {}, who="FOH sound")[0], 200)
+        code, j = self.api("/api/helpers/forget", {"id": "a1b2c3d4"})
+        self.assertEqual((code, j["helpers"], j["helper"]["found"]), (200, [], False))
+        self.assertIn("No C3 Life helper found yet", j["helper"]["error"])
+
+    def test_found_again_at_a_new_address_it_is_followed(self):
+        hs = self.httpd.helpers
+        self.helper.shutdown(); self.helper.server_close()
+        self.helper = hp.serve(self.hcfg, hp.Helper(spotify=self.sp, propresenter=self.pp, sleep=lambda t: None), port=0)  # "the Mac got a new address"
+        threading.Thread(target=self.helper.serve_forever, daemon=True).start()
+        self.assertIn("didn't answer", self.api("/api/music")[1]["helper"]["error"])
+        ch = hs.found([{"kind": "helper", "ip": "127.0.0.1", "port": self.helper.server_address[1]}])
+        self.assertIn("moved", ch[0])
+        code, j = self.api("/api/music")
+        self.assertEqual((j["helper"]["ok"], j["helper"]["paired"], j["spotify"]["track"]), (True, True, "Way Maker"))  # its key came with it
+        self.assertEqual(len(hs.view()), 1)
+        h = hs.view()[0]
+        self.assertEqual((h["name"], h["os"], h["can"]), ("Mac mini", "mac", ["spotify", "spotify_more", "propresenter"]))
+        self.assertNotIn("key", h)
+
+
+class Several(unittest.TestCase):
+    """Helpers on several computers, Macs and Windows PCs."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.servers, self.fakes = [], {}
+        for hid, name, osn, sp in (("mac1", "Mac mini", "mac", FakeSpotify()), ("win1", "Foyer PC", "windows", None)):
+            if sp is None:
+                self.keys = []
+                sp = hp.WinSpotify(running=lambda: True, key=lambda vk: self.keys.append(vk))
+            pp = FakePP()
+            cfg = dict(hp.DEFAULT, key="key-for-" + hid, id=hid, name=name, _os=osn, _quiet=True)
+            h = hp.serve(cfg, hp.Helper(spotify=sp, propresenter=pp, sleep=lambda t: None), port=0)
+            threading.Thread(target=h.serve_forever, daemon=True).start()
+            self.servers.append(h)
+            self.fakes[hid] = (sp, pp, h.server_address[1])
+        self.hs = __import__("helpers").Helpers(self.tmp, {}, s.log)
+        self.hs.found([{"kind": "helper", "ip": "127.0.0.1", "port": p} for _, _, p in self.fakes.values()])
+        for hid in self.fakes:
+            self.assertIsNone(self.hs.pair(hid, "key-for-" + hid, "Admin"))
+
+    def tearDown(self):
+        for h in self.servers:
+            h.shutdown(); h.server_close()
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_each_says_what_it_can_do(self):
+        v = {h["id"]: h for h in self.hs.view()}
+        self.assertEqual(v["win1"]["can"], ["spotify", "propresenter"])
+        self.assertEqual((v["win1"]["os"], v["win1"]["name"], v["win1"]["paired"]), ("windows", "Foyer PC", True))
+        # kept after a restart, keys and all
+        hs2 = __import__("helpers").Helpers(self.tmp, {}, s.log)
+        self.assertEqual({h["id"] for h in hs2.view() if h["paired"]}, {"mac1", "win1"})
+
+    def test_the_minute_check_says_which_stopped_answering(self):
+        self.assertEqual(self.hs.check(), [])
+        self.servers[1].shutdown(); self.servers[1].server_close()  # the Foyer PC goes off
+        self.assertEqual(self.hs.check(), ["the C3 Life helper on Foyer PC"])
+        v = {h["id"]: h for h in self.hs.view()}
+        self.assertEqual((v["mac1"]["ok"], v["win1"]["ok"]), (True, False))
+        self.assertGreater(v["win1"]["last_ok"], 0)  # when it last answered
+        self.servers.pop(1)
+
+    def test_two_that_play_spotify_means_choosing_one(self):
+        m = mm.Music(self.tmp, {}, s.log, self.hs)
+        self.assertIsNone(m.helper())  # two could: it doesn't guess
+        self.assertIn("No C3 Life helper", m.do({"do": "play"}, "FOH"))
+        m.save(dict(m.get(), helper_id="win1"))
+        self.assertEqual(m.helper()["id"], "win1")
+        # on Windows, Play and Pause are the one media key; Next and Previous are their own
+        self.assertIsNone(m.do({"do": "play"}, "FOH")); self.assertIsNone(m.do({"do": "next"}, "FOH"))
+        self.assertEqual(self.keys, [0xB3, 0xB0])
+        self.assertIn("only press Play/Pause", m.do({"do": "volume", "value": 20}, "FOH"))
+        self.assertIn("only press Play/Pause", m.do({"do": "fade", "to": 0, "then": "pause"}, "FOH"))
+        m.save(dict(m.get(), helper_id="mac1"))
+        self.assertIsNone(m.do({"do": "play"}, "FOH"))
+        # the first one used is kept: a second computer getting its key later doesn't leave it unsure
+        m2 = mm.Music(tempfile.mkdtemp(dir=self.tmp), {}, s.log, self.hs)
+        self.hs.d["win1"]["key"] = ""
+        self.assertEqual(m2.helper()["id"], "mac1")
+        self.hs.d["win1"]["key"] = "key-for-win1"
+        self.assertEqual(m2.helper()["id"], "mac1")
+        self.assertEqual(self.fakes["mac1"][0].calls[-1], ("play",))
+
+    def test_propresenter_opens_on_its_own_computer(self):
+        m = mm.Music(self.tmp, {"propresenter": "http://127.0.0.1:50001"}, s.log, self.hs)
+        m.save(dict(m.get(), helper_id="win1"))
+        self.assertIsNotNone(m.pp_helper())  # both are on 127.0.0.1 here; the one on ProPresenter's address is used
+        self.hs.d["mac1"]["url"] = "http://10.0.0.5:%d" % self.fakes["mac1"][2]
+        self.assertEqual(m.pp_helper()["id"], "win1")
+
+
+class Windows(unittest.TestCase):
+    def test_media_keys_only_while_spotify_is_open(self):
+        keys, up = [], {"v": False}
+        sp = hp.WinSpotify(running=lambda: up["v"], key=lambda vk: keys.append(vk))
+        self.assertEqual(sp.state(), {"running": False, "error": "Spotify isn't open on this PC."})
+        self.assertEqual(sp.playpause(), "Spotify isn't open on this PC.")
+        up["v"] = True
+        self.assertEqual(sp.state()["state"], "unknown")
+        sp.playpause(); sp.next(); sp.previous()
+        self.assertEqual(keys, [0xB3, 0xB0, 0xB1])
+        h = hp.Helper(spotify=sp, propresenter=hp.WinProPresenter(running=lambda: False, paths=[]))
+        self.assertEqual(h.can, ["spotify", "propresenter"])
+        self.assertEqual(h.spotify_do({"do": "playlist", "uri": LIST}), hp.NO_WIN)
+        self.assertIsNone(h.spotify_do({"do": "playpause"}))
+
+    def test_opening_propresenter(self):
+        opened = []
+        tmp = tempfile.mkdtemp()
+        try:
+            exe = os.path.join(tmp, "ProPresenter.exe")
+            pp = hp.WinProPresenter(running=lambda: False, start=opened.append, paths=[os.path.join(tmp, "missing.exe"), exe])
+            self.assertIn("isn't installed", pp.open())
+            open(exe, "w").close()
+            self.assertIsNone(pp.open())
+            self.assertEqual(opened, [exe])
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+    def test_config_json_helper_is_kept_until_a_scan_learns_its_id(self):
+        tmp = tempfile.mkdtemp()
+        sp, pp = FakeSpotify(), FakePP()
+        h = hp.serve(dict(hp.DEFAULT, key="k" * 20, id="mm1", _quiet=True), hp.Helper(spotify=sp, propresenter=pp), port=0)
+        threading.Thread(target=h.serve_forever, daemon=True).start()
+        try:
+            url = "http://127.0.0.1:%d" % h.server_address[1]
+            hs = __import__("helpers").Helpers(tmp, {"helper": url, "helper_key": "k" * 20}, s.log)
+            self.assertEqual([x["id"] for x in hs.view()], ["config"])
+            self.assertTrue(hs.ask(hs.pick("spotify"), "/spotify")[0])  # works straight away
+            hs.found([{"kind": "helper", "ip": "127.0.0.1", "port": h.server_address[1]}])
+            self.assertEqual([(x["id"], x["paired"]) for x in hs.view()], [("mm1", True)])
+        finally:
+            h.shutdown(); h.server_close(); shutil.rmtree(tmp, ignore_errors=True)
 
 
 if __name__ == "__main__":

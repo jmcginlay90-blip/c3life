@@ -25,7 +25,9 @@ param(
   [string]$BoothUser = 'booth',
   [int]$Port = 80,
   [string]$InstallDir = 'C:\C3Life',
-  [string]$BoothNetwork = '192.168.10.0/24',
+  # The booth network. Leave out to use the networks this PC is on (whatever the church's router uses: 192.168.x,
+  # 10.x...), and the firewall follows this PC's own network if it ever changes.
+  [string]$BoothNetwork = '',
   [switch]$NoKiosk,
   [switch]$ListenFromHome,
   # Remote support: Admins can use the whole app from anywhere through Tailscale (everyone else: Listen only).
@@ -40,13 +42,13 @@ param(
   [string]$PlanningCenterAppId = '',
   [string]$PlanningCenterSecret = '',
   # ProPresenter's network API (ProPresenter > Settings > Network > Enable Network).
-  [string]$ProPresenter = 'http://192.168.10.30:50001',
+  [string]$ProPresenter = '',   # leave out: the network scan finds it (and follows it if its address changes)
   # The Behringer Wing's IP address (on the Wing: Setup > Network). Leave out to keep what's set, or set it
   # later on the Mixer screen (Find the Wing). The app starts as Watch only; an Admin switches it to Control.
   [string]$WingIp = '',
-  # Music: the C3 Life helper on the Mac mini (helper/c3life_helper.py) plays Spotify and opens ProPresenter.
-  # Its address, and the key it shows when it starts (leave the key out to keep what's set).
-  [string]$Helper = 'http://192.168.10.30:8099',
+  # Music: C3 Life helpers (helper/c3life_helper.py) on the Macs and Windows PCs are found by the network scan, and an
+  # Admin types each one's key on Music. Only to set one by hand: its address and key (leave out to keep what's set).
+  [string]$Helper = '',
   [string]$HelperKey = '',
   # The Yamaha Tio1608-D's IP address, so C3 Life can change its gain and phantom power (like R Remote).
   [string]$TioIp = '',
@@ -65,12 +67,36 @@ param(
   [string]$MondayToken = '',
   [switch]$Yes
 )
+
+# The booth network: given, or the private networks this PC is on now (each connected adapter's own network).
+function Get-OwnNetworks {
+  $out = @()
+  foreach ($a in @(Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue | Where-Object { $_.PrefixOrigin -ne 'WellKnown' -and $_.IPAddress -notlike '169.254.*' -and $_.IPAddress -notlike '127.*' })) {
+    $ip = [System.Net.IPAddress]::Parse($a.IPAddress).GetAddressBytes()
+    $b = $ip[0]; $c = $ip[1]
+    if (-not ($b -eq 10 -or ($b -eq 172 -and $c -ge 16 -and $c -le 31) -or ($b -eq 192 -and $c -eq 168))) { continue }
+    $len = [int]$a.PrefixLength
+    $mask = [uint32]0; if ($len -gt 0) { $mask = [uint32]([math]::Pow(2, 32) - [math]::Pow(2, 32 - $len)) }
+    $n = ([uint32]$ip[0] -shl 24) -bor ([uint32]$ip[1] -shl 16) -bor ([uint32]$ip[2] -shl 8) -bor [uint32]$ip[3]
+    $n = $n -band $mask
+    $net = '{0}.{1}.{2}.{3}/{4}' -f (($n -shr 24) -band 255), (($n -shr 16) -band 255), (($n -shr 8) -band 255), ($n -band 255), $len
+    if ($out -notcontains $net) { $out += $net }
+  }
+  return $out
+}
+if ($BoothNetwork) { $boothNets = @($BoothNetwork); $fwRemote = $BoothNetwork }
+else {
+  $boothNets = @(Get-OwnNetworks)
+  if (-not $boothNets) { $boothNets = @('192.168.10.0/24'); Write-Warning 'No network found on this PC yet: using 192.168.10.0/24. Run this again once it is on the booth network, or give -BoothNetwork.' }
+  $fwRemote = 'LocalSubnet'   # Windows' own "this PC's network", which follows it if the network changes
+  $BoothNetwork = $boothNets -join ', '
+}
 $ErrorActionPreference = 'Stop'
 $here = $PSScriptRoot
 
 $p = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
 if (-not $p.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { throw 'Run this in an Administrator PowerShell.' }
-foreach ($need in 'server\c3life_server.py', 'server\listen.py', 'server\access.py', 'server\dante.py', 'server\nametags.py', 'server\scripture.py', 'server\cues.py', 'server\reports.py', 'server\pco.py', 'server\wing.py', 'server\tio.py', 'server\monitors.py', 'server\scan.py', 'server\hwcheck.py', 'server\foyer.py', 'server\rta_inputs.py', 'server\rta_patch.py', 'server\dante_names.py', 'server\lightkey.py', 'server\rta_live.py', 'server\midi_in.py', 'server\desk.py', 'server\music.py', 'server\bibles\KJV.txt.gz', 'server\bibles\WEBBE.txt.gz', 'app\player.html') {
+foreach ($need in 'server\c3life_server.py', 'server\listen.py', 'server\access.py', 'server\dante.py', 'server\nametags.py', 'server\scripture.py', 'server\cues.py', 'server\reports.py', 'server\pco.py', 'server\wing.py', 'server\tio.py', 'server\monitors.py', 'server\scan.py', 'server\hwcheck.py', 'server\foyer.py', 'server\rta_inputs.py', 'server\rta_patch.py', 'server\dante_names.py', 'server\lightkey.py', 'server\rta_live.py', 'server\midi_in.py', 'server\desk.py', 'server\music.py', 'server\helpers.py', 'server\health.py', 'server\bibles\KJV.txt.gz', 'server\bibles\WEBBE.txt.gz', 'app\player.html') {
   if (-not (Test-Path (Join-Path $here $need))) { throw "Missing $need next to this script. Copy the whole c3life-server folder." }
 }
 
@@ -182,7 +208,7 @@ if (-not $go) { Write-Host 'Nothing was changed.'; Stop-Transcript | Out-Null; r
 Stop-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
 Get-CimInstance Win32_Process -Filter "Name like 'python%'" | Where-Object { $_.CommandLine -like '*c3life_server.py*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 New-Item -ItemType Directory -Force -Path $serverDir, $appDir | Out-Null
-Copy-Item -Force (Join-Path $here 'server\c3life_server.py'), (Join-Path $here 'server\listen.py'), (Join-Path $here 'server\access.py'), (Join-Path $here 'server\dante.py'), (Join-Path $here 'server\nametags.py'), (Join-Path $here 'server\scripture.py'), (Join-Path $here 'server\cues.py'), (Join-Path $here 'server\reports.py'), (Join-Path $here 'server\pco.py'), (Join-Path $here 'server\wing.py'), (Join-Path $here 'server\tio.py'), (Join-Path $here 'server\monitors.py'), (Join-Path $here 'server\scan.py'), (Join-Path $here 'server\hwcheck.py'), (Join-Path $here 'server\foyer.py'), (Join-Path $here 'server\rta_inputs.py'), (Join-Path $here 'server\rta_patch.py'), (Join-Path $here 'server\dante_names.py'), (Join-Path $here 'server\lightkey.py'), (Join-Path $here 'server\rta_live.py'), (Join-Path $here 'server\midi_in.py'), (Join-Path $here 'server\desk.py'), (Join-Path $here 'server\music.py') $serverDir
+Copy-Item -Force (Join-Path $here 'server\c3life_server.py'), (Join-Path $here 'server\listen.py'), (Join-Path $here 'server\access.py'), (Join-Path $here 'server\dante.py'), (Join-Path $here 'server\nametags.py'), (Join-Path $here 'server\scripture.py'), (Join-Path $here 'server\cues.py'), (Join-Path $here 'server\reports.py'), (Join-Path $here 'server\pco.py'), (Join-Path $here 'server\wing.py'), (Join-Path $here 'server\tio.py'), (Join-Path $here 'server\monitors.py'), (Join-Path $here 'server\scan.py'), (Join-Path $here 'server\hwcheck.py'), (Join-Path $here 'server\foyer.py'), (Join-Path $here 'server\rta_inputs.py'), (Join-Path $here 'server\rta_patch.py'), (Join-Path $here 'server\dante_names.py'), (Join-Path $here 'server\lightkey.py'), (Join-Path $here 'server\rta_live.py'), (Join-Path $here 'server\midi_in.py'), (Join-Path $here 'server\desk.py'), (Join-Path $here 'server\music.py'), (Join-Path $here 'server\helpers.py'), (Join-Path $here 'server\health.py') $serverDir
 New-Item -ItemType Directory -Force -Path (Join-Path $serverDir 'bibles') | Out-Null
 Copy-Item -Force (Join-Path $here 'server\bibles\*') (Join-Path $serverDir 'bibles')
 # netaudio reads the Dante routing (read only), so Listen sources can be named from Dante.
@@ -191,7 +217,7 @@ if ($LASTEXITCODE -ne 0) { Write-Warning 'netaudio did not install: Listen setti
 if (Test-Path $appDir) { Get-ChildItem $appDir | Remove-Item -Recurse -Force }
 Copy-Item -Recurse -Force (Join-Path $here 'app\*') $appDir
 if (Test-Path $cfgPath) { $cfg = Get-Content $cfgPath -Raw | ConvertFrom-Json }
-else { $cfg = [pscustomobject][ordered]@{ port = $Port; bind = '0.0.0.0'; app_dir = $appDir; data_dir = $dataDir; allowed_networks = @($BoothNetwork, '127.0.0.0/8'); start_page = '/player.html?p=Listen.dc.html&start=1' } }
+else { $cfg = [pscustomobject][ordered]@{ port = $Port; bind = '0.0.0.0'; app_dir = $appDir; data_dir = $dataDir; allowed_networks = @($boothNets + '127.0.0.0/8'); start_page = '/player.html?p=Listen.dc.html&start=1' } }
 # Listen settings are refreshed every time: where ffmpeg is, the DVS sound device, and listening from home.
 if ($ffmpeg) { $cfg | Add-Member -Force -NotePropertyName ffmpeg -NotePropertyValue $ffmpeg }
 if ($dvsDevice) { $cfg | Add-Member -Force -NotePropertyName listen_device -NotePropertyValue $dvsDevice }
@@ -204,8 +230,8 @@ if ($PlanningCenterAppId -and $PlanningCenterSecret) {
 } elseif (-not $cfg.pco_app_id) {
   Write-Host 'Name tags: no Planning Center token yet. Run again with -PlanningCenterAppId and -PlanningCenterSecret to turn them on.'
 }
-$cfg | Add-Member -Force -NotePropertyName propresenter -NotePropertyValue $ProPresenter
-$cfg | Add-Member -Force -NotePropertyName helper -NotePropertyValue $Helper
+if ($ProPresenter) { $cfg | Add-Member -Force -NotePropertyName propresenter -NotePropertyValue $ProPresenter }
+if ($Helper) { $cfg | Add-Member -Force -NotePropertyName helper -NotePropertyValue $Helper }
 if ($HelperKey) {
   $cfg | Add-Member -Force -NotePropertyName helper_key -NotePropertyValue $HelperKey
   Write-Host "Music: the helper on $Helper, with its key"
@@ -321,14 +347,14 @@ Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Se
 # 3. Firewall, booth network only
 foreach ($r in @(@{ n = 'C3 Life (booth network)'; p = $Port }, @{ n = 'Companion (booth network)'; p = 8000 })) {
   Get-NetFirewallRule -DisplayName $r.n -ErrorAction SilentlyContinue | Remove-NetFirewallRule
-  New-NetFirewallRule -DisplayName $r.n -Direction Inbound -Protocol TCP -LocalPort $r.p -RemoteAddress $BoothNetwork -Profile Private, Domain -Action Allow | Out-Null
+  New-NetFirewallRule -DisplayName $r.n -Direction Inbound -Protocol TCP -LocalPort $r.p -RemoteAddress $fwRemote -Profile Private, Domain -Action Allow | Out-Null
 }
 # The Wing's meters, and the network scan's answers (Wing search, Bonjour), arrive by UDP, from the booth network only
 Get-NetFirewallRule -DisplayName 'C3 Life Wing meters' -ErrorAction SilentlyContinue | Remove-NetFirewallRule
 # network MIDI from MultiTracks Playback (Lights › Show setup), booth network only
 Get-NetFirewallRule -DisplayName 'C3 Life network MIDI (Playback)' -ErrorAction SilentlyContinue | Remove-NetFirewallRule
-New-NetFirewallRule -DisplayName 'C3 Life network MIDI (Playback)' -Direction Inbound -Protocol UDP -LocalPort 5004, 5005 -RemoteAddress $BoothNetwork -Profile Private, Domain -Action Allow | Out-Null
-New-NetFirewallRule -DisplayName 'C3 Life Wing meters' -Direction Inbound -Protocol UDP -Program $pyw -RemoteAddress $BoothNetwork -Profile Private, Domain -Action Allow | Out-Null
+New-NetFirewallRule -DisplayName 'C3 Life network MIDI (Playback)' -Direction Inbound -Protocol UDP -LocalPort 5004, 5005 -RemoteAddress $fwRemote -Profile Private, Domain -Action Allow | Out-Null
+New-NetFirewallRule -DisplayName 'C3 Life Wing meters' -Direction Inbound -Protocol UDP -Program $pyw -RemoteAddress $fwRemote -Profile Private, Domain -Action Allow | Out-Null
 # Listening from home: Tailscale devices may reach C3 Life, which only lets them use Listen.
 Get-NetFirewallRule -DisplayName 'C3 Life Listen (from home)' -ErrorAction SilentlyContinue | Remove-NetFirewallRule
 if ($ListenFromHome -or $RemoteSupport) {
@@ -381,7 +407,10 @@ for ($i = 0; $i -lt 10 -and -not $ok; $i++) {
   try { $ok = (Invoke-RestMethod -Uri "http://127.0.0.1:$Port/api/health" -TimeoutSec 2).ok } catch { }
 }
 Write-Host ''
-if ($ok) { Write-Host "C3 Life is running: http://c3life.local (or http://$((Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -like '192.168.10.*' } | Select-Object -First 1).IPAddress))" -ForegroundColor Green }
+if ($ok) {
+  $ips = @(Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue | Where-Object { $_.PrefixOrigin -ne 'WellKnown' -and $_.IPAddress -notlike '169.254.*' -and $_.IPAddress -notlike '127.*' } | ForEach-Object { "http://$($_.IPAddress)" })
+  Write-Host "C3 Life is running: http://$($env:COMPUTERNAME.ToLower()).local$(if ($ips) { ' (or ' + ($ips -join ', ') + ')' })" -ForegroundColor Green
+}
 else { Write-Host "Installed. C3 Life starts the next time $BoothUser signs in (restart the PC to check)." -ForegroundColor Yellow }
 Write-Host ''
 Write-Host 'Everyone starts with PIN 1234, and Admin with the password c3life-admin. Change each one before real use, for example:' -ForegroundColor Yellow

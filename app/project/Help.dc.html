@@ -351,7 +351,8 @@ class Component extends DCLogic {
     this.fixList = [
       { q: 'The app won’t open on my phone', c: '#FF7A45', href: 'Connect.dc.html', go: 'Internet & reports', steps: [
         'Check the phone is on the Booth Control Wi-Fi, not the church guest Wi-Fi.',
-        'Type http://c3life.local in the browser. If that fails, try http://192.168.10.10. This works the same in Safari, Chrome or Edge on a phone, iPad or laptop.',
+        'Type http://c3life.local in the browser. It finds the C3 Life server by name, so it works even if the server\u2019s address changes. This works the same in Safari, Chrome or Edge on a phone, iPad or laptop.',
+        'If c3life.local doesn\u2019t open: some Wi-Fi blocks finding things by name (between Wi-Fi and the wired booth network, or on guest Wi-Fi), and some older Android phones can\u2019t. Use the server\u2019s number instead, shown when C3 Life was installed (for example http://192.168.10.10). Reserving that number on the router keeps it the same.',
         'Look at the C3 Life server: the power button glows white when it’s on. Its screen shows C3 Life when it’s working.',
         'Still nothing? Use C3 Life server power › Restart C3 Life from any phone. If no phone can reach it, switch the smart plug off and on (its page is http://192.168.10.5), or hold the C3 Life server’s power button for 5 seconds and press it again. It takes about a minute to start.'] },
       { q: 'A device shows orange', c: '#FF7A45', href: 'Devices.dc.html', go: 'Devices', steps: [
@@ -471,22 +472,34 @@ class Component extends DCLogic {
         'The Log (Plan → Log) shows what changed, when and from which device.',
         'For the desk, recall the Sunday AM scene. For Dante, recall the Sunday service preset.'] },
       { q: 'Walk-in music won\u2019t play', c: '#1ED760', href: 'Music.dc.html', go: 'Music', steps: [
-        'If Music says Can\u2019t reach Spotify, read what it says: the helper isn\u2019t running on the Mac mini, its key is wrong, or the Mac hasn\u2019t allowed it. See "Set up the C3 Life helper on the Mac mini".',
+        'If Music says Can\u2019t reach Spotify, read what it says: no helper found yet, its key isn\u2019t set or is wrong, that computer is off, or the Mac hasn\u2019t allowed it. See "Set up a C3 Life helper (Mac or Windows PC)".',
         'Check Spotify is open and signed in on the Mac mini. If Music says Spotify isn\u2019t open, open it on the Mac.',
         'Check the playlist says Downloaded. If it says re-sync, connect the Mac to internet and let Spotify finish downloading.',
         'Use the Play button beside the playlist on the Music screen. The amber one is the playlist that\u2019s playing.',
         'Check the Wing channel for the Mac (Aux 2 · Walk-in) is up and not muted.',
         'If it plays in the booth but not the foyer, see "The foyer is silent".'] },
-      { q: 'Set up the C3 Life helper on the Mac mini', c: '#1ED760', href: 'Music.dc.html', go: 'Music', steps: [
-        'The helper is a small program on the Mac mini (helper/c3life_helper.py in the C3 Life download). It plays Spotify and opens ProPresenter when the Music screen asks. It needs Python 3 on the Mac (open Terminal and type python3; macOS offers to install it).',
-        'In Terminal: cd to the helper folder, then type  python3 c3life_helper.py  and press Return. It shows a key and says it\u2019s on port 8099. Leave the window open.',
-        'On the C3 Life server, put the Mac\u2019s address and that key in config.json:  "helper": "http://192.168.10.30:8099", "helper_key": "<the key>"  (or run Install-C3Life.ps1 -Helper http://192.168.10.30:8099 -HelperKey <the key>), then restart C3 Life.',
-        'The first time you press Play, the Mac asks: Terminal wants access to control Spotify. Click OK. The same once for ProPresenter.',
-        'Add the church\u2019s playlists on Music \u203a Change list: in Spotify on the Mac, right-click a playlist \u203a Share \u203a Copy link to playlist, and paste it. Download each playlist in Spotify so it plays without internet.',
-        'Fades run on the Mac, so they finish even if your phone locks. Fade out pauses at the end and puts the volume back for next time.',
-        'Who can press Play: anyone with Music control in Access levels. At first that\u2019s Admin, FOH sound and ProPresenter; Lighting and Viewer can look. An Admin can change it.',
-        'Key lost or shared? On the Mac:  python3 c3life_helper.py --new-key  and put the new one on the C3 Life server. Only the booth network can reach the helper, and everything but its hello needs the key.',
-        'Not tried with the church\u2019s Mac mini and Spotify yet: the first time, try it before the service, not during one.'] },
+      { q: 'Set up a C3 Life helper (Mac or Windows PC)', c: '#1ED760', href: 'Music.dc.html', go: 'Music', steps: [
+        'The helper is a small program (helper/c3life_helper.py in the C3 Life download) for any computer in the booth with Spotify or ProPresenter. It needs Python 3 (Mac: open Terminal and type python3, and macOS offers to install it; Windows: from python.org).',
+        'Install it once, from the helper folder. Mac: double-click Install-Helper.command (if macOS says it can\u2019t be opened: right-click it \u203a Open \u203a Open). Windows: double-click Install-Helper.cmd and say Yes when Windows asks. It starts the helper, makes it start by itself whenever someone logs in (and restart if it stops), and shows its key. No window needs to stay open.',
+        'Keep that computer logged in (on a Mac: System Settings \u203a Users & Groups \u203a Automatically log in), or the helper waits until someone logs in.',
+        'Nobody types an address: the C3 Life server\u2019s network scan finds it (20 seconds after the server starts, then every 5 minutes, or tap Music \u203a Find it now). It shows under Music \u203a Computers with the C3 Life helper, with Key needed.',
+        'An Admin types its key there once, and taps Save key. C3 Life checks it with the helper first. The key stays on the C3 Life server and is never shown again.',
+        'If a computer gets a new address, C3 Life follows it by itself, key and all. Every helper is checked once a minute; one that stops answering makes C3 Life look for it straight away. Each shows when it last answered.',
+        'With more than one computer that has Spotify, choose which one plays the music at Plays on. The first one used stays chosen.',
+        'A Mac does everything: playlists, play and pause, next and previous, volume, fades and what\u2019s playing. The first time, the Mac asks: Terminal wants access to control Spotify. Click OK (and once for ProPresenter).',
+        'A Windows PC can press Play/Pause, Next and Previous for Spotify (like the keyboard\u2019s media keys), but can\u2019t show what\u2019s playing, pick a playlist, set the volume or fade: do those in Spotify on that PC. It can open ProPresenter.',
+        'Open ProPresenter uses the helper on the computer ProPresenter is set up on, or else the music one.',
+        'Add the church\u2019s playlists on Music \u203a Change list: in Spotify, right-click a playlist \u203a Share \u203a Copy link to playlist, and paste it. Download each playlist in Spotify so it plays without internet.',
+        'Who can press Play: anyone with Music control in Access levels. At first that\u2019s Admin, FOH sound and ProPresenter; Lighting and Viewer can look. Only an Admin types keys or forgets a computer.',
+        'Key lost or shared? On that computer, in the helper folder:  python3 c3life_helper.py --new-key --config "<the C3 Life Helper folder>/helper.json"  then install again and Change key on Music. Only private networks can reach a helper (never the internet), and everything but its hello needs the key.',
+        'To take it off a computer: Uninstall-Helper.command (Mac) or Uninstall-Helper.cmd (Windows). Its key is kept, so installing it again doesn\u2019t need the key typed again.',
+        'Not tried with the church\u2019s computers and Spotify yet, and the Windows media keys haven\u2019t been tried on a real PC: the first time, try it before the service, not during one.'] },
+      { q: 'A warning says something isn\u2019t answering', c: '#FF7A45', href: 'Drivers.dc.html', go: 'Drivers', steps: [
+        'Every screen shows a warning when something C3 Life is set up to use stops answering for 15 seconds: the Wing, the Tio, ProPresenter, Lightkey or a C3 Life helper. You only see the ones your role can use.',
+        'C3 Life is already looking for it: it scans the network straight away, and if the device turns up at a new address it follows it by itself (the Wing by its serial number, the Tio and ProPresenter by their network card, a helper by its own id, Lightkey by its Bonjour name). The warning goes by itself when it\u2019s back.',
+        'If it stays: check the device is switched on and plugged into the booth switch. For ProPresenter, check it\u2019s open with Settings \u203a Network on. For a helper, check that computer is on and logged in.',
+        'After 8 seconds it shrinks to a small \u26A0 badge in the bottom corner, so it doesn\u2019t cover any buttons; tap the badge to see it again. Hide for 10 minutes hides it on this device only.',
+        'Any network works: 192.168.x, 10.x or 172.16-31.x. Dante devices on their own 169.254.x.x addresses (no DHCP server) are found by their Bonjour announcements.'] },
       { q: 'The foyer mixes have the wrong names', c: '#F5C518', href: 'Foyer.dc.html', go: 'Foyer', steps: [
         'The two mixes are called what the desk calls those two buses. Rename the bus on the Wing (or on Mixer) and the Foyer screens change within a few seconds.',
         'If they say Spotify and Live service, the desk isn\u2019t connected (or those buses have no names yet).',
@@ -737,7 +750,7 @@ class Component extends DCLogic {
         'Dante \u203a Open R Remote on the C3 Life server. It opens on the C3 Life server\u2019s screen, next to C3 Life.',
         'Nothing changes on the Tio until someone changes it in R Remote.',
         'If it doesn\u2019t open, check R Remote is installed on the C3 Life server (Yamaha website, R Remote V6).',
-        'The Mac mini has its own small program, the C3 Life helper, for Spotify and for opening ProPresenter (Music \u203a Open ProPresenter). C3 Life on the C3 Life server asks it when needed.'] },
+        'Each Mac or Windows PC with Spotify or ProPresenter can run the C3 Life helper, a small program for Spotify and for opening ProPresenter (Music \u203a Open ProPresenter). The C3 Life server finds each one by itself and asks it when needed.'] },
       { q: 'Change another monitor mix (wedges, band IEMs)', c: '#E58FB5', href: 'MyMix.dc.html', go: 'My mix', steps: [
         'On My mix, tap the mix name at the top of the right-hand strip (for example IEM KEYS \u25be), or Settings \u203a Change to another mix.',
         'Pick the mix. It asks first; tap Yes, open. A blue bar shows you\u2019re changing someone else\u2019s mix.',
@@ -1081,7 +1094,7 @@ class Component extends DCLogic {
           'The port: the helper uses 8099. On the Mac mini, run  curl http://127.0.0.1:8099/hello  in Terminal to check it\u2019s running.',
           'In Spotify, choose File › Offline Mode (Spotify menu bar at the top). The playlists must be downloaded first.'],
           cmds: [C('Check the helper is listening (Terminal):', 'sudo lsof -nP -iTCP:8099 -sTCP:LISTEN'), C('Start the helper (in its folder):', 'python3 c3life_helper.py')],
-          note: 'If nothing shows, the helper isn\u2019t running. Start it as above; it shows its key again. See "Set up the C3 Life helper on the Mac mini".' },
+          note: 'If nothing shows, the helper isn\u2019t running. Start it as above; it shows its key again. See "Set up a C3 Life helper (Mac or Windows PC)".' },
         { q: 'It still won\u2019t connect', steps: [
           'System Settings › Network › Firewall: if it\u2019s on, allow the app (Options…).',
           'Check the Mac isn\u2019t asleep: System Settings › Energy, turn on "Prevent automatic sleeping".',
@@ -1117,10 +1130,10 @@ class Component extends DCLogic {
         { q: 'Spotify: IP address and port', steps: [
           'Spotify itself has no address or port for the booth. The booth talks to the small C3 Life helper on the Mac mini, and the helper controls Spotify.',
           'The IP address is the Mac mini\u2019s ({spot}). Find it with "Find a Windows computer\u2019s IP address" above.',
-          'The port: the helper uses 8099. The helper controls Spotify on a Mac only for now: on a Windows PC it answers, but can\u2019t play anything.',
+          'The port: the helper uses 8099, and the C3 Life server finds it by itself. On a Windows PC the helper can press Play/Pause, Next and Previous for Spotify, and open ProPresenter; start it with  py c3life_helper.py  in its folder.',
           'In Spotify, click the ••• menu (top left) › File › Offline mode. The playlists must be downloaded first.'],
           cmds: [C('Check the helper is listening (Command Prompt):', 'netstat -ano | findstr :8099')],
-          note: 'If nothing shows, the helper isn\u2019t running. On the Mac mini, start it with  python3 c3life_helper.py  in its folder.' },
+          note: 'If nothing shows, the helper isn\u2019t running. Start it in its folder (Mac: python3 c3life_helper.py, Windows: py c3life_helper.py).' },
         { q: 'It still won\u2019t connect', steps: [
           'Windows Security › Firewall & network protection › Allow an app through firewall. Tick the app for Private.',
           'Make sure the booth network is set as Private, not Public: Settings › Network & internet › the connection › Network profile type.',

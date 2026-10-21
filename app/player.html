@@ -14,6 +14,69 @@
   try{new MutationObserver(names).observe(document.getElementById('app')||document.body,{childList:true,characterData:true,subtree:true});}catch(e){}
 })();
 </script>
+<style>
+#devwarn{position:fixed;z-index:60;left:8px;right:8px;top:calc(env(safe-area-inset-top,0px) + 58px);max-width:720px;margin:0 auto;background:#2A1208;border:1px solid #FF7A45;border-radius:8px;box-shadow:0 10px 30px rgba(0,0,0,.5);padding:10px 12px;color:#FFE3D6;font:500 14px 'IBM Plex Sans',system-ui,sans-serif;display:flex;flex-direction:column;gap:6px}
+#devwarn .dw{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline}
+#devwarn b{color:#FF9C70}
+#devwarn small{font-size:12px;color:#E8C2B2;flex-basis:100%}
+#devwarn a{color:#FFD07A;font-size:13px}
+#devwarn button{align-self:flex-end;min-height:36px;padding:0 12px;border-radius:6px;border:1px solid #FF7A45;background:transparent;color:#FFE3D6;font:500 13px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer}
+@media (min-width:1000px){#devwarn{left:146px}}
+#devwarn.small{left:auto;right:10px;top:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 60px);margin:0;padding:0;border-radius:22px;background:#2A1208}
+#devwarn.small .dw,#devwarn.small>button.hide{display:none}
+#devwarn .open{display:none}
+#devwarn.small .open{display:block;min-height:44px;min-width:44px;padding:0 14px;border:0;border-radius:22px;background:transparent;color:#FFB089;font:600 14px 'IBM Plex Sans',system-ui,sans-serif;align-self:auto}
+</style>
+<script>
+/* Something that's set up has stopped answering (the Wing, the Tio, ProPresenter, Lightkey, a C3 Life helper): a warning on
+   every screen, for whoever is signed in and can see it (GET /api/devices, every 15 seconds). It shows in full, then after
+   8 seconds shrinks to a small badge in the corner so it doesn't sit on top of the controls; tap the badge for the details.
+   Hide hides it for 10 minutes on this device. In the preview (no C3 Life server) there's nothing to ask, so nothing shows. */
+(function(){
+  var off=false, box=null, last=[], shrinkT=null, AREA={Mixer:'Mixer',Show:'Show',Music:'Music',Lights:'Lights'};
+  function tok(){try{var x=JSON.parse(localStorage.getItem('booth.session')||'null');return x?x.token:'';}catch(e){return '';}}
+  function hidden(){try{return JSON.parse(sessionStorage.getItem('booth.devwarn')||'{}')||{};}catch(e){return {};}}
+  function hhmm(t){var d=new Date(t*1000);return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);}
+  function el(tag,txt,attrs){var e=document.createElement(tag);if(txt!=null)e.textContent=txt;for(var k in attrs||{})e.setAttribute(k,attrs[k]);return e;}
+  function show(list){
+    last=list||[];var h=hidden(),now=Date.now();
+    var w=last.filter(function(d){return d.warn&&!(h[d.id]>now);});
+    if(!w.length){if(box){box.remove();box=null;}return;}
+    var key=JSON.stringify(w.map(function(d){return [d.id,d.since];}));
+    key+='|'+(window.__page||'');
+    if(box&&box.getAttribute('data-k')===key)return;  // the same as shown: leave it alone
+    var isNew=!box||box.getAttribute('data-ids')!==w.map(function(d){return d.id;}).join();
+    if(!box){box=el('div',null,{id:'devwarn',role:'alert'});document.body.appendChild(box);}
+    box.setAttribute('data-k',key);box.setAttribute('data-ids',w.map(function(d){return d.id;}).join());box.textContent='';
+    if(isNew){box.classList.remove('small');clearTimeout(shrinkT);shrinkT=setTimeout(function(){if(box)box.classList.add('small');},8000);}
+    var open=el('button','\u26A0 '+w.length+' not answering',{type:'button','class':'open','aria-label':w.length+' not answering: show'});
+    open.addEventListener('click',function(){box.classList.remove('small');clearTimeout(shrinkT);shrinkT=setTimeout(function(){if(box)box.classList.add('small');},8000);});
+    box.appendChild(open);
+    w.forEach(function(d){
+      var r=el('div',null,{'class':'dw'});
+      var b=el('b','⚠ '+d.name+' isn’t answering');r.appendChild(b);
+      r.appendChild(el('span','since '+hhmm(d.since)));
+      if(d.where&&(window.__page||location.search).indexOf(d.where)<0)r.appendChild(el('a','Open '+(AREA[d.area]||d.area)+' ›',{href:d.where}));
+      r.appendChild(el('small',d.why+' C3 Life is looking for it on the network.'));
+      box.appendChild(r);
+    });
+    var btn=el('button','Hide for 10 minutes',{type:'button','class':'hide'});
+    btn.addEventListener('click',function(){var hh=hidden(),u=Date.now()+600000;w.forEach(function(d){hh[d.id]=u;});try{sessionStorage.setItem('booth.devwarn',JSON.stringify(hh));}catch(e){}show(last);});
+    box.appendChild(btn);
+  }
+  function poll(){
+    if(off)return;var t=tok();if(!t){show([]);return;}
+    fetch('/api/devices',{headers:{Authorization:'Bearer '+t}}).then(function(r){
+      if(r.status===404){off=true;show([]);return null;}
+      if(!r.ok){show([]);return null;}
+      return r.json();
+    }).then(function(j){if(j&&j.devices)show(j.devices);}).catch(function(){});
+  }
+  window.__devwarn=poll;
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',poll);else poll();
+  setInterval(poll,15000);
+})();
+</script>
 <script>
 class DCLogic { constructor(p){ this.props=p||{}; this.state={}; } setState(p){ const v = typeof p==='function'? p(this.state):p; this.state=Object.assign({}, this.state, v); queueMicrotask(()=> this.__rerender ? this.__rerender() : window.__render()); } }
 let comp=null, tpl=null, errors=[]; let defs={}, insts=[], hosts=[];

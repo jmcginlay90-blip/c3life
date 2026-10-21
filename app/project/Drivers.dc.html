@@ -401,7 +401,7 @@ class Component extends DCLogic {
       'AES67 receiver': { port: '5004', hint: 'Audio stream from the WING Dante card: room mic and FOH mix for the RTA, and the MD mic for the MD talk log.' },
       'ProPresenter 7': { port: '50001', hint: 'Turn on Network in ProPresenter settings and use the same port.' },
       'MultiTracks Playback': { port: '5004', hint: 'Network MIDI session on the MacBook Pro.' },
-      'Spotify helper (Mac)': { port: '8099', hint: 'The C3 Life helper on the Mac mini. Here it controls Spotify and opens ProPresenter. Its key is the one the helper shows when it starts (python3 c3life_helper.py); it goes in config.json on the C3 Life server ("helper_key").' },
+      'Spotify helper (Mac)': { port: '8099', hint: 'The C3 Life helper on a Mac or Windows PC: Spotify and opening ProPresenter. The network scan finds each one by itself and follows it if its address changes; an Admin types its key once on Music.' },
       'Lightkey': { port: '21600', hint: 'Turn on OSC input in Lightkey and use the same port.' },
       'Companion': { port: '8000', hint: 'Companion runs on the C3 Life server itself.' },
       'Smart plug (Shelly)': { port: '80', hint: 'Powers the C3 Life server. Used only for Hard reset on C3 Life server power. Keep it on its own fixed IP (192.168.10.5).' },

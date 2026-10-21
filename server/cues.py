@@ -14,6 +14,7 @@ would happen.
 import json
 import os
 import threading
+import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -100,7 +101,9 @@ class Cues:
 
 
 def _pp(cfg, path):
-    url = (cfg.get("propresenter") or "").rstrip("/") + path
+    if not cfg.get("propresenter"):
+        raise urllib.error.URLError("ProPresenter hasn't been found on the network yet. Open it with Settings > Network turned on; the network scan finds it.")
+    url = cfg["propresenter"].rstrip("/") + path
     with urllib.request.urlopen(url, timeout=4) as r:
         raw = r.read()
     return json.loads(raw) if raw.strip() else None
