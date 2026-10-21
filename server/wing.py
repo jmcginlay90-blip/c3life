@@ -23,6 +23,8 @@ import struct
 import threading
 import time
 
+import desk as desk_mod
+
 KINDS = {"ch": 40, "aux": 8, "bus": 16, "main": 4, "mtx": 8, "dca": 16}
 # Outputs C3 Life can patch (for the RTA): the Dante card's 64 and USB's 48. Each output's source is a group and an
 # index: /io/out/CRD/12/grp "LCL", /io/out/CRD/12/in 8. These names follow the channel inputs' /in/conn/grp and /in;
@@ -46,9 +48,26 @@ PROC = dict({
     "dyn/on": ("b",), "dyn/thr": ("n", -60, 0), "dyn/ratio": ("n", 1.1, 100), "dyn/gain": ("n", -6, 12),
     "dyn/att": ("n", 0, 120), "dyn/rel": ("n", 4, 4000), "dyn/auto": ("b",), "dyn/mdl": ("s",),
 }, **_EQ)
+# Tap EQ: each channel's own 3-band EQ on its pre-fader send tap (what the in-ears hear, not front of house). It belongs
+# to the channel, so it's heard in every monitor mix that takes that channel pre-fader. Read with the channel's processing.
+TAP_EQ = {"peq/on": ("b",)}
+for _b in "123":
+    TAP_EQ.update({"peq/%sg" % _b: ("n", -15, 15), "peq/%sf" % _b: ("n", 20, 20000), "peq/%sq" % _b: ("n", 0.44, 10)})
+PROC.update(TAP_EQ)
 RTA_TAPS = ("IN", "PREEQ", "POSTEQ", "POST")
-# a channel's send to a bus: /ch/N/send/B/<field>
+# The RTA's source is one index across the strips, in this order (channel 1 is 1, bus 1 is 49). The channels' part is
+# confirmed by reading it back; the buses' place after the 8 aux inputs is how the Wing orders its strips, not yet
+# tried on our Wing (the screen reads the source back and says when it isn't the mix it asked for).
+RTA_BASE = {"ch": 0, "aux": 40, "bus": 48, "main": 64, "mtx": 68}
+# a channel's send to a bus: /ch/N/send/B/<field> (an aux input's too: /aux/N/send/B/<field>, kept as "a<N>")
 SEND = {"on": "b", "lvl": "n", "mode": "s", "plink": "b", "pan": "n"}
+SENDERS = ("ch", "aux")
+# A bus's EQ (Wing's standard EQ on a bus: low and high shelves, which can also be a cut, and 6 bands between)
+BUS_EQ = {"eq/on": ("b",), "eq/leq": ("s", ("SHV", "PEQ", "CUT")), "eq/heq": ("s", ("SHV", "PEQ", "CUT")),
+          "eq/lg": ("n", -15, 15), "eq/lf": ("n", 20, 2000), "eq/lq": ("n", 0.44, 10),
+          "eq/hg": ("n", -15, 15), "eq/hf": ("n", 50, 20000), "eq/hq": ("n", 0.44, 10)}
+for _b in "123456":
+    BUS_EQ.update({"eq/%sg" % _b: ("n", -15, 15), "eq/%sf" % _b: ("n", 20, 20000), "eq/%sq" % _b: ("n", 0.44, 10)})
 RATIOS = (1.1, 1.2, 1.3, 1.5, 1.7, 2.0, 2.5, 3.0, 3.5, 4.0, 5.0, 6.0, 8.0, 10.0, 20.0, 50.0, 100.0)
 
 
@@ -135,7 +154,10 @@ def _num(args):
         return None
 
 
-class Wing:
+class Wing(desk_mod.Desk):
+    """The Behringer Wing: the first desk driver (see desk.py for what a driver provides)."""
+    NAME = "Behringer Wing"
+    CAN = {k: True for k in desk_mod.CAN}
     def __init__(self, data_dir, cfg, log):
         self.cfg, self.log = cfg, log
         self.path = os.path.join(data_dir, "wing.json")
@@ -166,7 +188,8 @@ class Wing:
         self.hist = {}  # open channel -> recent (t, in, out, gate key, gate GR, dyn key, dyn GR)
         self.rta, self.rta_at, self.rtacfg = [], 0.0, {}
         self.rta_want, self.rta_off = None, 0
-        self.sends = {}  # bus -> channel -> {"on", "lvl", "mode", "plink", "pan"}
+        self.sends = {}  # bus -> channel (or "a<N>" for an aux input) -> {"on", "lvl", "mode", "plink", "pan"}
+        self.buseq = {}  # bus -> {"eq/on": 1, "eq/1g": -3.0, ...}
         self.bus_focus = {}  # bus -> until when someone has its sends open
         self.outs = {}  # "CRD/12" -> {"grp": "LCL", "in": 8}, read while out_focus is set
         self.out_focus = 0.0
@@ -293,11 +316,7 @@ class Wing:
                 if slow:
                     last_slow = now
                 for b in [k for k, t in list(self.bus_focus.items()) if t > now]:
-                    for i, n in enumerate(range(1, KINDS["ch"] + 1)):  # every channel's send to the open bus
-                        for f in SEND:
-                            self.send(osc("/ch/%d/send/%d/%s" % (n, b, f)))
-                        if i % 4 == 3:
-                            self.stop.wait(0.01)
+                    self.ask_bus(b)
                 if self.out_focus > now and (slow or rnd % 3 == 0):  # the card and USB outputs, while the RTA routing is open
                     for i, (g, c) in enumerate(OUTS.items()):
                         for n in range(1, c + 1):
@@ -330,11 +349,26 @@ class Wing:
         first = self.bus_focus.get(b, 0) < time.time()
         self.bus_focus[b] = time.time() + 30
         if first:
-            for n in range(1, KINDS["ch"] + 1):
-                for f in SEND:
-                    self.send(osc("/ch/%d/send/%d/%s" % (n, b, f)))
+            self.ask_bus(b)
         with self.lock:
             return {str(n): dict(v) for n, v in self.sends.get(b, {}).items()}
+
+    def ask_bus(self, b):
+        """Every channel's and aux input's send to bus b, and the bus's EQ."""
+        i = 0
+        for kind in SENDERS:
+            for n in range(1, KINDS[kind] + 1):
+                for f in SEND:
+                    self.send(osc("/%s/%d/send/%d/%s" % (kind, n, b, f)))
+                i += 1
+                if i % 4 == 0:
+                    self.stop.wait(0.01)
+        for a in BUS_EQ:
+            self.send(osc("/bus/%d/%s" % (b, a)))
+
+    def bus_eq(self, b):
+        with self.lock:
+            return dict(self.buseq.get(b, {}))
 
     def rx_loop(self):
         while not self.stop.is_set():
@@ -394,10 +428,26 @@ class Wing:
                     self.rtacfg[parts[2]], changed = v, True
                 if parts[2] == "$src":
                     self._rta_check()
-            elif len(parts) == 5 and parts[0] == "ch" and parts[1].isdigit() and parts[2] == "send" and parts[3].isdigit() and parts[4] in SEND:
-                n, b, f = int(parts[1]), int(parts[3]), parts[4]
-                if not args or n not in self.strips["ch"] or not 1 <= b <= KINDS["bus"]:
+            elif len(parts) == 4 and parts[0] == "bus" and parts[1].isdigit() and "/".join(parts[2:]) in BUS_EQ:
+                b, key, k = int(parts[1]), "/".join(parts[2:]), BUS_EQ["/".join(parts[2:])]
+                if not args or not 1 <= b <= KINDS["bus"]:
                     return
+                if k[0] == "s":
+                    v = str(args[0])
+                else:
+                    x = args[2] if k[0] == "n" and len(args) >= 3 and isinstance(args[2], float) else _num(args)
+                    if x is None:
+                        return
+                    v = int(round(x)) if k[0] == "b" else round(float(x), 2)
+                cur = self.buseq.setdefault(b, {})
+                if cur.get(key) != v:
+                    cur[key], changed = v, True
+            elif len(parts) == 5 and parts[0] in SENDERS and parts[1].isdigit() and parts[2] == "send" and parts[3].isdigit() and parts[4] in SEND:
+                n, b, f = int(parts[1]), int(parts[3]), parts[4]
+                if not args or n not in self.strips[parts[0]] or not 1 <= b <= KINDS["bus"]:
+                    return
+                if parts[0] == "aux":
+                    n = "a%d" % n
                 if SEND[f] == "s":
                     v = str(args[0])
                 elif SEND[f] == "b":
@@ -550,7 +600,7 @@ class Wing:
             ok = self.send(osc("/%s/%d/col" % (kind, n), value))
         elif field.startswith("send/") and field.count("/") == 2:
             _, b, f = field.split("/")
-            if kind != "ch" or not b.isdigit() or not 1 <= int(b) <= KINDS["bus"] or f not in SEND:
+            if kind not in SENDERS or not b.isdigit() or not 1 <= int(b) <= KINDS["bus"] or f not in SEND:
                 return "That send isn't on the Wing."
             if f == "lvl":
                 if not isinstance(value, (int, float)) or isinstance(value, bool) or not -144 <= value <= 10:
@@ -566,7 +616,21 @@ class Wing:
                 v = value
             else:
                 v = 1 if value else 0
-            ok = self.send(osc("/ch/%d/send/%s/%s" % (n, b, f), v)) and self.send(osc("/ch/%d/send/%s/%s" % (n, b, f)))
+            ok = self.send(osc("/%s/%d/send/%s/%s" % (kind, n, b, f), v)) and self.send(osc("/%s/%d/send/%s/%s" % (kind, n, b, f)))
+            return None if ok else "Couldn't send to the Wing."
+        elif field in BUS_EQ and kind == "bus":
+            k = BUS_EQ[field]
+            if k[0] == "s":
+                if value not in k[1]:
+                    return "That's one of %s." % ", ".join(k[1])
+                v = value
+            elif k[0] == "b":
+                v = 1 if value else 0
+            elif not isinstance(value, (int, float)) or isinstance(value, bool) or not k[1] <= value <= k[2]:
+                return "That's outside what the Wing allows (%g to %g)." % (k[1], k[2])
+            else:
+                v = float(value)
+            ok = self.send(osc("/bus/%d/%s" % (n, field), v)) and self.send(osc("/bus/%d/%s" % (n, field)))
             return None if ok else "Couldn't send to the Wing."
         elif field in PROC:
             kind2 = PROC[field]
@@ -766,6 +830,10 @@ class Wing:
                 if not h or now - h[-1][0] >= 0.04:  # up to 25 a second, the last 8 seconds
                     h.append((now,) + d[n])
 
+    def find(self, target="255.255.255.255"):
+        """Wings on the network (the desk answers WING? on its own port)."""
+        return find(port=self.native_port, target=target)
+
     def history(self, n, since=0.0):
         """The open channel's last few seconds: [t, in, out, gate key, gate gain reduction, dyn key, dyn gain reduction]."""
         with self.lock:
@@ -779,20 +847,23 @@ class Wing:
     def rta_state(self):
         with self.lock:
             fresh = time.time() - self.rta_at < 2
-            return {"rta": list(self.rta) if fresh else [], "src": self.rtacfg.get("$src"), "tap": self.rtacfg.get("$tap") or self.rtacfg.get("rtatap"), "fresh": fresh}
+            src = self.rtacfg.get("$src")
+            kind, n = rta_strip(src)
+            return {"rta": list(self.rta) if fresh else [], "src": src, "kind": kind, "n": n, "tap": self.rtacfg.get("$tap") or self.rtacfg.get("rtatap"), "fresh": fresh}
 
-    def rta_point(self, n, tap):
-        """Point the Wing's RTA at channel n (the desk's own RTA screen follows). The source is an index;
-        it's set, then read back, and corrected if the Wing counts from 1."""
+    def rta_point(self, n, tap, kind="ch"):
+        """Point the Wing's RTA at channel n, or another strip (a bus: a monitor mix), and the desk's own RTA screen
+        follows. The source is an index; it's set, then read back, and corrected if the Wing counts from 1."""
         if self.settings["mode"] != "control":
             return "The app is set to watch the Wing only."
         if self.status()["status"] != "connected":
             return "The Wing isn't answering, so nothing was sent."
-        if not isinstance(n, int) or isinstance(n, bool) or not 1 <= n <= KINDS["ch"] or tap not in RTA_TAPS:
+        if kind not in RTA_BASE or not isinstance(n, int) or isinstance(n, bool) or not 1 <= n <= KINDS[kind] or tap not in RTA_TAPS:
             return "Pick a channel, and before or after the EQ."
-        self.rta_want = (n, tap)
+        idx = RTA_BASE[kind] + n
+        self.rta_want = (idx, tap)
         self.send(osc("/cfg/rta/rtatap", tap))
-        self.send(osc("/cfg/rta/rtasrc", n - 1 + self.rta_off))
+        self.send(osc("/cfg/rta/rtasrc", idx - 1 + self.rta_off))
         for a in ("/cfg/rta/$src", "/cfg/rta/$tap", "/cfg/rta/rtasrc"):
             self.send(osc(a))
         return None
@@ -807,6 +878,16 @@ class Wing:
             self.rta_off = 1
             self.send(osc("/cfg/rta/rtasrc", w[0] - 1 + self.rta_off))
             self.send(osc("/cfg/rta/$src"))
+
+def rta_strip(src):
+    """The RTA's source index -> ("bus", 4), or (None, None)."""
+    if not isinstance(src, int) or isinstance(src, bool):
+        return None, None
+    for kind, base in sorted(RTA_BASE.items(), key=lambda kv: -kv[1]):
+        if src > base:
+            return (kind, src - base) if src - base <= KINDS[kind] else (None, None)
+    return None, None
+
 
 def find(port=2222, timeout=1.5, target="255.255.255.255"):
     """Look for Wings on the network. -> [{"ip","name","model","firmware"}]"""
@@ -829,3 +910,7 @@ def find(port=2222, timeout=1.5, target="255.255.255.255"):
     finally:
         s.close()
     return out
+
+
+# what the Wing has, for the Desk interface (desk.py)
+Wing.KINDS, Wing.SENDERS, Wing.BUS_EQ, Wing.RATIOS, Wing.RTA_TAPS, Wing.OUTS, Wing.TAP_EQ = KINDS, SENDERS, BUS_EQ, RATIOS, RTA_TAPS, OUTS, TAP_EQ

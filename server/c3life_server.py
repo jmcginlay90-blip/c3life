@@ -46,9 +46,14 @@ API (JSON):
   GET  /api/wing/meters                    (Mixer view) channel levels in dB
   GET  /api/wing/channel?n=<1-40>          (Mixer view) one channel's trim, filters, gate, EQ and compressor
                                            (read while it's open; change them with /api/wing/set, field "eq/1g"...)
+  GET  /api/wing/tapeq?n=<1-40>            (Tap EQ view) a channel's tap EQ: its own 3-band EQ on the pre-fader send tap,
+                                           heard in every monitor mix that takes the channel pre-fader (not front of house)
+  POST /api/wing/tapeq {"n","field","value"}   (Tap EQ control) "peq/on", "peq/1g", "peq/1f", "peq/1q", ... 3
   GET  /api/wing/history?n=&since=          (Mixer view) the open channel's last 8 s of level and gate/comp gain reduction
   GET  /api/wing/rta                       (Mixer view) the Wing's RTA: 120 bands from 20 Hz, and what it's on
-  POST /api/wing/rta {"n","tap"}            (Mixer control) point the Wing's RTA at a channel (IN, PREEQ, POSTEQ, POST)
+  POST /api/wing/rta {"n","tap","kind"?}   (Mixer control; a musician for their own mix, "kind": "bus") point the Wing's
+                                           RTA at a channel or a bus (IN, PREEQ, POSTEQ, POST). GET: a musician sees it
+                                           only while it's on one of their own mixes
   POST /api/wing/set  {"kind","n","field","value"}   (Mixer control) fdr, mute, name, col, gain or vph
   POST /api/wing/fade {"moves":[...]}       (Mixer or Macros control) slide cues' fades, run here
   PUT  /api/wing/settings {"ip"?,"mode"?}   (Admin) the Wing's address; off, watch or control
@@ -56,8 +61,9 @@ API (JSON):
   GET  /api/monitors                       (Mixer view: everything; a musician: their own mixes) monitor mixes and the lock
   PUT  /api/monitors {"buses","people","locked"}   (Mixer control) which buses are monitor mixes, whose is whose
   GET  /api/wing/sends?bus=<1-16>           (Mixer view, or a musician for their own mix) every channel's send to a bus
-  POST /api/wing/send {"bus","n","field","value"}   (Mixer control, or a musician's own mix while unlocked)
-                                           field lvl, on or pan for channel n; n 0 is the bus itself (fdr, mute, pan)
+  POST /api/wing/send {"bus","n","field","value","kind"?}   (Mixer control, or a musician's own mix while unlocked)
+                                           field lvl, on or pan for channel n ("kind": "aux" for an aux input, like the
+                                           click); n 0 is the bus itself (fdr, mute, pan, or its EQ: "eq/on", "eq/1g"...)
   GET  /api/monitors/check                 (Mixer view) monitor buses with sends that aren't Pre, or pan linked
   POST /api/monitors/fix                   (Mixer control) make them Pre with pan link off
   GET  /api/tio                            (Mixer view) the Tio1608-D's 16 inputs: gain, phantom power, low cut
@@ -70,6 +76,11 @@ API (JSON):
   POST /api/rta/patch {"which","id"}       (RTA settings control, plus Wing patch control for the Wing and Dante control for Dante; the Wing in Control)
                                            make that plan, if it's still the same; each step is read back
   POST /api/rta/unpatch {"which"}          (the same) put the last one back
+  GET  /api/rta/live                       (RTA view) what the server hears: the room mic and the desk reference in 120 bands
+                                           (1/12 octave from 20 Hz), dB(A), dB(Z) and the Leq averages. Asking keeps it
+                                           listening; it stops 30 s after the last ask
+  POST /api/rta/calibrate {"spl", "weight": "Z"|"A"}   (RTA settings control) the calibrator (Z) or a meter (A) reads spl now
+                                           {"clear": true}: not calibrated any more (a new mic, or the gain changed)
   GET  /api/foyer                          (Foyer, Show or Mixer view) the foyer's name, its two mixes and matrix,
                                            with the names the desk gives those buses (when the Wing is connected)
   PUT  /api/foyer {"name","mix_a","mix_b","mtx","max_db"}   (Foyer setup control: Admin) rename the foyer, or choose its buses
@@ -85,6 +96,9 @@ API (JSON):
   POST /api/lights/do {"do": "cue"|"go"|"back"|"release"|"preset"|"look"|"master"|"blackout"|"tap"|"tempo"|"fixture"|"clear", ...}
                                            (Lights control) send it to Lightkey as OSC; "fixture" and "look" take "fade"
   POST /api/lights/find                    (Admin) look for Lightkey on the network (Bonjour)
+  GET  /api/lights/midi                    (Lights view) the network MIDI session (MultiTracks Playback), who's connected,
+                                           what each message does, and the last ones heard with what they did
+  PUT  /api/lights/midi {"follow","channel","pc","pc_from","notes","cc_master","tempo"}   (Lights control)
 
 Listening from home: add the private network (for example Tailscale, "100.64.0.0/10") to
 "remote_networks". Devices there can only open the Listen page and the audio their group allows
@@ -119,7 +133,7 @@ import scripture as scripture_mod
 import cues as cues_mod
 import reports as reports_mod
 import pco as pco_mod
-import wing as wing_mod
+import desk as desk_mod
 import tio as tio_mod
 import monitors as monitors_mod
 import scan as scan_mod
@@ -128,6 +142,8 @@ import rta_inputs as rta_inputs_mod
 import rta_patch as rta_patch_mod
 import dante_names as dante_names_mod
 import lightkey as lightkey_mod
+import rta_live as rta_live_mod
+import midi_in as midi_mod
 
 VERSION = "0.3.0"
 START = time.time()
@@ -369,7 +385,7 @@ def _ip_ok(x):
         return False
 
 
-def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bible=None, cues=None, reports=None, plan=None, wing=None, tio=None, monitors=None, scanner=None, foyer=None, rta_inputs=None, dante_names=None, lights=None):
+def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bible=None, cues=None, reports=None, plan=None, desk=None, tio=None, monitors=None, scanner=None, foyer=None, rta_inputs=None, dante_names=None, lights=None, rta_live=None, midi=None):
     nets = cfg["_nets"]
     remote_nets = cfg.get("_remote", [])
 
@@ -538,7 +554,7 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 self.end_headers()
                 return
             if path == "/api/health":
-                self.send_json(200, {"ok": True, "service": "c3life", "version": VERSION, "sync": True, "listen": True, "remote_support": bool(cfg.get("remote_support_roles")) and bool(remote_nets), "remote": self.remote,
+                self.send_json(200, {"ok": True, "service": "c3life", "version": VERSION, "sync": True, "listen": True, "desk": desk.NAME, "remote_support": bool(cfg.get("remote_support_roles")) and bool(remote_nets), "remote": self.remote,
                                      "uptime_s": int(time.time() - START), "app": os.path.basename(cfg["app_dir"])})
                 return
             if path.startswith("/listen/") and path.endswith(".mp3"):
@@ -711,27 +727,33 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                     if mixer < 1:
                         self.send_json(403, {"ok": False, "error": "Your role can't do this (Access levels)."})
                         return
-                    sends = {b: {int(n): v for n, v in wing.bus_sends(b).items()} for b in d["buses"]}
-                    self.send_json(200, {"ok": True, "status": wing.status()["status"], "buses": monitors.check(sends)})
+                    sends = {b: {int(n): v for n, v in desk.bus_sends(b).items() if n.isdigit()} for b in d["buses"]}  # channels (aux sends are "a<N>")
+                    self.send_json(200, {"ok": True, "status": desk.status()["status"], "buses": monitors.check(sends)})
                     return
                 q = urllib.parse.parse_qs(self.path.split("?", 1)[1] if "?" in self.path else "")
                 b = (q.get("bus") or [""])[0]
-                if not b.isdigit() or not 1 <= int(b) <= wing_mod.KINDS["bus"]:
+                if not b.isdigit() or not 1 <= int(b) <= desk.KINDS.get("bus", 0):
                     self.send_json(400, {"ok": False, "error": "Which bus?"})
                     return
                 b = int(b)
                 if mixer < 1 and not (own >= 1 and b in monitors.mine(s["name"])):
                     self.send_json(403, {"ok": False, "error": "That isn't one of your mixes."})
                     return
-                st = wing.state()
-                self.send_json(200, {"ok": True, "bus": b, "status": st["status"], "mode": st["mode"], "sends": wing.bus_sends(b), "strip": st["strips"]["bus"].get(str(b), {}),
+                st = desk.state()
+                self.send_json(200, {"ok": True, "bus": b, "status": st["status"], "mode": st["mode"], "sends": desk.bus_sends(b), "strip": st["strips"]["bus"].get(str(b), {}),
                                      "names": {n: v.get("name", "") for n, v in st["strips"]["ch"].items()}, "locked": d["locked"],
-                                     "can_change": wing.settings["mode"] == "control" and not monitors.may_change(s["name"], mixer, b) if b in d["buses"] else mixer >= 2 and wing.settings["mode"] == "control"})
+                                     "aux_names": {n: v.get("name", "") for n, v in st["strips"]["aux"].items()}, "eq": desk.bus_eq(b),
+                                     "can_change": desk.settings["mode"] == "control" and not monitors.may_change(s["name"], mixer, b) if b in d["buses"] else mixer >= 2 and desk.settings["mode"] == "control"})
                 return
             if path == "/api/rta/inputs":
                 if self.level("RTA"):
-                    wing.outputs()  # start reading the Wing's card outputs, for "Set it up for me"
-                    self.send_json(200, dict(rta_inputs.view(dante, wing), ok=True))
+                    desk.outputs()  # start reading the Wing's card outputs, for "Set it up for me"
+                    self.send_json(200, dict(rta_inputs.view(dante, desk), ok=True))
+                return
+            if path == "/api/rta/live":
+                if self.level("RTA"):
+                    rta_live.ask()
+                    self.send_json(200, dict(rta_live.state(), ok=True))
                 return
             if path == "/api/rta/plan":
                 if not self.level("RTA"):
@@ -740,11 +762,15 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 if which not in ("mic", "ref"):
                     self.send_json(400, {"ok": False, "error": "Bad request"})
                     return
-                self.send_json(200, dict(rta_patch_mod.plan(which, rta_inputs.get(), wing, dante, cfg), ok=True))
+                self.send_json(200, dict(rta_patch_mod.plan(which, rta_inputs.get(), desk, dante, cfg), ok=True))
                 return
             if path == "/api/foyer":
                 if self.level("Foyer", "Show", "Mixer"):
-                    self.send_json(200, dict(foyer.view(wing), ok=True))
+                    self.send_json(200, dict(foyer.view(desk), ok=True))
+                return
+            if path == "/api/lights/midi":
+                if self.level("Lights"):
+                    self.send_json(200, dict(midi.view(), ok=True))
                 return
             if path == "/api/lights":
                 if self.level("Lights"):
@@ -758,46 +784,72 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 if self.level("Mixer"):
                     self.send_json(200, dict(tio.state(), ok=True))
                 return
-            if path in ("/api/wing/rta", "/api/wing/history"):
-                if not self.level("Mixer"):
+            if path == "/api/wing/rta":
+                s, _ = self.session()
+                if not s:
                     return
-                if path.endswith("/rta"):
-                    self.send_json(200, dict(wing.rta_state(), ok=True))
+                st = desk.rta_state()
+                if access.level(s["role"], "Mixer") >= 1:
+                    self.send_json(200, dict(st, ok=True))
+                elif access.level(s["role"], "Own monitor mix") >= 1:
+                    # a musician: only while the Wing's RTA is on one of their own mixes
+                    mine = st["kind"] == "bus" and st["n"] in monitors.mine(s["name"])
+                    self.send_json(200, dict(st, ok=True, rta=st["rta"] if mine else [], mine=mine))
+                else:
+                    self.send_json(403, {"ok": False, "error": "Your role can't do this (Access levels)."})
+                return
+            if path == "/api/wing/history":
+                if not self.level("Mixer"):
                     return
                 q = urllib.parse.parse_qs(self.path.split("?", 1)[1] if "?" in self.path else "")
                 n, since = (q.get("n") or [""])[0], (q.get("since") or ["0"])[0]
-                if not n.isdigit() or not 1 <= int(n) <= wing_mod.KINDS["ch"]:
+                if not n.isdigit() or not 1 <= int(n) <= desk.KINDS.get("ch", 0):
                     self.send_json(400, {"ok": False, "error": "Which channel?"})
                     return
                 try:
                     since = float(since)
                 except ValueError:
                     since = 0.0
-                wing.channel(int(n))  # keeps it open
-                self.send_json(200, {"ok": True, "n": int(n), "hist": wing.history(int(n), since), "now": round(time.time(), 2)})
+                desk.channel(int(n))  # keeps it open
+                self.send_json(200, {"ok": True, "n": int(n), "hist": desk.history(int(n), since), "now": round(time.time(), 2)})
+                return
+            if path == "/api/wing/tapeq":
+                s = self.level("Tap EQ")
+                if not s:
+                    return
+                q = urllib.parse.parse_qs(self.path.split("?", 1)[1] if "?" in self.path else "")
+                n = (q.get("n") or [""])[0]
+                if not n.isdigit() or not 1 <= int(n) <= desk.KINDS.get("ch", 0) or not desk.TAP_EQ:
+                    self.send_json(400, {"ok": False, "error": "Which channel?" if desk.TAP_EQ else "This desk has no tap EQ."})
+                    return
+                proc, st = desk.channel(int(n)), desk.state()
+                self.send_json(200, {"ok": True, "n": int(n), "status": st["status"], "mode": st["mode"],
+                                     "name": st["strips"].get("ch", {}).get(n, {}).get("name", ""),
+                                     "eq": {k: v for k, v in proc.items() if k in desk.TAP_EQ},
+                                     "can_change": access.level(s["role"], "Tap EQ") >= 2 and desk.settings["mode"] == "control"})
                 return
             if path == "/api/wing/channel":
                 if not self.level("Mixer"):
                     return
                 q = urllib.parse.parse_qs(self.path.split("?", 1)[1] if "?" in self.path else "")
                 n = (q.get("n") or [""])[0]
-                if not n.isdigit() or not 1 <= int(n) <= wing_mod.KINDS["ch"]:
+                if not n.isdigit() or not 1 <= int(n) <= desk.KINDS.get("ch", 0):
                     self.send_json(400, {"ok": False, "error": "Which channel?"})
                     return
-                self.send_json(200, dict(wing.status(), ok=True, n=int(n), proc=wing.channel(int(n)), ratios=wing_mod.RATIOS))
+                self.send_json(200, dict(desk.status(), ok=True, n=int(n), proc=desk.channel(int(n)), ratios=desk.RATIOS))
                 return
             if path in ("/api/wing", "/api/wing/meters"):
                 if not self.level("Mixer"):
                     return
                 if path.endswith("/meters"):
-                    self.send_json(200, dict(wing.meter_state(), ok=True))
+                    self.send_json(200, dict(desk.meter_state(), ok=True))
                     return
                 q = urllib.parse.parse_qs(self.path.split("?", 1)[1] if "?" in self.path else "")
                 since = (q.get("since") or [""])[0]
-                if since.lstrip("-").isdigit() and int(since) == wing.version:
-                    self.send_json(200, dict(wing.status(), ok=True, changed=False))
+                if since.lstrip("-").isdigit() and int(since) == desk.version:
+                    self.send_json(200, dict(desk.status(), ok=True, changed=False))
                     return
-                self.send_json(200, dict(wing.state(), ok=True, changed=True, can_control=access.level(self.session()[0]["role"], "Mixer") >= 2))
+                self.send_json(200, dict(desk.state(), ok=True, changed=True, can_control=access.level(self.session()[0]["role"], "Mixer") >= 2))
                 return
             if path == "/api/cues":
                 if self.level("Macros", "Mixer"):
@@ -805,7 +857,7 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 return
             if path == "/api/cues/check":
                 if self.level("Macros", "Mixer"):
-                    self.send_json(200, dict(cues_mod.check(cues.get(), cfg, wing), ok=True))
+                    self.send_json(200, dict(cues_mod.check(cues.get(), cfg, desk), ok=True))
                 return
             if path == "/api/nametags":
                 if self.level("Show", "Running order"):
@@ -883,14 +935,14 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                         self.send_json(403, {"ok": False, "error": "Your role can't do this (Access levels)."})
                         return
                     d = monitors.get()
-                    sends = {b: {int(n): v for n, v in wing.bus_sends(b).items()} for b in d["buses"]}
+                    sends = {b: {int(n): v for n, v in desk.bus_sends(b).items() if n.isdigit()} for b in d["buses"]}  # channels (aux sends are "a<N>")
                     n_fixed, err = 0, None
                     for c in monitors.check(sends):
                         for n in c["post"]:
-                            err = err or wing.set("ch", n, "send/%d/mode" % c["bus"], "PRE")
+                            err = err or desk.set("ch", n, "send/%d/mode" % c["bus"], "PRE")
                             n_fixed += 1
                         for n in c["linked"]:
-                            err = err or wing.set("ch", n, "send/%d/plink" % c["bus"], 0)
+                            err = err or desk.set("ch", n, "send/%d/plink" % c["bus"], 0)
                             n_fixed += 1
                     if err:
                         self.send_json(409, {"ok": False, "error": err})
@@ -899,7 +951,8 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                     self.send_json(200, {"ok": True, "changed": n_fixed})
                     return
                 b, n, f, v = body.get("bus"), body.get("n"), body.get("field"), body.get("value")
-                if not isinstance(b, int) or isinstance(b, bool) or not 1 <= b <= wing_mod.KINDS["bus"] or not isinstance(n, int) or isinstance(n, bool):
+                kind = body.get("kind", "ch")  # a channel's send, or an aux input's (the click, a playback)
+                if not isinstance(b, int) or isinstance(b, bool) or not 1 <= b <= desk.KINDS.get("bus", 0) or not isinstance(n, int) or isinstance(n, bool) or kind not in desk.SENDERS:
                     self.send_json(400, {"ok": False, "error": "Bad request"})
                     return
                 if b in monitors.get()["buses"]:
@@ -913,10 +966,12 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 if err:
                     self.send_json(403, {"ok": False, "error": err})
                     return
-                if n == 0:
-                    err = wing.set("bus", b, {"lvl": "fdr", "fdr": "fdr", "on": "mute", "mute": "mute", "pan": "pan"}.get(f, "?"), (not v) if f == "on" else v)
+                if n == 0 and f in desk.BUS_EQ:
+                    err = desk.set("bus", b, f, v)  # the mix's own EQ
+                elif n == 0:
+                    err = desk.set("bus", b, {"lvl": "fdr", "fdr": "fdr", "on": "mute", "mute": "mute", "pan": "pan"}.get(f, "?"), (not v) if f == "on" else v)
                 else:
-                    err = wing.set("ch", n, "send/%d/%s" % (b, f), v) if f in ("lvl", "on", "pan") else "That can't be changed here."
+                    err = desk.set(kind, n, "send/%d/%s" % (b, f), v) if f in ("lvl", "on", "pan") else "That can't be changed here."
                 if err:
                     self.send_json(409, {"ok": False, "error": err})
                     return
@@ -938,6 +993,24 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 for r in out.get("results", []):
                     log.info("dante: %s: %s%s", s["name"], r["text"], "" if r["ok"] else " (failed: %s)" % r["error"])
                 self.send_json(st, out)
+                return
+            if path == "/api/rta/calibrate":
+                s = self.level("RTA settings", need=2)
+                if not s:
+                    return
+                body = self.read_json() or {}
+                if body.get("clear") is True:
+                    rta_live.uncalibrate()
+                    log.info("rta: %s cleared the mic's calibration", s["name"])
+                    self.send_json(200, dict(rta_live.state(), ok=True, message="Not calibrated any more."))
+                    return
+                spl, weight = body.get("spl"), body.get("weight", "Z")
+                if not isinstance(spl, (int, float)) or isinstance(spl, bool) or not 40 <= spl <= 140 or weight not in ("Z", "A"):
+                    self.send_json(400, {"ok": False, "error": "The level is 40 to 140 dB."})
+                    return
+                ok, msg = rta_live.calibrate(float(spl), weight)
+                log.info("rta: %s calibrating: %s", s["name"], msg)
+                self.send_json(200 if ok else 409, dict(rta_live.state(), ok=ok, message=msg, **({} if ok else {"error": msg})))
                 return
             if path == "/api/lights/do":
                 s = self.level("Lights", need=2)
@@ -964,16 +1037,16 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                     self.send_json(401, {"ok": False, "error": "Sign in again."})
                     return
                 # what this would touch decides who may do it: the Wing needs Wing patch control, Dante needs Dante control
-                p = rta_patch_mod.plan(which, rta_inputs.get(), wing, dante, cfg) if path.endswith("/patch") else {"steps": rta_patch_mod.LAST.get(which, [])}
+                p = rta_patch_mod.plan(which, rta_inputs.get(), desk, dante, cfg) if path.endswith("/patch") else {"steps": rta_patch_mod.LAST.get(which, [])}
                 kinds = {st["kind"] for st in p["steps"]}
                 need = ["RTA settings"] + [a for k, a in (("wing", "Wing patch"), ("dante", "Dante")) if k in kinds]
                 if any(access.level(s["role"], a) < 2 for a in need):
                     self.send_json(403, {"ok": False, "error": "Your role can't change %s (Access levels)." % " and ".join(need)})
                     return
                 if path.endswith("/patch"):
-                    st, out = rta_patch_mod.apply(which, body.get("id"), rta_inputs.get(), wing, dante, cfg)
+                    st, out = rta_patch_mod.apply(which, body.get("id"), rta_inputs.get(), desk, dante, cfg)
                 else:
-                    st, out = rta_patch_mod.undo(which, wing, dante)
+                    st, out = rta_patch_mod.undo(which, desk, dante)
                 for r in out.get("results", []):
                     log.info("rta: %s %s: %s%s", s["name"], "put back" if path.endswith("unpatch") else "patched", r["text"], "" if r["ok"] else " (failed: %s)" % r["error"])
                 self.send_json(st, out)
@@ -1025,20 +1098,47 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 self.send_json(200, {"ok": True})
                 return
             if path == "/api/wing/rta":
-                if not self.level("Mixer", need=2):
+                s, _ = self.session()
+                if not s:
                     return
                 body = self.read_json() or {}
-                err = wing.rta_point(body.get("n"), body.get("tap", "POSTEQ"))
+                kind, mixer = body.get("kind", "ch"), access.level(s["role"], "Mixer")
+                if mixer < 2:
+                    # a musician may point it at their own mix (a bus), while mixes aren't locked
+                    b = body.get("n")
+                    err = "Your role can't do this (Access levels)."
+                    if kind == "bus" and isinstance(b, int) and b in monitors.mine(s["name"]) and access.level(s["role"], "Own monitor mix") >= 2:
+                        err = monitors.may_change(s["name"], mixer, b)
+                    if err:
+                        self.send_json(403, {"ok": False, "error": err})
+                        return
+                err = desk.rta_point(body.get("n"), body.get("tap", "POSTEQ"), kind)
                 if err:
                     self.send_json(409, {"ok": False, "error": err})
                     return
+                self.send_json(200, {"ok": True})
+                return
+            if path == "/api/wing/tapeq":
+                s = self.level("Tap EQ", need=2)
+                if not s:
+                    return
+                body = self.read_json() or {}
+                f = body.get("field")
+                if f not in desk.TAP_EQ:
+                    self.send_json(400, {"ok": False, "error": "That isn't part of the tap EQ."})
+                    return
+                err = desk.set("ch", body.get("n"), f, body.get("value"))
+                if err:
+                    self.send_json(409, {"ok": False, "error": err})
+                    return
+                log.info("wing: %s set ch %s tap EQ %s to %r", s["name"], body.get("n"), f, body.get("value"))
                 self.send_json(200, {"ok": True})
                 return
             if path in ("/api/wing/set", "/api/wing/fade", "/api/wing/find"):
                 if path.endswith("/find"):
                     s = self.admin()
                     if s:
-                        self.send_json(200, {"ok": True, "found": wing_mod.find(port=wing.native_port)})
+                        self.send_json(200, {"ok": True, "found": desk.find()})
                     return
                 s = self.level("Mixer", need=2) if path.endswith("/set") else self.level("Mixer", "Macros", need=2)
                 if not s:
@@ -1047,13 +1147,16 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 if body is None:
                     self.send_json(400, {"ok": False, "error": "Bad request"})
                     return
+                if path.endswith("/set") and str(body.get("field", "")) in desk.TAP_EQ and access.level(s["role"], "Tap EQ") < 2:
+                    self.send_json(403, {"ok": False, "error": "Changing the tap EQ needs Tap EQ control (Access levels)."})
+                    return
                 if path.endswith("/set"):
-                    err = wing.set(body.get("kind", "ch"), body.get("n"), body.get("field"), body.get("value"))
+                    err = desk.set(body.get("kind", "ch"), body.get("n"), body.get("field"), body.get("value"))
                     if not err and body.get("field") in ("name", "vph", "gain", "col"):
                         log.info("wing: %s set %s %s %s to %r", s["name"], body.get("kind", "ch"), body.get("n"), body.get("field"), body.get("value"))
                 else:
                     moves = body.get("moves")
-                    err = "Bad request" if not isinstance(moves, list) or not 0 < len(moves) <= 16 or not all(isinstance(m, dict) for m in moves) else wing.fade(moves)
+                    err = "Bad request" if not isinstance(moves, list) or not 0 < len(moves) <= 16 or not all(isinstance(m, dict) for m in moves) else desk.fade(moves)
                 if err:
                     self.send_json(409, {"ok": False, "error": err})
                     return
@@ -1122,7 +1225,7 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 if err:
                     self.send_json(400, {"ok": False, "error": err})
                     return
-                self.send_json(200, dict(cues_mod.check(d, cfg, wing), ok=True))
+                self.send_json(200, dict(cues_mod.check(d, cfg, desk), ok=True))
                 return
             if path in ("/api/scripture/add", "/api/scripture/show", "/api/scripture/hide"):
                 # Add changes the ProPresenter playlist (the app asks first); Show and Hide only when someone taps.
@@ -1309,7 +1412,7 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 rta_inputs.save(d)
                 log.info("rta: %s set the room mic to %s (%s %d) and the desk reference to %s (%s %d)", s["name"],
                          d["mic"]["from"], d["mic"]["via"], d["mic"]["ch"], d["ref"]["from"], d["ref"]["via"], d["ref"]["ch"])
-                self.send_json(200, dict(rta_inputs.view(dante, wing), ok=True))
+                self.send_json(200, dict(rta_inputs.view(dante, desk), ok=True))
                 return
             if self.route() == "/api/foyer":
                 s = self.level("Foyer setup", need=2)
@@ -1323,7 +1426,23 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                     return
                 foyer.save(d)
                 log.info("foyer: %s set the foyer to %r (mixes bus %d and %d, matrix %d)", s["name"], d["name"].strip(), d["mix_a"], d["mix_b"], d["mtx"])
-                self.send_json(200, dict(foyer.view(wing), ok=True))
+                self.send_json(200, dict(foyer.view(desk), ok=True))
+                return
+            if self.route() == "/api/lights/midi":
+                s = self.level("Lights", need=2)
+                if not s:
+                    return
+                body = self.read_json()
+                d = dict(midi.settings(), **{k: v for k, v in body.items() if k in midi_mod.DEFAULT}) if isinstance(body, dict) else None
+                err = midi_mod.valid(d, lights.show)
+                if err:
+                    self.send_json(400, {"ok": False, "error": err})
+                    return
+                was = midi.settings()["follow"]
+                midi.save(d)
+                if d["follow"] != was:
+                    log.info("lights: %s turned Follow Playback %s", s["name"], "on" if d["follow"] else "off")
+                self.send_json(200, dict(midi.view(), ok=True))
                 return
             if self.route() in ("/api/lights/show", "/api/lights/settings"):
                 show = self.route().endswith("/show")
@@ -1382,12 +1501,12 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 if body is None or (ip is not None and (not isinstance(ip, str) or (ip.strip() and not _ip_ok(ip.strip())))):
                     self.send_json(400, {"ok": False, "error": "That isn't an IP address, like 192.168.10.20."})
                     return
-                err = wing.configure(ip=ip, mode=mode)
+                err = desk.configure(ip=ip, mode=mode)
                 if err:
                     self.send_json(400, {"ok": False, "error": err})
                     return
-                log.info("wing: %s set the Wing to %s%s", s["name"], wing.settings["mode"], " at " + wing.settings["ip"] if wing.settings["ip"] else "")
-                self.send_json(200, dict(wing.status(), ok=True))
+                log.info("wing: %s set the Wing to %s%s", s["name"], desk.settings["mode"], " at " + desk.settings["ip"] if desk.settings["ip"] else "")
+                self.send_json(200, dict(desk.status(), ok=True))
                 return
             if self.route() == "/api/cues":
                 s = self.level("Macros", need=2)
@@ -1405,7 +1524,7 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                     self.send_json(403, {"ok": False, "error": "Only an Admin can make a cue run straight away."})
                     return
                 # the Run check comes first: nothing is saved if a cue can't work
-                chk = cues_mod.check(d, cfg, wing)
+                chk = cues_mod.check(d, cfg, desk)
                 if not chk["ok_all"]:
                     self.send_json(409, {"ok": False, "error": "Run check found problems, so nothing was saved.", "check": chk})
                     return
@@ -1580,25 +1699,31 @@ def serve(cfg):
     reports = reports_mod.Reports(cfg["data_dir"], cfg, log)
     reports.start()  # sends any reports still waiting from before a restart
     plan = pco_mod.Planning(cfg["data_dir"], cfg, log)  # before anything reads the Planning Center token
-    wing = wing_mod.Wing(cfg["data_dir"], cfg, log)
-    wing.start()
+    desk = desk_mod.make(cfg, cfg["data_dir"], log)  # the sound desk's driver: the Wing, unless config.json says otherwise
+    desk.start()
     tio = tio_mod.Tio(cfg["data_dir"], cfg, log)
     tio.start()
     monitors = monitors_mod.Monitors(cfg["data_dir"])
     foyer = foyer_mod.Foyer(cfg["data_dir"])
     rta_inputs = rta_inputs_mod.RtaInputs(cfg["data_dir"])
     lights = lightkey_mod.Lightkey(cfg["data_dir"], cfg, log)
+    rta_live = rta_live_mod.Analyser(cfg["data_dir"], cfg, log, rta_inputs)
+    if int(cfg["port"]) == 0:  # the tests: any free ports, so several servers can run at once
+        cfg.setdefault("midi_port", 0)
+    midi = midi_mod.Midi(cfg["data_dir"], cfg, log, lights, allowed=lambda ip: any(ipaddress.ip_address(ip) in n for n in cfg["_nets"]))
+    midi.start()
     cfg.setdefault("_my_ips", _my_ips())
-    scanner = scan_mod.Scanner(cfg["data_dir"], cfg, log, wing=wing, tio=tio,
-                               wing_find=lambda: wing_mod.find(port=wing.native_port, target=cfg.get("wing_find_target", "255.255.255.255")))
+    scanner = scan_mod.Scanner(cfg["data_dir"], cfg, log, wing=desk, tio=tio,
+                               wing_find=lambda: desk.find(target=cfg.get("wing_find_target", "255.255.255.255")))
     # Port 0 is only used by the tests (any free port): they scan when they mean to, not by themselves.
     if cfg.get("scan_auto", True) and int(cfg["port"]) != 0:
         threading.Thread(target=scanner.loop, daemon=True).start()
-    httpd = ThreadingHTTPServer((cfg["bind"], int(cfg["port"])), make_handler(cfg, store, sessions, listen, access, dante, tags, bible, cues, reports, plan, wing, tio, monitors, scanner, foyer, rta_inputs, dante_names, lights))
+    httpd = ThreadingHTTPServer((cfg["bind"], int(cfg["port"])), make_handler(cfg, store, sessions, listen, access, dante, tags, bible, cues, reports, plan, desk, tio, monitors, scanner, foyer, rta_inputs, dante_names, lights, rta_live, midi))
     httpd.daemon_threads = True
     close = httpd.server_close
-    httpd.server_close = lambda: (scanner.stop.set(), lights.close(), close())
-    httpd.store, httpd.sessions, httpd.listen, httpd.access, httpd.tags, httpd.bible, httpd.reports, httpd.plan, httpd.wing, httpd.tio, httpd.monitors, httpd.scanner, httpd.foyer, httpd.rta_inputs, httpd.lights = store, sessions, listen, access, tags, bible, reports, plan, wing, tio, monitors, scanner, foyer, rta_inputs, lights
+    httpd.server_close = lambda: (scanner.stop.set(), lights.close(), rta_live.stop(), midi.close(), close())
+    httpd.store, httpd.sessions, httpd.listen, httpd.access, httpd.tags, httpd.bible, httpd.reports, httpd.plan, httpd.desk, httpd.tio, httpd.monitors, httpd.scanner, httpd.foyer, httpd.rta_inputs, httpd.lights, httpd.rta_live, httpd.midi = store, sessions, listen, access, tags, bible, reports, plan, desk, tio, monitors, scanner, foyer, rta_inputs, lights, rta_live, midi
+    httpd.wing = desk  # the tests, and older code, call it this
     return httpd
 
 

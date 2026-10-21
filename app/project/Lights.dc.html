@@ -480,6 +480,37 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
         <div style="font-size:12px;color:#A3ACB8;margin-top:8px">{{setNote}}</div>
       </section>
 
+      <section class="card" aria-label="MultiTracks Playback">
+        <div class="lbl" style="margin-bottom:6px">MultiTracks Playback · MIDI</div>
+        <div class="lkmsg {{mdStatusCls}}" role="status">{{mdStatus}}</div>
+        <div style="font-size:12px;color:#A3ACB8;margin:8px 0">Playback’s MIDI cues can run the lights. On the Mac with Playback: Audio MIDI Setup › Window › Show MIDI Studio › Network. In Directory press +, type {{mdWhere}}, then Connect. In Playback, send MIDI Out to that network session.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <button class="{{mdFollowCls}}" onClick="{{mdToggle}}" disabled="{{noCtl}}" aria-pressed="{{mdFollow}}">{{mdFollowText}}</button>
+          <span style="font-size:12px;color:#A3ACB8">{{mdFollowSub}}</span>
+        </div>
+        <div class="lkgrid2" style="margin-top:10px">
+          <label class="lkfld">MIDI channel<select id="lk-md-ch" value="{{mdCh}}" onChange="{{mdSetCh}}" disabled="{{noCtl}}"><sc-for list="{{mdChOpts}}" as="o" hint-placeholder-count="17"><option value="{{o.v}}">{{o.t}}</option></sc-for></select></label>
+          <label class="lkfld lkck"><input type="checkbox" checked="{{mdPc}}" onChange="{{mdTogglePc}}" disabled="{{noCtl}}" aria-label="Program Change picks the cue"> Program Change picks the cue by number</label>
+          <label class="lkfld">Program numbers start at<select id="lk-md-pc0" value="{{mdPcFrom}}" onChange="{{mdSetPcFrom}}" disabled="{{noCtl}}"><option value="1">1 (Program 1 = cue 1)</option><option value="0">0 (Program 0 = cue 1)</option></select></label>
+          <label class="lkfld">Master on controller (CC)<input id="lk-md-cc" class="lkin" type="number" min="0" max="127" value="{{mdCc}}" onChange="{{mdSetCc}}" disabled="{{noCtl}}" placeholder="0 = none"></label>
+          <label class="lkfld lkck"><input type="checkbox" checked="{{mdTempo}}" onChange="{{mdToggleTempo}}" disabled="{{noCtl}}" aria-label="Follow Playback's tempo"> Lightkey’s tempo follows Playback’s MIDI clock</label>
+        </div>
+        <div class="lkpg">Notes</div>
+        <sc-for list="{{mdNotes}}" as="r" hint-placeholder-count="2">
+          <div class="lkedrow">
+            <label class="lkfld sm">Note<input id="{{r.idNote}}" class="lkin" type="number" min="0" max="127" value="{{r.note}}" onChange="{{r.setNote}}" disabled="{{noCtl}}"></label>
+            <span class="mono" style="font-size:12px;color:#A3ACB8;flex:0 0 44px">{{r.name}}</span>
+            <select value="{{r.do}}" onChange="{{r.setDo}}" disabled="{{noCtl}}" aria-label="What the note does"><option value="go">Go</option><option value="back">Back</option><option value="release">Release</option><option value="blackout_on">Blackout on</option><option value="blackout_off">Blackout off</option><option value="cue">A cue…</option><option value="preset">A palette preset…</option><option value="look">A look…</option></select>
+            <div style="display:contents"><sc-if value="{{r.hasPick}}" hint-placeholder-val="{{ false }}"><select value="{{r.id}}" onChange="{{r.setId}}" disabled="{{noCtl}}" aria-label="Which one"><sc-for list="{{r.opts}}" as="o" hint-placeholder-count="4"><option value="{{o.id}}">{{o.name}}</option></sc-for></select></sc-if></div>
+            <span class="lkbtns"><button class="lkchip" onClick="{{r.del}}" disabled="{{noCtl}}" aria-label="Remove">✕</button></span>
+          </div>
+        </sc-for>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" onClick="{{mdAddNote}}" disabled="{{noCtl}}">+ Note</button><button class="btn" onClick="{{mdDemo}}">Demo: Playback sends the next program</button></div>
+        <div class="lkpg">Heard from Playback</div>
+        <sc-for list="{{mdHeard}}" as="h" hint-placeholder-count="3"><div class="mono lkosc"><span>{{h.t}}</span> {{h.text}}</div></sc-for>
+        <div style="display:contents"><sc-if value="{{mdNone}}" hint-placeholder-val="{{ false }}"><div style="font-size:12px;color:#A3ACB8">Nothing yet.</div></sc-if></div>
+      </section>
+
       <section class="card" aria-label="Cue list">
         <div class="lbl">Cues · as named in Lightkey</div>
         <div style="font-size:12px;color:#A3ACB8;margin:4px 0 6px">Type each cue’s name exactly as it is in Lightkey’s Live view (capitals count). Fade blank = the cue’s own fade in Lightkey. A cue can bring a look with it.</div>
@@ -749,6 +780,69 @@ class Component extends DCLogic {
     }).catch(() => this.say('Not saved: the C3 Life server didn’t answer.', true)), patch.mode ? 0 : 600);
   }
 
+  // ---- MultiTracks Playback: network MIDI into the C3 Life server (in the preview, kept on this device) ----
+  mdView() {
+    if (this.state.md) return this.state.md;
+    let st = null; try { st = JSON.parse(localStorage.getItem('booth.lightsmidi') || 'null'); } catch (e) {}
+    return { settings: { follow: false, channel: 16, pc: true, pc_from: 1, notes: [{ note: 60, do: 'go' }, { note: 62, do: 'back' }], cc_master: 0, tempo: false, ...(st || {}) },
+      session: 'C3 Life', port: 5004, error: '', peers: this.state.lkDemo ? [{ name: 'MacBook Pro', ip: '192.168.10.31', live: true }] : [], heard: this.mdDemoHeard || [], demo: true };
+  }
+  mdLoad() {
+    if (this.state.lkDemo || this.mdOff || this.mdBusy || this.mdDirty) return;
+    this.mdBusy = true;
+    this.lkApi('/api/lights/midi').then(({ code, j }) => {
+      this.mdBusy = false;
+      if (code === 404) { this.mdOff = true; return; }
+      if (code === 200 && j.ok && !this.mdDirty) this.setState({ md: j });
+    }).catch(() => { this.mdBusy = false; });
+  }
+  mdSave(patch, okMsg, now) {
+    const v = this.mdView(), next = { ...v.settings, ...patch };
+    if (this.state.lkDemo || v.demo) { try { localStorage.setItem('booth.lightsmidi', JSON.stringify(next)); } catch (e) {} this.setState({ md: null, tick: Date.now() }); if (okMsg) this.say(okMsg); return; }
+    this.mdDirty = true;
+    this.setState({ md: { ...v, settings: next } });
+    clearTimeout(this.mdSaveT);
+    this.mdSaveT = setTimeout(() => this.lkApi('/api/lights/midi', 'PUT', next).then(({ j }) => {
+      this.mdDirty = false;
+      if (j && j.ok) { this.setState({ md: j }); if (okMsg) this.say(okMsg); } else { this.say((j && j.error) || 'Not saved.', true); this.mdLoad(); }
+    }).catch(() => { this.mdDirty = false; this.say('Not saved: the C3 Life server didn’t answer.', true); }), now ? 0 : 600);
+  }
+  mdVals(ctl, cues, show) {
+    const v = this.mdView(), d = v.settings, live = (v.peers || []).filter((p) => p.live);
+    const nm = (n) => ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'][n % 12] + (Math.floor(n / 12) - 2);
+    const optsFor = (k) => (k === 'cue' ? cues : (k === 'preset' ? show.presets : show.looks)).map((x) => ({ id: x.id, name: x.name }));
+    const editNote = (i, fn) => { const notes = d.notes.map((x) => ({ ...x })); fn(notes[i]); this.mdSave({ notes }); };
+    const t = (x) => new Date(x * 1000).toTimeString().slice(0, 8);
+    return {
+      mdStatus: v.error ? v.error : (live.length ? 'Connected: ' + live.map((p) => p.name + ' (' + p.ip + ')').join(', ') + (v.demo && this.state.lkDemo ? ' · demo' : '') : 'No Mac is connected to the “' + v.session + '” session yet.'),
+      mdStatusCls: v.error ? 'bad' : '', mdWhere: 'the C3 Life server’s address and port ' + (v.port || 5004),
+      mdFollow: !!d.follow, mdFollowCls: d.follow ? 'btn hot' : 'btn pri', mdFollowText: d.follow ? 'Following Playback · tap to stop' : 'Follow Playback',
+      mdFollowSub: d.follow ? 'Playback’s MIDI runs the lights through Lightkey.' : 'Off: each message only shows what it would do.',
+      mdToggle: () => d.follow ? this.mdSave({ follow: false }, 'Not following Playback. Its MIDI only shows what it would do.', true)
+        : this.setState({ ask: { title: 'Follow Playback?', text: 'From now on Playback’s MIDI cues change the lights: program changes pick cues, and the notes below do what they say. They go to Lightkey only while its link is on.', btn: 'Follow Playback', yes: () => this.mdSave({ follow: true }, 'Following Playback.', true) } }),
+      mdCh: String(d.channel), mdChOpts: [{ v: '0', t: 'Any channel' }].concat(Array.from({ length: 16 }, (_, i) => ({ v: String(i + 1), t: 'Channel ' + (i + 1) }))),
+      mdSetCh: (e) => this.mdSave({ channel: Number(e.target.value) }, '', true),
+      mdPc: !!d.pc, mdTogglePc: () => this.mdSave({ pc: !d.pc }, '', true),
+      mdPcFrom: String(d.pc_from), mdSetPcFrom: (e) => this.mdSave({ pc_from: Number(e.target.value) }, '', true),
+      mdCc: d.cc_master || '', mdSetCc: (e) => { const x = Number(e.target.value) || 0; if (x >= 0 && x <= 127) this.mdSave({ cc_master: x }); },
+      mdTempo: !!d.tempo, mdToggleTempo: () => this.mdSave({ tempo: !d.tempo }, '', true),
+      mdNotes: d.notes.map((r, i) => ({ idNote: 'lk-md-n-' + i, note: r.note, name: nm(r.note), do: r.do, id: r.id || '', hasPick: ['cue', 'preset', 'look'].indexOf(r.do) > -1, opts: ['cue', 'preset', 'look'].indexOf(r.do) > -1 ? optsFor(r.do) : [],
+        setNote: (e) => { const x = Number(e.target.value); if (Number.isInteger(x) && x >= 0 && x <= 127) editNote(i, (q) => { q.note = x; }); },
+        setDo: (e) => editNote(i, (q) => { q.do = e.target.value; const o = ['cue', 'preset', 'look'].indexOf(q.do) > -1 ? optsFor(q.do) : []; if (o.length) q.id = o[0].id; else delete q.id; }),
+        setId: (e) => editNote(i, (q) => { q.id = e.target.value; }),
+        del: () => this.mdSave({ notes: d.notes.filter((_, j) => j !== i) }, '', true) })),
+      mdAddNote: () => { let n = 60; while (d.notes.some((x) => x.note === n)) n++; this.mdSave({ notes: d.notes.concat([{ note: n, do: 'go' }]) }, '', true); },
+      mdHeard: (v.heard || []).slice(0, 12).map((h) => ({ t: t(h.t), text: h.msg + (h.ch ? ' · ch ' + h.ch : '') + ' → ' + h.did })),
+      mdNone: !(v.heard || []).length,
+      mdDemo: () => {
+        const n = (this.mdN = ((this.mdN || 0) % Math.max(1, cues.length)) + 1), c = cues[n - 1];
+        const did = !c ? 'no cue ' + n + ' in the list' : 'cue ' + c.name + (d.follow ? '' : ' (not sent: Follow Playback is off)');
+        this.mdDemoHeard = [{ t: Date.now() / 1000, ch: d.channel || 16, msg: 'Program ' + (n - 1 + d.pc_from), did, sent: !!d.follow }].concat(this.mdDemoHeard || []).slice(0, 30);
+        if (c && d.follow) this.lkDo({ do: 'cue', id: c.id }); else this.setState({ tick: Date.now() });
+      }
+    };
+  }
+
   // ---- who may do what (Access levels › Lights) ---------------------------------------------------
   user() { try { return JSON.parse(localStorage.getItem('booth.user') || 'null'); } catch (e) { return null; } }
   isAdmin() { const u = this.user(); return !!u && (u.role || u.name) === 'Admin'; }
@@ -762,8 +856,8 @@ class Component extends DCLogic {
     return { Lighting: 2, 'FOH sound': 1 }[role] || 0;
   }
 
-  componentDidMount() { this.lkLoad(); this.loadT = setInterval(() => this.lkLoad(), 3000); }
-  componentWillUnmount() { clearInterval(this.loadT); clearTimeout(this.saveT); clearTimeout(this.msgT); clearTimeout(this.setT); }
+  componentDidMount() { this.lkLoad(); this.loadT = setInterval(() => this.lkLoad(), 3000); this.mdLoad(); this.mdT = setInterval(() => this.mdLoad(), 2000); }
+  componentWillUnmount() { clearInterval(this.loadT); clearInterval(this.mdT); clearTimeout(this.mdSaveT); clearTimeout(this.saveT); clearTimeout(this.msgT); clearTimeout(this.setT); }
 
   // ---- colours ----------------------------------------------------------------------------------
   hsv(h) { const f = (n) => { const k = (n + h / 60) % 6; return Math.round(255 * (1 - Math.max(0, Math.min(k, 4 - k, 1)))); }; return '#' + [f(5), f(3), f(1)].map((x) => x.toString(16).padStart(2, '0')).join('').toUpperCase(); }
@@ -856,7 +950,8 @@ class Component extends DCLogic {
       // header and bar
       linkCls: s.lkDemo ? 'demo' : (linkOn ? 'on' : ''),
       linkTitle: s.lkDemo ? 'Demo' : (linkOn ? 'Lightkey · ' + set.mac : 'Lightkey link off'),
-      linkSub: s.lkDemo ? 'Nothing is sent from the preview' : (linkOn ? set.ip + ' · OSC ' + set.port : (admin ? 'Turn it on in Show setup' : 'An Admin turns it on')),
+      linkSub: (s.lkDemo ? 'Nothing is sent from the preview' : (linkOn ? set.ip + ' · OSC ' + set.port : (admin ? 'Turn it on in Show setup' : 'An Admin turns it on'))) + (this.mdView().settings.follow ? ' · following Playback' : ''),
+      ...this.mdVals(ctl, cues, show),
       noCtl: !ctl, noProg: !progOk, notAdmin: !admin, noAccess: lvl === 0, lookOnly: lvl === 1,
       nextLine: set.go === 'lightkey' ? 'Lightkey’s cuelist' : (nxt ? 'Next: ' + nxt.name : 'End of list'),
       go: () => this.lkDo({ do: 'go' }), back: () => this.lkDo({ do: 'back' }), release: () => this.lkDo({ do: 'release' }, 'Let go of the live cue.'),

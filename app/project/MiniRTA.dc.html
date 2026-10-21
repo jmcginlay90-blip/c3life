@@ -86,7 +86,9 @@ class Component extends DCLogic {
   // Full or slim is remembered on this device, so it stays the same on every screen.
   readSlim() { try { return localStorage.getItem('booth.rtabar') === 'slim'; } catch (e) { return false; } }
   componentDidMount() {
+    this.poll(); this.pollT = setInterval(() => this.poll(), 1000);
     this.timer = setInterval(() => {
+      if (this.live !== undefined) return;  // the C3 Life server's levels instead of the demo
       const s = this.state;
       const vals = s.vals.map((v, i) => {
         const base = 84 - i * 0.5 + (i > 3 && i < 11 ? 5 : 0) + (i > 26 ? -8 : 0) + (i < 3 ? -10 : 0);
@@ -97,11 +99,27 @@ class Component extends DCLogic {
       this.setState({ vals, spl, avg: s.avg + (spl - s.avg) * 0.1, peak: Math.max(s.peak, spl) });
     }, 140);
   }
-  componentWillUnmount() { clearInterval(this.timer); }
+  componentWillUnmount() { clearInterval(this.timer); clearInterval(this.pollT); }
+  // On the C3 Life server: the room level it hears from the room mic, once a second (the preview has no server: demo).
+  poll() {
+    if (this.noServer || this.busy) return;
+    let t = ''; try { const x = JSON.parse(localStorage.getItem('booth.session') || 'null'); t = x ? x.token : ''; } catch (e) {}
+    if (!t) return;
+    this.busy = true;
+    fetch('/api/rta/live', { headers: { Authorization: 'Bearer ' + t } }).then((r) => r.json().catch(() => ({})).then((j) => {
+      this.busy = false;
+      if (r.status === 404) { this.noServer = true; return; }
+      if (r.status === 403) { this.live = null; this.setState({ vals: new Array(31).fill(0) }); return; }  // no RTA for this role: no made-up levels
+      if (r.status !== 200 || !j.ok) return;
+      this.live = j.mic ? j : null;
+      if (j.mic) this.setState({ vals: Array.from({ length: 31 }, (_, i) => j.mic[Math.min(119, i * 4)]), spl: j.dba, avg: j.dba, peak: j.max === null ? j.dba : j.max });
+      else this.setState({ vals: new Array(31).fill(0) });
+    })).catch(() => { this.busy = false; });
+  }
   renderVals() {
     const s = this.state;
     const limit = this.props.limit ?? 90;
-    const over = s.avg >= limit;
+    const over = this.live !== null && s.avg >= limit;
     let fb = null; try { fb = JSON.parse(localStorage.getItem('booth.feedback') || 'null'); } catch (e) {}
     return {
       full: !s.slim, slim: s.slim,
@@ -114,10 +132,10 @@ class Component extends DCLogic {
       numColor: over ? '#FFFFFF' : '#F5C518',
       barColor: over ? '#FFFFFF' : '#6CB4F5',
       label: fb ? 'FEEDBACK ' + fb.freq : (over ? 'OVER ' + limit : 'ROOM'),
-      spl: s.avg.toFixed(1),
-      peak: s.peak.toFixed(1),
+      spl: this.live === null ? '---' : s.avg.toFixed(1),
+      peak: this.live === null ? '---' : s.peak.toFixed(1),
       limit: limit,
-      aria: (fb ? 'Feedback ringing at ' + fb.freq + '. ' : '') + 'Room level ' + s.avg.toFixed(1) + ' dB(A)' + (over ? ', over the limit' : ''),
+      aria: (fb ? 'Feedback ringing at ' + fb.freq + '. ' : '') + (this.live === null ? 'The room mic isn’t being heard' : 'Room level ' + s.avg.toFixed(1) + ' dB(A)' + (over ? ', over the limit' : '')),
       bands: s.vals.map((v) => ({ h: Math.min(28, Math.max(2, Math.round(((v - 50) / 50) * 28))) }))
     };
   }

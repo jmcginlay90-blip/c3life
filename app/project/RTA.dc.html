@@ -466,7 +466,7 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
         <div style="font-size:12px;color:#A3ACB8">{{riWho}} The MD mic for the MD talk log is set on Mixer › Dante.</div>
       </section>
       <a href="Calibrate.dc.html" class="card" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:#ECEEF1;padding:12px 14px;min-height:44px">
-        <span style="flex:1"><span style="font-size:15px;font-weight:600">Mic calibrated</span><br><span style="font-size:12px;color:#A3ACB8">dbx RTA-M · 12 Oct · +2.4 dB offset · gain locked</span></span>
+        <span style="flex:1"><span style="font-size:15px;font-weight:600">{{calHead}}</span><br><span style="font-size:12px;color:#A3ACB8">{{calLine}}</span></span>
         <span style="font-size:13px;color:#6CB4F5">Calibrate</span>
       </a>
       <section class="card" style="display:flex;flex-direction:column;gap:10px;border-color:{{fbEdge}}">
@@ -527,11 +527,24 @@ class Component extends DCLogic {
   }
   componentDidMount() {
     this.riLoad(); this.riT = setInterval(() => this.riLoad(), 15000);
+    this.rtPoll(); this.rtT = setInterval(() => this.rtPoll(), 250);
     this.timer = setInterval(() => {
       const s = this.state;
       if (s.frozen) return;
       // Off the RTA tab nothing moves fast: the SPL page and settings update once a second, so taps always land.
       if ((s.lkView || 'rta') !== 'rta' && ((this.lkSlow = (this.lkSlow || 0) + 1) % 9)) return;
+      // On the C3 Life server: what it hears from the room mic and the desk reference (no demo there)
+      if (this.rtOn) {
+        const lv = this.rtLive && Date.now() - this.rtLive.at < 3000 && this.rtLive.mic ? this.rtLive : null;
+        if (!lv) { if (!this.rtBlank) { this.rtBlank = true; this.lkRoom = this.lkDesk = this.lkPk = new Array(120).fill(-20); this.lkRows = []; this.lkImg = ''; this.setState({ tick: s.tick + 1 }); } return; }
+        this.rtBlank = false;
+        const pick = (a) => Array.from({ length: 31 }, (_, i) => a[Math.min(119, i * 4)]);
+        const room = pick(lv.mic), desk = lv.ref ? pick(lv.ref) : room, avg = lv.dba;
+        const over = avg >= this.limit();
+        this.setState({ desk, room, peaks: s.peaks.map((p, i) => Math.max(room[i], p - 0.4)), spl: avg, avg, peak: Math.max(s.peak, avg), tick: s.tick + 1, overSince: over ? (s.overSince || Date.now()) : null });
+        this.lkTick(room, desk, avg, lv.mic, lv.ref || lv.mic);
+        return;
+      }
       const desk = s.desk.map((v, i) => {
         const base = 80 - i * 0.35 + (i < 3 ? -8 : 0) + (i > 27 ? -6 : 0);
         return v + (base + (Math.random() - 0.5) * 6 - v) * 0.4;
@@ -554,7 +567,22 @@ class Component extends DCLogic {
       this.lkTick(room, desk, avg);
     }, 110);
   }
-  componentWillUnmount() { clearInterval(this.timer); clearInterval(this.riT); clearTimeout(this.rpT); }
+  componentWillUnmount() { clearInterval(this.timer); clearInterval(this.riT); clearInterval(this.rtT); clearTimeout(this.rpT); }
+  // The C3 Life server hears the room mic (GET /api/rta/live); in the preview there's no server and the demo runs.
+  rtPoll() {
+    if (this.rtOff || this.rtBusy) return;
+    const fast = (this.state.lkView || 'rta') === 'rta' && !this.state.frozen;
+    if (!fast && Date.now() - (this.rtAsked || 0) < 1000) return;
+    this.rtBusy = true; this.rtAsked = Date.now();
+    this.riApi('/api/rta/live').then(({ code, j }) => {
+      this.rtBusy = false;
+      if (code === 404) { this.rtOff = true; return; }
+      if (code === 200 && j.ok) { this.rtOn = true; this.rtLive = { ...j, at: Date.now() }; }
+    }).catch(() => { this.rtBusy = false; });
+  }
+  rtCal(spl, weight) {
+    return this.riApi('/api/rta/calibrate', 'POST', { spl, weight }).then(({ j }) => { if (j && j.status) this.rtLive = { ...j, at: Date.now() }; return j || {}; });
+  }
   // Feedback is shared so the RTA bar on every screen can show it.
   setFb(fb) { try { if (fb) localStorage.setItem('booth.feedback', JSON.stringify(fb)); else localStorage.removeItem('booth.feedback'); } catch (e) {} this.setState({ fb }); }
   limit() { return this.state.limit ?? this.props.limit ?? 90; }
@@ -812,10 +840,10 @@ class Component extends DCLogic {
     const j = this.lkJ || (this.lkJ = Array.from({ length: 120 }, () => (Math.random() - 0.5) * 1.8));
     return Array.from({ length: 120 }, (_, i) => { const k = Math.min(30, i / 4), lo = Math.floor(k), hi = Math.min(30, lo + 1), f = k - lo; return b[lo] * (1 - f) + b[hi] * f + j[i] + (Math.random() - 0.5) * 0.8; });
   }
-  lkTick(room, desk, avg) {
-    if (!this.lkJ || Math.random() < 0.08) this.lkJ = Array.from({ length: 120 }, (_, i) => (this.lkJ ? this.lkJ[i] * 0.7 : 0) + (Math.random() - 0.5) * 1.8);
-    const r = this.lkFine(room);
-    this.lkRoom = r; this.lkDesk = this.lkFine(desk);
+  lkTick(room, desk, avg, fineRoom, fineDesk) {
+    if (!fineRoom && (!this.lkJ || Math.random() < 0.08)) this.lkJ = Array.from({ length: 120 }, (_, i) => (this.lkJ ? this.lkJ[i] * 0.7 : 0) + (Math.random() - 0.5) * 1.8);
+    const r = fineRoom ? fineRoom.slice() : this.lkFine(room);
+    this.lkRoom = r; this.lkDesk = fineDesk ? fineDesk.slice() : this.lkFine(desk);
     this.lkPk = this.lkPk ? this.lkPk.map((p, i) => Math.max(r[i], p - 0.35)) : r.slice();
     this.lkN = (this.lkN || 0) + 1;
     if (this.lkN % 3 === 0) { this.lkRows = [r].concat(this.lkRows || []).slice(0, 52); this.lkImg = this.lkPaint(); }
@@ -850,7 +878,14 @@ class Component extends DCLogic {
       return c.toDataURL();
     } catch (e) { return ''; }
   }
+  rtSays() {
+    const lv = this.rtLive;
+    if (!lv || lv.status === 'starting' || lv.status === 'off') return 'Starting…';
+    if (lv.status === 'live') return 'Live · ' + lv.source;
+    return lv.reason || 'Not hearing the room';
+  }
   lkLeq(sec) {
+    if (this.rtOn) { const v = this.rtLive && this.rtLive.leq ? this.rtLive.leq[{ 60: '1m', 900: '15m', 1800: '30m', 3600: '1h', 28800: '8h' }[sec]] : null; return v === null || v === undefined ? '---' : v.toFixed(1); }
     const now = Date.now(), xs = (this.lkSecs || []).filter((p) => p[0] >= now - sec * 1000);
     if (!xs.length) return '---';
     return (10 * Math.log10(xs.reduce((a, p) => a + Math.pow(10, p[1] / 10), 0) / xs.length)).toFixed(1);
@@ -899,12 +934,14 @@ class Component extends DCLogic {
       idX: X(mi).toFixed(1), idOp: s.idOn ? 0.8 : 0, idPct: ((mi / 119) * 100).toFixed(2), idText: fmtF(20 * Math.pow(2, mi / 12)) + ' · ' + room[mi].toFixed(0) + ' dB',
       roMark: !!(s.fbOn && fb), roX: X(fbF ? xi(fbF) : 0).toFixed(1), roOp: s.fbOn && fb ? 0.9 : 0, roPct: (((fbF ? xi(fbF) : 0) / 119) * 100).toFixed(2),
       hTop: this.lkHandle('top'), hBot: this.lkHandle('bot'), scaleTop: top, scaleBot: bot, hTopPct: 10, hBotPct: 88,
-      leq1: this.lkLeq(60), leq15: this.lkLeq(900), bigDb: big.toFixed(1), bigColor, unitColor: '#D9A441',
-      boxSub: 'Calibrated · dbx RTA-M room mic',
+      leq1: this.lkLeq(60), leq15: this.lkLeq(900), bigDb: this.rtOn && !(this.rtLive && this.rtLive.mic) ? '---' : big.toFixed(1), bigColor, unitColor: '#D9A441',
+      boxSub: this.rtOn ? (this.rtLive && this.rtLive.calibrated ? 'Calibrated · room mic' : 'Not calibrated yet · an estimate') : 'Calibrated · dbx RTA-M room mic',
       graphAria: 'Room mic spectrum from 20 Hz to 20 kHz, ' + bot + ' to ' + top + ' dB. Loudest at ' + fmtF(20 * Math.pow(2, mi / 12)) + '.' + (s.cmpOn ? ' The desk reference is shown too.' : ''),
       specImg: this.lkImg || '', specSpan: '−' + ((this.lkRows || []).length * 0.33).toFixed(1) + 's',
       specAlt: 'Spectrograph of the room mic over the last ' + Math.round((this.lkRows || []).length * 0.33) + ' seconds. Brighter means louder.',
-      liveText: s.frozen ? 'Paused' : 'Live', liveColor: s.frozen ? '#F5C518' : '#3E9E5C',
+      liveText: s.frozen ? 'Paused' : (this.rtOn ? this.rtSays() : 'Live'), liveColor: s.frozen ? '#F5C518' : (this.rtOn && !(this.rtLive && this.rtLive.status === 'live') ? '#FF5A4F' : '#3E9E5C'),
+      calLine: this.rtOn ? (this.rtLive && this.rtLive.calibrated ? 'Calibrated ' + this.rtLive.cal.calibrated + ' · ' + this.rtLive.cal.how : 'Not calibrated yet, so the levels are an estimate. Calibrate with a 94 dB calibrator or a sound level meter.') : 'dbx RTA-M · 12 Oct · +2.4 dB offset · gain locked',
+      calHead: this.rtOn && !(this.rtLive && this.rtLive.calibrated) ? 'Mic not calibrated' : 'Mic calibrated',
       // SPL
       leqs: [['1m', 60], ['15m', 900], ['30m', 1800], ['1h', 3600], ['8h', 28800]].map(([k, sec]) => ({ k, v: this.lkLeq(sec), c: '#4CD964' })),
       resetLeq: () => { this.lkSecs = []; this.setState({ lkReset: Date.now() }); },

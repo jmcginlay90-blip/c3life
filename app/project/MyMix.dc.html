@@ -171,6 +171,7 @@ input[type=range]:disabled{opacity:.45}
   .sp{width:38px;height:38px;font-size:16px}
   .tool{width:44px;height:44px}
   .eqwrap .eqcurve{display:none}
+  .eqwrap .eqrta{display:none}
   .eqb .fader{min-height:60px}
   .eqb .eqsel{margin-top:2px}
   .eqtop .ub{height:40px}
@@ -248,6 +249,7 @@ input[type=range]:disabled{opacity:.45}
 .eqtop .onb{margin:0;padding:0 14px}
 .eqsel{min-height:44px;border-radius:6px;border:1px solid #3A3F47;background:#141518;color:#ECEEF1;font:500 14px 'IBM Plex Sans',system-ui,sans-serif;padding:0 6px;margin:4px 6px 0}
 .eqbus{font-size:12px;color:#7D838C;margin-left:auto}
+.eqrta{font-size:12px;color:#9CCBF8;padding:0 2px}
 .eqcurve{width:100%;height:110px;background:#0C0D0F;border-radius:6px;flex:none}
 .eqbands{flex:1;min-height:0;display:flex;gap:6px;overflow:hidden}
 .strip.eqb{flex:1 1 0;min-width:0;max-width:220px}
@@ -469,11 +471,15 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
           <button class="{{hpfCls}}" onClick="{{toggleHpf}}" aria-pressed="{{hpfOn}}" aria-label="Low cut">LOW CUT</button>
           <select value="{{hpfF}}" onChange="{{setHpf}}" aria-label="Low cut frequency" class="eqsel"><sc-for list="{{hpfOpts}}" as="o" hint-placeholder-count="6"><option value="{{o.v}}">{{o.t}}</option></sc-for></select>
           <button class="ub" style="width:auto;padding:0 14px;font-size:14px" onClick="{{flatEq}}" disabled="{{locked}}">Flat</button>
+          <button class="{{rtaCls}}" onClick="{{toggleRta}}" aria-pressed="{{rtaOn}}" aria-label="RTA on my mix">RTA</button>
+          <div style="display:contents"><sc-if value="{{tqShow}}" hint-placeholder-val="{{ false }}"><button class="onb" onClick="{{tqOpen}}" aria-label="Tap EQ: a channel's own EQ for the in-ears">TAP EQ</button></sc-if></div>
           <span class="eqbus">EQ on {{busName}} only</span>
         </div>
+        <div style="display:contents"><sc-if value="{{rtaOn}}" hint-placeholder-val="{{ false }}"><div class="eqrta" role="status">{{rtaLine}}</div></sc-if></div>
         <svg class="eqcurve" viewBox="0 0 300 90" preserveAspectRatio="none" role="img" aria-label="EQ curve">
           <line x1="0" x2="300" y1="{{eqZero}}" y2="{{eqZero}}" stroke="#3A3F47" stroke-width="1"></line>
           <line x1="75" x2="75" y1="0" y2="90" stroke="#1F2228"></line><line x1="150" x2="150" y1="0" y2="90" stroke="#1F2228"></line><line x1="225" x2="225" y1="0" y2="90" stroke="#1F2228"></line>
+          <path d="{{eqRta}}" fill="rgba(108,180,245,.22)" stroke="rgba(108,180,245,.55)" stroke-width="1" vector-effect="non-scaling-stroke"></path>
           <polyline points="{{eqPts}}" fill="none" stroke="#4AA8FF" stroke-width="2.5" vector-effect="non-scaling-stroke"></polyline>
         </svg>
         <div class="eqbands">
@@ -523,6 +529,26 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
         </div>
       </div>
     </sc-if>
+
+    <div style="display:contents"><sc-if value="{{tqOpenNow}}" hint-placeholder-val="{{ false }}">
+      <div class="panel" role="dialog" aria-label="Tap EQ" style="top:auto;bottom:16px;left:50%;right:auto;transform:translateX(-50%);width:min(440px, calc(100% - 24px))">
+        <div style="display:flex;align-items:center;gap:10px"><div style="flex:1;font-size:17px;font-weight:600">Tap EQ</div><button class="ub" onClick="{{tqClose}}" aria-label="Close">✕</button></div>
+        <div class="ptext">A channel’s own EQ for the in-ears, on the Wing’s pre-fader send. Front of house doesn’t hear it.</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <select id="mm-tq-ch" value="{{tqCh}}" onChange="{{tqPick}}" aria-label="Tap EQ channel" class="eqsel" style="flex:1;min-height:44px"><sc-for list="{{tqChs}}" as="o" hint-placeholder-count="8"><option value="{{o.v}}">{{o.t}}</option></sc-for></select>
+          <button class="{{tqOnCls}}" onClick="{{tqToggle}}" aria-pressed="{{tqOn}}" disabled="{{tqLocked}}" aria-label="Tap EQ on" style="min-height:44px">ON</button>
+        </div>
+        <div class="ptext" style="color:{{tqWarnColor}}">{{tqWarn}}</div>
+        <sc-for list="{{tqBands}}" as="b" hint-placeholder-count="3">
+          <div style="display:grid;grid-template-columns:46px minmax(0,1fr) 54px 84px;gap:8px;align-items:center;min-height:44px">
+            <span style="font-size:13px;color:#C9CFD7">{{b.name}}</span>
+            <input type="range" min="-12" max="12" step="0.5" value="{{b.g}}" onChange="{{b.draftG}}" onPointerUp="{{b.sendG}}" onKeyUp="{{b.sendG}}" disabled="{{tqLocked}}" aria-label="{{b.aria}}" style="width:100%">
+            <span class="mono" style="font-size:13px;text-align:right">{{b.gText}}</span>
+            <select value="{{b.f}}" onChange="{{b.setF}}" disabled="{{tqLocked}}" aria-label="Tap EQ {{b.name}} frequency" class="eqsel"><sc-for list="{{b.fopts}}" as="o" hint-placeholder-count="6"><option value="{{o.v}}">{{o.t}}</option></sc-for></select>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if></div>
 
     <sc-if value="{{asking}}" hint-placeholder-val="{{ false }}">
       <div class="panel" role="dialog" aria-label="{{askTitle}}" style="top:auto;bottom:16px;left:50%;right:auto;transform:translateX(-50%);border-color:#F5C518">
@@ -640,8 +666,8 @@ class Component extends DCLogic {
       // what the Wing has now; anything FOH changed (that we didn't just send) comes into this mix
       const m = JSON.parse(JSON.stringify(this.state.mix)); let changed = false;
       this.src.forEach((x) => {
-        if (!x.ch) return; const w = j.sends[String(x.ch)]; if (!w) return; const c = m.ch[x.k]; if (!c) return;
-        const key = (f) => b + '/' + x.ch + '/' + f, recent = (f) => this.wSent && this.wSent[key(f)] && Date.now() - this.wSent[key(f)] < 3000;
+        const sk = this.sendKey(x); if (!sk) return; const w = j.sends[sk]; if (!w) return; const c = m.ch[x.k]; if (!c) return;
+        const key = (f) => b + '/' + sk + '/' + f, recent = (f) => this.wSent && this.wSent[key(f)] && Date.now() - this.wSent[key(f)] < 3000;
         const mcaDb = c.mca ? this.lvToDb(m.mca[c.mca]) : 0;
         if (w.lvl !== undefined && !recent('lvl')) { const lv = this.dbToLv(w.lvl - mcaDb); if (Math.abs(lv - c.lv) > 1) { c.lv = lv; changed = true; } }
         if (w.on !== undefined && !recent('on') && !!w.on !== !!c.on) { c.on = !!w.on; changed = true; }
@@ -650,6 +676,7 @@ class Component extends DCLogic {
       const st = j.strip || {};
       if (st.fdr !== undefined && !(this.wSent && Date.now() - (this.wSent[b + '/0/lvl'] || 0) < 3000)) { const lv = this.dbToLv(st.fdr); if (Math.abs(lv - m.master.lv) > 1) { m.master.lv = lv; changed = true; } }
       if (st.mute !== undefined && !(this.wSent && Date.now() - (this.wSent[b + '/0/on'] || 0) < 3000) && !!st.mute !== !!m.master.mute) { m.master.mute = !!st.mute; changed = true; }
+      if (this.eqFromWing(m, j.eq || {}, b)) changed = true;
       if (changed) { try { localStorage.setItem(this.key(), JSON.stringify(m)); } catch (e) {} }
       this.setState({ wingOn: true, wingCan: !!j.can_change, ...(changed ? { mix: m } : {}) });
     }).catch(() => { this.wBusy = false; });
@@ -659,16 +686,152 @@ class Component extends DCLogic {
     if (!this.state.wingOn || !this.state.wingCan || !prev || !next) return;
     const b = this.myBusNow(), q = this.wQueue || (this.wQueue = {});
     this.src.forEach((x) => {
-      if (!x.ch) return; const a = prev.ch[x.k], c = next.ch[x.k]; if (!a || !c) return;
+      const sk = this.sendKey(x); if (!sk) return; const a = prev.ch[x.k], c = next.ch[x.k]; if (!a || !c) return;
+      const who = x.aux ? { kind: 'aux', n: x.aux } : { n: x.ch };
       const mca = (mx, cc) => (cc.mca ? this.lvToDb(mx.mca[cc.mca]) : 0);
       const d0 = this.lvToDb(a.lv) + mca(prev, a), d1 = this.lvToDb(c.lv) + mca(next, c);
-      if (Math.abs(d1 - d0) > 0.05 || a.mca !== c.mca) q[b + '/' + x.ch + '/lvl'] = { bus: b, n: x.ch, field: 'lvl', value: Math.max(-144, Math.min(10, Math.round(d1 * 10) / 10)) };
-      if (!!a.on !== !!c.on) q[b + '/' + x.ch + '/on'] = { bus: b, n: x.ch, field: 'on', value: c.on ? 1 : 0 };
-      if (a.pan !== c.pan) q[b + '/' + x.ch + '/pan'] = { bus: b, n: x.ch, field: 'pan', value: c.pan };
+      if (Math.abs(d1 - d0) > 0.05 || a.mca !== c.mca) q[b + '/' + sk + '/lvl'] = { bus: b, ...who, field: 'lvl', value: Math.max(-144, Math.min(10, Math.round(d1 * 10) / 10)) };
+      if (!!a.on !== !!c.on) q[b + '/' + sk + '/on'] = { bus: b, ...who, field: 'on', value: c.on ? 1 : 0 };
+      if (a.pan !== c.pan) q[b + '/' + sk + '/pan'] = { bus: b, ...who, field: 'pan', value: c.pan };
     });
+    // the mix's EQ: the bus's own EQ on the Wing
+    const e0 = this.eqToWing(prev.eq), e1 = this.eqToWing(next.eq);
+    const diff = Object.keys(e1).filter((f) => e0[f] !== e1[f]);
+    // the first EQ change on this bus sends the whole EQ, so the desk has exactly what's on this screen
+    const all = diff.length && !(this.eqSynced || (this.eqSynced = {}))[b];
+    if (all) this.eqSynced[b] = true;
+    (all ? Object.keys(e1) : diff).forEach((f) => { q[b + '/eq/' + f] = { bus: b, n: 0, field: f, value: e1[f] }; });
     if (prev.master.lv !== next.master.lv) q[b + '/0/lvl'] = { bus: b, n: 0, field: 'lvl', value: Math.round(this.lvToDb(next.master.lv) * 10) / 10 };
     if (!!prev.master.mute !== !!next.master.mute) q[b + '/0/on'] = { bus: b, n: 0, field: 'on', value: next.master.mute ? 0 : 1 };
     if (prev.master.pan !== next.master.pan) q[b + '/0/pan'] = { bus: b, n: 0, field: 'pan', value: next.master.pan };
+  }
+  // Each EQ band's frequencies to choose from (Low, Low mid, High mid, High)
+  get EQF() { return [[60, 80, 100, 150, 200], [200, 300, 400, 600, 800, 1000], [1500, 2000, 2500, 3000, 4000, 5000], [5000, 6000, 8000, 10000, 12000]]; }
+  // ---- Tap EQ: a channel's own EQ for the in-ears (the Wing's EQ on its pre-fader send tap) ----
+  // It belongs to the channel, so it's heard in every monitor mix that has that channel. Its own access level.
+  tqLevel() {
+    let u = null, r = null; try { u = JSON.parse(localStorage.getItem('booth.user') || 'null'); r = JSON.parse(localStorage.getItem('booth.access') || 'null'); } catch (e) {}
+    if (!u) return 1;
+    const role = u.role || u.name;
+    if (role === 'Admin') return 2;
+    const row = Array.isArray(r) ? r.find((x) => x.name === role) : null;
+    if (row && row.p && row.p.length > 15) return row.p[15];
+    return { 'FOH sound': 2, Musician: 1 }[role] || 0;
+  }
+  tqDemo(ch) {
+    let d = null; try { d = JSON.parse(localStorage.getItem('booth.tapeq.' + ch) || 'null'); } catch (e) {}
+    return d || { 'peq/on': 0, 'peq/1g': 0, 'peq/1f': 200, 'peq/1q': 2, 'peq/2g': 0, 'peq/2f': 1000, 'peq/2q': 2, 'peq/3g': 0, 'peq/3f': 5000, 'peq/3q': 2 };
+  }
+  tqLoad() {
+    const s = this.state; if (!s.tq || !s.tq.open) return;
+    if (!s.wingOn) { this.setState({ tq: { ...s.tq, eq: this.tqDemo(s.tq.ch), can: this.tqLevel() >= 2, demo: true } }); return; }
+    if (this.tqBusy) return; this.tqBusy = true;
+    this.wApi('/api/wing/tapeq?n=' + s.tq.ch).then(({ j }) => {
+      this.tqBusy = false;
+      if (j && j.ok && this.state.tq && this.state.tq.ch === j.n && !(this.tqSent && Date.now() - this.tqSent < 2500)) this.setState({ tq: { ...this.state.tq, eq: j.eq, can: j.can_change, demo: false } });
+    }).catch(() => { this.tqBusy = false; });
+  }
+  tqSet(field, value) {
+    const s = this.state, tq = s.tq; if (!tq) return;
+    const eq = { ...(tq.eq || this.tqDemo(tq.ch)), [field]: value };
+    this.setState({ tq: { ...tq, eq } });
+    if (tq.demo || !s.wingOn) { try { localStorage.setItem('booth.tapeq.' + tq.ch, JSON.stringify(eq)); } catch (e) {} return; }
+    this.tqSent = Date.now();
+    this.wApi('/api/wing/tapeq', 'POST', { n: tq.ch, field, value }).then(({ j }) => {
+      if (!j || !j.ok) { this.setState({ toast: (j && j.error) || 'The Wing didn\u2019t take that.' }); clearTimeout(this.t); this.t = setTimeout(() => this.setState({ toast: '' }), 3000); }
+    }).catch(() => {});
+  }
+  tqVals() {
+    const s = this.state, lv = this.tqLevel(), tq = s.tq || {}, eq = tq.eq || this.tqDemo(tq.ch || 1);
+    const chs = this.src.filter((x) => x.ch).map((x) => ({ v: String(x.ch), t: this.chLabel(x.ch) }));
+    const can = lv >= 2 && (tq.can !== false);
+    const fopts = [[80, 120, 200, 300, 400], [300, 500, 800, 1000, 1500, 2000, 3000], [2000, 3000, 5000, 8000, 10000, 12000]];
+    const fmt = (f) => (f >= 1000 ? (f / 1000) + 'k' : String(f));
+    const near = (list, v) => list.reduce((a, o) => (Math.abs(Math.log(o / v)) < Math.abs(Math.log(a / v)) ? o : a));
+    return {
+      tqShow: lv >= 1,
+      tqOpen: () => { const ch = (chs[0] && Number(chs[0].v)) || 1; this.setState({ tq: { open: true, ch: (s.tq && s.tq.ch) || ch } }); setTimeout(() => this.tqLoad(), 0); },
+      tqClose: () => this.setState({ tq: { ...tq, open: false } }),
+      tqOpenNow: !!tq.open,
+      tqCh: String(tq.ch || ''), tqChs: chs,
+      tqPick: (e) => { this.setState({ tq: { open: true, ch: Number(e.target.value) } }); setTimeout(() => this.tqLoad(), 0); },
+      tqOn: !!eq['peq/on'], tqOnCls: eq['peq/on'] ? 'onb on' : 'onb', tqToggle: () => this.tqSet('peq/on', eq['peq/on'] ? 0 : 1),
+      tqLocked: !can,
+      tqWarn: lv < 2 ? 'You can look. Changing it needs Tap EQ control (Access levels).' : 'Heard in every in-ear mix that has ' + this.chName(tq.ch || 1) + ', not only yours.',
+      tqWarnColor: lv < 2 ? '#A3ACB8' : '#F5C518',
+      tqBands: ['1', '2', '3'].map((k, i) => {
+        const g = eq['peq/' + k + 'g'] || 0, f = eq['peq/' + k + 'f'] || [200, 1000, 5000][i], name = ['Low', 'Mid', 'High'][i];
+        const show = (x) => (x > 0 ? '+' : '') + x.toFixed(1);
+        return { name, g, gText: show(g), aria: 'Tap EQ ' + name + ' gain', f: String(near(fopts[i], f)), fopts: fopts[i].map((v) => ({ v: String(v), t: fmt(v) })),
+          draftG: (e) => { this.tqDraft = Number(e.target.value); const t = e.target.nextElementSibling; if (t) t.textContent = show(this.tqDraft); },
+          sendG: () => { if (this.tqDraft === undefined) return; const x = this.tqDraft; this.tqDraft = undefined; this.tqSet('peq/' + k + 'g', x); },
+          setF: (e) => this.tqSet('peq/' + k + 'f', Number(e.target.value)) };
+      })
+    };
+  }
+  // ---- the RTA behind My mix's EQ: the Wing's RTA on my bus, after the EQ ----
+  rtaPoint() {
+    const b = this.myBusNow();
+    this.wApi('/api/wing/rta', 'POST', { kind: 'bus', n: b, tap: 'POSTEQ' }).then(({ j }) => {
+      if (j && j.ok) this.setState({ rtaOn: true });
+      else { this.setState({ toast: (j && j.error) || 'The Wing\u2019s RTA didn\u2019t move.' }); clearTimeout(this.t); this.t = setTimeout(() => this.setState({ toast: '' }), 3500); }
+    }).catch(() => {});
+  }
+  rtaTick() {
+    const s = this.state;
+    if (!s.rtaOn || s.tab !== 'eq') return;
+    if (!s.wingOn) {  // the preview (or the Wing not live): a pretend RTA, shaped by this EQ
+      const m = s.mix, eq = m.eq, fx = (f) => Math.log10(f / 20) / Math.log10(1000);
+      const bands = Array.from({ length: 120 }, (_, i) => { const f = 20 * Math.pow(2, i / 12), x = fx(f); let g = -18 - 22 * (i / 119) + (i < 10 ? -6 : 0) + (Math.random() - 0.5) * 3;
+        if (eq.on) eq.bands.forEach((bd, k) => { const c = fx(bd.f); g += k === 0 ? bd.g / (1 + Math.exp((x - c) / 0.05)) : k === 3 ? bd.g / (1 + Math.exp((c - x) / 0.05)) : bd.g * Math.exp(-Math.pow(x - c, 2) / 0.02); });
+        if (eq.on && eq.hpf.on && f < eq.hpf.f) g -= Math.min(24, (eq.hpf.f - f) / eq.hpf.f * 30);
+        return g; });
+      this.setState({ mRta: { rta: bands, mine: true, fresh: true, demo: true } });
+      return;
+    }
+    if (this.rtaBusy) return;
+    this.rtaBusy = true;
+    this.wApi('/api/wing/rta').then(({ j }) => { this.rtaBusy = false; if (j && j.ok) this.setState({ mRta: j }); }).catch(() => { this.rtaBusy = false; });
+  }
+  rtaVals(W, H, fx, resp, xs) {
+    const s = this.state, r = s.mRta || {}, b = this.myBusNow();
+    const here = s.rtaOn && r.fresh && (r.mine || (r.kind === 'bus' && r.n === b)) && (r.rta || []).length === 120;
+    let d = '';
+    if (here) { r.rta.forEach((v, i) => { d += (i ? 'L' : 'M') + (fx(20 * Math.pow(2, i / 12)) * W).toFixed(1) + ',' + (H - Math.max(0, Math.min(1, (v + 60) / 60)) * (H - 4)).toFixed(1); }); d += 'L' + W + ',' + H + 'L0,' + H + 'Z'; }
+    return {
+      eqRta: d, rtaOn: !!s.rtaOn, rtaCls: s.rtaOn ? 'onb on' : 'onb',
+      rtaLine: !s.rtaOn ? '' : here ? (r.demo ? 'RTA: a demo of your mix after its EQ (not live on the Wing).' : 'RTA: your mix on the Wing, after its EQ.') : (s.wingOn && r.fresh && !r.mine ? 'The desk\u2019s RTA is on something else now. Tap RTA twice to bring it back to your mix.' : 'Waiting for the Wing\u2019s RTA\u2026'),
+      toggleRta: () => {
+        if (s.rtaOn) { this.setState({ rtaOn: false, mRta: null }); return; }
+        if (s.wingOn) { if (s.locked) { this.setState({ toast: 'The sound desk has locked monitor mixes for now.' }); return; } this.setState({ ask: { kind: 'rta', name: '' } }); return; }
+        this.setState({ rtaOn: true });
+      }
+    };
+  }
+  // A source's send, as the server names it: channel "12", or an aux input (the click) "a4".
+  sendKey(x) { return x.aux ? 'a' + x.aux : (x.ch ? String(x.ch) : null); }
+  // My mix's EQ on the Wing's bus EQ: Low cut is the low band set to cut; Low is a broad band 1 (the low band is the cut),
+  // Low mid and High mid are bands 2 and 3, High is the high shelf. Bands 4 to 6 are left as they are.
+  eqToWing(eq) {
+    const Q = { Wide: 0.7, Normal: 1.4, Narrow: 3 }, bd = eq.bands, cl = (g) => Math.max(-15, Math.min(15, g));
+    return { 'eq/on': eq.on ? 1 : 0, 'eq/leq': eq.hpf.on ? 'CUT' : 'SHV', 'eq/lf': eq.hpf.f, ...(eq.hpf.on ? {} : { 'eq/lg': 0 }),
+      'eq/1g': cl(bd[0].g), 'eq/1f': bd[0].f, 'eq/1q': 0.7, 'eq/2g': cl(bd[1].g), 'eq/2f': bd[1].f, 'eq/2q': Q[bd[1].q || 'Normal'],
+      'eq/3g': cl(bd[2].g), 'eq/3f': bd[2].f, 'eq/3q': Q[bd[2].q || 'Normal'], 'eq/heq': 'SHV', 'eq/hg': cl(bd[3].g), 'eq/hf': bd[3].f };
+  }
+  // what the Wing has, into my mix's EQ (FOH may have changed it), unless we just sent it
+  eqFromWing(m, w, b) {
+    if (!Object.keys(w).length) return false;
+    const recent = (f) => this.wSent && Date.now() - (this.wSent[b + '/eq/' + f] || 0) < 3000, e = m.eq;
+    let ch = false;
+    const set = (f, fn) => { if (w[f] !== undefined && !recent(f)) ch = fn(w[f]) || ch; };
+    set('eq/on', (v) => { if (!!v !== !!e.on) { e.on = !!v; return true; } return false; });
+    set('eq/leq', (v) => { const on = v === 'CUT'; if (on !== !!e.hpf.on) { e.hpf.on = on; return true; } return false; });
+    set('eq/lf', (v) => { if (e.hpf.on && Math.abs(v - e.hpf.f) > 1) { const opts = [40, 60, 80, 100, 120, 150]; e.hpf.f = opts.reduce((a, o) => (Math.abs(o - v) < Math.abs(a - v) ? o : a), opts[0]); return true; } return false; });
+    [['1', 0], ['2', 1], ['3', 2], ['h', 3]].forEach(([k, i]) => {
+      set('eq/' + k + 'g', (v) => { if (Math.abs(v - e.bands[i].g) >= 0.5) { e.bands[i].g = Math.round(v * 2) / 2; return true; } return false; });
+      set('eq/' + k + 'f', (v) => { const near = this.EQF[i].reduce((a, o) => (Math.abs(Math.log(o / v)) < Math.abs(Math.log(a / v)) ? o : a)); if (near !== e.bands[i].f) { e.bands[i].f = near; return true; } return false; });
+    });
+    return ch;
   }
   wingFlush() {
     const q = this.wQueue; if (!q || !Object.keys(q).length || this.wFlushing) return;
@@ -756,6 +919,8 @@ class Component extends DCLogic {
   clock() { const d = new Date(); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
 
   componentDidMount() {
+    this.rtaT = setInterval(() => this.rtaTick(), 250);
+    this.tqT = setInterval(() => this.tqLoad(), 1500);
     const check = () => { let lock = false, u = null; try { lock = localStorage.getItem('booth.mixlock') === 'locked'; u = JSON.parse(localStorage.getItem('booth.user') || 'null'); } catch (e) {} if (lock !== this.state.locked || (u && (!this.state.user || u.name !== this.state.user.name))) this.setState({ locked: lock, user: u }); };
     // A saved mix picked on the sign-in pop-up: load it once, with Undo available.
     const pending = () => {
@@ -791,7 +956,7 @@ class Component extends DCLogic {
     this.onResize = () => { const w = window.innerWidth, h = window.innerHeight; if (w !== this.state.vw || h !== this.state.vh) this.setState({ vw: w, vh: h }); };
     window.addEventListener('resize', this.onResize); window.addEventListener('orientationchange', this.onResize);
   }
-  componentWillUnmount() { clearInterval(this.wingT); clearInterval(this.wingF); clearInterval(this.syncPoll); clearTimeout(this.pushTimer); clearInterval(this.poll); clearTimeout(this.t); window.removeEventListener('resize', this.onResize); window.removeEventListener('orientationchange', this.onResize); }
+  componentWillUnmount() { clearInterval(this.tqT); clearInterval(this.rtaT); clearInterval(this.wingT); clearInterval(this.wingF); clearInterval(this.syncPoll); clearTimeout(this.pushTimer); clearInterval(this.poll); clearTimeout(this.t); window.removeEventListener('resize', this.onResize); window.removeEventListener('orientationchange', this.onResize); }
   save(next, say, keepUndo) {
     try { localStorage.setItem(this.key(), JSON.stringify(next)); } catch (e) {}
     this.wingPush(this.state.mix, next);
@@ -910,7 +1075,7 @@ class Component extends DCLogic {
         const eq = m.eq;
         const ed = (fn, say) => { if (s.locked) return; const n = JSON.parse(JSON.stringify(m)); fn(n.eq); this.save(n, say); };
         const fmtF = (f) => (f >= 1000 ? (f / 1000) + 'k' : String(f));  // short, so the menus fit a phone (Hz)
-        const freqs = [[60, 80, 100, 150, 200], [200, 300, 400, 600, 800, 1000], [1500, 2000, 2500, 3000, 4000, 5000], [5000, 6000, 8000, 10000, 12000]];
+        const freqs = this.EQF;
         // Curve: add up each band as a smooth bump on a log scale (shelves keep going to the edge).
         const W = 300, H = 90, xs = [];
         for (let i = 0; i <= 60; i++) xs.push(i / 60);
@@ -933,6 +1098,9 @@ class Component extends DCLogic {
           hpfOn: eq.hpf.on, hpfCls: eq.hpf.on ? 'onb on' : 'onb', toggleHpf: () => ed((q) => { q.hpf.on = !q.hpf.on; }),
           hpfF: String(eq.hpf.f), hpfOpts: [40, 60, 80, 100, 120, 150].map((f) => ({ v: String(f), t: String(f) })), setHpf: (e) => ed((q) => { q.hpf.f = Number(e.target.value); }),
           eqPts: pts, eqZero: (H / 2).toFixed(1),
+          // The Wing's RTA of my mix (after the EQ), behind the curve, like the channel EQ on Mixer
+          ...this.rtaVals(W, H, fx, resp, xs),
+          ...this.tqVals(),
           flatEq: () => ed((q) => { q.bands.forEach((b) => { b.g = 0; }); }, 'EQ flat'),
           eqBands: eq.bands.map((b, i) => {
             const f = this.fader(['eq', i], ((b.g + 12) / 24) * 100);
@@ -973,11 +1141,12 @@ class Component extends DCLogic {
           noSaved: list.length === 0,
           askFoh: () => this.setState({ ask: { kind: 'foh', name: 'the sound desk\u2019s starting mix' } }),
           asking: !!a,
-          askTitle: !a ? '' : ({ update: 'Update \u201c' + a.name + '\u201d?', save: (a.over ? 'Replace \u201c' + a.name + '\u201d?' : 'Save as \u201c' + a.name + '\u201d?'), load: 'Load \u201c' + a.name + '\u201d?', foh: 'Load FOH\u2019s starting mix?', del: 'Delete \u201c' + a.name + '\u201d?' })[a.kind],
-          askText: !a ? '' : ({ update: 'Replaces the saved \u201c' + a.name + '\u201d with your mix as it is now: levels, pans, ON, MCAs, EQ and layout. Your mix in your ears doesn\u2019t change. You can undo it straight after.', save: (a.over ? 'You already have a mix with this name. Saving replaces it with your mix as it is now.' : 'Saves your levels, pans, ON, MCAs, EQ and layout as they are now.'), load: 'Replaces your mix now (levels, pans, MCAs, EQ and layout). You can undo straight after.', foh: 'Puts your mix back to how FOH set it up. Your saved mixes are kept.', del: 'This saved mix will be removed. Your mix in your ears does not change.' })[a.kind],
-          askBtn: !a ? '' : ({ update: 'Yes, update it', save: a.over ? 'Yes, replace it' : 'Yes, save it', load: 'Yes, load it', foh: 'Yes, load it', del: 'Yes, delete it' })[a.kind],
+          askTitle: !a ? '' : ({ update: 'Update \u201c' + a.name + '\u201d?', save: (a.over ? 'Replace \u201c' + a.name + '\u201d?' : 'Save as \u201c' + a.name + '\u201d?'), load: 'Load \u201c' + a.name + '\u201d?', foh: 'Load FOH\u2019s starting mix?', del: 'Delete \u201c' + a.name + '\u201d?', rta: 'Put the desk\u2019s RTA on your mix?' })[a.kind],
+          askText: !a ? '' : ({ update: 'Replaces the saved \u201c' + a.name + '\u201d with your mix as it is now: levels, pans, ON, MCAs, EQ and layout. Your mix in your ears doesn\u2019t change. You can undo it straight after.', save: (a.over ? 'You already have a mix with this name. Saving replaces it with your mix as it is now.' : 'Saves your levels, pans, ON, MCAs, EQ and layout as they are now.'), load: 'Replaces your mix now (levels, pans, MCAs, EQ and layout). You can undo straight after.', foh: 'Puts your mix back to how FOH set it up. Your saved mixes are kept.', del: 'This saved mix will be removed. Your mix in your ears does not change.' , rta: 'The Wing\u2019s RTA, and the sound desk\u2019s RTA screen, will show your mix (after its EQ) until someone moves it to something else.' })[a.kind],
+          askBtn: !a ? '' : ({ update: 'Yes, update it', save: a.over ? 'Yes, replace it' : 'Yes, save it', load: 'Yes, load it', foh: 'Yes, load it', del: 'Yes, delete it', rta: 'Yes, show my mix' })[a.kind],
           askCancel: () => this.setState({ ask: null }),
           askYes: () => {
+            if (a.kind === 'rta') { this.setState({ ask: null }); this.rtaPoint(); return; }
             const t = new Date(); const at = t.toLocaleDateString([], { day: 'numeric', month: 'short' }) + ' ' + t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             if (a.kind === 'update') { const old = list.find((y) => y.id === a.id); if (old) { const now = { ...old, mix: JSON.parse(JSON.stringify(m)), updated: at }; this.putSaves(list.map((y) => (y.id === a.id ? now : y))); this.setState({ ask: null, loadedId: a.id, undoUpdate: { id: a.id, name: a.name, prev: old }, toast: '\u2713 Updated \u201c' + a.name + '\u201d' }); } else this.setState({ ask: null }); return; }
             if (a.kind === 'save') { const rest = list.filter((x) => x.name.toLowerCase() !== a.name.toLowerCase()); const nid = 'm' + Date.now(); this.putSaves([{ id: nid, name: a.name, at, mix: m }].concat(rest)); this.setState({ ask: null, saveName: '', loadedId: nid, undoUpdate: null, toast: '\u2713 Saved \u201c' + a.name + '\u201d' }); }
