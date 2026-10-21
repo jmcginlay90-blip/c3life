@@ -351,7 +351,8 @@ class Component extends DCLogic {
     this.fixList = [
       { q: 'The app won’t open on my phone', c: '#FF7A45', href: 'Connect.dc.html', go: 'Internet & reports', steps: [
         'Check the phone is on the Booth Control Wi-Fi, not the church guest Wi-Fi.',
-        'Type http://c3life.local in the browser. If that fails, try http://192.168.10.10. This works the same in Safari, Chrome or Edge on a phone, iPad or laptop.',
+        'Type http://c3life.local in the browser. It finds the C3 Life server by name, so it works even if the server\u2019s address changes. This works the same in Safari, Chrome or Edge on a phone, iPad or laptop.',
+        'If c3life.local doesn\u2019t open: some Wi-Fi blocks finding things by name (between Wi-Fi and the wired booth network, or on guest Wi-Fi), and some older Android phones can\u2019t. Use the server\u2019s number instead, shown when C3 Life was installed (for example http://192.168.10.10). Reserving that number on the router keeps it the same.',
         'Look at the C3 Life server: the power button glows white when it’s on. Its screen shows C3 Life when it’s working.',
         'Still nothing? Use C3 Life server power › Restart C3 Life from any phone. If no phone can reach it, switch the smart plug off and on (its page is http://192.168.10.5), or hold the C3 Life server’s power button for 5 seconds and press it again. It takes about a minute to start.'] },
       { q: 'A device shows orange', c: '#FF7A45', href: 'Devices.dc.html', go: 'Devices', steps: [

@@ -407,7 +407,10 @@ for ($i = 0; $i -lt 10 -and -not $ok; $i++) {
   try { $ok = (Invoke-RestMethod -Uri "http://127.0.0.1:$Port/api/health" -TimeoutSec 2).ok } catch { }
 }
 Write-Host ''
-if ($ok) { Write-Host "C3 Life is running: http://c3life.local (or http://$((Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -like '192.168.10.*' } | Select-Object -First 1).IPAddress))" -ForegroundColor Green }
+if ($ok) {
+  $ips = @(Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue | Where-Object { $_.PrefixOrigin -ne 'WellKnown' -and $_.IPAddress -notlike '169.254.*' -and $_.IPAddress -notlike '127.*' } | ForEach-Object { "http://$($_.IPAddress)" })
+  Write-Host "C3 Life is running: http://$($env:COMPUTERNAME.ToLower()).local$(if ($ips) { ' (or ' + ($ips -join ', ') + ')' })" -ForegroundColor Green
+}
 else { Write-Host "Installed. C3 Life starts the next time $BoothUser signs in (restart the PC to check)." -ForegroundColor Yellow }
 Write-Host ''
 Write-Host 'Everyone starts with PIN 1234, and Admin with the password c3life-admin. Change each one before real use, for example:' -ForegroundColor Yellow
