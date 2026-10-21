@@ -114,6 +114,15 @@ def valid_people(people, ids):
     return ""
 
 
+def captions_why(e):
+    """Why subtitles can't start, in words (not the error's class name)."""
+    if isinstance(e, FileNotFoundError):
+        return "Subtitles aren't set up yet: the speech model isn't on the C3 Life server. Run Install-C3Life.ps1 (without -NoSubtitles)."
+    if isinstance(e, ImportError):
+        return "Subtitles aren't set up yet: Vosk (the speech recogniser) isn't installed. Run Install-C3Life.ps1 (without -NoSubtitles)."
+    return "Subtitles aren't working on the C3 Life server (%s)." % (str(e) or e.__class__.__name__)[:120]
+
+
 class Source:
     """One running stream: a single ffmpeg, shared by everyone listening to it."""
 
@@ -123,6 +132,8 @@ class Source:
         self.lock = threading.Lock()
         self.proc = None
         self.idle_since = None
+        self.error = ""     # why there's no sound, in words (ffmpeg missing, the sound device not there)
+        self.err_line = ""  # ffmpeg's last complaint
 
     def add(self):
         q = queue.Queue(maxsize=64)  # about 16 s of audio; a listener that falls further behind is dropped
@@ -141,14 +152,34 @@ class Source:
 
     def start(self):
         self.log.info("listen: starting %s", self.sid)
+        self.error = self.err_line = ""
         try:
-            self.proc = subprocess.Popen(self.cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL,
+            self.proc = subprocess.Popen(self.cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL,
                                          creationflags=(0x08000000 if os.name == "nt" else 0))
         except OSError as e:
             self.log.error("listen: can't start ffmpeg for %s: %s", self.sid, e)
+            self.error = ("ffmpeg isn't installed on the C3 Life server, so Listen has no sound. Run Install-C3Life.ps1 on the server." if os.name == "nt" else
+                          "ffmpeg isn't installed on this computer, so Listen has no sound. Listen reads Dante Virtual Soundcard on the Windows C3 Life server.")
             self.proc = None
+            for q in list(self.listeners):
+                q.put(None)
             return
         threading.Thread(target=self.pump, args=(self.proc,), daemon=True).start()
+        threading.Thread(target=self._errors, args=(self.proc,), daemon=True).start()
+
+    def _errors(self, proc):
+        for line in proc.stderr:
+            t = line.decode("utf-8", "replace").strip()
+            if t:
+                self.err_line = t[:200]
+
+    def why(self):
+        """Why this source has no sound, in words."""
+        if self.error:
+            return self.error
+        if os.name != "nt" and not self.err_line:
+            return "No sound arrived. Listen reads Dante Virtual Soundcard, which runs on the Windows C3 Life server."
+        return "No sound arrived from Dante Virtual Soundcard" + (" (%s)." % self.err_line if self.err_line else ". Is it running?")
 
     def pump(self, proc):
         while True:
@@ -348,7 +379,7 @@ class Listen:
             try:
                 factory = self.engine_factory()
             except Exception as e:
-                return {"status": "unavailable", "reason": "Subtitles aren't set up on the C3 Life server yet (%s)." % e.__class__.__name__, "lines": [], "partial": ""}
+                return {"status": "unavailable", "reason": captions_why(e), "lines": [], "partial": ""}
             old = c
             c = self.captioners[src["id"]] = Captioner(src["id"], caption_command(self.cfg, src), factory, self.log, self.translator)
             c.transcript = self.transcripts
@@ -431,14 +462,14 @@ class Captioner:
         try:
             engine = self.make_engine()
         except Exception as e:  # vosk not installed, or no model
-            self.status, self.reason = "unavailable", "Subtitles aren't set up on the C3 Life server (%s)." % e.__class__.__name__
+            self.status, self.reason = "unavailable", captions_why(e)
             self.log.warning("captions: %s unavailable: %s", self.sid, e)
             return
         try:
             self.proc = subprocess.Popen(self.cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL,
                                          creationflags=(0x08000000 if os.name == "nt" else 0))
         except OSError as e:
-            self.status, self.reason = "unavailable", "Can't start ffmpeg."
+            self.status, self.reason = "unavailable", "Subtitles need ffmpeg, which isn't installed on the C3 Life server."
             self.log.error("captions: %s: %s", self.sid, e)
             return
         self.status = "live"

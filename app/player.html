@@ -11,7 +11,7 @@
   function apply(){var no=!chatOk(),h=document.documentElement;if(no!==h.hasAttribute('data-nochat')){if(no)h.setAttribute('data-nochat','');else h.removeAttribute('data-nochat');}names();}
   apply();setInterval(apply,1000);
   try{window.addEventListener('storage',apply);}catch(e){}
-  try{new MutationObserver(names).observe(document.getElementById('app')||document.body,{childList:true,subtree:true});}catch(e){}
+  try{new MutationObserver(names).observe(document.getElementById('app')||document.body,{childList:true,characterData:true,subtree:true});}catch(e){}
 })();
 </script>
 <script>
@@ -32,7 +32,7 @@ function walk(node, scope, out){
   const el = node.namespaceURI==='http://www.w3.org/2000/svg' ? document.createElementNS(node.namespaceURI, node.tagName) : document.createElement(tag);
   for(const a of node.attributes){
     const v=interp(a.value,scope);
-    if(/^on[A-Z]/.test(a.name)||/^on/.test(a.name)&&a.value.includes('{{')){ if(typeof v==='function'){ let ev=a.name.slice(2).toLowerCase(); if(ev==='change'&&(tag==='input'&&!['checkbox','radio'].includes(node.getAttribute('type'))||tag==='textarea')) ev='input'; el.addEventListener(ev,v);} continue; }
+    if(/^on[A-Z]/.test(a.name)||/^on/.test(a.name)&&a.value.includes('{{')){ if(typeof v==='function'){ let ev=a.name.slice(2).toLowerCase(); if(ev==='change'&&(tag==='input'&&!['checkbox','radio'].includes(node.getAttribute('type'))||tag==='textarea')) ev='input'; (el.__h||(el.__h={}))[ev]=v; listen(el,ev);} continue; }
     if(['disabled','checked','selected','hidden'].includes(a.name)&&a.value.includes('{{')){ if(v) el.setAttribute(a.name,''); continue; }
     if(a.name==='value'&&(tag==='input'||tag==='select'||tag==='textarea')){ el.__val=v; }
     el.setAttribute(a.name, v==null?'':v);
@@ -41,13 +41,39 @@ function walk(node, scope, out){
   if(el.__val!==undefined) setTimeout(()=>{el.value=el.__val;});
   out.appendChild(el);
 }
+// Each render is compared with what's on screen, and only what changed is changed. The element you're typing in or
+// dragging stays the same element (Safari drops keystrokes and drags when it's swapped for a new one), animations keep
+// running, and scroll positions and open drop-downs stay as they are.
+function listen(el,ev){ const on=el.__on||(el.__on={}); if(on[ev]) return; on[ev]=1; el.addEventListener(ev,(e)=>{ const f=el.__h&&el.__h[ev]; if(f) return f(e); }); }
+function sameNode(o,n){ if(o.nodeType!==n.nodeType) return false; if(o.nodeType!==1) return true; if(o.namespaceURI!==n.namespaceURI||o.tagName!==n.tagName) return false;
+  if((o.id||n.id)&&o.id!==n.id) return false; if(o.classList&&o.classList.contains('dcimp')) return n.classList.contains('dcimp')&&o.dataset.name===n.dataset.name;
+  if(o.tagName==='INPUT'&&o.type!==(n.getAttribute('type')||'text')) return false; return true; }
+function patchNode(o,n){
+  if(o.nodeType!==1){ if(o.nodeValue!==n.nodeValue) o.nodeValue=n.nodeValue; return; }
+  for(const a of [...o.attributes]){ if(!n.hasAttribute(a.name)&&!(a.name==='open'&&o.tagName==='DETAILS')&&!(a.name==='style'&&o.tagName==='BUTTON'&&window.__onServer)) o.removeAttribute(a.name); }
+  for(const a of n.attributes){ if(o.getAttribute(a.name)!==a.value) o.setAttribute(a.name,a.value); }
+  o.__h=n.__h; if(n.__on) Object.keys(n.__on).forEach(ev=>listen(o,ev));
+  const t=o.tagName;
+  if(t==='INPUT'&&(o.type==='checkbox'||o.type==='radio')) o.checked=n.hasAttribute('checked');
+  if(t==='OPTION') o.selected=n.hasAttribute('selected');
+  if(o.classList.contains('dcimp')){ const k=hosts.indexOf(n); if(k>-1) hosts[k]=o; return; }  // a child screen draws itself in here
+  morph(o,n);
+  if(n.__val!==undefined){ const v=n.__val==null?'':String(n.__val); if(!(document.activeElement===o&&o.value===v)&&o.value!==v){ o.value=v; if(t==='SELECT') setTimeout(()=>{ if(o.value!==v) o.value=v; }); } }
+}
+function morph(cur,next){
+  const a=[...cur.childNodes], b=[...next.childNodes];
+  for(let i=0;i<b.length;i++){ const o=a[i], n=b[i];
+    if(!o){ cur.appendChild(n); continue; }
+    if(sameNode(o,n)) patchNode(o,n); else cur.replaceChild(n,o); }
+  for(let i=b.length;i<a.length;i++) a[i].remove();
+}
 // On the C3 Life server the app is real, so the mock-up's "Demo: ..." buttons (which fake a state) are hidden.
 function hideDemos(root){ if(!window.__onServer) return; root.querySelectorAll('button').forEach(b=>{ if(/^\s*Demo:/.test(b.textContent)) b.style.display='none'; }); }
 fetch('/api/health').then(r=>r.ok?r.json():null).then(h=>{ if(h&&h.service==='c3life'){ window.__onServer=true; hideDemos(document.getElementById('app'));
   // Remote support: say so on every screen, so nobody forgets they're changing the booth from outside
   if(h.remote && !/Listen\.dc\.html/.test(location.search)){ const b=document.createElement('div'); b.id='remote-badge'; b.setAttribute('role','status'); b.textContent='Remote support \u00b7 connected from outside the building'; b.style.cssText='position:fixed;left:50%;bottom:56px;transform:translateX(-50%);z-index:50;pointer-events:none;background:#B48CF2;color:#0D1015;font:600 12px IBM Plex Sans,system-ui,sans-serif;border-radius:999px;padding:5px 12px;box-shadow:0 4px 14px rgba(0,0,0,.4);white-space:nowrap'; document.body.appendChild(b); } } }).catch(()=>{});
-function renderChild(inst){ try{ const v=inst.renderVals(); const f=document.createDocumentFragment(); const saved=hosts; hosts=[]; inst.__def.tpl.childNodes.forEach(c=>walk(c,v,f)); hosts=saved; inst.__host.replaceChildren(f); hideDemos(inst.__host);}catch(e){errors.push(e.stack);} }
-window.__render=()=>{ if(!comp) return; const app=document.getElementById('app'); const act=document.activeElement; const id=act&&act.id; const al=act&&act.getAttribute&&act.getAttribute('aria-label'); hosts=[]; const openD=[...app.querySelectorAll('details')].map(d=>d.open); const scr=[...app.querySelectorAll('main')].map(m=>m.scrollTop); const scl=[...app.querySelectorAll('.strips')].map(m=>m.scrollLeft); const sct=[...app.querySelectorAll('.subs')].map(m=>({t:m.scrollTop,end:m.scrollHeight-m.scrollTop-m.clientHeight<40})); try{ const vals=comp.renderVals(); const frag=document.createDocumentFragment(); tpl.childNodes.forEach(c=>walk(c,vals,frag)); app.replaceChildren(frag);}catch(e){errors.push(e.stack);} app.querySelectorAll('details').forEach((d,i)=>{ if(openD[i]) d.open=true; }); app.querySelectorAll('main').forEach((m,i)=>{ if(scr[i]) m.scrollTop=scr[i]; }); app.querySelectorAll('.strips').forEach((m,i)=>{ if(scl[i]) m.scrollLeft=scl[i]; }); app.querySelectorAll('.subs').forEach((m,i)=>{ const v=sct[i]; if(!v) return; m.scrollTop = v.end ? m.scrollHeight : v.t; }); hideDemos(app);
+function renderChild(inst){ try{ const v=inst.renderVals(); const f=document.createDocumentFragment(); const saved=hosts; hosts=[]; inst.__def.tpl.childNodes.forEach(c=>walk(c,v,f)); morph(inst.__host,f); hosts=saved; hideDemos(inst.__host);}catch(e){errors.push(e.stack);} }
+window.__render=()=>{ if(!comp) return; const app=document.getElementById('app'); const act=document.activeElement; const id=act&&act.id; const al=act&&act.getAttribute&&act.getAttribute('aria-label'); hosts=[]; const openD=[...app.querySelectorAll('details')].map(d=>d.open); const scr=[...app.querySelectorAll('main')].map(m=>m.scrollTop); const scl=[...app.querySelectorAll('.strips')].map(m=>m.scrollLeft); const sct=[...app.querySelectorAll('.subs')].map(m=>({t:m.scrollTop,end:m.scrollHeight-m.scrollTop-m.clientHeight<40})); try{ const vals=comp.renderVals(); const frag=document.createDocumentFragment(); tpl.childNodes.forEach(c=>walk(c,vals,frag)); morph(app,frag);}catch(e){errors.push(e.stack);} app.querySelectorAll('details').forEach((d,i)=>{ if(openD[i]) d.open=true; }); app.querySelectorAll('main').forEach((m,i)=>{ if(scr[i]) m.scrollTop=scr[i]; }); app.querySelectorAll('.strips').forEach((m,i)=>{ if(scl[i]) m.scrollLeft=scl[i]; }); app.querySelectorAll('.subs').forEach((m,i)=>{ const v=sct[i]; if(!v) return; m.scrollTop = v.end ? m.scrollHeight : v.t; }); hideDemos(app);
   hosts.forEach((h,k)=>{ const d=defs[h.dataset.name]; if(!d) return; let inst=insts[k]; const fresh=!inst||inst.__def!==d; if(fresh){ inst=new d.C({}); inst.__def=d; insts[k]=inst; } inst.__host=h; inst.__rerender=()=>renderChild(inst); renderChild(inst); if(fresh&&inst.componentDidMount) inst.componentDidMount(); });
   if(id){const n=document.getElementById(id); n&&n.focus({preventScroll:true});} else if(al && act!==document.body){ const n=[...app.querySelectorAll('[aria-label]')].find(x=>x.getAttribute('aria-label')===al); n&&n.focus({preventScroll:true}); } };
 async function compile(name){ const txt=await (await fetch('/project/'+name)).text(); const doc=new DOMParser().parseFromString(txt,'text/html'); const x=doc.querySelector('x-dc'); const helm=x.querySelector('helmet'); let css=''; if(helm){ css=helm.innerHTML; helm.remove(); } const sc=doc.querySelector('script[data-dc-script]').textContent; const C=new Function('DCLogic', sc+'; return Component;')(DCLogic); return {tpl:x, C, css}; }

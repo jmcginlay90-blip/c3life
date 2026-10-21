@@ -309,7 +309,14 @@ class NameTags:
             if d["status"] == "unavailable" and self.data.get("tags"):
                 keep = {k: self.data[k] for k in ("plan", "tags", "leader", "items") if k in self.data}
                 d.update(keep, stale=True)  # keep last week's good read rather than nothing
+            # a name typed while Planning Center was being read: keep it, rather than the read's older copy
+            typed = (self.saved.get("typed") or {}).get(str((d.get("plan") or {}).get("id")), {})
+            late = [t for t in d["tags"] if t.get("item_id") and typed.get(t["item_id"]) and t["text"] != typed[t["item_id"]]]
+            for t in late:
+                t.update(text=typed[t["item_id"]], source="typed")
             self.data = d
+        if late:
+            self.match(late)
         return self.get()
 
     def run(self):

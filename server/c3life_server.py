@@ -49,6 +49,11 @@ API (JSON):
   GET  /api/wing/tapeq?n=<1-40>            (Tap EQ view) a channel's tap EQ: its own 3-band EQ on the pre-fader send tap,
                                            heard in every monitor mix that takes the channel pre-fader (not front of house)
   POST /api/wing/tapeq {"n","field","value"}   (Tap EQ control) "peq/on", "peq/1g", "peq/1f", "peq/1q", ... 3
+  GET  /api/music                          (Music view) Spotify on the Mac mini (through the C3 Life helper), the playlists,
+                                           whether ProPresenter is open there, and "can" (Music control)
+  PUT  /api/music {"playlists","fade_seconds","walk_in_volume"}   (Music control) the playlists: {"name", "uri"}
+  POST /api/music/do {"do": "play|pause|next|previous|volume|playlist|fade", ...}   (Music control) passed to the helper
+  POST /api/music/propresenter             (Music control) open ProPresenter on the Mac mini
   GET  /api/wing/history?n=&since=          (Mixer view) the open channel's last 8 s of level and gate/comp gain reduction
   GET  /api/wing/rta                       (Mixer view) the Wing's RTA: 120 bands from 20 Hz, and what it's on
   POST /api/wing/rta {"n","tap","kind"?}   (Mixer control; a musician for their own mix, "kind": "bus") point the Wing's
@@ -142,6 +147,7 @@ import rta_inputs as rta_inputs_mod
 import rta_patch as rta_patch_mod
 import dante_names as dante_names_mod
 import lightkey as lightkey_mod
+import music as music_mod
 import rta_live as rta_live_mod
 import midi_in as midi_mod
 
@@ -207,6 +213,10 @@ DEFAULTS = {
     # Network scan (Drivers screen): by itself at start-up and every 5 minutes. It only asks; it connects what it
     # recognises in Watch only, follows a device that moved, and never turns Control on. Which networks: allowed_networks.
     "scan_auto": True,
+    # Music: the C3 Life helper on the Mac mini (helper/c3life_helper.py), which plays Spotify and opens ProPresenter.
+    # Its key is shown when the helper starts; it stays here and is never sent to phones.
+    "helper": "http://192.168.10.30:8099",
+    "helper_key": "",
 }
 
 # What a device listening from home may open: the Listen page and its audio, nothing else.
@@ -385,7 +395,7 @@ def _ip_ok(x):
         return False
 
 
-def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bible=None, cues=None, reports=None, plan=None, desk=None, tio=None, monitors=None, scanner=None, foyer=None, rta_inputs=None, dante_names=None, lights=None, rta_live=None, midi=None):
+def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bible=None, cues=None, reports=None, plan=None, desk=None, tio=None, monitors=None, scanner=None, foyer=None, rta_inputs=None, dante_names=None, lights=None, rta_live=None, midi=None, music=None):
     nets = cfg["_nets"]
     remote_nets = cfg.get("_remote", [])
 
@@ -516,12 +526,24 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 return
             source, q = listen.open(src)
             log.info("listen: %s started %s%s", s["name"] or "someone not signed in", sid, " (from home)" if self.remote else "")
+            # Wait for the first sound before saying it's playing: with none, the phone is told why instead
+            try:
+                first = q.get(timeout=float(cfg.get("listen_first_wait", 6)))
+            except _queue.Empty:
+                first = None
+            if first is None:
+                source.remove(q)
+                why = source.why()
+                log.warning("listen: %s: %s", sid, why)
+                self.send_json(503, {"ok": False, "error": why})
+                return
             try:
                 self.send_response(200)
                 self.send_header("Content-Type", "audio/mpeg")
                 self.send_header("Cache-Control", "no-cache, no-store")
                 self.send_header("Connection", "close")
                 self.end_headers()
+                self.wfile.write(first)
                 while True:
                     try:
                         data = q.get(timeout=20)
@@ -768,6 +790,11 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 if self.level("Foyer", "Show", "Mixer"):
                     self.send_json(200, dict(foyer.view(desk), ok=True))
                 return
+            if path == "/api/music":
+                s = self.level("Music")
+                if s:
+                    self.send_json(200, dict(music.view(), ok=True, can=access.level(s["role"], "Music") >= 2))
+                return
             if path == "/api/lights/midi":
                 if self.level("Lights"):
                     self.send_json(200, dict(midi.view(), ok=True))
@@ -1011,6 +1038,16 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 ok, msg = rta_live.calibrate(float(spl), weight)
                 log.info("rta: %s calibrating: %s", s["name"], msg)
                 self.send_json(200 if ok else 409, dict(rta_live.state(), ok=ok, message=msg, **({} if ok else {"error": msg})))
+                return
+            if path in ("/api/music/do", "/api/music/propresenter"):
+                s = self.level("Music", need=2)
+                if not s:
+                    return
+                err = music.do(self.read_json(), s["name"]) if path == "/api/music/do" else music.open_propresenter(s["name"])
+                out = dict(music.view(), ok=not err)
+                if err:
+                    out["error"] = err
+                self.send_json(200 if not err else 409, out)
                 return
             if path == "/api/lights/do":
                 s = self.level("Lights", need=2)
@@ -1414,6 +1451,20 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                          d["mic"]["from"], d["mic"]["via"], d["mic"]["ch"], d["ref"]["from"], d["ref"]["via"], d["ref"]["ch"])
                 self.send_json(200, dict(rta_inputs.view(dante, desk), ok=True))
                 return
+            if self.route() == "/api/music":
+                s = self.level("Music", need=2)
+                if not s:
+                    return
+                body = self.read_json()
+                d = dict(music.get(), **{k: v for k, v in body.items() if k in music_mod.DEFAULT}) if isinstance(body, dict) else None
+                err = music_mod.valid(d)
+                if err:
+                    self.send_json(400, {"ok": False, "error": err})
+                    return
+                music.save(d)
+                log.info("music: %s saved %d playlists", s["name"], len(d["playlists"]))
+                self.send_json(200, dict(music.view(), ok=True))
+                return
             if self.route() == "/api/foyer":
                 s = self.level("Foyer setup", need=2)
                 if not s:
@@ -1707,6 +1758,7 @@ def serve(cfg):
     foyer = foyer_mod.Foyer(cfg["data_dir"])
     rta_inputs = rta_inputs_mod.RtaInputs(cfg["data_dir"])
     lights = lightkey_mod.Lightkey(cfg["data_dir"], cfg, log)
+    music = music_mod.Music(cfg["data_dir"], cfg, log)
     rta_live = rta_live_mod.Analyser(cfg["data_dir"], cfg, log, rta_inputs)
     if int(cfg["port"]) == 0:  # the tests: any free ports, so several servers can run at once
         cfg.setdefault("midi_port", 0)
@@ -1718,11 +1770,11 @@ def serve(cfg):
     # Port 0 is only used by the tests (any free port): they scan when they mean to, not by themselves.
     if cfg.get("scan_auto", True) and int(cfg["port"]) != 0:
         threading.Thread(target=scanner.loop, daemon=True).start()
-    httpd = ThreadingHTTPServer((cfg["bind"], int(cfg["port"])), make_handler(cfg, store, sessions, listen, access, dante, tags, bible, cues, reports, plan, desk, tio, monitors, scanner, foyer, rta_inputs, dante_names, lights, rta_live, midi))
+    httpd = ThreadingHTTPServer((cfg["bind"], int(cfg["port"])), make_handler(cfg, store, sessions, listen, access, dante, tags, bible, cues, reports, plan, desk, tio, monitors, scanner, foyer, rta_inputs, dante_names, lights, rta_live, midi, music))
     httpd.daemon_threads = True
     close = httpd.server_close
     httpd.server_close = lambda: (scanner.stop.set(), lights.close(), rta_live.stop(), midi.close(), close())
-    httpd.store, httpd.sessions, httpd.listen, httpd.access, httpd.tags, httpd.bible, httpd.reports, httpd.plan, httpd.desk, httpd.tio, httpd.monitors, httpd.scanner, httpd.foyer, httpd.rta_inputs, httpd.lights, httpd.rta_live, httpd.midi = store, sessions, listen, access, tags, bible, reports, plan, desk, tio, monitors, scanner, foyer, rta_inputs, lights, rta_live, midi
+    httpd.store, httpd.sessions, httpd.listen, httpd.access, httpd.tags, httpd.bible, httpd.reports, httpd.plan, httpd.desk, httpd.tio, httpd.monitors, httpd.scanner, httpd.foyer, httpd.rta_inputs, httpd.lights, httpd.rta_live, httpd.midi, httpd.music = store, sessions, listen, access, tags, bible, reports, plan, desk, tio, monitors, scanner, foyer, rta_inputs, lights, rta_live, midi, music
     httpd.wing = desk  # the tests, and older code, call it this
     return httpd
 

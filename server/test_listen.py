@@ -646,7 +646,8 @@ class Public(ListenTest):
         self.rec = os.path.join(self.tmp, "args.json")
         fake = os.path.join(self.tmp, "fake_ffmpeg.py")
         with open(fake, "w") as fh:
-            fh.write("import json,sys,time\njson.dump(sys.argv[1:],open(%r,'w'))\ntime.sleep(60)\n" % self.rec)
+            # written whole, then renamed, so the test never reads it half-written
+            fh.write("import json,os,sys,time\njson.dump(sys.argv[1:],open(%r,'w'))\nos.replace(%r,%r)\ntime.sleep(60)\n" % (self.rec + ".tmp", self.rec + ".tmp", self.rec))
         self.fake = fake
 
     def tearDown(self):
@@ -727,3 +728,22 @@ class Public(ListenTest):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class NoSound(ListenTest):
+    """No sound to stream: the phone is told why, in words, instead of a stream that never plays."""
+
+    def test_ffmpeg_missing(self):
+        self.httpd.listen.cfg["ffmpeg"] = os.path.join(self.tmp, "no-ffmpeg")
+        tok = self.login("Admin")
+        st, j = self.call("/listen/main.mp3?t=" + tok)
+        self.assertEqual(st, 503)
+        self.assertIn("ffmpeg isn't installed", j["error"])
+
+    def test_no_sound_device(self):
+        self.httpd.listen.cfg["listen_input"] = ["-f", "lavfi", "-i", "nosuchsource=x"]
+        self.httpd.listen.cfg["listen_first_wait"] = 3
+        tok = self.login("Admin")
+        st, j = self.call("/listen/main.mp3?t=" + tok)
+        self.assertEqual(st, 503)
+        self.assertIn("No sound arrived", j["error"])

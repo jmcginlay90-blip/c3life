@@ -299,6 +299,22 @@ class NameTagTest(unittest.TestCase):
         self.assertEqual(code, 409)
         self.assertEqual(d["error"], "Needs a name.")
 
+    def test_a_name_typed_while_planning_center_is_read_is_kept(self):
+        _, by = self.tags()
+        nt = self.httpd.tags
+        build = nt.build
+
+        def slow_build():  # someone types a name while the read is still going
+            d = build()
+            nt.set_name(d["plan"]["id"], "22", "Ps Sarah Seibert")
+            return d
+        nt.build = slow_build
+        try:
+            t = next(x for x in nt.refresh()["tags"] if x["item_id"] == "22")
+        finally:
+            nt.build = build
+        self.assertEqual((t["text"], t["source"]), ("Ps Sarah Seibert", "typed"))
+
     def test_type_a_name_and_put_it_back(self):
         _, by = self.tags()
         code, d = self.call("/api/nametags/name", "PUT", {"item": "22", "text": "  Ps Sarah   Seibert "}, who="ProPresenter")
