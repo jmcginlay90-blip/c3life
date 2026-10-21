@@ -47,8 +47,15 @@ PROC = dict({
     "dyn/att": ("n", 0, 120), "dyn/rel": ("n", 4, 4000), "dyn/auto": ("b",), "dyn/mdl": ("s",),
 }, **_EQ)
 RTA_TAPS = ("IN", "PREEQ", "POSTEQ", "POST")
-# a channel's send to a bus: /ch/N/send/B/<field>
+# a channel's send to a bus: /ch/N/send/B/<field> (an aux input's too: /aux/N/send/B/<field>, kept as "a<N>")
 SEND = {"on": "b", "lvl": "n", "mode": "s", "plink": "b", "pan": "n"}
+SENDERS = ("ch", "aux")
+# A bus's EQ (Wing's standard EQ on a bus: low and high shelves, which can also be a cut, and 6 bands between)
+BUS_EQ = {"eq/on": ("b",), "eq/leq": ("s", ("SHV", "PEQ", "CUT")), "eq/heq": ("s", ("SHV", "PEQ", "CUT")),
+          "eq/lg": ("n", -15, 15), "eq/lf": ("n", 20, 2000), "eq/lq": ("n", 0.44, 10),
+          "eq/hg": ("n", -15, 15), "eq/hf": ("n", 50, 20000), "eq/hq": ("n", 0.44, 10)}
+for _b in "123456":
+    BUS_EQ.update({"eq/%sg" % _b: ("n", -15, 15), "eq/%sf" % _b: ("n", 20, 20000), "eq/%sq" % _b: ("n", 0.44, 10)})
 RATIOS = (1.1, 1.2, 1.3, 1.5, 1.7, 2.0, 2.5, 3.0, 3.5, 4.0, 5.0, 6.0, 8.0, 10.0, 20.0, 50.0, 100.0)
 
 
@@ -166,7 +173,8 @@ class Wing:
         self.hist = {}  # open channel -> recent (t, in, out, gate key, gate GR, dyn key, dyn GR)
         self.rta, self.rta_at, self.rtacfg = [], 0.0, {}
         self.rta_want, self.rta_off = None, 0
-        self.sends = {}  # bus -> channel -> {"on", "lvl", "mode", "plink", "pan"}
+        self.sends = {}  # bus -> channel (or "a<N>" for an aux input) -> {"on", "lvl", "mode", "plink", "pan"}
+        self.buseq = {}  # bus -> {"eq/on": 1, "eq/1g": -3.0, ...}
         self.bus_focus = {}  # bus -> until when someone has its sends open
         self.outs = {}  # "CRD/12" -> {"grp": "LCL", "in": 8}, read while out_focus is set
         self.out_focus = 0.0
@@ -293,11 +301,7 @@ class Wing:
                 if slow:
                     last_slow = now
                 for b in [k for k, t in list(self.bus_focus.items()) if t > now]:
-                    for i, n in enumerate(range(1, KINDS["ch"] + 1)):  # every channel's send to the open bus
-                        for f in SEND:
-                            self.send(osc("/ch/%d/send/%d/%s" % (n, b, f)))
-                        if i % 4 == 3:
-                            self.stop.wait(0.01)
+                    self.ask_bus(b)
                 if self.out_focus > now and (slow or rnd % 3 == 0):  # the card and USB outputs, while the RTA routing is open
                     for i, (g, c) in enumerate(OUTS.items()):
                         for n in range(1, c + 1):
@@ -330,11 +334,26 @@ class Wing:
         first = self.bus_focus.get(b, 0) < time.time()
         self.bus_focus[b] = time.time() + 30
         if first:
-            for n in range(1, KINDS["ch"] + 1):
-                for f in SEND:
-                    self.send(osc("/ch/%d/send/%d/%s" % (n, b, f)))
+            self.ask_bus(b)
         with self.lock:
             return {str(n): dict(v) for n, v in self.sends.get(b, {}).items()}
+
+    def ask_bus(self, b):
+        """Every channel's and aux input's send to bus b, and the bus's EQ."""
+        i = 0
+        for kind in SENDERS:
+            for n in range(1, KINDS[kind] + 1):
+                for f in SEND:
+                    self.send(osc("/%s/%d/send/%d/%s" % (kind, n, b, f)))
+                i += 1
+                if i % 4 == 0:
+                    self.stop.wait(0.01)
+        for a in BUS_EQ:
+            self.send(osc("/bus/%d/%s" % (b, a)))
+
+    def bus_eq(self, b):
+        with self.lock:
+            return dict(self.buseq.get(b, {}))
 
     def rx_loop(self):
         while not self.stop.is_set():
@@ -394,10 +413,26 @@ class Wing:
                     self.rtacfg[parts[2]], changed = v, True
                 if parts[2] == "$src":
                     self._rta_check()
-            elif len(parts) == 5 and parts[0] == "ch" and parts[1].isdigit() and parts[2] == "send" and parts[3].isdigit() and parts[4] in SEND:
-                n, b, f = int(parts[1]), int(parts[3]), parts[4]
-                if not args or n not in self.strips["ch"] or not 1 <= b <= KINDS["bus"]:
+            elif len(parts) == 4 and parts[0] == "bus" and parts[1].isdigit() and "/".join(parts[2:]) in BUS_EQ:
+                b, key, k = int(parts[1]), "/".join(parts[2:]), BUS_EQ["/".join(parts[2:])]
+                if not args or not 1 <= b <= KINDS["bus"]:
                     return
+                if k[0] == "s":
+                    v = str(args[0])
+                else:
+                    x = args[2] if k[0] == "n" and len(args) >= 3 and isinstance(args[2], float) else _num(args)
+                    if x is None:
+                        return
+                    v = int(round(x)) if k[0] == "b" else round(float(x), 2)
+                cur = self.buseq.setdefault(b, {})
+                if cur.get(key) != v:
+                    cur[key], changed = v, True
+            elif len(parts) == 5 and parts[0] in SENDERS and parts[1].isdigit() and parts[2] == "send" and parts[3].isdigit() and parts[4] in SEND:
+                n, b, f = int(parts[1]), int(parts[3]), parts[4]
+                if not args or n not in self.strips[parts[0]] or not 1 <= b <= KINDS["bus"]:
+                    return
+                if parts[0] == "aux":
+                    n = "a%d" % n
                 if SEND[f] == "s":
                     v = str(args[0])
                 elif SEND[f] == "b":
@@ -550,7 +585,7 @@ class Wing:
             ok = self.send(osc("/%s/%d/col" % (kind, n), value))
         elif field.startswith("send/") and field.count("/") == 2:
             _, b, f = field.split("/")
-            if kind != "ch" or not b.isdigit() or not 1 <= int(b) <= KINDS["bus"] or f not in SEND:
+            if kind not in SENDERS or not b.isdigit() or not 1 <= int(b) <= KINDS["bus"] or f not in SEND:
                 return "That send isn't on the Wing."
             if f == "lvl":
                 if not isinstance(value, (int, float)) or isinstance(value, bool) or not -144 <= value <= 10:
@@ -566,7 +601,21 @@ class Wing:
                 v = value
             else:
                 v = 1 if value else 0
-            ok = self.send(osc("/ch/%d/send/%s/%s" % (n, b, f), v)) and self.send(osc("/ch/%d/send/%s/%s" % (n, b, f)))
+            ok = self.send(osc("/%s/%d/send/%s/%s" % (kind, n, b, f), v)) and self.send(osc("/%s/%d/send/%s/%s" % (kind, n, b, f)))
+            return None if ok else "Couldn't send to the Wing."
+        elif field in BUS_EQ and kind == "bus":
+            k = BUS_EQ[field]
+            if k[0] == "s":
+                if value not in k[1]:
+                    return "That's one of %s." % ", ".join(k[1])
+                v = value
+            elif k[0] == "b":
+                v = 1 if value else 0
+            elif not isinstance(value, (int, float)) or isinstance(value, bool) or not k[1] <= value <= k[2]:
+                return "That's outside what the Wing allows (%g to %g)." % (k[1], k[2])
+            else:
+                v = float(value)
+            ok = self.send(osc("/bus/%d/%s" % (n, field), v)) and self.send(osc("/bus/%d/%s" % (n, field)))
             return None if ok else "Couldn't send to the Wing."
         elif field in PROC:
             kind2 = PROC[field]

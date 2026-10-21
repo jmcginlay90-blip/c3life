@@ -56,8 +56,9 @@ API (JSON):
   GET  /api/monitors                       (Mixer view: everything; a musician: their own mixes) monitor mixes and the lock
   PUT  /api/monitors {"buses","people","locked"}   (Mixer control) which buses are monitor mixes, whose is whose
   GET  /api/wing/sends?bus=<1-16>           (Mixer view, or a musician for their own mix) every channel's send to a bus
-  POST /api/wing/send {"bus","n","field","value"}   (Mixer control, or a musician's own mix while unlocked)
-                                           field lvl, on or pan for channel n; n 0 is the bus itself (fdr, mute, pan)
+  POST /api/wing/send {"bus","n","field","value","kind"?}   (Mixer control, or a musician's own mix while unlocked)
+                                           field lvl, on or pan for channel n ("kind": "aux" for an aux input, like the
+                                           click); n 0 is the bus itself (fdr, mute, pan, or its EQ: "eq/on", "eq/1g"...)
   GET  /api/monitors/check                 (Mixer view) monitor buses with sends that aren't Pre, or pan linked
   POST /api/monitors/fix                   (Mixer control) make them Pre with pan link off
   GET  /api/tio                            (Mixer view) the Tio1608-D's 16 inputs: gain, phantom power, low cut
@@ -717,7 +718,7 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                     if mixer < 1:
                         self.send_json(403, {"ok": False, "error": "Your role can't do this (Access levels)."})
                         return
-                    sends = {b: {int(n): v for n, v in wing.bus_sends(b).items()} for b in d["buses"]}
+                    sends = {b: {int(n): v for n, v in wing.bus_sends(b).items() if n.isdigit()} for b in d["buses"]}  # channels (aux sends are "a<N>")
                     self.send_json(200, {"ok": True, "status": wing.status()["status"], "buses": monitors.check(sends)})
                     return
                 q = urllib.parse.parse_qs(self.path.split("?", 1)[1] if "?" in self.path else "")
@@ -732,6 +733,7 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 st = wing.state()
                 self.send_json(200, {"ok": True, "bus": b, "status": st["status"], "mode": st["mode"], "sends": wing.bus_sends(b), "strip": st["strips"]["bus"].get(str(b), {}),
                                      "names": {n: v.get("name", "") for n, v in st["strips"]["ch"].items()}, "locked": d["locked"],
+                                     "aux_names": {n: v.get("name", "") for n, v in st["strips"]["aux"].items()}, "eq": wing.bus_eq(b),
                                      "can_change": wing.settings["mode"] == "control" and not monitors.may_change(s["name"], mixer, b) if b in d["buses"] else mixer >= 2 and wing.settings["mode"] == "control"})
                 return
             if path == "/api/rta/inputs":
@@ -894,7 +896,7 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                         self.send_json(403, {"ok": False, "error": "Your role can't do this (Access levels)."})
                         return
                     d = monitors.get()
-                    sends = {b: {int(n): v for n, v in wing.bus_sends(b).items()} for b in d["buses"]}
+                    sends = {b: {int(n): v for n, v in wing.bus_sends(b).items() if n.isdigit()} for b in d["buses"]}  # channels (aux sends are "a<N>")
                     n_fixed, err = 0, None
                     for c in monitors.check(sends):
                         for n in c["post"]:
@@ -910,7 +912,8 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                     self.send_json(200, {"ok": True, "changed": n_fixed})
                     return
                 b, n, f, v = body.get("bus"), body.get("n"), body.get("field"), body.get("value")
-                if not isinstance(b, int) or isinstance(b, bool) or not 1 <= b <= wing_mod.KINDS["bus"] or not isinstance(n, int) or isinstance(n, bool):
+                kind = body.get("kind", "ch")  # a channel's send, or an aux input's (the click, a playback)
+                if not isinstance(b, int) or isinstance(b, bool) or not 1 <= b <= wing_mod.KINDS["bus"] or not isinstance(n, int) or isinstance(n, bool) or kind not in wing_mod.SENDERS:
                     self.send_json(400, {"ok": False, "error": "Bad request"})
                     return
                 if b in monitors.get()["buses"]:
@@ -924,10 +927,12 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 if err:
                     self.send_json(403, {"ok": False, "error": err})
                     return
-                if n == 0:
+                if n == 0 and f in wing_mod.BUS_EQ:
+                    err = wing.set("bus", b, f, v)  # the mix's own EQ
+                elif n == 0:
                     err = wing.set("bus", b, {"lvl": "fdr", "fdr": "fdr", "on": "mute", "mute": "mute", "pan": "pan"}.get(f, "?"), (not v) if f == "on" else v)
                 else:
-                    err = wing.set("ch", n, "send/%d/%s" % (b, f), v) if f in ("lvl", "on", "pan") else "That can't be changed here."
+                    err = wing.set(kind, n, "send/%d/%s" % (b, f), v) if f in ("lvl", "on", "pan") else "That can't be changed here."
                 if err:
                     self.send_json(409, {"ok": False, "error": err})
                     return

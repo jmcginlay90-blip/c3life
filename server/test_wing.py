@@ -54,6 +54,16 @@ class FakeWing:
                 self.vals.update({"/ch/%d/send/%d/on" % (n, b): 1, "/ch/%d/send/%d/lvl" % (n, b): -144.0, "/ch/%d/send/%d/mode" % (n, b): "PRE",
                                   "/ch/%d/send/%d/plink" % (n, b): 0, "/ch/%d/send/%d/pan" % (n, b): 0.0})
         self.vals.update({"/ch/9/send/1/mode": "POST", "/ch/10/send/1/mode": "POST", "/ch/1/send/4/plink": 1, "/ch/1/send/4/lvl": -6.0})
+        for n in range(1, 9):  # the aux inputs' sends (aux 4 is the click)
+            for b in range(1, 17):
+                self.vals.update({"/aux/%d/send/%d/on" % (n, b): 1, "/aux/%d/send/%d/lvl" % (n, b): -144.0, "/aux/%d/send/%d/mode" % (n, b): "PRE",
+                                  "/aux/%d/send/%d/plink" % (n, b): 0, "/aux/%d/send/%d/pan" % (n, b): 0.0})
+        self.vals.update({"/aux/4/name": "Click", "/aux/4/send/4/lvl": -10.0})
+        for b in range(1, 17):  # each bus's standard EQ, flat
+            self.vals.update({"/bus/%d/eq/on" % b: 0, "/bus/%d/eq/leq" % b: "SHV", "/bus/%d/eq/heq" % b: "SHV", "/bus/%d/eq/lg" % b: 0.0, "/bus/%d/eq/lf" % b: 80.0,
+                              "/bus/%d/eq/lq" % b: 1.0, "/bus/%d/eq/hg" % b: 0.0, "/bus/%d/eq/hf" % b: 10000.0, "/bus/%d/eq/hq" % b: 1.0})
+            for i, f in zip("123456", (100.0, 250.0, 630.0, 1600.0, 4000.0, 8000.0)):
+                self.vals.update({"/bus/%d/eq/%sg" % (b, i): 0.0, "/bus/%d/eq/%sf" % (b, i): f, "/bus/%d/eq/%sq" % (b, i): 1.0})
         self.vals.update({"/ch/1/name": "Lead Vox", "/ch/1/fdr": 0.0, "/ch/1/col": 3, "/ch/15/name": "Pastor HH", "/ch/15/mute": 1,
                           "/main/1/name": "Main LR", "/main/1/fdr": 0.0, "/dca/1/name": "Band"})
         self.vals.update({"/cfg/rta/rtasrc": 0, "/cfg/rta/rtatap": "IN", "/cfg/rta/$src": 1, "/cfg/rta/$tap": "IN"})
@@ -81,6 +91,8 @@ class FakeWing:
         f = addr.rsplit("/", 1)[1]
         if f in ("fdr", "g", "pan") or (isinstance(v, float) and "/ch/" in addr and addr.count("/") >= 4):
             pkt = wm.osc(addr, "-oo" if v <= -144 else "%.1f" % v, float(wm.db_to_pos(v)), float(v))
+        elif isinstance(v, float):  # like the Wing: text, position, then the value
+            pkt = wm.osc(addr, "%.1f" % v, 0.0, float(v))
         elif isinstance(v, str):
             pkt = wm.osc(addr, v)
         else:
@@ -281,7 +293,7 @@ class Link(unittest.TestCase):
         self.assertIn(("/ch/3/dyn/ratio", 4.0), self.f.sets)  # snapped to the Wing's own step
         self.assertIn("outside what the Wing allows (-15 to 15)", self.w.set("ch", 3, "eq/1g", 20))
         self.assertIn("plugin model on the Wing", self.w.set("ch", 3, "eq/mdl", "SOUL"))
-        self.assertIn("on channels", self.w.set("bus", 1, "eq/1g", 2))
+        self.assertIsNone(self.w.set("bus", 1, "eq/1g", 2))  # a bus's EQ (a monitor mix's EQ) can be changed too
         self.w.channel(4)
         self.assertTrue(wait(lambda: self.w.proc.get(4, {}).get("eq/mdl") == "SOUL"))
         # a change on the desk shows while the channel is open
@@ -299,6 +311,21 @@ class Link(unittest.TestCase):
         # fade out then off, fader back where it was
         self.assertIsNone(self.w.fade([{"n": 1, "to": -144, "secs": 0.3, "then_mute": True, "then_fdr": -10.0}]))
         self.assertTrue(wait(lambda: self.f.vals["/ch/1/mute"] == 1 and self.f.vals["/ch/1/fdr"] == -10.0, 3))
+
+    def test_aux_sends_and_a_buses_eq(self):
+        self.w.configure(mode="control")
+        self.w.bus_sends(4)
+        self.assertTrue(wait(lambda: self.w.bus_sends(4).get("a4", {}).get("lvl") == -10.0 and self.w.bus_eq(4).get("eq/6f") == 8000.0, 10))
+        self.assertIsNone(self.w.set("aux", 4, "send/4/lvl", -3.0))  # the click, up in mix 4
+        self.assertTrue(wait(lambda: self.w.bus_sends(4)["a4"]["lvl"] == -3.0))
+        self.assertIn(("/aux/4/send/4/lvl", -3.0), self.f.sets)
+        self.assertIsNone(self.w.set("bus", 4, "eq/on", True))
+        self.assertIsNone(self.w.set("bus", 4, "eq/1g", -4.5))
+        self.assertIsNone(self.w.set("bus", 4, "eq/leq", "CUT"))
+        self.assertTrue(wait(lambda: self.w.bus_eq(4).get("eq/1g") == -4.5 and self.w.bus_eq(4).get("eq/on") == 1 and self.w.bus_eq(4).get("eq/leq") == "CUT"))
+        self.assertIn("−15 to 15", self.w.set("bus", 4, "eq/1g", 20).replace("-", "−"))
+        self.assertIn("SHV, PEQ, CUT", self.w.set("bus", 4, "eq/leq", "LPF"))
+        self.assertIsNotNone(self.w.set("ch", 4, "eq/6g", 1))  # channels have 4 bands
 
     def test_meters(self):
         self.assertTrue(wait(lambda: self.w.meter_state()["meters"]))
