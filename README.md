@@ -173,6 +173,20 @@ You can run any script again safely. `Setup-C3LifeServer.ps1` only changes what 
 .\Uninstall-C3Life.ps1 -RemoveData           # also delete logs and config
 ```
 
+## Changing the sound desk
+
+C3 Life talks to the sound desk only through a **desk driver** (`server\desk.py`). The Behringer Wing is the first driver (`server\wing.py`).
+- **Choosing one:** `config.json` picks it with `"desk"`: `"wing"` (the default) or `"none"`. With `"none"`, C3 Life runs without a desk: the Mixer and monitor mixes say the desk can't, and everything else (Listen, Show, Lights, the room-mic RTA, Chat...) works.
+- **Adding another desk** (an Allen & Heath dLive or SQ, a Yamaha CL or DM7, a Behringer X32...) means writing one driver with the methods listed at the top of `desk.py`:
+  - connect, Watch only or Control;
+  - names, faders and mutes;
+  - sends to buses, a bus's EQ, and channel processing;
+  - preamps, meters, the desk's RTA, output patching, and finding it on the network.
+
+  It says what it can do in `CAN`, and answers anything it can't in words. The screens, access levels, monitor mixes, cues, the RTA and Lights stay as they are, and so do the `/api/wing/...` addresses the screens use.
+- **The check:** `server\test_desk.py` makes sure every driver has the whole interface, and that C3 Life runs with no desk.
+- **Still Wing-only:** the hardware check (`hwcheck.py`) and the Wing's own patch screens. The screens still say "Wing" in places.
+
 ## What the scripts don't do
 
 - **BIOS settings.** Windows can't change them. See guide Step 1.
@@ -198,6 +212,7 @@ You can run any script again safely. `Setup-C3LifeServer.ps1` only changes what 
 - **Tio1608-D:** 6 tests (`server\test_tio.py`) against a fake Tio speaking Yamaha's text protocol: reading all 16 inputs, Watch only sending nothing, gain, phantom, low cut and its frequency (in tenths of a hertz, inputs numbered from 0 on the wire), out-of-range refused, a change made in R Remote showing at once, settings kept, no answer, and who may see and change. The browser test checks a Tio channel on the C3 Life server: watching only, then Control, gain and phantom reaching the Tio.
 - **Network scan:** 15 tests (`server\test_scan.py`): reading ARP tables from Windows, a Mac and Linux, a Bonjour answer, and the rules with fake devices: a new Wing connecting in Watch only, a Wing that moved being followed and put back to Watch only, a different Wing not being followed, two Wings asking which one, a Wing turned off staying off, Control never turned on, devices without a driver (and hiding them, kept after a restart), Dante and network MIDI from Bonjour, a fake ProPresenter, helper, Tio and web camera each recognised by asking only (nothing sent to the Tio is a set), ProPresenter followed by its hardware ID, and who may scan. A browser test (27 checks) covers the preview's demo scan and the real scan on the C3 Life server at phone and laptop size.
 - **Where the RTA listens:** 4 tests (`server\test_rta_inputs.py`): which sources and channels are allowed (and not the same channel twice); kept, with Dante's real route into that DVS channel; who may see (RTA view) and change (RTA control) it, with nothing sent to the desk; and the desk's names for the sources. A browser test (27 checks) covers the mic from a Tio input, the reference from a bus by AES67, the steps, the route, Calibrate following it, a Viewer only looking, and saving on the C3 Life server with its real Dante route.
+- **Desk driver:** 4 tests (`server\test_desk.py`). They cover: every driver has every method of the interface, with the same arguments; the Wing is a driver that can do everything; choosing a desk in config.json, including an unknown one; and C3 Life running with `"desk": "none"` (health says so, the desk's calls answer that it can't, and nothing crashes).
 - **Playback MIDI into Lights:** 13 tests (`server\test_midi_in.py`). A pretend Mac joins the session as Audio MIDI Setup does: the invitations, its token back and the clock sync. They also cover:
   - reading RTP-MIDI with running status, SysEx, long lists and a first delta time;
   - with Follow off, only saying what it would do;

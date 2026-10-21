@@ -23,6 +23,8 @@ import struct
 import threading
 import time
 
+import desk as desk_mod
+
 KINDS = {"ch": 40, "aux": 8, "bus": 16, "main": 4, "mtx": 8, "dca": 16}
 # Outputs C3 Life can patch (for the RTA): the Dante card's 64 and USB's 48. Each output's source is a group and an
 # index: /io/out/CRD/12/grp "LCL", /io/out/CRD/12/in 8. These names follow the channel inputs' /in/conn/grp and /in;
@@ -146,7 +148,10 @@ def _num(args):
         return None
 
 
-class Wing:
+class Wing(desk_mod.Desk):
+    """The Behringer Wing: the first desk driver (see desk.py for what a driver provides)."""
+    NAME = "Behringer Wing"
+    CAN = {k: True for k in desk_mod.CAN}
     def __init__(self, data_dir, cfg, log):
         self.cfg, self.log = cfg, log
         self.path = os.path.join(data_dir, "wing.json")
@@ -819,6 +824,10 @@ class Wing:
                 if not h or now - h[-1][0] >= 0.04:  # up to 25 a second, the last 8 seconds
                     h.append((now,) + d[n])
 
+    def find(self, target="255.255.255.255"):
+        """Wings on the network (the desk answers WING? on its own port)."""
+        return find(port=self.native_port, target=target)
+
     def history(self, n, since=0.0):
         """The open channel's last few seconds: [t, in, out, gate key, gate gain reduction, dyn key, dyn gain reduction]."""
         with self.lock:
@@ -895,3 +904,7 @@ def find(port=2222, timeout=1.5, target="255.255.255.255"):
     finally:
         s.close()
     return out
+
+
+# what the Wing has, for the Desk interface (desk.py)
+Wing.KINDS, Wing.SENDERS, Wing.BUS_EQ, Wing.RATIOS, Wing.RTA_TAPS, Wing.OUTS = KINDS, SENDERS, BUS_EQ, RATIOS, RTA_TAPS, OUTS
