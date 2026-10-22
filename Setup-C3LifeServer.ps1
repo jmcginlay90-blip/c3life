@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Sets up Windows on the C3 Life server (Dell OptiPlex Micro) for C3 Life.
+  Sets up Windows on the C3 Life server (HP EliteDesk, i5-7500, 16 GB, 256 GB NVMe) for C3 Life.
 
 .DESCRIPTION
   Does Steps 3 and 4 of the C3 Life server set-up guide in one go:
@@ -184,7 +184,7 @@ Write-Host 'Still to do by hand:' -ForegroundColor Cyan
 $auto = Get-RegVal 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' 'AutoAdminLogon'
 if ($auto -ne '1') { Write-Host '  - Automatic sign-in: run Microsoft Sysinternals Autologon and enter the booth user and password.' }
 else { Write-Host '  - Automatic sign-in: already on.' }
-Write-Host '  - BIOS (F2 at start-up): Step 1 of the guide. Windows can''t change these.'
+Write-Host '  - BIOS (F10 at start-up): After Power Loss = Power On, S5 Maximum Power Savings = Disable (see the README). Windows can''t change these.'
 Write-Host '  - Wi-Fi for internet: join the church Wi-Fi.'
 Write-Host '  - Then run Install-C3Life.ps1, and Check-C3LifeServer.ps1 to check everything.'
 if ($script:needRestart) { Write-Host ''; Write-Host 'Restart the PC to finish renaming it.' -ForegroundColor Yellow }

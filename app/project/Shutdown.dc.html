@@ -107,7 +107,7 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
     <sc-if value="{{isConfirm}}" hint-placeholder-val="{{ true }}">
       <div style="display:flex;flex-direction:column;gap:6px">
         <h1 style="margin:0;font-size:28px;font-weight:600">C3 Life server power</h1>
-        <div style="font-size:14px;color:#A3ACB8;line-height:1.5">C3 Life, R Remote, Dante Controller and Companion run on the C3 Life server (Dell OptiPlex). The Wing, the Tio, Dante audio and the Macs keep running whatever you pick here.</div>
+        <div style="font-size:14px;color:#A3ACB8;line-height:1.5">C3 Life, R Remote, Dante Controller and Companion run on the C3 Life server (the HP EliteDesk). The Wing, the Tio, Dante audio and the Macs keep running whatever you pick here.</div>
       </div>
       <div role="radiogroup" aria-label="What to do" style="display:flex;flex-direction:column;gap:8px">
         <sc-for list="{{acts}}" as="a" hint-placeholder-count="4">
@@ -225,7 +225,7 @@ class Component extends DCLogic {
         steps: [['Save the RTA log to the drive', 'rta-2026-10-18 · 08:31–12:20 · report in the standard layout', true], ['Save the activity log to the drive', 'activity-2026-10-18.csv · 231 entries', true], ['Email the RTA report', on ? 'Sent to the reports address' : 'No internet · kept on the drive, sends when online', on], ['Email the activity report', on ? 'Sent to the reports address' : 'No internet · kept on the drive, sends when online', on], ['Turn the C3 Life server off', 'C3 Life stopped · the Wing, Dante and the Macs keep running', true]],
         doneTitle: 'Safe to switch off the power', doneText: 'The C3 Life server’s power light has gone off. To turn it on again, press its power button, or switch the smart plug off and on (it starts by itself when it gets power). It loads the saved setup' + (on ? '.' : ' and sends the 2 waiting reports as soon as it has internet.') },
       cycle: { name: 'Hard reset (smart plug)', sub: 'Only if the C3 Life server is badly stuck and a restart didn’t help. Turns its power off for 10 seconds, then back on.', go: 'Hard reset now', count: 10, admin: true,
-        what: ['Save what it can', 'The smart plug turns the C3 Life server’s power off for 10 seconds, then back on', 'It starts by itself (AC Recovery is on in the BIOS) and opens C3 Life'], whatNote: 'Anything changed since the last auto-save may be lost.',
+        what: ['Save what it can', 'The smart plug turns the C3 Life server’s power off for 10 seconds, then back on', 'It starts by itself (After Power Loss is set to Power On in the BIOS) and opens C3 Life'], whatNote: 'Anything changed since the last auto-save may be lost.',
         steps: [['Save what it can', 'Last auto-save ' + '12:15', true], ['Smart plug: power off', '10 seconds', true], ['Smart plug: power on', 'The C3 Life server starts by itself', true], ['C3 Life opens', 'About 1 to 2 minutes', true]],
         doneTitle: 'The C3 Life server is starting up', doneText: 'If Windows is frozen and C3 Life can’t answer at all, open the smart plug’s own page on your phone (192.168.10.5) and switch it off and on there.' }
     };

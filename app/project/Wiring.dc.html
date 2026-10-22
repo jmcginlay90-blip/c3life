@@ -234,7 +234,7 @@ class Component extends DCLogic {
     super(props);
     // Cable rows. drv = Drivers id whose IP this row shows; ip = fixed address when no driver controls it.
     this.cables = [
-      ['C01', 'C3 Life server (Dell OptiPlex Micro) · c3life.local', 'Switch P1', null, '192.168.10.10'],
+      ['C01', 'C3 Life server (HP EliteDesk, i5-7500) · c3life.local', 'Switch P1', null, '192.168.10.10'],
       ['C02', 'Behringer Wing', 'Switch P2', 1],
       ['C03', 'Wing Dante card', 'Switch P3', null, '192.168.10.40'],
       ['C04', 'Yamaha Tio1608-D', 'Switch P4 · from stage', null, '192.168.10.41'],
@@ -244,8 +244,8 @@ class Component extends DCLogic {
       ['C08', 'Wi-Fi access point', 'Switch P8', null, '192.168.10.2'],
       ['C10', 'MIDI controller', 'MacBook Pro · USB', null, 'USB'],
       ['C12', 'C3 Life server · USB Ethernet adapter (optional, or use Wi-Fi)', 'Church network wall socket', null, 'From church router'],
-      ['B1', 'C3 Life server CMOS battery (CR2032)', 'Inside the Dell \u00b7 keeps the BIOS settings (power on after a power cut) and the time', null, 'Battery'],
-      ['P1', 'C3 Life server power: UPS, then smart plug (192.168.10.5)', 'Wall socket \u2192 UPS \u2192 smart plug \u2192 Dell power brick', null, '192.168.10.5']
+      ['B1', 'C3 Life server CMOS battery (CR2032)', 'Inside the HP \u00b7 keeps the BIOS settings (power on after a power cut) and the time', null, 'Battery'],
+      ['P1', 'C3 Life server power: UPS, then smart plug (192.168.10.5)', 'Wall socket \u2192 UPS \u2192 smart plug \u2192 the HP\u2019s power lead', null, '192.168.10.5']
     ];
     this.cabled = [1, 4, 6, 7];
     this.defaults = [

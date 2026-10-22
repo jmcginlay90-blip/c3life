@@ -304,7 +304,7 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
     <sc-if value="{{isHow}}" hint-placeholder-val="{{ false }}">
       <section class="card" style="display:flex;flex-direction:column;gap:6px">
         <div style="font-size:16px;font-weight:600">The big picture</div>
-        <div style="font-size:14px;line-height:1.55;color:#C9CFD7">A small computer in the booth (the C3 Life server, a Dell OptiPlex Micro running Windows) talks to the Wing, Dante, ProPresenter, Playback and the lights. R Remote and Dante Controller run on it too. Every phone, iPad and laptop on the booth Wi-Fi opens <span class="mono">c3life.local</span> and sees the same thing, live. Nothing needs the internet. When there is internet, it syncs Planning Center and emails reports.</div>
+        <div style="font-size:14px;line-height:1.55;color:#C9CFD7">A small computer in the booth (the C3 Life server, an HP EliteDesk running Windows) talks to the Wing, Dante, ProPresenter, Playback and the lights. R Remote and Dante Controller run on it too. Every phone, iPad and laptop on the booth Wi-Fi opens <span class="mono">c3life.local</span> and sees the same thing, live. Nothing needs the internet. When there is internet, it syncs Planning Center and emails reports.</div>
       </section>
 
       <section class="card" style="display:flex;flex-direction:column;gap:2px">
@@ -677,7 +677,7 @@ class Component extends DCLogic {
       { q: 'The times in the reports are wrong', c: '#A3ACB8', href: 'Wiring.dc.html', go: 'Wiring list', steps: [
         'The C3 Life server keeps the time and its BIOS settings with a coin battery inside (B1 on the wiring list, a CR2032). If it’s flat, the time can be wrong after a power cut, and the C3 Life server may not switch itself back on.',
         'Run the system check in Help. "C3 Life server clock" should say Battery OK.',
-        'If it says the battery is flat, replace the CR2032 inside the Dell (about £3), then set AC Recovery to Power On again in the BIOS (see Set up the C3 Life server).',
+        'If it says the battery is flat, replace the CR2032 inside the HP (about £3), then set After Power Loss to Power On again in the BIOS (see Set up the C3 Life server).',
         'Connecting to the internet once sets the time straight away. Reports already sent keep the times they had.'] },
       { q: 'A mic battery is low', c: '#F5C518', href: 'Mics.dc.html', go: 'Mics', steps: [
         'Mixer \u203a Mics shows every wireless mic with battery, time left and signal. Names match the Wing channel.',
@@ -778,13 +778,13 @@ class Component extends DCLogic {
         'Pick the mix. It asks first; tap Yes, open. A blue bar shows you\u2019re changing someone else\u2019s mix.',
         'Tap Back to my mix (it asks first) to go back. You can also pick the mix when you sign in.',
         'FOH sound and Admin can open every monitor mix. Musicians only see the mixes FOH has given them. Mix names come from the Wing.'] },
-      { q: 'Set up the C3 Life server (Dell OptiPlex Micro)', c: '#6CB4F5', href: 'Shutdown.dc.html', go: 'C3 Life server power', steps: [
-        'Windows: use Windows 10 IoT Enterprise LTSC 2021 (security updates to January 2032, works on the 6th-gen i7). Normal Windows 11 doesn\u2019t support this processor.',
-        'BIOS (press F2 as it starts): Power Management \u203a AC Recovery = Power On. Deep Sleep Control = Disabled. Wake on LAN = LAN Only. Replace the CR2032 battery on a used PC.',
+      { q: 'Set up the C3 Life server (HP EliteDesk, i5-7500)', c: '#6CB4F5', href: 'Shutdown.dc.html', go: 'C3 Life server power', steps: [
+        'Windows: use Windows 10 IoT Enterprise LTSC 2021 (security updates to January 2032). The i5-7500 is a 7th-gen Intel processor, which normal Windows 11 doesn\u2019t support. 16 GB of memory and the 256 GB NVMe drive are plenty.',
+        'BIOS (press F10 as it starts, for Computer Setup): Advanced \u203a Power-On Options \u203a After Power Loss = Power On. Advanced \u203a Power Management Options \u203a S5 Maximum Power Savings = Disable. Wake on LAN on (S5 Wake on LAN = Boot to Normal, if it\u2019s there). Then File \u203a Save Changes and Exit. Replace the CR2032 battery on a used PC.',
         'Windows: sleep and screen off = Never. Sign in automatically as the booth user. Set active hours to cover services, and don\u2019t allow restarts on Sundays.',
         'Start at sign-in: C3 Life (full screen on the HDMI screen), Companion and Dante Virtual Soundcard. R Remote and Dante Controller are opened when needed.',
         'Network: Ethernet port = booth switch (P1, 192.168.10.10). Internet = Wi-Fi or a USB Ethernet adapter (C12).',
-        'Power: wall \u2192 small UPS \u2192 smart plug (192.168.10.5) \u2192 the Dell. The UPS covers blips; the smart plug is the hard reset.'] },
+        'Power: wall \u2192 small UPS \u2192 smart plug (192.168.10.5) \u2192 the HP. The UPS covers blips; the smart plug is the hard reset.'] },
       { q: 'Keep my mixes the same on my phone and iPad', c: '#E58FB5', href: 'MyMix.dc.html', go: 'My mix', steps: [
         'Sign in as yourself on each device (Change user). On the C3 Life server, your PIN is checked there.',
         'My mix \u203a Settings \u203a tick Keep my mixes in sync on all my devices (on unless you turned it off). SAVED then says In sync.',

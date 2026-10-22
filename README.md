@@ -1,6 +1,6 @@
 # C3 Life server installer
 
-Sets up the C3 Life server (Dell OptiPlex Micro, Windows 10 IoT Enterprise LTSC 2021) and installs C3 Life on it. It goes with the **C3 Life server set-up guide**. The scripts do the Windows parts of the guide for you, so you don't have to click through every setting.
+Sets up the C3 Life server (HP EliteDesk with an Intel Core i5-7500, 16 GB of memory and a 256 GB NVMe drive, running Windows 10 IoT Enterprise LTSC 2021) and installs C3 Life on it. It goes with the **C3 Life server set-up guide**. The scripts do the Windows parts of the guide for you, so you don't have to click through every setting.
 
 ## What's in the folder
 
@@ -16,7 +16,8 @@ Sets up the C3 Life server (Dell OptiPlex Micro, Windows 10 IoT Enterprise LTSC 
 
 ## Order
 
-1. **BIOS** (guide Step 1) and **install Windows** (guide Step 2). Make the local users **admin** (Administrator) and **booth** (standard).
+1. **BIOS**: press **F10** as the HP starts, for Computer Setup. Set *Advanced › Power-On Options › After Power Loss* = **Power On** (so it comes back by itself after a power cut or the smart plug's reset). Set *Advanced › Power Management Options › S5 Maximum Power Savings* = **Disable**. Turn **Wake on LAN** on (*S5 Wake on LAN* = Boot to Normal, if your BIOS has it). Then *File › Save Changes and Exit*. On a used PC, also fit a new CR2032 battery. The menu names are HP's usual ones for business desktops; **check them on the screen**, as they can differ slightly between BIOS versions.
+   **Install Windows 10 IoT Enterprise LTSC 2021** (guide Step 2). The i5-7500 is a 7th-generation Intel processor, which Windows 11 doesn't support, and LTSC 2021 has security updates until January 2032. Make the local users **admin** (Administrator) and **booth** (standard).
 2. Sign in as **booth** once, then sign out. This creates its profile.
 3. Sign in as **admin**. Copy this whole folder to the PC, for example to `C:\Setup\c3life-server`.
 4. Right-click **Start › Windows PowerShell (Admin)** and run:
@@ -219,7 +220,7 @@ C3 Life talks to the sound desk only through a **desk driver** (`server\desk.py`
 
 ## What the scripts don't do
 
-- **BIOS settings.** Windows can't change them. See guide Step 1.
+- **BIOS settings.** Windows can't change them. See step 1 of *Order* above.
 - **Automatic sign-in.** Use Sysinternals Autologon, which stores the password encrypted.
 - **Installing Dante Controller, DVS, R Remote or Companion.** They need your accounts and licences. The installer only checks they're there.
 - **Wi-Fi for internet.** Join the church Wi-Fi yourself.
@@ -290,4 +291,4 @@ C3 Life talks to the sound desk only through a **desk driver** (`server\desk.py`
   - the lock and someone else's bus refused for the EQ too.
 
   The Wing tests add Aux 4's send and a bus's EQ, both ways.
-- **PowerShell scripts:** checked for errors with the PowerShell parser and Microsoft's PSScriptAnalyzer. They **haven't been run on a real Windows PC yet**. Run them on the Dell before relying on them, and check the result with `Check-C3LifeServer.ps1`.
+- **PowerShell scripts:** checked for errors with the PowerShell parser and Microsoft's PSScriptAnalyzer. They **haven't been run on a real Windows PC yet**. Run them on the HP before relying on them, and check the result with `Check-C3LifeServer.ps1`.
