@@ -54,6 +54,10 @@ API (JSON):
   PUT  /api/music {"playlists","fade_seconds","walk_in_volume"}   (Music control) the playlists: {"name", "uri"}
   POST /api/music/do {"do": "play|pause|next|previous|volume|playlist|fade", ...}   (Music control) passed to the helper
   POST /api/music/propresenter             (Music control) open ProPresenter (on its computer's helper)
+  GET  /api/macros                         (Macros view) the run sheet's macros, the run going on now, and (Macros
+                                           control) "choices": the steps C3 Life can run, named from what's set up
+  PUT  /api/macros {"macros","playback"}   (Macros control) the macros, and the notes Playback steps send
+  POST /api/macros/run {"id"} | /stop | /undo   (Macros control) nothing runs unless someone presses Run
   PUT  /api/rta/ringout {"on","sens"}      (RTA settings control) the feedback watch; GET /api/rta/live has "ringout"
   POST /api/rta/ringout/cut {"f"}          (RTA settings + Mixer control, the Wing in Control) a narrow cut on a flat band
                                            of Main 1's EQ; again on the same note goes deeper
@@ -163,6 +167,7 @@ import lightkey as lightkey_mod
 import music as music_mod
 import helpers as helpers_mod
 import health as health_mod
+import macros as macros_mod
 import rta_live as rta_live_mod
 import midi_in as midi_mod
 
@@ -417,7 +422,7 @@ def _ip_ok(x):
         return False
 
 
-def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bible=None, cues=None, reports=None, plan=None, desk=None, tio=None, monitors=None, scanner=None, foyer=None, rta_inputs=None, dante_names=None, lights=None, rta_live=None, midi=None, music=None, helpers=None, health=None):
+def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bible=None, cues=None, reports=None, plan=None, desk=None, tio=None, monitors=None, scanner=None, foyer=None, rta_inputs=None, dante_names=None, lights=None, rta_live=None, midi=None, music=None, helpers=None, health=None, macros=None):
     nets = cfg["_nets"]
     remote_nets = cfg.get("_remote", [])
 
@@ -812,6 +817,14 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 if self.level("Foyer", "Show", "Mixer"):
                     self.send_json(200, dict(foyer.view(desk), ok=True))
                 return
+            if path == "/api/macros":
+                s = self.level("Macros")
+                if s:
+                    out = dict(macros.view(), ok=True, can=access.level(s["role"], "Macros") >= 2)
+                    if out["can"]:
+                        out["choices"] = macros.choices()
+                    self.send_json(200, out)
+                return
             if path == "/api/devices":
                 s, _ = self.session()
                 if s:
@@ -1067,6 +1080,17 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 ok, msg = rta_live.calibrate(float(spl), weight)
                 log.info("rta: %s calibrating: %s", s["name"], msg)
                 self.send_json(200 if ok else 409, dict(rta_live.state(), ok=ok, message=msg, **({} if ok else {"error": msg})))
+                return
+            if path in ("/api/macros/run", "/api/macros/stop", "/api/macros/undo"):
+                s = self.level("Macros", need=2)
+                if not s:
+                    return
+                body = self.read_json() or {}
+                err = macros.run(body.get("id"), s["name"]) if path.endswith("/run") else macros.stop(s["name"]) if path.endswith("/stop") else macros.undo(s["name"])
+                out = dict(macros.view(), ok=not err)
+                if err:
+                    out["error"] = err
+                self.send_json(200 if not err else 409, out)
                 return
             if path == "/api/foyer/do":
                 body = self.read_json()
@@ -1530,6 +1554,19 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                          d["mic"]["from"], d["mic"]["via"], d["mic"]["ch"], d["ref"]["from"], d["ref"]["via"], d["ref"]["ch"])
                 self.send_json(200, dict(rta_inputs.view(dante, desk), ok=True))
                 return
+            if self.route() == "/api/macros":
+                s = self.level("Macros", need=2)
+                if not s:
+                    return
+                body = self.read_json(limit=512 * 1024)
+                d = dict(macros.get(), **{k: v for k, v in body.items() if k in ("macros", "playback")}) if isinstance(body, dict) else None
+                err = macros_mod.valid(d)
+                if err:
+                    self.send_json(400, {"ok": False, "error": err})
+                    return
+                macros.save(d, s["name"])
+                self.send_json(200, dict(macros.view(), ok=True, can=True))
+                return
             if self.route() == "/api/rta/ringout":
                 s = self.level("RTA settings", need=2)
                 if not s:
@@ -1881,6 +1918,7 @@ def serve(cfg):
         cfg.setdefault("midi_port", 0)
     midi = midi_mod.Midi(cfg["data_dir"], cfg, log, lights, allowed=lambda ip: any(ipaddress.ip_address(ip) in n for n in cfg["_nets"]))
     midi.start()
+    macros = macros_mod.Macros(cfg["data_dir"], cfg, log, desk=desk, music=music, foyer=foyer, lights=lights, midi=midi)
     cfg.setdefault("_my_ips", _my_ips())
     scanner = scan_mod.Scanner(cfg["data_dir"], cfg, log, wing=desk, tio=tio,
                                wing_find=lambda: desk.find(target=cfg.get("wing_find_target", "255.255.255.255")))
@@ -1890,11 +1928,11 @@ def serve(cfg):
         threading.Thread(target=scanner.loop, daemon=True).start()
         gone = lambda d, name: [name] if d and d.status()["status"] == "no answer" else []
         threading.Thread(target=scanner.watch, args=([lambda: gone(desk, desk.NAME), lambda: gone(tio, "the Tio"), health.check],), daemon=True).start()
-    httpd = ThreadingHTTPServer((cfg["bind"], int(cfg["port"])), make_handler(cfg, store, sessions, listen, access, dante, tags, bible, cues, reports, plan, desk, tio, monitors, scanner, foyer, rta_inputs, dante_names, lights, rta_live, midi, music, helpers, health))
+    httpd = ThreadingHTTPServer((cfg["bind"], int(cfg["port"])), make_handler(cfg, store, sessions, listen, access, dante, tags, bible, cues, reports, plan, desk, tio, monitors, scanner, foyer, rta_inputs, dante_names, lights, rta_live, midi, music, helpers, health, macros))
     httpd.daemon_threads = True
     close = httpd.server_close
     httpd.server_close = lambda: (scanner.stop.set(), lights.close(), rta_live.stop(), midi.close(), close())
-    httpd.store, httpd.sessions, httpd.listen, httpd.access, httpd.tags, httpd.bible, httpd.reports, httpd.plan, httpd.desk, httpd.tio, httpd.monitors, httpd.scanner, httpd.foyer, httpd.rta_inputs, httpd.lights, httpd.rta_live, httpd.midi, httpd.music, httpd.helpers, httpd.health = store, sessions, listen, access, tags, bible, reports, plan, desk, tio, monitors, scanner, foyer, rta_inputs, lights, rta_live, midi, music, helpers, health
+    httpd.store, httpd.sessions, httpd.listen, httpd.access, httpd.tags, httpd.bible, httpd.reports, httpd.plan, httpd.desk, httpd.tio, httpd.monitors, httpd.scanner, httpd.foyer, httpd.rta_inputs, httpd.lights, httpd.rta_live, httpd.midi, httpd.music, httpd.helpers, httpd.health, httpd.macros = store, sessions, listen, access, tags, bible, reports, plan, desk, tio, monitors, scanner, foyer, rta_inputs, lights, rta_live, midi, music, helpers, health, macros
     httpd.wing = desk  # the tests, and older code, call it this
     return httpd
 

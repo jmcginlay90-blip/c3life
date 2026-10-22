@@ -399,6 +399,7 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
           <sc-if value="{{m.undo}}" hint-placeholder-val="{{ false }}"><button class="chip" style="border-color:#6CB4F5;color:#6CB4F5;font-weight:600" onClick="{{undoMacro}}" aria-label="Undo {{lastRan}}">↶ Undo</button></sc-if>
         </sc-for>
       </div>
+      <sc-if value="{{mcMsg}}" hint-placeholder-val="{{ false }}"><div role="status" style="font-size:13px;line-height:1.45;color:{{mcMsgColor}};padding:0 4px">{{mcMsg}}</div></sc-if>
     </section>
     </sc-if>
 
@@ -528,8 +529,58 @@ class Component extends DCLogic {
     this.watchUser((u) => { if (u || this.readUserSet()) this.setState({ user: u, layout: this.readLayout(u), editing: false }); });
     this.timer = setInterval(() => this.setState({ spl: Math.round((88 + Math.random() * 4) * 10) / 10, tms: this.readTimers() }), 1000);
     this.bsInit();
+    this.mcLoad(); this.mcT = setInterval(() => this.mcLoad(), 2000);
   }
-  componentWillUnmount() { clearInterval(this.timer); clearTimeout(this.t); clearTimeout(this.tmT); clearTimeout(this.bsT); this.unwatchUser(); }
+  // Macros on the C3 Life server (the same run sheet as the Macros screen). In the preview, the demo chips below.
+  mcApi(path, method, body) {
+    const h = { 'Content-Type': 'application/json' }; const t = this.bsToken(); if (t) h.Authorization = 'Bearer ' + t;
+    return fetch('/api/macros' + path, { method: method || 'GET', headers: h, body: body ? JSON.stringify(body) : undefined })
+      .then((r) => r.json().catch(() => ({})).then((j) => ({ code: r.status, j: j || {} })));
+  }
+  mcLoad() {
+    if (this.mcDemo || this.mcBusy) return;
+    this.mcBusy = true;
+    this.mcApi('').then(({ code, j }) => {
+      this.mcBusy = false;
+      if (code === 404) { this.mcDemo = true; clearInterval(this.mcT); return; }
+      if (code === 200 && j.ok) this.setState({ mc: { macros: j.macros, run: j.run, can: j.can } });
+      else if (code === 401 || code === 403) this.setState({ mc: { macros: [], run: null, can: false } });
+    }).catch(() => { this.mcBusy = false; });
+  }
+  mcPost(what, body, done) {
+    this.mcApi('/' + what, 'POST', body).then(({ j }) => {
+      if (j && j.macros) this.setState({ mc: { ...this.state.mc, macros: j.macros, run: j.run } });
+      this.setState({ mcMsg: (j && j.error) || done || '', mcBad: !!(j && j.error) });
+    }).catch(() => this.setState({ mcMsg: 'The C3 Life server didn’t answer. Try again.', mcBad: true }));
+  }
+  mcVals() {
+    const s = this.state, M = s.mc, r = M.run, busy = !!(r && !r.done);
+    const last = r && r.done && !r.undone ? r : null;
+    return {
+      macros: M.macros.map((m) => {
+        const running = busy && r.id === m.id;
+        return {
+          label: running ? m.name + ' · step ' + r.step + ' of ' + r.of : m.name, color: m.color,
+          undo: !!(last && last.id === m.id && last.can_undo && M.can),
+          cls: running ? 'chip done' : 'chip',
+          run: () => {
+            if (!M.can) { this.setState({ mcMsg: 'Your role can look at the macros but not run them.', mcBad: true }); return; }
+            if (busy) { this.setState({ mcMsg: r.name + ' is still running. Stop it on Macros first.', mcBad: true }); return; }
+            if (!m.steps.length) { this.setState({ mcMsg: m.name + ' has no steps yet. Add them on Macros.', mcBad: true }); return; }
+            this.setState({ ask: { title: 'Run ' + m.name + '?', text: 'It runs these ' + m.steps.length + ' steps now, in order: ' + m.steps.map((x) => x.label).join('; ') + '. You can stop it and undo it on Macros.', btn: 'Yes, run it',
+              act: () => this.mcPost('run', { id: m.id }, m.name + ' is running.') } });
+          }
+        };
+      }),
+      lastRan: last ? last.name : '',
+      canUndo: !!(last && last.can_undo),
+      undoMacro: () => this.setState({ ask: { title: 'Undo ' + last.name + '?', text: 'It puts back what can be put back, in reverse: ' + last.undo.filter((u) => u.can).map((u) => u.label).join('; ') + '.', btn: 'Yes, undo it',
+        act: () => this.mcPost('undo', {}, last.name + ' undone.') } }),
+      mcMsg: s.mcMsg || (r && r.done && r.error ? r.name + ': ' + r.error : ''),
+      mcMsgColor: s.mcBad || (r && r.error && !s.mcMsg) ? '#FF7A45' : '#A3ACB8'
+    };
+  }
+  componentWillUnmount() { clearInterval(this.timer); clearInterval(this.mcT); clearTimeout(this.t); clearTimeout(this.tmT); clearTimeout(this.bsT); this.unwatchUser(); }
   // Each user has their own Home layout, starting from a default for their role.
   homeDefault(role) {
     const d = {
@@ -973,6 +1024,8 @@ class Component extends DCLogic {
       canUndo: !!s.lastRan,
       lastRan: s.lastRan,
       undoMacro: () => this.setState({ lastRan: '', ran: '', markText: 'Undid ' + s.lastRan }),
+      mcMsg: '', mcMsgColor: '#A3ACB8',
+      ...(s.mc ? this.mcVals() : {}),
       devices: devices,
       nOk: devices.filter((d) => d.ok).length,
       nLost: nLost, anyLost: nLost > 0,
