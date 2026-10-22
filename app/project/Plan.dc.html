@@ -393,6 +393,7 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
           </div>
           <sc-if value="{{it.hasMacro}}" hint-placeholder-val="{{ false }}">
             <button class="{{it.runCls}}" style="min-height:48px" onClick="{{it.run}}" aria-label="{{it.runAria}}">{{it.runLabel}}</button>
+            <sc-if value="{{it.mcMsg}}" hint-placeholder-val="{{ false }}"><div role="status" style="font-size:13px;line-height:1.45;color:#FF7A45">{{it.mcMsg}}</div></sc-if>
           </sc-if>
           <sc-if value="{{it.onlyPP}}" hint-placeholder-val="{{ false }}">
             <div style="display:flex;align-items:center;gap:8px;background:#0F1318;border-radius:8px;padding:8px 10px">
@@ -431,6 +432,15 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
     </sc-if>
   </main>
 
+  <sc-if value="{{mcAsking}}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;inset:0;z-index:8;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px">
+      <div role="alertdialog" aria-label="{{mcAskTitle}}" class="card" style="max-width:420px;width:100%;display:flex;flex-direction:column;gap:10px;border-color:#F5C518">
+        <div style="font-size:17px;font-weight:600">{{mcAskTitle}}</div>
+        <div style="font-size:14px;line-height:1.45;color:#D4D9E0">{{mcAskText}}</div>
+        <div style="display:flex;gap:8px"><button class="btn pri" style="flex:1" onClick="{{mcAskYes}}">Yes, run it</button><button class="btn" style="flex:1" onClick="{{mcAskNo}}">Cancel</button></div>
+      </div>
+    </div>
+  </sc-if>
   <div style="position:absolute;inset:0;z-index:6;pointer-events:none">
     <dc-import name="MDTalk" hint-size="390px,844px"></dc-import>
   </div>
@@ -476,8 +486,39 @@ class Component extends DCLogic {
     check(); this.userPoll = setInterval(check, 800);
     this.ntLoad();
     this.pcLoadStatus();
+    this.mcLoad(); this.mcT = setInterval(() => this.mcLoad(), 3000);
   }
-  componentWillUnmount() { clearInterval(this.userPoll); clearTimeout(this.ntT); }
+  // Macros on the C3 Life server: each item's Run runs that macro there (it asks first). In the preview, a demo tick.
+  mcApi(path, method, body) {
+    let t = ''; try { t = (JSON.parse(localStorage.getItem('booth.session') || 'null') || {}).token || ''; } catch (e) {}
+    const h = { 'Content-Type': 'application/json' }; if (t) h.Authorization = 'Bearer ' + t;
+    return fetch('/api/macros' + path, { method: method || 'GET', headers: h, body: body ? JSON.stringify(body) : undefined })
+      .then((r) => r.json().catch(() => ({})).then((j) => ({ code: r.status, j: j || {} })));
+  }
+  mcLoad() {
+    if (this.mcDemo || this.mcBusy) return;
+    this.mcBusy = true;
+    this.mcApi('').then(({ code, j }) => {
+      this.mcBusy = false;
+      if (code === 404) { this.mcDemo = true; clearInterval(this.mcT); return; }
+      if (code === 200 && j.ok) this.setState({ mc: { macros: j.macros, run: j.run, can: j.can } });
+      else if (code === 401 || code === 403) this.setState({ mc: { macros: [], run: null, can: false } });
+    }).catch(() => { this.mcBusy = false; });
+  }
+  mcRun(x, m) {
+    const M = this.state.mc;
+    const say = (t) => this.setState({ mcMsg: { [x.id]: t } });
+    if (!m) { say('There’s no macro called ' + x.macro + ' on the Macros screen. Pick another, or add it there.'); return; }
+    if (!M.can) { say('Your role can look at the macros but not run them.'); return; }
+    if (M.run && !M.run.done) { say(M.run.name + ' is still running. Stop it on Macros first.'); return; }
+    this.setState({ mcAsk: { title: 'Run ' + m.name + '?', text: 'For ' + x.title + ', it runs these ' + m.steps.length + ' steps now, in order: ' + m.steps.map((y) => y.label).join('; ') + '. You can stop it and undo it on Macros.',
+      act: () => this.mcApi('/run', 'POST', { id: m.id }).then(({ j }) => {
+        if (j && j.macros) this.setState({ mc: { ...this.state.mc, macros: j.macros, run: j.run } });
+        if (j && j.error) say(j.error);
+        else { const t = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); this.setState({ ran: { ...this.state.ran, [x.id]: t }, mcMsg: {} }); }
+      }).catch(() => say('The C3 Life server didn’t answer. Try again.')) } });
+  }
+  componentWillUnmount() { clearInterval(this.userPoll); clearInterval(this.mcT); clearTimeout(this.ntT); }
   // Services: each has its own times (the RTA report marks them), saved setup and running order.
   svcDefaults() {
     return [
@@ -855,7 +896,9 @@ class Component extends DCLogic {
       editing: s.editing,
       editLabel: s.editing ? 'Done' : 'Edit order',
       toggleEdit: () => this.setState({ editing: !s.editing }),
-      macroOpts: ['None', 'Walk-in', 'Worship start', 'Message', 'End of service'],
+      macroOpts: ['None'].concat(s.mc ? s.mc.macros.map((m) => m.name) : ['Walk-in', 'Worship start', 'Message', 'End of service']),
+      mcAsking: !!s.mcAsk, mcAskTitle: s.mcAsk ? s.mcAsk.title : '', mcAskText: s.mcAsk ? s.mcAsk.text : '',
+      mcAskNo: () => this.setState({ mcAsk: null }), mcAskYes: () => { const a = s.mcAsk; this.setState({ mcAsk: null }); if (a) a.act(); },
       addItem: () => this.change(items.concat([{ id: 'it' + (this.nextId++), time: '—', title: 'New item', detail: 'Added in app', macro: 'None', inPP: true, inPCO: true, pending: !s.online }])),
       loadTitle: s.loadedFrom ? 'Running order loaded' : 'Running order not loaded',
       loadSub: s.loadedFrom ? 'From ' + s.loadedFrom + ' at ' + s.loadedAt + ' · ' + items.length + ' items' : 'Loading is manual. Choose the source when you\u2019re ready.',
@@ -886,7 +929,11 @@ class Component extends DCLogic {
           runLabel: s.ran[x.id] ? '\u2713 ' + x.macro + ' ran at ' + s.ran[x.id] + ' \u00b7 Undo on Macros' : 'Run ' + x.macro,
           runCls: s.ran[x.id] ? 'btn' : 'btn pri',
           runAria: 'Run the ' + x.macro + ' macro for ' + x.title,
-          run: () => { const t = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); this.setState({ ran: { ...s.ran, [x.id]: t } }); },
+          mcMsg: (s.mcMsg || {})[x.id] || '',
+          run: () => {
+            if (s.mc) { this.mcRun(x, s.mc.macros.find((m) => m.name === x.macro)); return; }
+            const t = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); this.setState({ ran: { ...s.ran, [x.id]: t } });
+          },
           addToPCO: () => this.change(items.map((y, j) => (j === i ? { ...y, inPCO: true, pending: !s.online } : y)))
         };
       }),
