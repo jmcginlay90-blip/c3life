@@ -12,7 +12,11 @@ What each message does is set on Lights › Show setup › MultiTracks Playback,
 Nothing happens unless Follow Playback is on: until then each message is shown with what it would have done.
 The Sunday run sheet is unchanged: this only follows what Playback is told to send.
 
-Not tried with Playback yet. RFC 6295 (RTP-MIDI) and Apple's session protocol, receiving only; no journal recovery.
+Sending to Playback (send()): the run sheet's Playback steps (Play, Stop, Next song, Previous song) go back over the same
+session, as notes on the channel set on Macros › Playback (data/macros.json). In Playback, set its MIDI input to the
+"C3 Life" network session and map those notes to its controls (Playback's MIDI settings, MIDI learn).
+
+Not tried with Playback yet. RFC 6295 (RTP-MIDI) and Apple's session protocol; no journal recovery.
 """
 
 import json
@@ -150,7 +154,8 @@ class Midi:
         except (OSError, ValueError, TypeError):
             pass
         self.ssrc = int.from_bytes(os.urandom(4), "big")
-        self.peers = {}   # their ssrc -> {"name", "ip", "since", "seen"}
+        self.peers = {}   # their ssrc -> {"name", "ip", "since", "seen", "data": (ip, port) of their data port}
+        self.seq = int.from_bytes(os.urandom(2), "big")
         self.heard = []   # the last 30 messages, with what they did
         self.clock = []   # MIDI clock tick times, for the tempo
         self.bpm_sent = (0.0, 0.0)
@@ -221,7 +226,9 @@ class Midi:
             sock.sendto(b"\xff\xffOK" + struct.pack(">III", 2, token, self.ssrc) + NAME.encode() + b"\0", frm)
             with self.lock:
                 new = ssrc not in self.peers
-                self.peers[ssrc] = {"name": name, "ip": frm[0], "since": self.peers.get(ssrc, {}).get("since", time.time()), "seen": time.time()}
+                old = self.peers.get(ssrc, {})
+                self.peers[ssrc] = {"name": name, "ip": frm[0], "since": old.get("since", time.time()), "seen": time.time(),
+                                    "data": frm if sock is self.dat else old.get("data")}
             if new and sock is self.dat:
                 self.log.info("midi: %s (%s) connected", name, frm[0])
         elif cmd == b"BY" and len(pkt) >= 16:
@@ -239,6 +246,29 @@ class Midi:
             with self.lock:
                 if ssrc in self.peers:
                     self.peers[ssrc]["seen"] = time.time()
+
+    # ---- sending (the run sheet's Playback steps) -----------------------------------------------
+
+    def send(self, msg, to=None):
+        """Sends MIDI bytes (one message, e.g. [0x9F, 60, 100]) to everyone connected, or to the peer named `to`.
+        -> None, or what's wrong in words"""
+        with self.lock:
+            peers = [p for p in self.peers.values() if p.get("data") and time.time() - p["seen"] < 60 and (not to or p["name"] == to)]
+            self.seq = (self.seq + 1) & 0xFFFF
+            seq = self.seq
+        if not self.dat:
+            return self.error or "C3 Life's network MIDI session isn't running."
+        if not peers:
+            return "Playback isn't connected to C3 Life's network MIDI session. On the Mac with Playback: Audio MIDI Setup › Network › connect to C3 Life."
+        ts = int(time.time() * 10000) & 0xFFFFFFFF
+        b = bytes(msg)
+        pkt = struct.pack(">BBHII", 0x80, 0x61, seq, ts, self.ssrc) + bytes([len(b) & 0x0F]) + b  # RTP-MIDI, short command list
+        for p in peers:
+            try:
+                self.dat.sendto(pkt, p["data"])
+            except OSError as e:
+                return "Couldn't send to %s (%s)." % (p["name"], e)
+        return None
 
     # ---- what the MIDI does ---------------------------------------------------------------------
 

@@ -111,7 +111,9 @@ class Component extends DCLogic {
       if (r.status === 404) { this.noServer = true; return; }
       if (r.status === 403) { this.live = null; this.setState({ vals: new Array(31).fill(0) }); return; }  // no RTA for this role: no made-up levels
       if (r.status !== 200 || !j.ok) return;
+      this.onServer = true;
       this.live = j.mic ? j : null;
+      this.ring = j.ringout && j.ringout.on && j.status === 'live' ? (j.ringout.ringing || [])[0] || null : null;  // Ring-Out on the server
       if (j.mic) this.setState({ vals: Array.from({ length: 31 }, (_, i) => j.mic[Math.min(119, i * 4)]), spl: j.dba, avg: j.dba, peak: j.max === null ? j.dba : j.max });
       else this.setState({ vals: new Array(31).fill(0) });
     })).catch(() => { this.busy = false; });
@@ -120,7 +122,9 @@ class Component extends DCLogic {
     const s = this.state;
     const limit = this.props.limit ?? 90;
     const over = this.live !== null && s.avg >= limit;
-    let fb = null; try { fb = JSON.parse(localStorage.getItem('booth.feedback') || 'null'); } catch (e) {}
+    let fb = null;
+    if (this.ring) { const f = this.ring.f; fb = { freq: f < 1000 ? Math.round(f) + ' Hz' : (f / 1000).toFixed(f < 10000 ? 2 : 1).replace(/\.?0+$/, '') + ' kHz' }; }
+    else if (!this.onServer) { try { fb = JSON.parse(localStorage.getItem('booth.feedback') || 'null'); } catch (e) {} }  // the preview's demo
     return {
       full: !s.slim, slim: s.slim,
       barH: s.slim ? 40 : 48,

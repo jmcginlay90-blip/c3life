@@ -4,6 +4,15 @@ Kept on the C3 Life server so every device shows the same: the Foyer team's iPad
 The two mixes are called what they're called on the desk (the bus names come from the Wing, when it's connected).
 
 data/foyer.json: {"name": "Foyer", "mix_a": 7, "mix_b": 8, "mtx": 1, "max_db": -5}
+
+On the Wing (Control, from the Foyer screens):
+  which mix the foyer hears  each bus's send to the foyer matrix (/bus/<b>/send/<mtx>/on): the one chosen on, the other
+                             off (the new one goes on first, so there's no gap)
+  volume                     the matrix's fader (/mtx/<m>/fdr), never above max_db
+  mute                       the matrix's mute (/mtx/<m>/mute)
+  balance                    each bus's send level to the matrix (/bus/<b>/send/<mtx>/lvl), so switching doesn't jump
+                             (Foyer setup control, like choosing the buses)
+In Watch only it shows what the desk is doing and changes nothing.
 """
 
 import json
@@ -78,4 +87,62 @@ class Foyer:
         for k in ("mix_a", "mix_b"):
             out[k + "_name"] = names["bus"].get(str(out[k])) or FALLBACK[k]
         out["mtx_name"] = names["mtx"].get(str(out["mtx"])) or ""
+        out["live"] = self.live(wing, st if wing is not None else None)
         return out
+
+    # ---- what the foyer hears now, and changing it ----
+    def live(self, wing, st=None):
+        """{"mode", "connected", "source": "a"|"b"|"both"|"none"|None, "a_on", "b_on", "fdr", "mute"} from the desk"""
+        d = self.get()
+        if wing is None:
+            return {"mode": "off", "connected": False, "source": None, "a_on": None, "b_on": None, "a_lvl": None, "b_lvl": None, "fdr": None, "mute": None}
+        st = st or wing.state()
+        ok = st["status"] == "connected"
+        if ok:  # asked every time someone looks; the answer is there for the next look (a second later)
+            wing.ask_mtx(d["mix_a"], d["mtx"])
+            wing.ask_mtx(d["mix_b"], d["mtx"])
+        sa, sb = wing.mtx_send(d["mix_a"], d["mtx"]), wing.mtx_send(d["mix_b"], d["mtx"])
+        a, b = sa.get("on"), sb.get("on")
+        src = None if a is None or b is None else ("both" if a and b else "a" if a else "b" if b else "none")
+        m = st.get("strips", {}).get("mtx", {}).get(str(d["mtx"]), {}) if ok else {}
+        return {"mode": st.get("mode", "off"), "connected": ok, "source": src, "a_on": a, "b_on": b,
+                "a_lvl": sa.get("lvl"), "b_lvl": sb.get("lvl"), "fdr": m.get("fdr"), "mute": m.get("mute")}
+
+    def do(self, wing, body, who, log=None):
+        """A button on a Foyer screen: {"do": "source", "to": "a"|"b"} | {"do": "volume", "db": n} | {"do": "mute", "on": bool}.
+        -> None, or what's wrong in words"""
+        if wing is None:
+            return "No sound desk is set up."
+        if not isinstance(body, dict):
+            return "Not understood."
+        d, what = self.get(), body.get("do")
+        if what == "source":
+            to = body.get("to")
+            if to not in ("a", "b"):
+                return "The foyer hears one of its two mixes."
+            new, old = (d["mix_a"], d["mix_b"]) if to == "a" else (d["mix_b"], d["mix_a"])
+            err = wing.set("bus", new, "mtxsend/%d/on" % d["mtx"], True) or wing.set("bus", old, "mtxsend/%d/on" % d["mtx"], False)
+            msg = "switched %s to bus %d" % (d["name"], new)
+        elif what == "volume":
+            db = body.get("db")
+            if not isinstance(db, (int, float)) or isinstance(db, bool) or not -144 <= db <= 10:
+                return "Volume is in dB, from −∞."
+            if db > d["max_db"]:
+                return "The %s's volume can't go above %d dB (an Admin sets the maximum)." % (d["name"], d["max_db"])
+            err = wing.set("mtx", d["mtx"], "fdr", float(db))
+            msg = None  # not every step of a slider
+        elif what == "balance":
+            which, db = body.get("mix"), body.get("db")
+            if which not in ("a", "b") or not isinstance(db, (int, float)) or isinstance(db, bool) or not -144 <= db <= 10:
+                return "Not understood."
+            err = wing.set("bus", d["mix_a"] if which == "a" else d["mix_b"], "mtxsend/%d/lvl" % d["mtx"], float(db))
+            msg = None
+        elif what == "mute":
+            on = bool(body.get("on"))
+            err = wing.set("mtx", d["mtx"], "mute", on)
+            msg = "%s %s" % ("muted" if on else "unmuted", d["name"])
+        else:
+            return "Not understood."
+        if not err and msg and log:
+            log.info("foyer: %s %s", who, msg)
+        return err

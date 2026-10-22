@@ -175,12 +175,19 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
       </div>
       <div style="display:flex;gap:8px">
         <sc-for list="{{sources}}" as="sr" hint-placeholder-count="2">
-          <button class="{{sr.cls}}" onClick="{{sr.pick}}" aria-pressed="{{sr.on}}">
+          <button class="{{sr.cls}}" onClick="{{sr.pick}}" aria-pressed="{{sr.on}}" disabled="{{noCtl}}">
             <span>{{sr.name}}</span>
             <small>{{sr.sub}}</small>
           </button>
         </sc-for>
       </div>
+      <sc-if value="{{ask}}" hint-placeholder-val="{{ false }}">
+        <div role="alertdialog" aria-label="Switch the {{fyName}}?" style="display:flex;flex-direction:column;gap:8px;border:1px solid #F5C518;border-radius:8px;padding:10px">
+          <div style="font-size:15px">Switch the {{fyName}} to {{askName}}? The speakers change straight away.</div>
+          <div style="display:flex;gap:8px"><button class="btn pri" style="flex:1" onClick="{{askYes}}">Switch</button><button class="btn" style="flex:1" onClick="{{askNo}}">Cancel</button></div>
+        </div>
+      </sc-if>
+      <sc-if value="{{note}}" hint-placeholder-val="{{ false }}"><div role="status" style="font-size:13px;color:{{noteColor}};line-height:1.45">{{note}}</div></sc-if>
     </section>
 
     <section class="card" style="display:flex;flex-direction:column;gap:12px;border-color:{{volBorder}}">
@@ -188,18 +195,18 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
         <div class="lbl">{{fyName}} volume · {{mtx}}</div>
         <span class="mono" style="font-size:22px;color:{{dbColor}}">{{dbText}}</span>
       </div>
-      <div style="height:8px;border-radius:4px;background:#0F1318;overflow:hidden" aria-hidden="true">
+      <sc-if value="{{showMeter}}" hint-placeholder-val="{{ true }}"><div style="height:8px;border-radius:4px;background:#0F1318;overflow:hidden" aria-hidden="true">
         <div style="height:8px;border-radius:4px;background:#6CB4F5;width:{{meter}}%"></div>
-      </div>
-      <input type="range" min="0" max="100" value="{{lvl}}" onChange="{{setLvl}}" disabled="{{muted}}" aria-label="{{fyName}} volume">
+      </div></sc-if>
+      <input type="range" min="0" max="100" value="{{lvl}}" onChange="{{setLvl}}" disabled="{{volOff}}" aria-label="{{fyName}} volume">
       <div class="mono" style="display:flex;justify-content:space-between;font-size:11px;color:#A3ACB8"><span>−∞</span><span>−20</span><span>−10</span><span>Max {{maxText}}</span></div>
       <div style="display:flex;gap:6px" role="group" aria-label="Quick levels">
         <sc-for list="{{presets}}" as="p" hint-placeholder-count="3">
-          <button class="{{p.cls}}" onClick="{{p.pick}}" disabled="{{muted}}">{{p.name}}<br><span class="mono" style="font-size:11px;color:#A3ACB8">{{p.db}}</span></button>
+          <button class="{{p.cls}}" onClick="{{p.pick}}" disabled="{{volOff}}">{{p.name}}<br><span class="mono" style="font-size:11px;color:#A3ACB8">{{p.db}}</span></button>
         </sc-for>
       </div>
-      <sc-if value="{{muted}}" hint-placeholder-val="{{ false }}"><button class="btn hot" onClick="{{toggleMute}}">{{fyName}} muted · tap to unmute</button></sc-if>
-      <sc-if value="{{live}}" hint-placeholder-val="{{ true }}"><button class="btn" onClick="{{toggleMute}}">Mute {{fyName}}</button></sc-if>
+      <sc-if value="{{muted}}" hint-placeholder-val="{{ false }}"><button class="btn hot" onClick="{{toggleMute}}" disabled="{{noCtl}}">{{fyName}} muted · tap to unmute</button></sc-if>
+      <sc-if value="{{live}}" hint-placeholder-val="{{ true }}"><button class="btn" onClick="{{toggleMute}}" disabled="{{noCtl}}">Mute {{fyName}}</button></sc-if>
       <sc-if value="{{capped}}" hint-placeholder-val="{{ false }}"><div style="font-size:12px;color:#F5C518">Held at the maximum set by Admin ({{maxText}}).</div></sc-if>
     </section>
 
@@ -208,7 +215,7 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
       <sc-for list="{{trims}}" as="t" hint-placeholder-count="2">
         <div style="display:flex;align-items:center;gap:10px">
           <label for="{{t.id}}" style="font-size:13px;width:92px">{{t.name}}</label>
-          <input id="{{t.id}}" type="range" min="0" max="100" value="{{t.lvl}}" onChange="{{t.set}}">
+          <input id="{{t.id}}" type="range" min="0" max="100" value="{{t.lvl}}" onChange="{{t.set}}" disabled="{{trimOff}}">
           <span class="mono" style="font-size:12px;width:52px;text-align:right">{{t.db}}</span>
         </div>
       </sc-for>
@@ -275,6 +282,13 @@ class Component extends DCLogic {
   }
   // ---- the foyer's name and its two mixes: kept on the C3 Life server, and named from the desk ----
   fyTok() { try { const x = JSON.parse(localStorage.getItem('booth.session') || 'null'); return x ? x.token : ''; } catch (e) { return ''; } }
+  // On the Wing (C3 Life server): which mix, volume, mute and balance, through POST /api/foyer/do
+  fyDo(body, done) {
+    return this.fyApi('/api/foyer/do', 'POST', body).then(({ j }) => {
+      if (j && j.live) { this.setState({ fy: j }); this.fyCache(j); }
+      this.setState({ msg: (j && j.error) || done || '' });
+    }).catch(() => this.setState({ msg: 'The C3 Life server didn’t answer. Try again.' }));
+  }
   fyApi(path, method, body) {
     const t = this.fyTok(), h = t ? { Authorization: 'Bearer ' + t } : {};
     if (body) h['Content-Type'] = 'application/json';
@@ -325,13 +339,13 @@ class Component extends DCLogic {
   unwatchUser() { clearInterval(this.userPoll); try { window.removeEventListener('storage', this.onStore); } catch (e) {} }
   componentDidMount() {
     this.watchUser((u) => this.setState({ admin: !!u && (u.role || u.name) === 'Admin' }));
-    this.fyLoad(); this.fyT = setInterval(() => this.fyLoad(), 5000);
+    this.fyLoad(); this.fyT = setInterval(() => this.fyLoad(), 2000);
     this.timer = setInterval(() => {
       const s = this.state;
       this.setState({ meter: s.muted ? 0 : Math.round(s.lvl * (0.5 + Math.random() * 0.35)) });
     }, 160);
   }
-  componentWillUnmount() { clearInterval(this.timer); clearInterval(this.fyT); this.unwatchUser(); }
+  componentWillUnmount() { clearInterval(this.timer); clearInterval(this.fyT); clearTimeout(this.volT); clearTimeout(this.trimT); this.unwatchUser(); }
   // fader position 0–100 to dB: 75 = 0 dB
   db(l) { return l <= 0 ? -90 : (l >= 75 ? ((l - 75) / 25) * 10 : -((75 - l) * 1.2)); }
   lvlFor(d) { return d >= 0 ? 75 + (d / 10) * 25 : 75 + d / 1.2; }
@@ -343,34 +357,65 @@ class Component extends DCLogic {
     const s = { ...s0, maxDb: fy.max_db, auxA: bus(fy.mix_a), auxB: bus(fy.mix_b), mtx: mx(fy.mtx) };
     const nameA = fy.mix_a_name, nameB = fy.mix_b_name, draft = s0.fyDraft === undefined ? fy.name : s0.fyDraft;
     const maxLvl = this.lvlFor(s.maxDb);
-    const setCapped = (v) => this.setState({ lvl: Math.min(v, maxLvl), capped: v > maxLvl });
-    const d = this.db(s.lvl);
+    // On the C3 Life server: what the desk is doing now (fy.live). In the preview: the demo.
+    const L = !this.fyDemo && fy.live ? fy.live : null;
+    const ctl = !L || (L.connected && L.mode === 'control');
+    const held = s0.held && Date.now() - s0.held.at < 1500 ? s0.held.lvl : null;
+    const src = L ? (L.source === 'a' ? 0 : L.source === 'b' ? 1 : -1) : s.src;
+    const muted = L ? !!L.mute : s.muted;
+    const lvlNow = held != null ? held : (L && L.fdr != null ? Math.max(0, Math.min(100, this.lvlFor(Math.max(-90, L.fdr)))) : s.lvl);
+    const d = held != null || !L || L.fdr == null ? this.db(lvlNow) : L.fdr;
+    const names = [nameA, nameB];
+    const sendVol = (v) => { if (L) { clearTimeout(this.volT); this.volT = setTimeout(() => this.fyDo({ do: 'volume', db: Math.round(Math.max(-144, Math.min(s.maxDb, this.db(v))) * 10) / 10 }), 200); } };
+    const setCapped = (v) => { const c = Math.min(v, maxLvl); this.setState({ lvl: c, capped: v > maxLvl, held: { lvl: c, at: Date.now() } }); sendVol(c); };
     const presets = [['Quiet', -20], ['Normal', -10], ['Loud', s.maxDb]];
+    const note = !L ? '' : !L.connected ? 'The desk isn’t answering, so the ' + fy.name + ' can’t be changed from here right now.'
+      : L.mode !== 'control' ? 'The desk is on Watch only: this shows what the ' + fy.name + ' plays, and changes nothing. Switch the Mixer to Control to change it.'
+      : L.source === 'both' ? 'Both mixes are going to the ' + fy.name + ' at the moment. Tap the one it should play.'
+      : L.source === 'none' ? 'Neither mix is going to the ' + fy.name + ' at the moment. Tap the one it should play.' : '';
     return {
       sources: [
-        { name: nameA, sub: (s.src === 0 ? 'Playing in ' + fy.name : 'Off') + ' \u00b7 Bus ' + fy.mix_a },
-        { name: nameB, sub: (s.src === 1 ? 'Playing in ' + fy.name : 'Off') + ' \u00b7 Bus ' + fy.mix_b }
-      ].map((x, i) => ({ ...x, on: s.src === i, cls: s.src === i ? 'src on' : 'src', pick: () => this.setState({ src: i }) })),
+        { name: nameA, sub: (src === 0 ? 'Playing in ' + fy.name : 'Off') + ' \u00b7 Bus ' + fy.mix_a },
+        { name: nameB, sub: (src === 1 ? 'Playing in ' + fy.name : 'Off') + ' \u00b7 Bus ' + fy.mix_b }
+      ].map((x, i) => ({ ...x, on: src === i, cls: src === i ? 'src on' : 'src',
+        pick: () => { if (src === i && L && L.source !== 'both') return; this.setState({ ask: i }); } })),  // switching asks first
+      ask: s0.ask != null, askName: s0.ask != null ? names[s0.ask] : '',
+      askNo: () => this.setState({ ask: null }),
+      askYes: () => {
+        const i = s0.ask; this.setState({ ask: null });
+        if (L) this.fyDo({ do: 'source', to: i === 0 ? 'a' : 'b' }, 'The ' + fy.name + ' now plays ' + names[i] + '.');
+        else this.setState({ src: i });
+      },
+      noCtl: !ctl, volOff: !ctl || muted, trimOff: !!L && (!ctl || !s0.admin),
+      note: note || s0.msg || '', noteColor: note ? '#FFB089' : '#A3ACB8',
       mtx: s.mtx,
-      lvl: s.lvl,
+      lvl: lvlNow,
       setLvl: (e) => setCapped(Number(e.target.value)),
-      dbText: s.muted ? 'Muted' : this.fmt(d),
-      dbColor: s.muted ? '#FF7A45' : '#F5C518',
-      volBorder: s.muted ? '#FF7A45' : '#262C36',
-      meter: s.meter,
+      dbText: muted ? 'Muted' : this.fmt(d),
+      dbColor: muted ? '#FF7A45' : '#F5C518',
+      volBorder: muted ? '#FF7A45' : '#262C36',
+      meter: s.meter, showMeter: !L,
       maxText: this.fmt(s.maxDb),
-      capped: !!s.capped && !s.muted,
+      capped: !!s.capped && !muted,
       presets: presets.map(([name, v]) => ({
         name, db: this.fmt(v),
         cls: Math.abs(d - v) < 0.6 ? 'pre on' : 'pre',
-        pick: () => this.setState({ lvl: this.lvlFor(v), capped: false })
+        pick: () => { this.setState({ lvl: this.lvlFor(v), capped: false, held: { lvl: this.lvlFor(v), at: Date.now() } }); if (L) this.fyDo({ do: 'volume', db: v }); }
       })),
-      muted: s.muted, live: !s.muted,
-      toggleMute: () => this.setState({ muted: !s.muted }),
-      trims: [['tA', nameA, 'trimA'], ['tB', nameB, 'trimB']].map(([id, name, key]) => ({
-        id, name, lvl: s[key], db: this.fmt(this.db(s[key])),
-        set: (e) => this.setState({ [key]: Number(e.target.value) })
-      })),
+      muted: muted, live: !muted,
+      toggleMute: () => { if (L) this.fyDo({ do: 'mute', on: !muted }, muted ? 'Unmuted.' : 'Muted.'); else this.setState({ muted: !s.muted }); },
+      trims: [['tA', nameA, 'trimA', 'a', 'a_lvl'], ['tB', nameB, 'trimB', 'b', 'b_lvl']].map(([id, name, key, mix, lk]) => {
+        const th = s0.trimHeld && s0.trimHeld[key] && Date.now() - s0.trimHeld[key].at < 1500 ? s0.trimHeld[key].lvl : null;
+        const lv = th != null ? th : (L && L[lk] != null ? Math.max(0, Math.min(100, this.lvlFor(Math.max(-90, L[lk])))) : s[key]);
+        return {
+          id, name, lvl: lv, db: this.fmt(th == null && L && L[lk] != null ? L[lk] : this.db(lv)),
+          set: (e) => {
+            const v = Number(e.target.value);
+            this.setState({ [key]: v, trimHeld: Object.assign({}, s0.trimHeld, { [key]: { lvl: v, at: Date.now() } }) });
+            if (L) { clearTimeout(this.trimT); this.trimT = setTimeout(() => this.fyDo({ do: 'balance', mix: mix, db: Math.round(Math.max(-144, this.db(v)) * 10) / 10 }), 200); }
+          }
+        };
+      }),
       locked: !s.admin, unlocked: s.admin,
       lockColor: s.admin ? '#F5C518' : '#A3ACB8',
       auxA: s.auxA, auxB: s.auxB,

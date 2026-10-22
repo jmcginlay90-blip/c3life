@@ -22,6 +22,9 @@ What a driver provides (the Wing's driver, wing.py, is the full example):
   fade(moves)                                           slide faders over time (cues, macros)
   channel(n) history(n, since) meter_state()            a channel's processing, its last seconds, the meters
   bus_sends(b) bus_eq(b)                                every send to bus b; bus b's EQ (monitor mixes)
+  ask_eq(kind, n) eq(kind, n)                           a bus's, main's or matrix's EQ (Ring-Out cuts on Main 1)
+  ask_mtx(b, m) mtx_send(b, m)                          bus b's send to matrix m (the foyer): ask for it, then read it
+                                                        (set it with set("bus", b, "mtxsend/<m>/on|lvl", v))
   rta_state() rta_point(n, tap, kind)                   the desk's RTA, and pointing it at a strip
   outputs() set_out(out, grp, idx)                      output patching (the RTA's "Set it up for me")
   find()                                                desks of this kind on the network
@@ -92,6 +95,18 @@ class Desk:
         return {}
 
     def bus_eq(self, b):
+        return {}
+
+    def ask_eq(self, kind, n):
+        pass
+
+    def eq(self, kind, n):
+        return {}
+
+    def ask_mtx(self, b, m):
+        pass
+
+    def mtx_send(self, b, m):
         return {}
 
     def rta_state(self):

@@ -35,7 +35,7 @@ a{color:#6CB4F5}a:hover{color:#9CCBF8}
 select{flex:1;min-width:0;min-height:44px;border-radius:10px;border:1px solid #333B47;background:#0F1318;color:#ECEEF1;font:400 14px 'IBM Plex Sans',system-ui,sans-serif;padding:0 8px}
 .fld{display:flex;flex-direction:column;gap:5px;font-size:12px;color:#A3ACB8}
 .fld select{flex:none;width:100%}
-input[type=number]{width:100%;min-height:44px;border-radius:10px;border:1px solid #333B47;background:#161A21;color:#ECEEF1;font:400 15px 'IBM Plex Mono',ui-monospace,monospace;padding:0 10px;box-sizing:border-box;color-scheme:dark}
+input[type=number],.fld input[type=text]{width:100%;min-height:44px;border-radius:10px;border:1px solid #333B47;background:#161A21;color:#ECEEF1;font:400 15px 'IBM Plex Mono',ui-monospace,monospace;padding:0 10px;box-sizing:border-box;color-scheme:dark}
 .tg{min-height:36px;padding:0 10px;border-radius:18px;border:1px solid #333B47;background:#161A21;color:#C9CFD7;font:500 12px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer}
 .tg.on{background:#6CB4F5;border-color:#6CB4F5;color:#08131C}
 
@@ -174,6 +174,12 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
 
         <sc-if value="{{m.open}}" hint-placeholder-val="{{ false }}">
           <div style="display:flex;flex-direction:column;gap:0;border-top:1px solid #222831">
+            <sc-if value="{{m.editable}}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;gap:6px;align-items:flex-end;padding:8px 0;border-bottom:1px solid #222831">
+                <label class="fld" style="flex:1">Name<input type="text" maxlength="40" value="{{m.name}}" onChange="{{m.rename}}" aria-label="Macro name"></label>
+                <button class="btn" onClick="{{m.del}}">Delete</button>
+              </div>
+            </sc-if>
             <sc-for list="{{m.steps}}" as="st" hint-placeholder-count="4">
               <div style="display:flex;align-items:center;gap:8px;min-height:48px;border-bottom:1px solid #222831">
                 <span class="mono" style="width:18px;font-size:12px;color:#A3ACB8">{{st.n}}</span>
@@ -181,9 +187,11 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
                 <span style="flex:1;min-width:0;font-size:14px">{{st.action}}</span>
                 <sc-if value="{{st.done}}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;color:#6CB4F5">Done</span></sc-if>
                 <sc-if value="{{st.running}}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;color:#F5C518">Running</span></sc-if>
+                <sc-if value="{{st.failed}}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;color:#FF7A45">Didn’t work</span></sc-if>
                 <sc-if value="{{st.idle}}" hint-placeholder-val="{{ true }}"><button class="x" onClick="{{st.remove}}" aria-label="Remove step {{st.n}}">×</button></sc-if>
               </div>
             </sc-for>
+            <sc-if value="{{m.canEdit}}" hint-placeholder-val="{{ true }}">
             <div class="lbl" style="padding:10px 0 6px">Add a step</div>
             <div style="display:flex;gap:6px">
               <select aria-label="Device" value="{{addDev}}" onChange="{{pickDev}}">
@@ -233,14 +241,29 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
                 <div style="font-size:13px;line-height:1.4;border-top:1px solid #262C36;padding-top:8px">Step: <strong>{{wPreview}}</strong></div>
               </div>
             </sc-if>
-            <button class="btn" style="margin:8px 0 6px" onClick="{{m.add}}">+ Add step</button>
+            <sc-if value="{{noActions}}" hint-placeholder-val="{{ false }}"><div style="font-size:12px;color:#A3ACB8;padding-top:6px">{{noActions}}</div></sc-if>
+            <button class="btn" style="margin:8px 0 6px" onClick="{{m.add}}" disabled="{{addDisabled}}">+ Add step</button>
+            </sc-if>
           </div>
         </sc-if>
       </section>
     </sc-for>
 
-    <button class="btn" onClick="{{newMacro}}">+ New macro</button>
-    <div style="font-size:12px;color:#A3ACB8;padding:0 4px;line-height:1.45">Steps run in order. Nothing runs by itself: press Run (here, on Home or on the Plan). If an Admin turns on automatic macros, they ask before they run and show which devices are ready. If something isn\u2019t connected, the app checks again every 5 minutes. Every run is written to the service log.</div>
+    <sc-if value="{{msg}}" hint-placeholder-val="{{ false }}"><div role="status" style="font-size:13px;line-height:1.45;color:{{msgColor}};padding:0 4px">{{msg}}</div></sc-if>
+    <sc-if value="{{canEdit}}" hint-placeholder-val="{{ true }}"><button class="btn" onClick="{{newMacro}}">+ New macro</button></sc-if>
+    <sc-if value="{{live}}" hint-placeholder-val="{{ false }}">
+      <section class="card" style="display:flex;flex-direction:column;gap:8px">
+        <div class="lbl">Playback steps: the notes sent</div>
+        <div style="font-size:12px;color:#A3ACB8;line-height:1.45">Playback steps send a MIDI note to MultiTracks Playback over network MIDI. In Playback, map these notes (Settings › MIDI › MIDI Control) on the same channel.</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          <label class="fld" style="width:90px">Channel<input type="number" min="1" max="16" value="{{pbChannel}}" onChange="{{setPbChannel}}" disabled="{{cantEdit}}"></label>
+          <sc-for list="{{pbNotes}}" as="p" hint-placeholder-count="4">
+            <label class="fld" style="width:90px">{{p.name}}<input type="number" min="0" max="127" value="{{p.note}}" onChange="{{p.set}}" disabled="{{cantEdit}}"></label>
+          </sc-for>
+        </div>
+      </section>
+    </sc-if>
+    <div style="font-size:12px;color:#A3ACB8;padding:0 4px;line-height:1.45">Steps run in order. Nothing runs by itself: press Run (here, on Home or on the Plan). If an Admin turns on automatic macros, they ask before they run and show which devices are ready. If something isn’t connected, the app checks again every 5 minutes. Every run is written to the service log.</div>
   </main>
 
   <sc-if value="{{hasUndo}}" hint-placeholder-val="{{ false }}">
@@ -263,6 +286,15 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
           </sc-for>
         </div>
       </sc-if>
+    </div>
+  </sc-if>
+  <sc-if value="{{asking}}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;inset:0;z-index:8;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px">
+      <div role="alertdialog" aria-label="{{askTitle}}" class="card" style="max-width:420px;width:100%;display:flex;flex-direction:column;gap:10px;border-color:#F5C518">
+        <div style="font-size:17px;font-weight:600">{{askTitle}}</div>
+        <div style="font-size:14px;line-height:1.45;color:#D4D9E0">{{askText}}</div>
+        <div style="display:flex;gap:8px"><button class="btn pri" style="flex:1" onClick="{{askYes}}">{{askBtn}}</button><button class="btn" style="flex:1" onClick="{{askNo}}">Cancel</button></div>
+      </div>
     </div>
   </sc-if>
   <div style="position:absolute;inset:0;z-index:6;pointer-events:none">
@@ -328,13 +360,53 @@ class Component extends DCLogic {
       ]
     };
   }
+  // ---- on the C3 Life server: the real run sheet (GET/PUT /api/macros, POST /api/macros/run|stop|undo) ----
+  // In the preview (no server) the demo above runs instead, and nothing leaves this screen.
+  tok() { try { const x = JSON.parse(localStorage.getItem('booth.session') || 'null'); return x ? x.token : ''; } catch (e) { return ''; } }
+  api(path, method, body) {
+    const t = this.tok(), h = t ? { Authorization: 'Bearer ' + t } : {};
+    if (body) h['Content-Type'] = 'application/json';
+    return fetch(path, { method: method || 'GET', headers: h, body: body ? JSON.stringify(body) : undefined })
+      .then((r) => r.json().catch(() => ({})).then((j) => ({ code: r.status, j: j })));
+  }
+  load() {
+    if (this.demo || this.loading) return;
+    this.loading = true;
+    this.api('/api/macros').then(({ code, j }) => {
+      this.loading = false;
+      if (code === 404) { this.demo = true; return; }
+      if (code === 401 || code === 403) { this.setState({ live: { macros: [], playback: { channel: 16, notes: {} }, run: null, can: false, denied: true }, msg: code === 401 ? 'Sign in to see the macros.' : 'Your role can’t see the macros. An Admin can change that in Access levels.', msgBad: true }); return; }
+      if (code === 200 && j.ok) {
+        const old = this.state.live;
+        if (old && old.choices && !j.choices) j.choices = old.choices;
+        this.setState({ live: j, open: old ? this.state.open : 0 });
+      }
+    }).catch(() => { this.loading = false; });
+  }
+  post(what, body, done) {
+    return this.api('/api/macros/' + what, 'POST', body || {}).then(({ j }) => {
+      if (j && j.macros) this.setState({ live: { ...this.state.live, ...j, can: this.state.live.can, choices: this.state.live.choices } });
+      this.setState({ msg: (j && j.error) || done || '', msgBad: !!(j && j.error) });
+    }).catch(() => this.setState({ msg: 'The C3 Life server didn’t answer. Try again.', msgBad: true }));
+  }
+  saveLive(macros, playback, done) {
+    const L = this.state.live;
+    const next = { macros: macros || L.macros, playback: playback || L.playback };
+    this.setState({ live: { ...L, ...next } });
+    return this.api('/api/macros', 'PUT', next).then(({ j }) => {
+      if (j && j.ok) this.setState({ live: { ...this.state.live, ...j, choices: this.state.live.choices }, msg: done || '', msgBad: false });
+      else { this.setState({ msg: (j && j.error) || 'Not saved. Try again.', msgBad: true }); this.load(); }
+    }).catch(() => this.setState({ msg: 'Not saved: the C3 Life server didn’t answer.', msgBad: true }));
+  }
   componentDidMount() {
+    this.load();
+    this.poll = setInterval(() => { const L = this.state.live; if (L && (this.n = (this.n || 0) + 1) % (L.run && !L.run.done ? 1 : 3) === 0) this.load(); }, 1000);
     this.tick = setInterval(() => {
       const u = this.state.undo;
       if (u && !u.done && !this.state.undoing && u.left > 0) this.setState({ undo: { ...u, left: u.left - 1 } });
     }, 1000);
   }
-  componentWillUnmount() { clearTimeout(this.t); clearInterval(this.tick); }
+  componentWillUnmount() { clearTimeout(this.t); clearInterval(this.tick); clearInterval(this.poll); }
   undoInfo(dev, action) {
     const flip = { 'Mute ': 'Unmute ', 'Unmute ': 'Mute ', 'Turn on ': 'Turn off ', 'Turn off ': 'Turn on ', 'Solo on ': 'Solo off ', 'Solo off ': 'Solo on ', 'EQ on ': 'EQ off ', 'EQ off ': 'EQ on ', 'Bypass ': 'Enable ', 'Enable ': 'Bypass ' };
     if (dev === 'Chat') return { can: false, why: 'Already sent' };
@@ -411,7 +483,121 @@ class Component extends DCLogic {
     try { localStorage.setItem('booth.wingnames', JSON.stringify(w)); } catch (e) {}
     return w;
   }
+  liveVals() {
+    const s = this.state, L = s.live, W = this.wing;
+    const run = L.run, can = !!L.can, ch = L.choices || { steps: {}, wing: { kinds: {}, names: {} } };
+    const busy = !!(run && !run.done);
+    const LD = { wing: 'Wing', music: 'Music', foyer: 'Foyer', lights: 'Lights', propresenter: 'ProPresenter', playback: 'Playback', wait: 'Wait' };
+    const color = (d) => (this.devs[LD[d]] || this.devs.Music).color;
+    const devKey = Object.keys(LD).find((k) => LD[k] === s.addDev) || 'wing';
+    const opts = (ch.steps[devKey] || []);
+    const isWing = devKey === 'wing';
+    // The Wing: what's on this desk, named from it
+    const KN = { 'Channel': 'ch', 'Aux input': 'aux', 'Bus': 'bus', 'Main': 'main', 'Matrix': 'mtx', 'DCA': 'dca' };
+    const SH = { ch: 'Ch', aux: 'Aux', bus: 'Bus', main: 'Main', mtx: 'Mtx', dca: 'DCA' };
+    const wType = KN[s.wType] ? s.wType : 'Channel', kind = KN[wType];
+    const lbl = (k, n) => { const nm = ((ch.wing.names || {})[k] || {})[n]; return SH[k] + ' ' + (k === 'ch' ? String(n).padStart(2, '0') : n) + (nm ? ' · ' + nm : ''); };
+    const count = (ch.wing.kinds || {})[kind] || 0;
+    const targets = Array.from({ length: count }, (_, i) => ({ n: i + 1, label: lbl(kind, i + 1) }));
+    const sel = (s.wSelN && s.wSelN.kind === kind) ? s.wSelN.ns : [1];
+    const acts = ['Mute', 'Unmute', 'Set fader', 'Fade fader'].concat(kind === 'ch' || kind === 'aux' ? ['Send to bus'] : []);
+    const wAct = acts.indexOf(s.wAct) > -1 ? s.wAct : acts[0];
+    const buses = Array.from({ length: (ch.wing.kinds || {}).bus || 0 }, (_, i) => lbl('bus', i + 1));
+    const busN = Math.max(1, buses.indexOf(s.wBus) + 1);
+    const db = (v) => (v <= -90 ? '−∞' : (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v)) + ' dB';
+    const wingSteps = () => sel.map((n) => {
+      const t = lbl(kind, n), base = { dev: 'wing', kind: kind, n: n };
+      if (wAct === 'Mute' || wAct === 'Unmute') return { ...base, do: wAct.toLowerCase(), label: wAct + ' ' + t };
+      if (wAct === 'Set fader') return { ...base, do: 'fader', db: Math.max(-144, s.wVal), label: 'Set ' + t + ' to ' + db(s.wVal) };
+      if (wAct === 'Fade fader') return { ...base, do: 'fade', db: Math.max(-144, s.wVal), secs: Math.max(0.1, s.wFade), label: 'Fade ' + t + ' to ' + db(s.wVal) + ' over ' + s.wFade + 's' };
+      return { ...base, do: 'send', bus: busN, db: Math.max(-144, s.wVal), label: 'Send ' + t + ' to ' + buses[busN - 1] + ' at ' + db(s.wVal) };
+    });
+    const addAct = opts.some((o) => o.label === s.addAct) ? s.addAct : (opts[0] || {}).label;
+    const preview = isWing ? (sel.length ? wingSteps().map((x) => x.label).join('; ') : 'nothing yet (pick at least one)') : '';
+    const setMacros = (fn, done) => this.saveLive(fn(L.macros.map((m) => ({ ...m, steps: m.steps.slice() }))), null, done);
+    const ask = (title, text, btn, act) => this.setState({ ask: { title, text, btn, act } });
+    const left = run && run.done ? Math.max(0, 600 - Math.round(Date.now() / 1000 - run.done_at)) : 0;
+    const pb = L.playback || { channel: 16, notes: {} };
+    const dismissed = s.dismissed && run && s.dismissed === run.started;
+    return {
+      live: !L.denied, busy: busy, canEdit: can, cantEdit: !can,
+      msg: s.msg || '', msgColor: s.msgBad ? '#FF7A45' : '#A3ACB8',
+      devNames: Object.values(LD), addDev: LD[devKey], addAct: addAct,
+      pickDev: (e) => this.setState({ addDev: e.target.value, addAct: '' }),
+      pickAct: (e) => this.setState({ addAct: e.target.value }),
+      actions: opts.map((o) => o.label),
+      noActions: isWing ? (count ? '' : 'C3 Life can’t see the Wing yet, so there’s nothing to pick. Connect it on Settings › Mixer.') : (opts.length ? '' : LD[devKey] + ' isn’t set up on the C3 Life server yet, so there’s nothing to add.'),
+      addDisabled: isWing ? !count || !sel.length : !opts.length,
+      isWing: isWing, notWing: !isWing,
+      wTypes: Object.keys(KN), wType: wType,
+      pickWType: (e) => this.setState({ wType: e.target.value, wSelN: { kind: KN[e.target.value], ns: [1] }, wAct: 'Mute' }),
+      wWhichLabel: 'Which (tap one or more)',
+      wTargets: targets.map((t) => {
+        const on = sel.indexOf(t.n) > -1;
+        return { name: t.label, on: on, cls: on ? 'tg on' : 'tg', toggle: () => this.setState({ wSelN: { kind: kind, ns: on ? sel.filter((x) => x !== t.n) : sel.concat([t.n]).sort((a, b) => a - b) } }) };
+      }),
+      wActs: acts, wAct: wAct, pickWAct: (e) => this.setState({ wAct: e.target.value }),
+      wNeedsBus: wAct === 'Send to bus', wBuses: buses, wBus: buses[busN - 1] || '', pickWBus: (e) => this.setState({ wBus: e.target.value }),
+      wNeedsLevel: wAct === 'Set fader' || wAct === 'Fade fader' || wAct === 'Send to bus', wNeedsFade: wAct === 'Fade fader',
+      wVal: s.wVal, wFade: s.wFade,
+      setWVal: (e) => this.setState({ wVal: Number(e.target.value) }), setWFade: (e) => this.setState({ wFade: Number(e.target.value) }),
+      wPreview: preview,
+      newMacro: () => {
+        const id = 'm' + Date.now().toString(36);
+        const cols = ['#F5C518', '#B48CF2', '#6CB4F5', '#FF7A45', '#7FD1C1', '#1ED760'];
+        this.setState({ open: L.macros.length });
+        this.saveLive(L.macros.concat([{ id: id, name: 'New macro', color: cols[L.macros.length % cols.length], steps: [] }]), null, 'Added. Give it a name and its steps.');
+      },
+      asking: !!s.ask, askTitle: s.ask ? s.ask.title : '', askText: s.ask ? s.ask.text : '', askBtn: s.ask ? s.ask.btn : '',
+      askNo: () => this.setState({ ask: null }), askYes: () => { const a = s.ask; this.setState({ ask: null }); if (a) a.act(); },
+      pbChannel: pb.channel,
+      setPbChannel: (e) => { const v = Math.round(Number(e.target.value)); this.saveLive(null, { ...pb, channel: v }, 'Saved. Playback steps send on channel ' + v + '.'); },
+      pbNotes: [['play', 'Play'], ['stop', 'Stop'], ['next', 'Next song'], ['previous', 'Previous']].map(([k, n]) => ({
+        name: n, note: (pb.notes || {})[k],
+        set: (e) => this.saveLive(null, { ...pb, notes: { ...pb.notes, [k]: Math.round(Number(e.target.value)) } }, 'Saved.')
+      })),
+      hasUndo: !!(run && run.done) && !dismissed,
+      canUndo: can && !!(run && run.can_undo),
+      undoTitle: !run ? '' : (run.undone ? '"' + run.name + '" undone' : '"' + run.name + '" ' + (run.error ? 'stopped' : run.stopped ? 'stopped after ' + run.log.length + ' step' + (run.log.length === 1 ? '' : 's') : 'ran') + ' · ' + run.by),
+      undoSub: !run ? '' : (run.error ? run.error + ' ' : '') + (run.undone ? 'Everything that could be put back has been.' : run.can_undo ? run.undo.filter((u) => u.can).length + ' of ' + run.undo.length + ' steps can be put back · ' + Math.ceil(left / 60) + ' min left' : 'Nothing in it can be put back.'),
+      showUndoList: !!(run && run.undo && run.undo.length),
+      undoList: !run ? [] : run.undo.slice().reverse().map((u) => ({ text: u.label, state: u.can ? (run.undone ? 'Put back' : 'Can be put back') : 'Can’t be put back', color: u.can ? (run.undone ? '#6CB4F5' : '#ECEEF1') : '#A3ACB8' })),
+      doUndo: () => ask('Undo "' + run.name + '"?', 'It puts back what can be put back, in reverse: ' + run.undo.filter((u) => u.can).map((u) => u.label).join('; ') + '.', 'Yes, undo it', () => this.post('undo', {}, 'Undone.')),
+      dismissUndo: () => this.setState({ dismissed: run && run.started }),
+      macros: L.macros.map((m, i) => {
+        const mine = run && run.id === m.id && !dismissed;
+        const running = busy && run.id === m.id;
+        const devSet = Array.from(new Set(m.steps.map((x) => LD[x.dev]).filter((d) => d !== 'Wait')));
+        return {
+          name: m.name, color: m.color,
+          summary: m.steps.length + ' step' + (m.steps.length === 1 ? '' : 's') + ' · ' + (devSet.join(', ') || 'no steps yet') + (running ? ' · running (' + run.by + ')' : ''),
+          open: s.open === i, toggle: () => this.setState({ open: s.open === i ? -1 : i }),
+          runLabel: running ? '■ Stop' : 'Run', runCls: running ? 'btn stop' : 'btn pri',
+          runDisabled: !can || (busy && !running) || !m.steps.length,
+          run: () => (running ? this.post('stop', {}, 'Stopping…')
+            : ask('Run ' + m.name + '?', 'It runs these ' + m.steps.length + ' steps now, in order: ' + m.steps.map((x) => x.label).join('; ') + '. You can stop it, and undo the Wing, foyer and lights master straight after.', 'Yes, run it', () => { this.setState({ open: i, dismissed: null }); this.post('run', { id: m.id }); })),
+          editable: can && s.open === i && !running, canEdit: can && !running,
+          rename: (e) => { const v = e.target.value.trim(); if (v && v !== m.name) setMacros((ms) => { ms[i].name = v.slice(0, 40); return ms; }, 'Renamed.'); },
+          del: () => ask('Delete ' + m.name + '?', 'It comes off the run sheet for everyone. This can’t be undone.', 'Delete', () => { this.setState({ open: -1 }); setMacros((ms) => ms.filter((_, j) => j !== i), 'Deleted.'); }),
+          add: () => {
+            const add = isWing ? wingSteps() : [opts.find((o) => o.label === addAct)].filter(Boolean);
+            if (add.length) setMacros((ms) => { ms[i].steps = ms[i].steps.concat(add); return ms; }, 'Step added.');
+          },
+          steps: m.steps.map((x, k) => {
+            const lg = mine ? run.log[k] : null;
+            return {
+              n: k + 1, dev: LD[x.dev] || x.dev, action: x.label + (lg && !lg.ok ? ' · ' + lg.error : ''), devColor: color(x.dev),
+              done: !!(lg && lg.ok), failed: !!(lg && !lg.ok), running: running && !lg && k === run.step - 1,
+              idle: can && !running,
+              remove: () => setMacros((ms) => { ms[i].steps = ms[i].steps.filter((_, j) => j !== k); return ms; }, 'Step removed.')
+            };
+          })
+        };
+      })
+    };
+  }
   renderVals() {
+    if (this.state.live) return this.liveVals();
     const s = this.state;
     const busy = s.run !== null;
     const u = s.undo;
@@ -428,6 +614,7 @@ class Component extends DCLogic {
     else if (s.wType === 'Whole desk') wPreview = wAct;
     else wPreview = wAct + ' ' + who;
     return {
+      live: false, canEdit: true, cantEdit: false, msg: '', msgColor: '#A3ACB8', noActions: '', addDisabled: false, asking: false, pbNotes: [],
       busy: busy,
       devNames: Object.keys(this.devs),
       actions: this.devs[s.addDev].acts,
@@ -489,10 +676,11 @@ class Component extends DCLogic {
           runCls: running ? 'btn stop' : 'btn pri',
           runDisabled: (busy && !running) || s.undoing,
           run: () => (running ? this.stopMacro() : this.runMacro(i)),
+          editable: false, canEdit: true,
           add: () => this.updateMacro(i, m.steps.concat([[s.addDev, isWing ? wPreview : s.addAct]])),
           steps: m.steps.map(([dev, action], k) => ({
             n: k + 1, dev: dev, action: action, devColor: this.devs[dev].color,
-            done: running && k < s.step,
+            done: running && k < s.step, failed: false,
             running: running && k === s.step,
             idle: !running,
             remove: () => this.updateMacro(i, m.steps.filter((_, j) => j !== k))

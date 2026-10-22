@@ -304,7 +304,7 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
     <sc-if value="{{isHow}}" hint-placeholder-val="{{ false }}">
       <section class="card" style="display:flex;flex-direction:column;gap:6px">
         <div style="font-size:16px;font-weight:600">The big picture</div>
-        <div style="font-size:14px;line-height:1.55;color:#C9CFD7">A small computer in the booth (the C3 Life server, a Dell OptiPlex Micro running Windows) talks to the Wing, Dante, ProPresenter, Playback and the lights. R Remote and Dante Controller run on it too. Every phone, iPad and laptop on the booth Wi-Fi opens <span class="mono">c3life.local</span> and sees the same thing, live. Nothing needs the internet. When there is internet, it syncs Planning Center and emails reports.</div>
+        <div style="font-size:14px;line-height:1.55;color:#C9CFD7">A small computer in the booth (the C3 Life server, an HP EliteDesk running Windows) talks to the Wing, Dante, ProPresenter, Playback and the lights. R Remote and Dante Controller run on it too. Every phone, iPad and laptop on the booth Wi-Fi opens <span class="mono">c3life.local</span> and sees the same thing, live. Nothing needs the internet. When there is internet, it syncs Planning Center and emails reports.</div>
       </section>
 
       <section class="card" style="display:flex;flex-direction:column;gap:2px">
@@ -494,6 +494,14 @@ class Component extends DCLogic {
         'Key lost or shared? On that computer, in the helper folder:  python3 c3life_helper.py --new-key --config "<the C3 Life Helper folder>/helper.json"  then install again and Change key on Music. Only private networks can reach a helper (never the internet), and everything but its hello needs the key.',
         'To take it off a computer: Uninstall-Helper.command (Mac) or Uninstall-Helper.cmd (Windows). Its key is kept, so installing it again doesn\u2019t need the key typed again.',
         'Not tried with the church\u2019s computers and Spotify yet, and the Windows media keys haven\u2019t been tried on a real PC: the first time, try it before the service, not during one.'] },
+      { q: 'Feedback: one note keeps ringing', c: '#FF7A45', href: 'RTA.dc.html', go: 'RTA', steps: [
+        'Ring-Out (on the RTA) listens to the room mic for one note that rings: it stands out from the sound around it, stays at the same pitch, and doesn\u2019t die away. It shows Feedback ringing at (the note), marks it on the graph, and the RTA bar on every screen says FEEDBACK.',
+        'First, by ear: it\u2019s most often a lectern, lapel or handheld mic near a speaker. Lower that channel\u2019s fader a little.',
+        'FOH sound or an Admin can tap Cut (the note) on Main 1\u2026 It asks first, then puts a narrow cut (\u22126 dB) at that note on a band of Main 1\u2019s EQ that\u2019s flat, so it never changes a band FOH has set. Again on the same note: \u22129, then \u221212 dB.',
+        'Undo: RTA settings \u203a Feedback watch \u203a Ring-Out cuts on Main 1. Undo puts that band back exactly as it was.',
+        'It only cuts when the Wing is in Control, and needs Mixer control too. If Main 1\u2019s EQ is off on the Wing, it says so and doesn\u2019t turn it on.',
+        'A held note on a keyboard, or a long sung note, can look the same, especially on High. That\u2019s why it never changes anything by itself. Sensitivity: RTA settings \u203a Feedback watch.',
+        'It listens while any screen with the RTA or the RTA bar is open. Not tried on our room mic yet.'] },
       { q: 'A warning says something isn\u2019t answering', c: '#FF7A45', href: 'Drivers.dc.html', go: 'Drivers', steps: [
         'Every screen shows a warning when something C3 Life is set up to use stops answering for 15 seconds: the Wing, the Tio, ProPresenter, Lightkey or a C3 Life helper. You only see the ones your role can use.',
         'C3 Life is already looking for it: it scans the network straight away, and if the device turns up at a new address it follows it by itself (the Wing by its serial number, the Tio and ProPresenter by their network card, a helper by its own id, Lightkey by its Bonjour name). The warning goes by itself when it\u2019s back.',
@@ -514,13 +522,15 @@ class Component extends DCLogic {
         'With it off, Chat disappears from their menu on every screen, and opening Chat says it\u2019s turned off for them.',
         'Listeners don\u2019t have chat unless an Admin turns it on for them.'] },
       { q: 'The foyer is silent or playing the wrong thing', c: '#F5C518', href: 'Foyer.dc.html', go: 'Foyer', steps: [
-        'On the Foyer screen, tap Spotify or Live service. The amber button is what the foyer hears.',
+        'On the Foyer screen, tap Spotify or Live service, then Switch (it asks first). The amber button is what the foyer hears: it\u2019s read from the Wing, so it\u2019s right even if someone changed it on the desk.',
+        'If it says the desk is on Watch only, nothing can be changed from the Foyer screens: FOH switches the Mixer to Control. If it says the desk isn\u2019t answering, see the warning at the top of the screen.',
+        'If it says both mixes (or neither) are going to the foyer, tap the one it should play.',
         'Check the foyer isn\u2019t muted and the volume isn\u2019t at −∞.',
         'For Spotify, check music is playing on the Music screen. For Live service, check the service mix is up on the desk.',
-        'Admin only: in Foyer setup, check the two aux outs and the matrix are the right ones on the Wing.'] },
+        'Admin only: in Foyer setup, check the two buses and the matrix are the right ones on the Wing. On the Wing, each of the two buses sends to that matrix, and the matrix feeds the foyer speakers.'] },
       { q: 'The foyer won\u2019t go any louder', c: '#F5C518', href: 'Foyer.dc.html', go: 'Foyer', steps: [
         'The volume stops at the maximum an Admin has set (−5 dB to start with). That\u2019s on purpose.',
-        'If one source is quieter than the other, adjust Source levels on the Foyer screen.',
+        'If one source is quieter than the other, an Admin adjusts Source levels on Show \u203a Foyer (each bus\u2019s send to the foyer matrix on the Wing).',
         'An Admin can raise the maximum in Foyer setup.'] },
       { q: 'My screen keeps locking', c: '#A3ACB8', href: 'Access.dc.html', go: 'Access levels', steps: [
         'Each role has a screen timer. The Foyer team locks after 5 minutes of no use.',
@@ -632,7 +642,19 @@ class Component extends DCLogic {
       { q: 'A macro didn\u2019t run when the song started', c: '#F5C518', href: 'Plan.dc.html', go: 'Plan', steps: [
         'That is normal. Nothing on the Sunday run sheet runs by itself.',
         'Tap Run on the item in Plan, the macro button on Home, or run it from Macros.',
-        'Ran it too early? Tap Undo on Home or Macros within 60 seconds.'] },
+        'Ran it too early? Tap Undo on Home or Macros within 10 minutes. It asks first, then puts back the Wing\u2019s mutes, faders and sends, the foyer, and the lights master and blackout. Music, cues, ProPresenter and Playback can\u2019t be put back, and Undo says so.'] },
+      { q: 'A macro stopped partway', c: '#FF7A45', href: 'Macros.dc.html', go: 'Macros', steps: [
+        'A macro stops at the first step that doesn\u2019t work, so nothing after it runs. The bar at the bottom of Macros says which step and why, and that step shows Didn\u2019t work.',
+        'Wing steps: the Wing link must be on Control, not Watch only (Settings \u203a Mixer). Foyer steps need the same.',
+        'Music steps: the C3 Life helper on the Mac mini must be running (Show \u203a Music shows Connected).',
+        'ProPresenter steps: ProPresenter must be open with its network API on (ProPresenter \u203a Settings \u203a Network).',
+        'Lights steps: Lightkey\u2019s link must be on (Lights \u203a Show setup).',
+        'Fix it, then Undo what did run if you need to, and press Run again.'] },
+      { q: 'Playback steps in a macro do nothing', c: '#7FD1C1', href: 'Macros.dc.html', go: 'Macros', steps: [
+        'A Playback step sends a MIDI note to MultiTracks Playback over network MIDI. Playback has to be connected to C3 Life\u2019s network MIDI session.',
+        'On the Mac with Playback: Audio MIDI Setup \u203a Window \u203a Show MIDI Studio \u203a Network. In Directory press +, type the C3 Life server\u2019s address and port 5004, then Connect.',
+        'In Playback, map the notes under Settings \u203a MIDI \u203a MIDI Control: Play, Stop, Next song and Previous, on the channel shown at the bottom of Macros (Playback steps: the notes sent). The usual ones are channel 16, notes 60, 61, 62 and 63.',
+        'If Playback already uses those notes for something else, change them at the bottom of Macros to match.'] },
       { q: 'Join a new Wi-Fi network', c: '#6CB4F5', href: 'Network.dc.html', go: 'Network connections', steps: [
         'Open Home \u203a Network connections (Admin), or the Wi-Fi card on Internet & reports.',
         'Tap Scan for Wi-Fi. The networks the C3 Life server can hear are listed, strongest first. Saved ones say Saved.',
@@ -655,7 +677,7 @@ class Component extends DCLogic {
       { q: 'The times in the reports are wrong', c: '#A3ACB8', href: 'Wiring.dc.html', go: 'Wiring list', steps: [
         'The C3 Life server keeps the time and its BIOS settings with a coin battery inside (B1 on the wiring list, a CR2032). If it’s flat, the time can be wrong after a power cut, and the C3 Life server may not switch itself back on.',
         'Run the system check in Help. "C3 Life server clock" should say Battery OK.',
-        'If it says the battery is flat, replace the CR2032 inside the Dell (about £3), then set AC Recovery to Power On again in the BIOS (see Set up the C3 Life server).',
+        'If it says the battery is flat, replace the CR2032 inside the HP (about £3), then set After Power Loss to Power On again in the BIOS (see Set up the C3 Life server).',
         'Connecting to the internet once sets the time straight away. Reports already sent keep the times they had.'] },
       { q: 'A mic battery is low', c: '#F5C518', href: 'Mics.dc.html', go: 'Mics', steps: [
         'Mixer \u203a Mics shows every wireless mic with battery, time left and signal. Names match the Wing channel.',
@@ -756,13 +778,13 @@ class Component extends DCLogic {
         'Pick the mix. It asks first; tap Yes, open. A blue bar shows you\u2019re changing someone else\u2019s mix.',
         'Tap Back to my mix (it asks first) to go back. You can also pick the mix when you sign in.',
         'FOH sound and Admin can open every monitor mix. Musicians only see the mixes FOH has given them. Mix names come from the Wing.'] },
-      { q: 'Set up the C3 Life server (Dell OptiPlex Micro)', c: '#6CB4F5', href: 'Shutdown.dc.html', go: 'C3 Life server power', steps: [
-        'Windows: use Windows 10 IoT Enterprise LTSC 2021 (security updates to January 2032, works on the 6th-gen i7). Normal Windows 11 doesn\u2019t support this processor.',
-        'BIOS (press F2 as it starts): Power Management \u203a AC Recovery = Power On. Deep Sleep Control = Disabled. Wake on LAN = LAN Only. Replace the CR2032 battery on a used PC.',
+      { q: 'Set up the C3 Life server (HP EliteDesk, i5-7500)', c: '#6CB4F5', href: 'Shutdown.dc.html', go: 'C3 Life server power', steps: [
+        'Windows: use Windows 10 IoT Enterprise LTSC 2021 (security updates to January 2032). The i5-7500 is a 7th-gen Intel processor, which normal Windows 11 doesn\u2019t support. 16 GB of memory and the 256 GB NVMe drive are plenty.',
+        'BIOS (press F10 as it starts, for Computer Setup): Advanced \u203a Power-On Options \u203a After Power Loss = Power On. Advanced \u203a Power Management Options \u203a S5 Maximum Power Savings = Disable. Wake on LAN on (S5 Wake on LAN = Boot to Normal, if it\u2019s there). Then File \u203a Save Changes and Exit. Replace the CR2032 battery on a used PC.',
         'Windows: sleep and screen off = Never. Sign in automatically as the booth user. Set active hours to cover services, and don\u2019t allow restarts on Sundays.',
         'Start at sign-in: C3 Life (full screen on the HDMI screen), Companion and Dante Virtual Soundcard. R Remote and Dante Controller are opened when needed.',
         'Network: Ethernet port = booth switch (P1, 192.168.10.10). Internet = Wi-Fi or a USB Ethernet adapter (C12).',
-        'Power: wall \u2192 small UPS \u2192 smart plug (192.168.10.5) \u2192 the Dell. The UPS covers blips; the smart plug is the hard reset.'] },
+        'Power: wall \u2192 small UPS \u2192 smart plug (192.168.10.5) \u2192 the HP. The UPS covers blips; the smart plug is the hard reset.'] },
       { q: 'Keep my mixes the same on my phone and iPad', c: '#E58FB5', href: 'MyMix.dc.html', go: 'My mix', steps: [
         'Sign in as yourself on each device (Change user). On the C3 Life server, your PIN is checked there.',
         'My mix \u203a Settings \u203a tick Keep my mixes in sync on all my devices (on unless you turned it off). SAVED then says In sync.',
@@ -1034,7 +1056,7 @@ class Component extends DCLogic {
         'In Planning Center, make a Personal Access Token at api.planningcenteronline.com › Personal Access Tokens. It only needs to read Services.',
         'On the C3 Life server, run the installer again with it: Install-C3Life.ps1 -PlanningCenterAppId … -PlanningCenterSecret … The token stays on the C3 Life server and never reaches phones.',
         'In ProPresenter, make a prop for each regular person (Props), named exactly as in Planning Center, and one message called Name tag with a text token called Name.',
-        'Turn on ProPresenter’s network: Settings › Network › Enable Network, port 50001. C3 Life looks for it at 192.168.10.30:50001.',
+        'Turn on ProPresenter’s network: Settings › Network › Enable Network, port 50001. The C3 Life server’s network scan finds it by itself (and follows it if its address changes).',
         'Open Running order › Name tags and check every line says ✓ Prop or Name tag message.'] },
       { q: 'Dante audio is missing', c: '#FF7A45', href: 'Dante.dc.html', go: 'Dante', steps: [
         'Recall the Sunday service preset on the Dante screen.',
@@ -1050,7 +1072,7 @@ class Component extends DCLogic {
       { q: 'MIDI buttons and A/B switches', href: 'Midi.dc.html', go: 'Open MIDI buttons', lines: ['The MIDI controller plugs into the MacBook Pro. Buttons marked App reach the booth app over network MIDI.', 'An A/B switch flips between two sets of actions, such as mute the pastor\u2019s mic and change the stage layout.', 'Pick which channel it controls at any time. Undo with the Undo button or a double-tap.'] },
       { q: 'Lights', href: 'Lights.dc.html', go: 'Open Lights', lines: ['Laid out like Lightkey: the stage with each fixture\u2019s beam, Go, Back and Release, the master, Blackout and Tap along the top.', 'Live: cue tiles, the Preset Palette, looks, cues linked to the plan and lighting macros. Program: the moving heads and colours, with a fade time. Show setup: the lighting Mac, cues, palette and fixtures.', 'Everything goes to Lightkey on the lighting Mac as OSC. Only active when Events mode is on.'] },
       { q: 'Running order and log', href: 'Plan.dc.html', go: 'Open Plan', lines: ['Comes from Planning Center when there’s internet, or from the ProPresenter playlist when there isn’t.', 'Attach a macro to any item. Nothing runs by itself: tap Run on the item when you are ready.', 'The log records everything that happens, with times.'] },
-      { q: 'Macros and Undo', href: 'Macros.dc.html', go: 'Open Macros', lines: ['A macro runs several steps across devices in one tap.', 'Stop it partway through, or Undo it for 60 seconds afterwards.', 'Macros only run when someone presses Run. An Admin can turn on automatic macros in Plan, but it is off.'] },
+      { q: 'Macros and Undo', href: 'Macros.dc.html', go: 'Open Macros', lines: ['A macro runs several steps across devices in one tap.', 'Run asks first and lists the steps. Stop it partway through, or Undo it for 10 minutes afterwards (Undo asks too).', 'Steps come from what\u2019s set up: the Wing\u2019s channels, buses and DCAs by name, the foyer, the music playlists, Lightkey\u2019s cues and looks, ProPresenter\u2019s macros and slides, and Playback over network MIDI.', 'Macros only run when someone presses Run, here, on Home or on an item in Plan.'] },
       { q: 'Users, PINs and access', href: 'User.dc.html', go: 'Change user', lines: ['Each person signs in with a role and PIN. The role decides what they can see and change.', 'The Foyer team role only sees the Foyer screen and chat.', 'Each role has a screen timer that locks the screen when it\u2019s left idle. Locking never stops the sound.', 'Admins set roles, PINs and screen timers in Access levels, and create users in Users & PINs.', 'FOH sound can also scan the network and change IP addresses and ports in Drivers. Only an Admin can add or delete drivers.'] },
       { q: 'Saved setup and reports', href: 'Setup.dc.html', go: 'Open Saved setup', lines: ['Everything is kept in one saved setup. The C3 Life server loads it every time it starts.', 'Only an Admin can save or update it. Changes made during a service stay until the next restart, unless an Admin saves them.', 'Two emails after each service: the RTA report and the activity report (every press, who, which device, what changed).', 'The activity report starts with users and sign-ins (never the PINs), then any problems. Errors are red, warnings are amber.'] },
       { q: 'Wiring list and IP addresses', href: 'Wiring.dc.html', go: 'Open Wiring list', lines: ['Every cable (C01\u2013C12), where it plugs in, and each device\u2019s IP address.', 'It comes from Drivers. When FOH sound or an Admin saves a new address, the wiring list and these Help pages change to match, and the change shows in amber.', 'After a network scan each cable shows whether its device answered.'] },
@@ -1079,7 +1101,7 @@ class Component extends DCLogic {
           'Playback / network MIDI: open Audio MIDI Setup › Window › Show MIDI Studio, double-click Network and select the session. The port is shown (usually 5004).',
           'Lightkey: open Lightkey\u2019s settings and find the OSC section. The incoming port is shown there.',
           'Companion: the Companion window shows its address and port (8000 by default).',
-          'Mac helper (Spotify and ProPresenter): on the Mac mini, open Terminal and type  curl http://127.0.0.1:8099/hello  . It shows the port.'],
+          'C3 Life helper (Spotify and opening ProPresenter): port 8099. On that Mac, open Terminal and type  curl http://127.0.0.1:8099/hello  . The C3 Life server finds it by itself.'],
           cmds: [], note: '' },
         { q: 'Companion: IP address and port', steps: [
           'On the booth, Companion runs on the C3 Life server. Its address is the C3 Life server\u2019s: 192.168.10.10, port 8000. Open http://c3life.local:8000 in a browser.',
@@ -1089,12 +1111,13 @@ class Component extends DCLogic {
           cmds: [C('Check Companion is listening (Terminal):', 'sudo lsof -nP -i | grep -i companion')],
           note: 'Port 8000 is the web page you use to set it up. The other ports are only needed if another app presses Companion buttons.' },
         { q: 'Spotify: IP address and port', steps: [
-          'Spotify itself has no address or port for the booth. The booth talks to the small C3 Life helper on the Mac mini, and the helper controls Spotify.',
-          'The IP address is the Mac mini\u2019s ({spot}). Find it with "Find this Mac\u2019s IP address" above.',
-          'The port: the helper uses 8099. On the Mac mini, run  curl http://127.0.0.1:8099/hello  in Terminal to check it\u2019s running.',
+          'Spotify itself has no address or port for the booth. The booth talks to the small C3 Life helper on this Mac, and the helper controls Spotify.',
+          'Nobody types its address: the C3 Life server\u2019s network scan finds the helper by itself, and follows it if the Mac\u2019s address changes. It shows on Music \u203a Computers with the C3 Life helper.',
+          'The port: the helper uses 8099. Run  curl http://127.0.0.1:8099/hello  in Terminal to check it\u2019s running.',
+          'It starts by itself when someone logs in (Install-Helper.command set that up). If it isn\u2019t running, check this Mac is logged in, or run Install-Helper.command again: the key stays the same.',
           'In Spotify, choose File › Offline Mode (Spotify menu bar at the top). The playlists must be downloaded first.'],
-          cmds: [C('Check the helper is listening (Terminal):', 'sudo lsof -nP -iTCP:8099 -sTCP:LISTEN'), C('Start the helper (in its folder):', 'python3 c3life_helper.py')],
-          note: 'If nothing shows, the helper isn\u2019t running. Start it as above; it shows its key again. See "Set up a C3 Life helper (Mac or Windows PC)".' },
+          cmds: [C('Check the helper is listening (Terminal):', 'sudo lsof -nP -iTCP:8099 -sTCP:LISTEN'), C('Is its login item loaded? (Terminal):', 'launchctl list | grep org.c3life.helper'), C('What it last said (Terminal):', 'tail -20 ~/Library/Application\\ Support/C3\\ Life\\ Helper/helper.log'), C('Show its key again (Terminal):', 'python3 ~/Library/Application\\ Support/C3\\ Life\\ Helper/c3life_helper.py --config ~/Library/Application\\ Support/C3\\ Life\\ Helper/helper.json --show-key')],
+          note: 'If nothing shows, the helper isn\u2019t running: double-click Install-Helper.command in the helper folder. See "Set up a C3 Life helper (Mac or Windows PC)".' },
         { q: 'It still won\u2019t connect', steps: [
           'System Settings › Network › Firewall: if it\u2019s on, allow the app (Options…).',
           'Check the Mac isn\u2019t asleep: System Settings › Energy, turn on "Prevent automatic sleeping".',
@@ -1128,12 +1151,14 @@ class Component extends DCLogic {
           cmds: [C('Check Companion is listening (Command Prompt):', 'netstat -abno | findstr /i /c:"companion" /c:"LISTENING"')],
           note: 'Port 8000 is the web page you use to set it up. The other ports are only needed if another app presses Companion buttons.' },
         { q: 'Spotify: IP address and port', steps: [
-          'Spotify itself has no address or port for the booth. The booth talks to the small C3 Life helper on the Mac mini, and the helper controls Spotify.',
-          'The IP address is the Mac mini\u2019s ({spot}). Find it with "Find a Windows computer\u2019s IP address" above.',
-          'The port: the helper uses 8099, and the C3 Life server finds it by itself. On a Windows PC the helper can press Play/Pause, Next and Previous for Spotify, and open ProPresenter; start it with  py c3life_helper.py  in its folder.',
+          'Spotify itself has no address or port for the booth. The booth talks to the small C3 Life helper on this computer, and the helper controls Spotify.',
+          'Nobody types its address: the C3 Life server\u2019s network scan finds the helper by itself, and follows it if this computer\u2019s address changes. It shows on Music \u203a Computers with the C3 Life helper.',
+          'The port: the helper uses 8099 (Install-Helper.cmd opened it in the firewall for private networks only). On a Windows PC the helper can press Play/Pause, Next and Previous for Spotify, and open ProPresenter.',
+          'It starts by itself, hidden, when someone logs in: Task Scheduler › C3 Life helper. If it isn\u2019t running, check this computer is logged in, or run Install-Helper.cmd again: the key stays the same.',
+          'The network must be Private, not Public: Settings › Network & internet › the connection › Network profile type.',
           'In Spotify, click the ••• menu (top left) › File › Offline mode. The playlists must be downloaded first.'],
-          cmds: [C('Check the helper is listening (Command Prompt):', 'netstat -ano | findstr :8099')],
-          note: 'If nothing shows, the helper isn\u2019t running. Start it in its folder (Mac: python3 c3life_helper.py, Windows: py c3life_helper.py).' },
+          cmds: [C('Check the helper is listening (Command Prompt):', 'netstat -ano | findstr :8099'), C('Is its logon task there? (Command Prompt):', 'schtasks /query /tn "C3 Life helper"'), C('Start it now (Command Prompt):', 'schtasks /run /tn "C3 Life helper"')],
+          note: 'If nothing shows, the helper isn\u2019t installed or isn\u2019t running: double-click Install-Helper.cmd in the helper folder. See "Set up a C3 Life helper (Mac or Windows PC)".' },
         { q: 'It still won\u2019t connect', steps: [
           'Windows Security › Firewall & network protection › Allow an app through firewall. Tick the app for Private.',
           'Make sure the booth network is set as Private, not Public: Settings › Network & internet › the connection › Network profile type.',

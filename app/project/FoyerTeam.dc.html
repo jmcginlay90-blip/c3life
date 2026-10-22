@@ -157,9 +157,16 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
       <div class="lbl">{{fyName}} · what it plays</div>
       <div style="display:flex;gap:10px">
         <sc-for list="{{sources}}" as="sr" hint-placeholder-count="2">
-          <button class="{{sr.cls}}" onClick="{{sr.pick}}" aria-pressed="{{sr.on}}"><span>{{sr.name}}</span><small>{{sr.sub}}</small></button>
+          <button class="{{sr.cls}}" onClick="{{sr.pick}}" aria-pressed="{{sr.on}}" disabled="{{noCtl}}"><span>{{sr.name}}</span><small>{{sr.sub}}</small></button>
         </sc-for>
       </div>
+      <sc-if value="{{ask}}" hint-placeholder-val="{{ false }}">
+        <div role="alertdialog" aria-label="Switch the {{fyName}}?" style="display:flex;flex-direction:column;gap:8px;border:1px solid #F5C518;border-radius:8px;padding:10px">
+          <div style="font-size:15px">Switch the {{fyName}} to {{askName}}? The speakers change straight away.</div>
+          <div style="display:flex;gap:8px"><button class="btn pri" style="flex:1" onClick="{{askYes}}">Switch</button><button class="btn" style="flex:1" onClick="{{askNo}}">Cancel</button></div>
+        </div>
+      </sc-if>
+      <sc-if value="{{note}}" hint-placeholder-val="{{ false }}"><div role="status" style="font-size:13px;color:{{noteColor}};line-height:1.45">{{note}}</div></sc-if>
     </section>
 
     <section class="card" style="display:flex;flex-direction:column;gap:12px;border-color:{{volBorder}}">
@@ -167,15 +174,15 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
         <div class="lbl">Volume</div>
         <span class="mono" style="font-size:22px;color:{{dbColor}}">{{dbText}}</span>
       </div>
-      <div style="height:8px;border-radius:4px;background:#0F1318;overflow:hidden" aria-hidden="true"><div style="height:8px;border-radius:4px;background:#6CB4F5;width:{{meter}}%"></div></div>
-      <input type="range" min="0" max="100" value="{{lvl}}" onChange="{{setLvl}}" disabled="{{muted}}" aria-label="{{fyName}} volume">
+      <sc-if value="{{showMeter}}" hint-placeholder-val="{{ true }}"><div style="height:8px;border-radius:4px;background:#0F1318;overflow:hidden" aria-hidden="true"><div style="height:8px;border-radius:4px;background:#6CB4F5;width:{{meter}}%"></div></div></sc-if>
+      <input type="range" min="0" max="100" value="{{lvl}}" onChange="{{setLvl}}" disabled="{{volOff}}" aria-label="{{fyName}} volume">
       <div style="display:flex;gap:8px">
         <sc-for list="{{presets}}" as="p" hint-placeholder-count="3">
-          <button class="{{p.cls}}" onClick="{{p.pick}}" disabled="{{muted}}">{{p.name}}</button>
+          <button class="{{p.cls}}" onClick="{{p.pick}}" disabled="{{volOff}}">{{p.name}}</button>
         </sc-for>
       </div>
-      <sc-if value="{{muted}}" hint-placeholder-val="{{ false }}"><button class="btn hot" onClick="{{toggleMute}}">{{fyName}} muted · tap to unmute</button></sc-if>
-      <sc-if value="{{live}}" hint-placeholder-val="{{ true }}"><button class="btn" onClick="{{toggleMute}}">Mute {{fyName}}</button></sc-if>
+      <sc-if value="{{muted}}" hint-placeholder-val="{{ false }}"><button class="btn hot" onClick="{{toggleMute}}" disabled="{{noCtl}}">{{fyName}} muted · tap to unmute</button></sc-if>
+      <sc-if value="{{live}}" hint-placeholder-val="{{ true }}"><button class="btn" onClick="{{toggleMute}}" disabled="{{noCtl}}">Mute {{fyName}}</button></sc-if>
       <div style="font-size:12px;color:#A3ACB8">Can't go above the maximum set by Admin ({{maxText}}).</div>
     </section>
 
@@ -208,7 +215,7 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { src: 0, lvl: 63, muted: false, meter: 40, left: this.full(), sent: '' };
+    this.state = { src: 0, lvl: 63, muted: false, meter: 40, left: this.full(), sent: '', ask: null, held: null, msg: '' };
   }
   // ---- the foyer's name and its two mixes: kept on the C3 Life server, and named from the desk ----
   fyTok() { try { const x = JSON.parse(localStorage.getItem('booth.session') || 'null'); return x ? x.token : ''; } catch (e) { return ''; } }
@@ -250,9 +257,16 @@ class Component extends DCLogic {
       else this.setState({ fyMsg: (j && j.error) || 'Not saved. Try again.' });
     }).catch(() => this.setState({ fyMsg: 'Not saved: the C3 Life server didn’t answer.' }));
   }
+  // ---- on the Wing (C3 Life server): which mix, volume and mute, through POST /api/foyer/do ----
+  fyDo(body, done) {
+    return this.fyApi('/api/foyer/do', 'POST', body).then(({ j }) => {
+      if (j && j.live) { this.setState({ fy: j }); this.fyCache(j); }
+      this.setState({ msg: (j && j.error) || done || '' });
+    }).catch(() => this.setState({ msg: 'The C3 Life server didn’t answer. Try again.' }));
+  }
   full() { return (this.props.lockMinutes ?? 5) * 60; }
   componentDidMount() {
-    this.fyLoad(); this.fyT = setInterval(() => this.fyLoad(), 5000);
+    this.fyLoad(); this.fyT = setInterval(() => this.fyLoad(), 2000);
     this.timer = setInterval(() => {
       const s = this.state;
       this.setState({
@@ -261,7 +275,7 @@ class Component extends DCLogic {
       });
     }, 1000);
   }
-  componentWillUnmount() { clearInterval(this.timer); clearInterval(this.fyT); clearTimeout(this.t); }
+  componentWillUnmount() { clearInterval(this.timer); clearInterval(this.fyT); clearTimeout(this.t); clearTimeout(this.volT); }
   touch(patch) { this.setState({ ...patch, left: this.full() }); }
   db(l) { return l <= 0 ? -90 : (l >= 75 ? ((l - 75) / 25) * 10 : -((75 - l) * 1.2)); }
   lvlFor(d) { return d >= 0 ? 75 + (d / 10) * 25 : 75 + d / 1.2; }
@@ -281,7 +295,19 @@ class Component extends DCLogic {
     const s = this.state;
     const fy = s.fy || this.fyLocal();
     const maxDb = fy.max_db, maxLvl = this.lvlFor(maxDb);
-    const d = this.db(s.lvl);
+    // On the C3 Life server: what the desk is doing now (fy.live). In the preview: the demo.
+    const L = !this.fyDemo && fy.live ? fy.live : null;
+    const ctl = !L || (L.connected && L.mode === 'control');
+    const held = s.held && Date.now() - s.held.at < 1500 ? s.held.lvl : null;
+    const src = L ? (L.source === 'a' ? 0 : L.source === 'b' ? 1 : -1) : s.src;
+    const muted = L ? !!L.mute : s.muted;
+    const lvlNow = held != null ? held : (L && L.fdr != null ? Math.max(0, Math.min(100, this.lvlFor(Math.max(-90, L.fdr)))) : s.lvl);
+    const d = held != null || !L || L.fdr == null ? this.db(lvlNow) : L.fdr;
+    const names = [fy.mix_a_name, fy.mix_b_name];
+    const note = !L ? '' : !L.connected ? 'The desk isn’t answering, so the ' + fy.name + ' can’t be changed from here right now.'
+      : L.mode !== 'control' ? 'The desk is on Watch only: this shows what the ' + fy.name + ' plays, and changes nothing. FOH can switch the Mixer to Control.'
+      : L.source === 'both' ? 'Both mixes are going to the ' + fy.name + ' at the moment. Tap the one it should play.'
+      : L.source === 'none' ? 'Neither mix is going to the ' + fy.name + ' at the moment. Tap the one it should play.' : '';
     const mm = Math.floor(s.left / 60), ss = String(s.left % 60).padStart(2, '0');
     const warn = s.left <= 30;
     return {
@@ -294,22 +320,37 @@ class Component extends DCLogic {
       unlockDemo: () => this.touch({}),
       demoTimeout: () => this.setState({ left: 5 }),
       fyName: fy.name,
-      srcName: s.src === 0 ? fy.mix_a_name : fy.mix_b_name,
+      srcName: names[src] || '',
       sources: [{ name: fy.mix_a_name, sub: 'From the desk \u00b7 Bus ' + fy.mix_a }, { name: fy.mix_b_name, sub: 'From the desk \u00b7 Bus ' + fy.mix_b }].map((x, i) => ({
-        ...x, on: s.src === i, cls: s.src === i ? 'src on' : 'src', pick: () => this.touch({ src: i })
+        ...x, on: src === i, cls: src === i ? 'src on' : 'src',
+        pick: () => { if (src === i && L && L.source !== 'both') return; this.touch({ ask: i }); }  // switching asks first
       })),
-      lvl: s.lvl,
-      setLvl: (e) => this.touch({ lvl: Math.min(Number(e.target.value), maxLvl) }),
-      dbText: s.muted ? 'Muted' : this.fmt(d),
-      dbColor: s.muted ? '#FF7A45' : '#F5C518',
-      volBorder: s.muted ? '#FF7A45' : '#262C36',
-      meter: s.meter,
+      ask: s.ask != null, askName: s.ask != null ? names[s.ask] : '',
+      askNo: () => this.touch({ ask: null }),
+      askYes: () => {
+        const i = s.ask; this.touch({ ask: null });
+        if (L) this.fyDo({ do: 'source', to: i === 0 ? 'a' : 'b' }, 'The ' + fy.name + ' now plays ' + names[i] + '.');
+        else this.setState({ src: i });
+      },
+      noCtl: !ctl, volOff: !ctl || muted,
+      note: note || s.msg, noteColor: note ? '#FFB089' : '#A3ACB8',
+      lvl: lvlNow,
+      setLvl: (e) => {
+        const v = Math.min(Number(e.target.value), maxLvl);
+        this.touch({ lvl: v, held: { lvl: v, at: Date.now() } });
+        if (L) { clearTimeout(this.volT); this.volT = setTimeout(() => this.fyDo({ do: 'volume', db: Math.round(Math.max(-144, Math.min(maxDb, this.db(v))) * 10) / 10 }), 200); }
+      },
+      dbText: muted ? 'Muted' : this.fmt(d),
+      dbColor: muted ? '#FF7A45' : '#F5C518',
+      volBorder: muted ? '#FF7A45' : '#262C36',
+      meter: s.meter, showMeter: !L,
       maxText: this.fmt(maxDb),
       presets: [['Quiet', -20], ['Normal', -10], ['Loud', maxDb]].map(([name, v]) => ({
-        name, cls: Math.abs(d - v) < 0.6 ? 'pre on' : 'pre', pick: () => this.touch({ lvl: this.lvlFor(v) })
+        name, cls: Math.abs(d - v) < 0.6 ? 'pre on' : 'pre',
+        pick: () => { this.touch({ lvl: this.lvlFor(v), held: { lvl: this.lvlFor(v), at: Date.now() } }); if (L) this.fyDo({ do: 'volume', db: v }); }
       })),
-      muted: s.muted, live: !s.muted,
-      toggleMute: () => this.touch({ muted: !s.muted }),
+      muted: muted, live: !muted,
+      toggleMute: () => { if (L) this.fyDo({ do: 'mute', on: !muted }, muted ? 'Unmuted.' : 'Muted.'); else this.touch({ muted: !s.muted }); },
       sent: s.sent,
       quick: ['Too loud', 'Too quiet', 'Can’t hear the service', 'All good'].map((t) => ({
         text: t,
