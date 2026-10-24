@@ -578,7 +578,7 @@ class Component extends DCLogic {
         run: () => this.hmDo('/api/md/test', {}, 'MD talk test: every screen is green for 5 seconds') }
     };
     const devices = (H.devices || []).map((d) => {
-      const k = d.ok ? 'ok' : (d.info ? 'off' : 'lost');
+      const k = d.ok ? 'ok' : (d.info && !d.alert ? 'off' : 'lost');  // alert: a message in orange (the computer nearly full)
       return { name: d.name, where: d.detail || ({ Mixer: 'Mixer', Show: 'Show', Lights: 'Lights', Music: 'Music', RTA: 'Sound', Recording: 'Record' }[d.area] || d.area), status: d.ok ? 'Connected' : (d.info ? d.why : 'Not answering'),
         k: k, ok: k === 'ok', lost: k === 'lost', off: k === 'off', statusColor: k === 'lost' ? '#FF7A45' : (k === 'off' ? '#A3ACB8' : '#ECEEF1'), nameColor: k === 'lost' ? '#FF7A45' : '#ECEEF1' };
     });

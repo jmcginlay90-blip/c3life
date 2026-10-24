@@ -178,6 +178,13 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
   </header>
 
   <main class=" wide2" style="flex:1;overflow-y:auto;padding:0 16px 16px;display:flex;flex-direction:column;gap:10px">
+    <sc-for list="{{newDrives}}" as="nd" hint-placeholder-count="1">
+      <section class="card" role="status" style="display:flex;flex-direction:column;gap:8px;border-color:#F5C518">
+        <div style="font-size:15px;font-weight:600">{{nd.title}}</div>
+        <div style="font-size:13px;color:#C9CFD7;line-height:1.45">{{nd.text}}</div>
+        <sc-if value="{{nd.canUse}}" hint-placeholder-val="{{ true }}"><button class="btn pri" onClick="{{nd.use}}" disabled="{{cantEdit}}">Use it for recordings</button></sc-if>
+      </section>
+    </sc-for>
     <section class="card" style="display:flex;flex-direction:column;gap:10px" aria-label="Recording">
       <sc-if value="{{engineBad}}" hint-placeholder-val="{{ false }}">
         <div role="alert" style="font-size:13px;line-height:1.45;color:#FF7A45">{{engineText}}</div>
@@ -303,6 +310,8 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
         <label style="display:flex;align-items:center;gap:10px;font-size:13px"><input type="checkbox" checked="{{local}}" onChange="{{setLocal}}" disabled="{{cantEdit}}"><span>No recording drive plugged in: record onto this computer instead</span></label>
         <label style="display:flex;align-items:center;gap:10px;font-size:13px"><input type="checkbox" checked="{{copyAuto}}" onChange="{{setCopyAuto}}" disabled="{{cantEdit}}"><span>Copy what’s on this computer to the recording drive by itself when it’s plugged in</span></label>
         <label style="display:flex;align-items:center;gap:10px;font-size:13px"><input type="checkbox" checked="{{freeLocal}}" onChange="{{setFreeLocal}}" disabled="{{cantEdit}}"><span>Once a copy is checked, clear it from this computer (it only has room for a few services)</span></label>
+        <label style="display:flex;align-items:center;gap:10px;font-size:13px"><input type="checkbox" checked="{{makeRoom}}" onChange="{{setMakeRoom}}" disabled="{{cantEdit}}"><span>This computer nearly full: delete its oldest recordings that are already on the recording drive (never one that’s only here)</span></label>
+        <sc-if value="{{short}}" hint-placeholder-val="{{ false }}"><div role="alert" style="font-size:13px;color:#FF7A45;line-height:1.45">This computer is nearly full and every recording on it is only here. Plug in the recording drive so they copy across; until then a recording here stops with 1 GB left.</div></sc-if>
         <label class="fld">Channels to record (blank = every channel Dante sends to C3 Life)<input type="text" maxlength="200" value="{{chans}}" onChange="{{setChans}}" disabled="{{cantEdit}}" placeholder="e.g. 1-32, 40" aria-label="Channels to record"></label>
         <div style="font-size:12px;color:#A3ACB8;line-height:1.45">Recording only listens: it changes nothing on the desk, so it may start and stop by itself. A marker is added each time ProPresenter moves to a different presentation (each song, the Message), named after it.</div>
         <sc-if value="{{drivesSeen}}" hint-placeholder-val="{{ false }}">
@@ -385,7 +394,7 @@ class Component extends DCLogic {
     const names = ['Kick In', 'Snare', 'Hi-hat', 'Tom 1', 'Overheads', 'Bass DI', 'Keys L', 'Keys R', 'Acoustic', 'E-Gtr', 'Lead Vox', 'BV 1', 'BV 2', 'Pastor HH', 'Playback L', 'Playback R'];
     return { demo: true, can: true, can_play: true, on_stage: true, engine: { status: 'running', channels: 64 }, drive: { id: 'D1', label: 'Sunday SSD', free_text: '612 GB', hours_left: 412, ok: true },
       drives: [{ id: 'D1', label: 'Sunday SSD', free_text: '612 GB', ok: true }], recording: null, playing: null, last: null,
-      settings: { auto: 'slide', start: { kind: 'presentation', text: 'Welcome' }, stop: { kind: 'presentation', text: 'Benediction' }, max_hours: 4, markers: 'presentation', channels: 'routed', local: true, copy_auto: true, free_local: true },
+      settings: { auto: 'slide', start: { kind: 'presentation', text: 'Welcome' }, stop: { kind: 'presentation', text: 'Benediction' }, max_hours: 4, markers: 'presentation', channels: 'routed', local: true, copy_auto: true, free_local: true, make_room: true },
       local: { free_text: '180 GB', hours_left: 120 }, copy: null,
       tracks: names.map((n, i) => ({ dvs: i + 1, name: n, level: 0 })),
       sessions: [{ name: '2026-10-18 0958', where: 'drive', length: 7342, tracks: 16, markers: [{ t: 312, name: 'Way Maker' }, { t: 640, name: 'Goodness of God' }, { t: 1980, name: 'Message' }] }] };
@@ -482,6 +491,8 @@ class Component extends DCLogic {
       local: !!st.local, setLocal: () => this.saveSettings({ local: !st.local }),
       copyAuto: !!st.copy_auto, setCopyAuto: () => this.saveSettings({ copy_auto: !st.copy_auto }),
       freeLocal: !!st.free_local, setFreeLocal: () => this.saveSettings({ free_local: !st.free_local }),
+      makeRoom: st.make_room !== false, setMakeRoom: () => this.saveSettings({ make_room: st.make_room === false }),
+      short: !!v.short,
       cantPlay: !v.can_play || !!r || !!p,
       playHint: !v.can_play ? 'Playing back to the desk needs Recording and Mixer control.' : (r ? 'Not while recording.' : ''),
       sessions: (v.sessions || []).map((x) => {
@@ -510,6 +521,17 @@ class Component extends DCLogic {
       chans: this.chansText(st.channels),
       setChans: (e) => { const c = this.parseChans(e.target.value); if (c === null) this.setState({ msg: 'Channels look like 1-32, 40 (1 to 64).', bad: true }); else this.saveSettings({ channels: c }); },
       drivesSeen: (v.drives || []).length > 0,
+      // a drive nobody has chosen yet: say so at the top, so it isn't missed in Settings
+      newDrives: (v.drives || []).filter((x) => !x.ok).map((x) => (!v.drive ? {
+        title: x.label + ' was plugged in · ' + x.free_text + ' free',
+        text: 'Use it for recordings? C3 Life makes a “C3 Life Recordings” folder on it and records there whenever it’s plugged in' + (st.copy_auto ? ', and copies across anything recorded onto this computer meanwhile' : '') + '. Nothing else on it is touched.' + (x.fat32 ? ' It’s formatted FAT32, which can’t hold a file over 4 GB (about 8 hours of one track): fine, but exFAT or NTFS is better.' : ''),
+        canUse: true,
+        use: () => this.setState({ ask: { title: 'Use ' + x.label + ' for recordings?', text: 'C3 Life makes a “C3 Life Recordings” folder on it and records there whenever it’s plugged in. Nothing else on it is touched.', list: [], btn: 'Use it', act: () => this.act('drive', { id: x.id, use: true }, x.label + ' is the recording drive.') } })
+      } : {
+        title: x.label + ' is plugged in too',
+        text: 'C3 Life won’t write to it by itself. To take a recording home, tap Copy to ' + x.label + ' on it below.',
+        canUse: false, use: () => {}
+      })),
       drives: (v.drives || []).map((x) => ({
         label: x.label, sub: x.free_text + ' free' + (x.ok ? ' · used for recordings' : ''),
         btn: x.ok ? 'Stop using' : 'Use for recordings',

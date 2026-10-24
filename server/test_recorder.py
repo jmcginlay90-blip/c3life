@@ -101,6 +101,42 @@ class Drives(Base):
 
 
 class OnThisComputer(Base):
+    def test_making_room_deletes_only_what_is_safely_on_the_drive(self):
+        self.r.save_settings({"free_local": False}, "FOH")  # keep a copy here too
+        self.r.check_drives()
+        self.assertIsNone(self.r.start("FOH"))
+        time.sleep(0.3)
+        self.r.stop("FOH")
+        name = self.r.last["name"]
+        base = os.path.join(self.tmp, "recordings", rec.FOLDER)
+        os.makedirs(os.path.join(self.usb, rec.FOLDER))  # the recording drive is plugged in: copied, and kept here
+        self.r.check_drives()
+        self.assertTrue(wait(lambda: self.r.job and self.r.job["finished"]))
+        c = json.loads(read(os.path.join(base, name, rec.COPIED)))
+        self.assertEqual((c["label"], "01 Lead Vox.wav" in c["files"]), ("USB-SSD", True))
+        self.assertFalse(os.path.exists(os.path.join(self.usb, rec.FOLDER, name, rec.COPIED)))  # the note stays here
+        # two older ones: one copied (the same note), one only here
+        for old, copied in (("2026-01-04 1000 Sunday", True), ("2026-01-11 1000 Sunday", False)):
+            os.makedirs(os.path.join(base, old))
+            with open(os.path.join(base, old, "01 Lead Vox.wav"), "wb") as f:
+                f.write(b"x" * 300)
+            if copied:
+                with open(os.path.join(base, old, rec.COPIED), "w") as f:
+                    json.dump({"label": "USB-SSD", "at": "2026-01-04 12:00", "files": {"01 Lead Vox.wav": 300}}, f)
+        sizes = lambda: sum(os.path.getsize(os.path.join(dp, f)) for dp, _, fs in os.walk(base) for f in fs)
+        loc = self.r._local_drive()
+        self.r._local_drive = lambda: dict(loc, free=10 ** 7 - sizes())  # a small disk, so the test can fill it
+        need = 10 ** 7 - sizes() + 200  # deleting the oldest copied one (300 bytes) is enough
+        gone, short = self.r.make_room(need)
+        self.assertEqual((gone, short), (["2026-01-04 1000 Sunday"], False))
+        gone, short = self.r.make_room(10 ** 7)  # far too little room: everything copied goes, never the one only here
+        self.assertEqual((gone, short), ([name], True))
+        self.assertTrue(os.path.isdir(os.path.join(base, "2026-01-11 1000 Sunday")))
+        self.assertTrue(os.path.isfile(os.path.join(self.usb, rec.FOLDER, name, "01 Lead Vox.wav")))  # the drive's copy is untouched
+        self.assertTrue(self.r.view()["short"])
+        self.r.save_settings({"make_room": False}, "FOH")
+        self.assertEqual(self.r.make_room(10 ** 7, delete=False), ([], True))  # off: it only warns
+
     def test_records_here_with_no_drive_then_copies_when_one_is_plugged_in(self):
         self.r.check_drives()
         self.assertIsNone(self.r.drive)
@@ -132,7 +168,9 @@ class OnThisComputer(Base):
         other = next(d["id"] for d in self.r.drives if d["label"] == "Take home")
         self.assertIsNone(self.r.copy([(name, "drive")], other, "FOH"))
         self.assertTrue(wait(lambda: self.r.job["finished"]))
-        self.assertTrue(os.path.isfile(os.path.join(home, rec.FOLDER, name, "01 Lead Vox.wav")))
+        self.assertTrue(os.path.isfile(os.path.join(home, rec.COPIES, name, "01 Lead Vox.wav")))
+        self.r.check_drives()  # the take-home drive didn't become a recording drive by being copied to
+        self.assertEqual(([d["ok"] for d in self.r.drives if d["label"] == "Take home"], self.r.drive["label"]), ([False], "USB-SSD"))
         self.assertTrue(os.path.isfile(os.path.join(there, "01 Lead Vox.wav")))
         self.assertIn("isn't plugged in", self.r.copy([(name, "drive")], "nope", "FOH"))
 

@@ -8,6 +8,7 @@ import os
 import shutil
 import tempfile
 import threading
+import time
 import unittest
 import urllib.error
 import urllib.request
@@ -103,6 +104,10 @@ class Api(unittest.TestCase):
                 return r.status, (r.read() if raw else json.loads(r.read()))
         except urllib.error.HTTPError as e:
             return e.code, {}
+
+    def test_background_jobs_stay_running(self):
+        time.sleep(1.5)  # a job that crashed on start (it used something set up later) would be gone by now
+        self.assertIn("midi-follow", [t.name for t in threading.enumerate()])
 
     def test_admin_only_and_the_password_to_restore(self):
         self.assertEqual(self.call("/api/setup/name", "FOH sound", {"name": "X"})[0], 403)
