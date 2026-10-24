@@ -170,6 +170,7 @@ import health as health_mod
 import macros as macros_mod
 import rta_live as rta_live_mod
 import midi_in as midi_mod
+import audio_engine as audio_engine_mod
 
 VERSION = "0.3.0"
 START = time.time()
@@ -196,6 +197,9 @@ DEFAULTS = {
     # Where the Listen audio comes from (Dante Virtual Soundcard as a Windows sound device).
     "ffmpeg": "ffmpeg",
     "listen_device": "Dante Virtual Soundcard (1-16)",
+    # The audio engine: "asio" = C3 Life opens Dante Virtual Soundcard in ASIO mode (64 x 64) and shares it out to
+    # Listen, the RTA, the MD log, recording and playback; "" = Listen and the RTA read DVS in WDM mode (16 channels).
+    "audio_engine": "",
     "listen_kbps": 128,
     # Subtitles are saved to data\transcripts, one file per day and source, and deleted after this many days.
     # 0 = never saved to disk (kept in memory only, and lost on a restart).
@@ -1889,6 +1893,12 @@ def _own_networks():
 
 
 def serve(cfg):
+    # The audio engine (DVS in ASIO mode, 64 x 64): when it's on, Listen, the RTA and the MD log read it through ffmpeg.
+    engine = audio_engine_mod.Engine(cfg, log)
+    if engine.on:
+        engine.start()
+        if not cfg.get("listen_input"):
+            cfg["listen_input"] = engine.input_args()
     store = Store(cfg["data_dir"])
     sessions = Sessions(float(cfg.get("session_hours", 12)))
     listen = listen_mod.Listen(cfg["data_dir"], cfg, log)
@@ -1931,9 +1941,10 @@ def serve(cfg):
     httpd = ThreadingHTTPServer((cfg["bind"], int(cfg["port"])), make_handler(cfg, store, sessions, listen, access, dante, tags, bible, cues, reports, plan, desk, tio, monitors, scanner, foyer, rta_inputs, dante_names, lights, rta_live, midi, music, helpers, health, macros))
     httpd.daemon_threads = True
     close = httpd.server_close
-    httpd.server_close = lambda: (scanner.stop.set(), lights.close(), rta_live.stop(), midi.close(), close())
+    httpd.server_close = lambda: (scanner.stop.set(), lights.close(), rta_live.stop(), midi.close(), engine.stop(), close())
     httpd.store, httpd.sessions, httpd.listen, httpd.access, httpd.tags, httpd.bible, httpd.reports, httpd.plan, httpd.desk, httpd.tio, httpd.monitors, httpd.scanner, httpd.foyer, httpd.rta_inputs, httpd.lights, httpd.rta_live, httpd.midi, httpd.music, httpd.helpers, httpd.health, httpd.macros = store, sessions, listen, access, tags, bible, reports, plan, desk, tio, monitors, scanner, foyer, rta_inputs, lights, rta_live, midi, music, helpers, health, macros
     httpd.wing = desk  # the tests, and older code, call it this
+    httpd.engine = engine
     return httpd
 
 

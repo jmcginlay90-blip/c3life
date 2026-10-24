@@ -27,6 +27,7 @@ What a driver provides (the Wing's driver, wing.py, is the full example):
                                                         (set it with set("bus", b, "mtxsend/<m>/on|lvl", v))
   rta_state() rta_point(n, tap, kind)                   the desk's RTA, and pointing it at a strip
   outputs() set_out(out, grp, idx)                      output patching (the RTA's "Set it up for me")
+  set_src(n, grp, idx)                                  a channel's input (a recording played back to the desk)
   find()                                                desks of this kind on the network
 """
 
@@ -79,6 +80,10 @@ class Desk:
         return CANT
 
     def fade(self, moves):
+        return CANT
+
+    def set_src(self, n, grp, idx):
+        """Switch channel n's input (playing a recording back to the desk)."""
         return CANT
 
     # reading

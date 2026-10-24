@@ -607,6 +607,24 @@ class Wing(desk_mod.Desk):
         self.send(osc("/io/out/%s/%s/in" % (g, n)))
         return None
 
+    def set_src(self, n, grp, idx):
+        """Switch channel n's input to grp/idx ("CRD", 3), for playing a recording back to the desk and putting the stage
+        back afterwards. Only in Control. -> error or None"""
+        if self.settings["mode"] != "control":
+            return "The Wing is in Watch only. An Admin switches it to Control on the Mixer screen first."
+        if self.status()["status"] != "connected":
+            return "The Wing isn't answering, so nothing was sent."
+        if not isinstance(n, int) or isinstance(n, bool) or not 1 <= n <= KINDS["ch"]:
+            return "There's no channel %s on the Wing." % n
+        if grp not in OUT_SRC or grp in ("MAIN", "BUS", "MTX") or not isinstance(idx, int) or isinstance(idx, bool) or \
+                not (idx == 0 if grp == "OFF" else 1 <= idx <= OUT_SRC[grp]):
+            return "That isn't an input the Wing has."
+        self.send(osc("/ch/%d/in/conn/grp" % n, grp))
+        self.send(osc("/ch/%d/in/conn/in" % n, int(idx)))
+        self.send(osc("/ch/%d/in/conn/grp" % n))  # and read it back
+        self.send(osc("/ch/%d/in/conn/in" % n))
+        return None
+
     # ---- changes from the app -------------------------------------------------------------------
 
     def set(self, kind, n, field, value):
