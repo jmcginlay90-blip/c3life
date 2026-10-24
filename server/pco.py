@@ -183,6 +183,21 @@ class Planning:
         items = self.call("/services/v2/service_types/%s/plans/%s/items?per_page=100" % (st["id"], plan["id"])).get("data") or []
         return st, plan, times, items
 
+    def order(self):
+        """This week's running order: [{"title", "detail", "time", "length", "header"}], timed from the first service time."""
+        st, plan, times, items = self.plan()
+        starts = sorted((to_local(t["attributes"].get("starts_at")) for t in times if t["attributes"].get("time_type") == "service"), key=lambda d: d.timestamp() if d else 0)
+        at = starts[0] if starts and starts[0] else None
+        out = []
+        for it in sorted(items, key=lambda x: x["attributes"].get("sequence") or 0):
+            a = it["attributes"]
+            head = a.get("item_type") == "header"
+            out.append({"title": a.get("title", ""), "detail": (a.get("description") or a.get("item_type") or "").strip()[:80], "header": head,
+                        "length": a.get("length") or 0, "time": hhmm(at) if at and not head else "—"})
+            if at and not head and a.get("length"):
+                at = datetime.fromtimestamp(at.timestamp() + a["length"]).astimezone()
+        return {"plan": plan["attributes"].get("dates", ""), "items": out}
+
     def timer_list(self):
         st, plan, times, items = self.plan()
         now = time.time()

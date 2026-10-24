@@ -162,6 +162,7 @@ class Midi:
         self.stop = threading.Event()
         self.ctl = self.dat = None
         self.error = ""
+        self.buttons = None  # midi_buttons.Buttons (the server sets it)
 
     def start(self):
         # Network MIDI uses two ports side by side (5004 and 5005). With port 0 (the tests: any free pair), try a few.
@@ -291,6 +292,10 @@ class Midi:
         if status >= 0xF0:
             return
         kind, ch = status & 0xF0, (status & 0x0F) + 1
+        b = self.buttons.handle(kind, data) if self.buttons else None  # Settings › MIDI buttons come first
+        if b:
+            self.note(who, ch, *b)
+            return
         if d["channel"] and ch != d["channel"]:
             return
         act, what = None, ""

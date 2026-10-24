@@ -124,6 +124,7 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
         <a href="RTA.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V12M9 20V6M14 20V10M19 20V4"/></svg>RTA</a>
         <a href="Show.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M10 8l5 2-5 2z"/><path d="M8 20h8"/></svg>Show</a>
         <a href="Lights.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>Lights</a>
+        <a href="Recording.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.5" fill="currentColor"/></svg>Record</a>
         <a href="Plan.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h1M4 12h1M4 18h1"/></svg>Plan</a>
         <a href="Chat.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>Chat</a>
         <a href="Listen.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="15" width="4" height="6" rx="1.5"/><rect x="17" y="15" width="4" height="6" rx="1.5"/><path d="M10 9.5a2.5 2.5 0 0 1 4 0"/></svg>Listen</a>
@@ -138,6 +139,7 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
         <a href="RTA.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V12M9 20V6M14 20V10M19 20V4"/></svg>RTA</a>
         <a href="Show.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M10 8l5 2-5 2z"/><path d="M8 20h8"/></svg>Show</a>
         <a href="Lights.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>Lights</a>
+        <a href="Recording.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.5" fill="currentColor"/></svg>Record</a>
         <a href="Plan.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h1M4 12h1M4 18h1"/></svg>Plan</a>
         <a href="Chat.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>Chat</a>
         <a href="Listen.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="15" width="4" height="6" rx="1.5"/><rect x="17" y="15" width="4" height="6" rx="1.5"/><path d="M10 9.5a2.5 2.5 0 0 1 4 0"/></svg>Listen</a>
@@ -169,6 +171,16 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
       <button class="btn" onClick="{{toggleLock}}">{{lockBtn}}</button>
     </section>
 
+    <sc-if value="{{hasMsg}}" hint-placeholder-val="{{ false }}">
+      <div class="card" role="status" style="padding:10px 14px;font-size:13px;color:{{msgColor}}">{{msg}}</div>
+    </sc-if>
+    <sc-if value="{{live}}" hint-placeholder-val="{{ false }}">
+      <nav class="seg" aria-label="Which outputs">
+        <a href="#" class="{{cardOn}}" onClick="{{showCard}}">Card (Dante)</a>
+        <a href="#" class="{{usbOn}}" onClick="{{showUsb}}">USB</a>
+      </nav>
+      <label style="display:flex;align-items:center;gap:10px;font-size:14px;padding:0 4px"><input type="checkbox" checked="{{all}}" onChange="{{toggleAll}}">Show outputs that are off too</label>
+    </sc-if>
     <div class="lbl" style="padding:6px 4px 0">Output ← source</div>
     <sc-for list="{{rows}}" as="r" hint-placeholder-count="7">
       <div class="card" style="padding:10px 12px;display:flex;flex-direction:column;gap:6px">
@@ -177,7 +189,7 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
         </label>
         <select id="{{r.id}}" value="{{r.value}}" onChange="{{r.pick}}" disabled="{{locked}}">
           <sc-for list="{{r.opts}}" as="o" hint-placeholder-count="6">
-            <option value="{{o}}">{{o}}</option>
+            <option value="{{o.v}}">{{o.t}}</option>
           </sc-for>
         </select>
       </div>
@@ -207,6 +219,8 @@ class Component extends DCLogic {
   constructor(props) {
     super(props);
     this.state = {
+      srv: null,      // the Wing's outputs from the C3 Life server; null = the demo below (no server)
+      kind: 'CRD', all: false, msg: '', msgColor: '#A3ACB8', busy: false,
       locked: true,
       pending: null,
       patch: {
@@ -220,9 +234,81 @@ class Component extends DCLogic {
       }
     };
   }
+  tok() { try { const x = JSON.parse(localStorage.getItem('booth.session') || 'null'); return x ? x.token : ''; } catch (e) { return ''; } }
+  componentDidMount() { this.load(); this.poll = setInterval(() => { if (!this.state.pending) this.load(); }, 3000); }
+  componentWillUnmount() { clearInterval(this.poll); }
+  load() {
+    fetch('/api/wing/patch', { headers: { Authorization: 'Bearer ' + this.tok() } })
+      .then((r) => (r.status === 404 ? null : r.json()))
+      .then((j) => {
+        if (!j) return;  // no C3 Life server: the demo
+        if (!j.ok) { this.setState({ srv: this.state.srv || { outs: {}, used: {}, groups: {}, count: {} }, msg: j.error || 'The patch could not be read.', msgColor: '#F08A8A' }); return; }
+        const busy = this.state.busy;
+        this.setState({ srv: j, msg: busy ? this.state.msg : (j.status !== 'connected' ? 'The Wing isn’t answering, so the patch can’t be read.' : (Object.keys(j.outs || {}).length ? '' : 'Reading the patch from the Wing…')), msgColor: '#A3ACB8' });
+      })
+      .catch(() => {});
+  }
+  srcName(grp, n, used) {
+    const g = { OFF: 'Off', LCL: 'Local In', AUX: 'Aux In', A: 'A', B: 'B', C: 'C', CRD: 'Card In', USB: 'USB In', MAIN: 'Main', BUS: 'Bus', MTX: 'Matrix' }[grp] || grp;
+    if (grp === 'OFF') return 'Off';
+    const who = used && used[grp + '/' + n];
+    return g + ' ' + n + (who ? ' · ' + who : '');
+  }
+  confirmLive(p) {
+    const [grp, idx] = p.src.split('/');
+    this.setState({ busy: true, pending: null, msg: 'Patching ' + p.out + '…', msgColor: '#A3ACB8' });
+    fetch('/api/wing/patch', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + this.tok() }, body: JSON.stringify({ out: p.id, grp: grp, idx: Number(idx) }) })
+      .then((r) => r.json())
+      .then((j) => this.setState({ busy: false, msg: j.ok ? p.out + ' now comes from ' + p.label + '.' : (j.error || 'The Wing didn’t take it.'), msgColor: j.ok ? '#7FD69A' : '#F08A8A' }, () => this.load()))
+      .catch(() => this.setState({ busy: false, msg: 'The C3 Life server didn’t answer, so nothing changed.', msgColor: '#F08A8A' }));
+  }
   renderVals() {
     const s = this.state;
-    const opts = ['Local In 1 · Lead Vox', 'Local In 4 · Acoustic', 'Local In 8 · RTA Mic', 'Dante 1 · Tio In 1', 'Dante 2 · Tio In 2', 'Main L', 'Main R', 'Bus 1 · Wedges', 'Bus 5 · Stream L', 'Off'];
+    const p = s.pending;
+    const common = {
+      locked: s.locked,
+      lockTitle: s.locked ? 'Patch locked' : 'Patch unlocked',
+      lockHint: s.locked ? 'Unlock to change routing' : 'Every change asks to confirm',
+      lockBtn: s.locked ? 'Unlock' : 'Lock',
+      toggleLock: () => this.setState({ locked: !s.locked, pending: null }),
+      hasPending: !!p,
+      pendingOut: p ? p.out : '',
+      pendingSrc: p ? (p.label || p.src) : '',
+      cancel: () => this.setState({ pending: null }),
+      hasMsg: !!s.msg, msg: s.msg, msgColor: s.msgColor,
+      live: !!s.srv, all: s.all,
+      cardOn: s.kind === 'CRD' ? 'on' : '', usbOn: s.kind === 'USB' ? 'on' : '',
+      showCard: (e) => { e.preventDefault(); this.setState({ kind: 'CRD' }); },
+      showUsb: (e) => { e.preventDefault(); this.setState({ kind: 'USB' }); },
+      toggleAll: (e) => this.setState({ all: e.target.checked })
+    };
+    if (s.srv) {
+      const v = s.srv, outs = v.outs || {}, used = v.used || {};
+      const opts = [];
+      Object.keys(v.groups || {}).forEach((g) => {
+        if (g === 'OFF') { opts.push({ v: 'OFF/0', t: 'Off' }); return; }
+        for (let n = 1; n <= v.groups[g]; n++) opts.push({ v: g + '/' + n, t: this.srcName(g, n, used) });
+      });
+      const rows = [];
+      for (let n = 1; n <= ((v.count || {})[s.kind] || 0); n++) {
+        const id = s.kind + '/' + n, o = outs[id];
+        if (!o) continue;  // not read from the Wing yet
+        if (!s.all && o.grp === 'OFF' && !(p && p.id === id)) continue;
+        const out = (s.kind === 'CRD' ? 'Card Out ' : 'USB Out ') + n;
+        rows.push({
+          id: 'p-' + s.kind + n, out: out,
+          use: s.kind === 'CRD' ? 'to Dante (DVS ' + n + ')' : 'to the USB recorder',
+          opts: opts,
+          value: p && p.id === id ? p.src : o.grp + '/' + o.in,
+          pick: (e) => this.setState({ pending: { id: id, out: out, src: e.target.value, label: (opts.find((x) => x.v === e.target.value) || {}).t } })
+        });
+      }
+      return Object.assign(common, {
+        rows: rows,
+        confirm: () => this.confirmLive(p)
+      });
+    }
+    const optsDemo = ['Local In 1 · Lead Vox', 'Local In 4 · Acoustic', 'Local In 8 · RTA Mic', 'Dante 1 · Tio In 1', 'Dante 2 · Tio In 2', 'Main L', 'Main R', 'Bus 1 · Wedges', 'Bus 5 · Stream L', 'Off'];
     const defs = [
       ['usb1', 'USB 1', 'Media backup'],
       ['usb2', 'USB 2', 'Media backup'],
@@ -232,27 +318,17 @@ class Component extends DCLogic {
       ['lo2', 'Local Out 2', 'PA right'],
       ['dn1', 'Dante Out 1', 'Tio Out 1']
     ];
-    const p = s.pending;
-    return {
-      locked: s.locked,
-      lockTitle: s.locked ? 'Patch locked' : 'Patch unlocked',
-      lockHint: s.locked ? 'Unlock to change routing' : 'Every change asks to confirm',
-      lockBtn: s.locked ? 'Unlock' : 'Lock',
-      toggleLock: () => this.setState({ locked: !s.locked, pending: null }),
+    return Object.assign(common, {
       rows: defs.map(([id, out, use]) => ({
         id: 'p-' + id,
         out: out,
         use: use,
-        opts: opts,
+        opts: optsDemo.map((o) => ({ v: o, t: o })),
         value: p && p.id === id ? p.src : s.patch[id],
         pick: (e) => this.setState({ pending: { id: id, out: out, src: e.target.value } })
       })),
-      hasPending: !!p,
-      pendingOut: p ? p.out : '',
-      pendingSrc: p ? p.src : '',
-      confirm: () => this.setState({ patch: { ...s.patch, [p.id]: p.src }, pending: null }),
-      cancel: () => this.setState({ pending: null })
-    };
+      confirm: () => this.setState({ patch: { ...s.patch, [p.id]: p.src }, pending: null })
+    });
   }
 }
 </script>

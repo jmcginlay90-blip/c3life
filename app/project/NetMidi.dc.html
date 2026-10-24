@@ -129,6 +129,7 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
         <a href="RTA.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V12M9 20V6M14 20V10M19 20V4"/></svg>RTA</a>
         <a href="Show.dc.html" class="on" aria-current="page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M10 8l5 2-5 2z"/><path d="M8 20h8"/></svg>Show</a>
         <a href="Lights.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>Lights</a>
+        <a href="Recording.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.5" fill="currentColor"/></svg>Record</a>
         <a href="Plan.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h1M4 12h1M4 18h1"/></svg>Plan</a>
         <a href="Chat.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>Chat</a>
         <a href="Listen.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="15" width="4" height="6" rx="1.5"/><rect x="17" y="15" width="4" height="6" rx="1.5"/><path d="M10 9.5a2.5 2.5 0 0 1 4 0"/></svg>Listen</a>
@@ -143,6 +144,7 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
         <a href="RTA.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V12M9 20V6M14 20V10M19 20V4"/></svg>RTA</a>
         <a href="Show.dc.html" class="on" aria-current="page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M10 8l5 2-5 2z"/><path d="M8 20h8"/></svg>Show</a>
         <a href="Lights.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>Lights</a>
+        <a href="Recording.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.5" fill="currentColor"/></svg>Record</a>
         <a href="Plan.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h1M4 12h1M4 18h1"/></svg>Plan</a>
         <a href="Chat.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>Chat</a>
         <a href="Listen.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="15" width="4" height="6" rx="1.5"/><rect x="17" y="15" width="4" height="6" rx="1.5"/><path d="M10 9.5a2.5 2.5 0 0 1 4 0"/></svg>Listen</a>
@@ -278,8 +280,32 @@ class Component extends DCLogic {
     }, 3500);
   }
   componentWillUnmount() { clearInterval(this.timer); clearTimeout(this.t); }
+  // On the C3 Life server: its one network MIDI session and who has joined it (GET /api/midi). Macs join it themselves
+  // (Audio MIDI Setup › Network › Directory: + the server's address, port 5004), so nothing here connects anyone.
+  componentDidMount() { this.load(); this.poll = setInterval(() => this.load(), 2000); }
+  componentWillUnmount() { clearInterval(this.poll); }
+  load() {
+    if (this.demo) return;
+    let t = ''; try { t = (JSON.parse(localStorage.getItem('booth.session') || 'null') || {}).token || ''; } catch (e) {}
+    fetch('/api/midi', { headers: t ? { Authorization: 'Bearer ' + t } : {} }).then((r) => r.json().catch(() => ({})).then((j) => ({ code: r.status, j: j }))).then(({ code, j }) => {
+      if (code === 404) { this.demo = true; clearInterval(this.poll); return; }
+      if (code === 200) this.setState({ srv: j });
+    }).catch(() => {});
+  }
   renderVals() {
     const s = this.state;
+    if (s.srv) {
+      const v = s.srv, h = (v.heard || [])[0];
+      const peers = (v.peers || []).map((p) => ({ name: p.name, addr: p.ip, missing: false, connected: p.live, notConnected: !p.live, dot: p.live ? '#6CB4F5' : '#A3ACB8', nameColor: '#ECEEF1', toggle: () => {} }));
+      return {
+        sessions: [{ name: v.session, bonjour: v.session, port: v.port || 5004, on: !v.error, state: v.error ? 'Off: ' + v.error : 'On', color: v.error ? '#FF7A45' : '#6CB4F5', toggle: () => {} }],
+        addSession: () => {}, dir: peers, addr: '', setAddr: () => {}, addAddr: () => {},
+        parts: (v.peers || []).filter((p) => p.live).map((p) => ({ name: p.name, uses: p.ip, lat: '–' })),
+        noParts: !(v.peers || []).some((p) => p.live),
+        last: h ? ((h.from ? h.from + ': ' : '') + (h.msg || '') + (h.did ? ' → ' + h.did : '')) : 'Nothing yet', lastColor: '#ECEEF1',
+        who: [{ name: 'The booth network', on: true, off: false, pick: () => {} }]
+      };
+    }
     const sessOn = s.sessions.some((x) => x.on);
     const whoNames = ['No one', 'Only computers in my directory', 'Anyone'];
     const parts = s.dir.filter((d) => d.conn && sessOn);

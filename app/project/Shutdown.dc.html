@@ -139,6 +139,7 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
           </sc-if>
         </section>
       </sc-if>
+      <sc-if value="{{pwErr}}" hint-placeholder-val="{{ false }}"><div role="alert" style="font-size:13px;line-height:1.45;color:#FF7A45">{{pwErr}}</div></sc-if>
       <button class="btn stop" onClick="{{start}}" disabled="{{blocked}}">{{goLabel}}</button>
       <a href="Main.dc.html" class="btn" style="display:flex;align-items:center;justify-content:center;text-decoration:none;box-sizing:border-box">Cancel</a>
       <div style="font-size:12px;color:#A3ACB8;line-height:1.45">Only Admin and FOH sound can use these, and the hard reset is Admin only. Each one is written to the activity log. <button style="min-height:44px;padding:0 8px;border:1px dashed #333B47;border-radius:8px;background:transparent;color:#A3ACB8;font:500 12px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer" onClick="{{toggleSvc}}">Demo: {{svcToggle}}</button></div>
@@ -165,6 +166,7 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
         <h1 style="margin:0;font-size:26px;font-weight:600">{{workTitle}}</h1>
         <div style="font-size:14px;color:#A3ACB8">{{workSub}}</div>
       </div>
+      <sc-if value="{{canAbort}}" hint-placeholder-val="{{ false }}"><button class="btn undo" onClick="{{abort}}">↶ Stop it: keep the C3 Life server on</button></sc-if>
       <section class="card" style="display:flex;flex-direction:column;padding:6px 14px">
         <sc-for list="{{steps}}" as="st" hint-placeholder-count="5">
           <div style="display:flex;align-items:center;gap:12px;min-height:52px;border-top:1px solid #222831">
@@ -193,7 +195,16 @@ class Component extends DCLogic {
     super(props);
     this.state = { phase: 'confirm', act: 'app', count: 10, step: -1, online: false, svc: this.liveNow(), override: false };
   }
-  componentWillUnmount() { clearInterval(this.cd); clearTimeout(this.t); }
+  componentWillUnmount() { clearInterval(this.cd); clearTimeout(this.t); clearInterval(this.back); }
+  componentDidMount() {
+    fetch('/api/health').then((r) => (r.ok ? r.json() : null)).then((h) => { if (h && h.service === 'c3life') this.server = true; }).catch(() => {});
+  }
+  tok() { try { const x = JSON.parse(localStorage.getItem('booth.session') || 'null'); return x ? x.token : ''; } catch (e) { return ''; } }
+  power(what) {
+    const t = this.tok();
+    return fetch('/api/power', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(t ? { Authorization: 'Bearer ' + t } : {}) }, body: JSON.stringify({ do: what }) })
+      .then((r) => r.json().catch(() => ({})).then((j) => ({ code: r.status, j: j }))).catch(() => ({ code: 0, j: { error: 'The C3 Life server didn’t answer.' } }));
+  }
   // Is a service on right now? The chosen service (Plan) and the clock decide, like the Home screen.
   svcCur() {
     let l = null, id = '';
@@ -241,10 +252,27 @@ class Component extends DCLogic {
     }, 1000);
   }
   work() {
+    if (this.server) {  // on the C3 Life server: ask it to do it, then show the steps
+      const act = this.state.act;
+      this.power(act).then(({ code, j }) => {
+        if (code !== 200) { this.setState({ phase: 'confirm', pwErr: j.error || 'It didn’t happen.' }); return; }
+        this.setState({ pwPending: act === 'restart' || act === 'off', pwErr: '' });
+        this.animate();
+        if (act === 'app' || act === 'cycle') {  // wait for C3 Life to answer again
+          let gone = false;
+          clearInterval(this.back);
+          this.back = setInterval(() => fetch('/api/health', { cache: 'no-store' }).then((r) => { if (r.ok && gone) { clearInterval(this.back); this.setState({ phase: 'done' }); } }).catch(() => { gone = true; }), 1500);
+        }
+      });
+      return;
+    }
+    this.animate();
+  }
+  animate() {
     const n = this.acts()[this.state.act].steps.length;
     this.setState({ phase: 'working', step: 0 });
     const next = (k) => {
-      if (k >= n) { this.setState({ phase: 'done', step: n }); return; }
+      if (k >= n) { if (!this.server || this.state.act === 'restart' || this.state.act === 'off') this.setState({ phase: 'done', step: n }); else this.setState({ step: n - 1 }); return; }
       this.setState({ step: k });
       this.t = setTimeout(() => next(k + 1), 800);
     };
@@ -276,6 +304,9 @@ class Component extends DCLogic {
       netText: on ? 'Online · reports will be emailed now' : 'No internet · reports will wait on the drive',
       netToggle: on ? 'go offline' : 'go online',
       toggleNet: () => this.setState({ online: !on }),
+      pwErr: s.pwErr || '',
+      canAbort: !!this.server && !!s.pwPending,
+      abort: () => this.power('abort').then(({ j }) => this.setState({ phase: 'confirm', pwPending: false, pwErr: j.error || '' })),
       inService: s.svc, svcName: (() => { const c = this.svcCur(); return c.name + ', ' + c.start + '–' + c.end; })(),
       svcText: isAdmin ? 'Phones, the RTA and the MD log stop while this happens. The sound itself keeps going. Only do it if you have to.' : 'This is blocked until the service ends, so nobody stops the booth by accident. Ask an Admin if it really can’t wait.',
       isAdmin, override: s.override, toggleOverride: () => this.setState({ override: !s.override }),

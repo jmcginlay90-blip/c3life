@@ -18,14 +18,14 @@ class RtaSettingsArea(unittest.TestCase):
         shutil.rmtree(self.tmp, ignore_errors=True)
 
     def test_it_is_an_area_after_the_others(self):
-        self.assertEqual(am.AREAS[-3:], ["RTA settings", "Tap EQ", "Music"])
+        self.assertEqual(am.AREAS[-4:], ["RTA settings", "Tap EQ", "Music", "Recording"])
         self.assertEqual(am.AREAS[am.LISTEN], "Listen")
         a = am.Access(self.tmp)
         self.assertEqual([a.level(r, "RTA settings") for r in ("Admin", "FOH sound", "ProPresenter", "Viewer", "Musician", "Listener")], [2, 2, 1, 1, 0, 0])
 
     def test_saved_before_it_existed_keeps_every_level(self):
-        old = am.AREAS[:-3]  # saved before RTA settings, Tap EQ and Music
-        roles = [dict(r, p=r["p"][:-3]) for r in am.DEFAULT_ROLES]
+        old = am.AREAS[:-4]  # saved before RTA settings, Tap EQ, Music and Recording
+        roles = [dict(r, p=r["p"][:-4]) for r in am.DEFAULT_ROLES]
         next(r for r in roles if r["name"] == "Viewer")["p"][old.index("RTA")] = 0  # someone changed one
         with open(os.path.join(self.tmp, "access.json"), "w") as f:
             json.dump({"areas": old, "roles": roles}, f)
@@ -36,6 +36,7 @@ class RtaSettingsArea(unittest.TestCase):
         self.assertEqual(a.level("Listener", "Listen"), 1)
         self.assertEqual([a.level(r, "Tap EQ") for r in ("FOH sound", "Musician", "Viewer", "Lighting")], [2, 1, 0, 0])
         self.assertEqual([a.level(r, "Music") for r in ("Admin", "FOH sound", "ProPresenter", "Lighting", "Viewer", "Foyer team", "Listener")], [2, 2, 2, 1, 1, 0, 0])
+        self.assertEqual([a.level(r, "Recording") for r in ("Admin", "FOH sound", "ProPresenter", "Lighting", "Viewer", "Foyer team", "Musician")], [2, 2, 1, 1, 1, 0, 0])
 
     def test_listen_control_is_still_admin_only(self):
         a = am.Access(self.tmp)

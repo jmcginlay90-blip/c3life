@@ -61,7 +61,7 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
       <div style="flex:1;min-width:0">
         <div style="font-size:19px;font-weight:600">MD is talking</div>
         <div style="font-size:12px">{{channel}} · {{secs}}s</div>
-        <div aria-live="polite" style="font-size:15px;line-height:1.35;margin-top:4px;font-weight:500">“{{caption}}…”</div>
+        <sc-if value="{{hasCaption}}" hint-placeholder-val="{{ true }}"><div aria-live="polite" style="font-size:15px;line-height:1.35;margin-top:4px;font-weight:500">“{{caption}}…”</div></sc-if>
       </div>
       <a href="Talkback.dc.html#mdlog" style="color:#FFFFFF;font-size:13px;font-weight:600;min-height:44px;display:flex;align-items:center;padding:0 6px">Log</a>
       <button onClick="{{hide}}" aria-label="Hide this until the MD stops talking" style="flex:none;min-width:44px;min-height:44px;border-radius:10px;border:1px solid rgba(255,255,255,.7);background:transparent;color:#FFFFFF;font:600 13px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer;padding:0 10px">Hide</button>
@@ -73,9 +73,20 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { t: 0 };
+    this.state = { t: 0, srv: null };
   }
+  tok() { try { const x = JSON.parse(localStorage.getItem('booth.session') || 'null'); return x ? x.token : ''; } catch (e) { return ''; } }
   componentDidMount() {
+    // The C3 Life server says when the MD is talking (Wing channel, MD talk settings). Without one: the demo below.
+    const ask = () => fetch('/api/md/live', { headers: { Authorization: 'Bearer ' + this.tok() } })
+      .then((r) => { if (r.status === 404) { clearInterval(this.live); this.demo(); return null; } return r.json(); })
+      .then((j) => { if (j) this.setState({ srv: j.ok ? j : { talking: false } }); })
+      .catch(() => {});
+    ask();
+    this.live = setInterval(ask, 1000);
+  }
+  demo() {
+    this.setState({ t: 2 });  // a couple of seconds into the demo's 18-second round
     this.timer = setInterval(() => {
       const t = (this.state.t + 1) % 18;
       if (t === 15) this.saveLine();
@@ -96,7 +107,7 @@ class Component extends DCLogic {
     log.unshift({ id, at: String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'), dur: 5, ch: this.props.channel ?? this.chLabel(12), text: this.phrase(), sure: id % 4 !== 0 });
     try { localStorage.setItem('booth.mdlog', JSON.stringify(log.slice(0, 200))); } catch (e) {}
   }
-  componentWillUnmount() { clearInterval(this.timer); }
+  componentWillUnmount() { clearInterval(this.timer); clearInterval(this.live); }
   // Channel, bus and DCA names come from the Wing. Every screen reads this one list, so they always match the desk.
   wnDefaults() {
     return {
@@ -118,6 +129,19 @@ class Component extends DCLogic {
     return w;
   }
   renderVals() {
+    let mode0 = 'full'; try { mode0 = localStorage.getItem('booth.mdbanner') || 'full'; } catch (e) {}
+    const v = this.state.srv;
+    if (v) {
+      const id = v.since || 'test';
+      return {
+        talking: !!v.talking && mode0 !== 'off' && this.state.hiddenId !== id,
+        tint: mode0 === 'full',
+        hide: () => this.setState({ hiddenId: id }),
+        secs: v.secs || 0,
+        hasCaption: false, caption: '',
+        channel: v.test ? 'Test from the MD talk screen' : this.chLabel(v.ch)
+      };
+    }
     const t = this.state.t;
     const talking = t >= 10 && t < 15;
     // Each phone or iPad chooses: green screen and banner, banner only, or off. The MD log still records either way.
@@ -128,6 +152,7 @@ class Component extends DCLogic {
       tint: mode === 'full',
       hide: () => this.setState({ hiddenId: talkId }),
       secs: talking ? t - 9 : 0,
+      hasCaption: true,
       caption: (() => { const w = this.phrase().split(' '); return w.slice(0, Math.max(1, Math.ceil(w.length * (t - 9) / 5))).join(' '); })(),
       channel: this.props.channel ?? this.chLabel(12)
     };

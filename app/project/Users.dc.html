@@ -131,6 +131,7 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
         <a href="RTA.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V12M9 20V6M14 20V10M19 20V4"/></svg>RTA</a>
         <a href="Show.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M10 8l5 2-5 2z"/><path d="M8 20h8"/></svg>Show</a>
         <a href="Lights.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>Lights</a>
+        <a href="Recording.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.5" fill="currentColor"/></svg>Record</a>
         <a href="Plan.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h1M4 12h1M4 18h1"/></svg>Plan</a>
         <a href="Chat.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>Chat</a>
         <a href="Listen.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="15" width="4" height="6" rx="1.5"/><rect x="17" y="15" width="4" height="6" rx="1.5"/><path d="M10 9.5a2.5 2.5 0 0 1 4 0"/></svg>Listen</a>
@@ -145,6 +146,7 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
         <a href="RTA.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V12M9 20V6M14 20V10M19 20V4"/></svg>RTA</a>
         <a href="Show.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M10 8l5 2-5 2z"/><path d="M8 20h8"/></svg>Show</a>
         <a href="Lights.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>Lights</a>
+        <a href="Recording.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.5" fill="currentColor"/></svg>Record</a>
         <a href="Plan.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h1M4 12h1M4 18h1"/></svg>Plan</a>
         <a href="Chat.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>Chat</a>
         <a href="Listen.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="15" width="4" height="6" rx="1.5"/><rect x="17" y="15" width="4" height="6" rx="1.5"/><path d="M10 9.5a2.5 2.5 0 0 1 4 0"/></svg>Listen</a>
@@ -303,6 +305,12 @@ class Component extends DCLogic {
       fetch('/api/health').then((r) => (r.ok ? r.json() : null)).then((h) => {
         if (!h || h.service !== 'c3life') return;
         this.server = true;
+        // the people themselves: from the C3 Life server too (Admins only)
+        fetch('/api/users', { headers: { Authorization: 'Bearer ' + this.token() } }).then((r) => (r.ok ? r.json() : null)).then((j) => {
+          if (!j || !j.users) return;
+          const list = j.users.map((u) => ({ id: this.nextId++, old: u.name, name: u.name, role: u.role, pin: u.has_pin ? '\u2022' : '', active: u.active, chat: u.chat, mustChange: u.must_change, last: u.last || '' }));
+          this.setState({ list: list, saved: list });
+        }).catch(() => {});
         fetch('/api/listen/config', { headers: { Authorization: 'Bearer ' + this.token() } }).then((r) => (r.ok ? r.json() : null)).then((j) => {
           if (j && j.sources) this.setState({ sources: j.sources, lsnSaved: j.people || {}, lsn: j.people || {} });
         }).catch(() => {});
@@ -402,12 +410,13 @@ class Component extends DCLogic {
       undoDelete: () => { const r = s.removedLast; if (!r) return; const l = s.list.slice(); l.splice(Math.min(r.at, l.length), 0, r.u); this.setState({ list: l, removedLast: null }); },
       cantSave: !s.admin || noName || activeAdmins < 1,
       save: () => {
-        // What people can listen to needs the Admin password again, so nobody can change it on an unattended iPad.
-        if (lsnChanged.length) { this.setState({ ask: true, askPw: '', askErr: '' }); return; }
+        // What people can listen to (and, on the C3 Life server, who can sign in) needs the Admin password again,
+        // so nobody can change it on an unattended iPad.
+        if (lsnChanged.length || (this.server && n > 0)) { this.setState({ ask: true, askPw: '', askErr: '' }); return; }
         this.saveUsersNow();
       },
       asking: !!s.ask, askPw: s.askPw, askHasErr: !!s.askErr, askErr: s.askErr, askBusy: !!s.askBusy,
-      askText: 'You\u2019re changing what ' + lsnChanged.join(', ') + (lsnChanged.length === 1 ? ' can' : ' can') + ' listen to. They can\u2019t change it themselves.',
+      askText: lsnChanged.length ? 'You\u2019re changing what ' + lsnChanged.join(', ') + ' can listen to. They can\u2019t change it themselves.' : 'You\u2019re changing who can sign in. Type your Admin password to save it on the C3 Life server.',
       setAskPw: (e) => this.setState({ askPw: e.target.value, askErr: '' }),
       askNo: () => this.setState({ ask: false, askPw: '', askErr: '' }),
       askYes: () => {
@@ -430,6 +439,20 @@ class Component extends DCLogic {
               .then(({ code, j }) => { if (code === 200) send(names.slice(1)); else this.setState({ askBusy: false, askPw: '', askErr: j.error || 'Not saved.' }); })
               .catch(() => this.setState({ askBusy: false, askErr: 'Can\u2019t reach the C3 Life server.' }));
           };
+          if (n > 0) {  // the people first, then what they can hear
+            const people = s.list.map((u) => ({ old: u.old || '', name: u.name.trim(), role: u.role, pin: u.pin && u.pin !== '\u2022' ? u.pin : '', active: !!u.active,
+              chat: typeof u.chat === 'boolean' ? u.chat : u.role !== 'Listener', must_change: !!u.mustChange }));
+            fetch('/api/users', { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tok }, body: JSON.stringify({ password: pw, users: people, removed: removedNames }) })
+              .then((r) => r.json().then((j) => ({ code: r.status, j })))
+              .then(({ code, j }) => {
+                if (code !== 200) { this.setState({ askBusy: false, askPw: '', askErr: j.error || 'Not saved.' }); return; }
+                const list = j.users.map((u) => ({ id: this.nextId++, old: u.name, name: u.name, role: u.role, pin: u.has_pin ? '\u2022' : '', active: u.active, chat: u.chat, mustChange: u.must_change, last: u.last || '' }));
+                this.setState({ list: list, saved: list, pins: {} });
+                if (lsnChanged.length) send(lsnChanged); else { this.setState({ ask: false, askPw: '', askBusy: false, toast: 'Saved on the C3 Life server. These users can sign in now on every device.' }); }
+              })
+              .catch(() => this.setState({ askBusy: false, askErr: 'Can\u2019t reach the C3 Life server.' }));
+            return;
+          }
           send(lsnChanged);
           return;
         }

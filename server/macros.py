@@ -142,8 +142,13 @@ def valid(d):
     return None
 
 
+# a step's device -> its id on the Devices screen, so a left-out device's steps are skipped
+LEFT_OUT = {"wing": "desk", "lights": "lightkey", "propresenter": "propresenter"}
+
+
 class Macros:
     def __init__(self, data_dir, cfg, log, desk=None, music=None, foyer=None, lights=None, midi=None):
+        self.left_out = lambda: set()  # the Devices screen's left-out ids (the server sets this to health.left_out)
         self.path = os.path.join(data_dir, "macros.json")
         self.cfg, self.log = cfg, log
         self.desk, self.music, self.foyer, self.lights, self.midi = desk, music, foyer, lights, midi
@@ -276,6 +281,10 @@ class Macros:
                 break
             with self.lock:
                 self.run_state["step"] = i + 1
+            if LEFT_OUT.get(st["dev"]) in self.left_out():  # left out on the Devices screen: skipped, not a failure
+                with self.lock:
+                    self.run_state["log"].append({"label": st["label"], "ok": True, "error": "", "skipped": True})
+                continue
             undo, err = self.step(st)
             with self.lock:
                 self.run_state["log"].append({"label": st["label"], "ok": not err, "error": err or ""})

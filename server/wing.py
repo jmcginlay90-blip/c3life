@@ -18,6 +18,7 @@ Settings live in data/wing.json: {"ip": "192.168.10.20", "mode": "off" | "watch"
 import collections
 import json
 import os
+import re
 import socket
 import struct
 import threading
@@ -199,6 +200,7 @@ class Wing(desk_mod.Desk):
         self.console = {}
         self.seen = 0.0
         self.meters = {}
+        self.watched = {}  # path -> last value (watch())
         self.meters_at = 0.0
 
     # ---- settings -------------------------------------------------------------------------------
@@ -244,6 +246,25 @@ class Wing(desk_mod.Desk):
             out["strips"] = {k: {str(n): dict(v) for n, v in s.items()} for k, s in self.strips.items()}
             out["inputs"] = {k: dict(v) for k, v in self.inputs.items()}
         return out
+
+    def watch(self, path):
+        """Follow any one value on the Wing (asked every round, and the Wing's own updates): -> its last value or None."""
+        if not isinstance(path, str) or not re.match(r"^(/[A-Za-z0-9$_.-]+){1,6}$", path):
+            return None
+        with self.lock:
+            if path not in self.watched:
+                if len(self.watched) >= 16:
+                    return None
+                self.watched[path] = None
+                self.send(osc(path))
+            return self.watched[path]
+
+    def input_level(self, n):
+        """Channel n's input level in dB (before the fader), or None when the meters aren't coming in."""
+        if time.time() - self.meters_at > 3:
+            return None
+        with self.lock:
+            return getattr(self, "inputs_db", {}).get(n)
 
     def meter_state(self):
         if time.time() - self.meters_at > 3:
@@ -329,6 +350,8 @@ class Wing(desk_mod.Desk):
                 for n in [k for k, t in list(self.focus.items()) if t > now]:
                     for a in PROC:  # the open channels: every second, not every 2
                         self.send(osc("/ch/%d/%s" % (n, a)))
+                for a in list(self.watched):
+                    self.send(osc(a))
                 for i, a in enumerate(self.queries(slow)):
                     self.send(osc(a))
                     if i % 10 == 9:
@@ -417,6 +440,8 @@ class Wing(desk_mod.Desk):
                 t = args[0].split(",")
                 self.console = {"name": t[2] if len(t) > 2 else "", "model": t[3] if len(t) > 3 else "", "firmware": t[5] if len(t) > 5 else ""}
                 return
+            if addr in self.watched and args:
+                self.watched[addr] = args[2] if len(args) == 3 else args[0]  # (text, position, value): the value. MD talk: the TB button
             changed = False
             if len(parts) == 3 and parts[0] in KINDS and parts[1].isdigit() and parts[2] in FIELDS:
                 s = self.strips[parts[0]].get(int(parts[1]))
@@ -605,6 +630,24 @@ class Wing(desk_mod.Desk):
         self.send(osc("/io/out/%s/%s/in" % (g, n), int(idx)))
         self.send(osc("/io/out/%s/%s/grp" % (g, n)))  # and read it back
         self.send(osc("/io/out/%s/%s/in" % (g, n)))
+        return None
+
+    def set_src(self, n, grp, idx):
+        """Switch channel n's input to grp/idx ("CRD", 3), for playing a recording back to the desk and putting the stage
+        back afterwards. Only in Control. -> error or None"""
+        if self.settings["mode"] != "control":
+            return "The Wing is in Watch only. An Admin switches it to Control on the Mixer screen first."
+        if self.status()["status"] != "connected":
+            return "The Wing isn't answering, so nothing was sent."
+        if not isinstance(n, int) or isinstance(n, bool) or not 1 <= n <= KINDS["ch"]:
+            return "There's no channel %s on the Wing." % n
+        if grp not in OUT_SRC or grp in ("MAIN", "BUS", "MTX") or not isinstance(idx, int) or isinstance(idx, bool) or \
+                not (idx == 0 if grp == "OFF" else 1 <= idx <= OUT_SRC[grp]):
+            return "That isn't an input the Wing has."
+        self.send(osc("/ch/%d/in/conn/grp" % n, grp))
+        self.send(osc("/ch/%d/in/conn/in" % n, int(idx)))
+        self.send(osc("/ch/%d/in/conn/grp" % n))  # and read it back
+        self.send(osc("/ch/%d/in/conn/in" % n))
         return None
 
     # ---- changes from the app -------------------------------------------------------------------
@@ -875,6 +918,7 @@ class Wing(desk_mod.Desk):
                 m[n + 1] = [round(vals[n * 8 + 2] / 256.0, 1), round(vals[n * 8 + 3] / 256.0, 1)]
         with self.lock:
             self.meters, self.meters_at = m, now
+            self.inputs_db = {n: v[0] for n, v in d.items()}  # each channel's input level, before the fader (MD talk)
             for n in [k for k, t in self.focus.items() if t > now and k in d]:
                 h = self.hist.setdefault(n, collections.deque(maxlen=200))
                 if not h or now - h[-1][0] >= 0.04:  # up to 25 a second, the last 8 seconds

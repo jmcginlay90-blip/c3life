@@ -183,6 +183,15 @@ class Running(unittest.TestCase):
         self.m.run("m1", "FOH")
         self.assertIn("Playback isn't connected", wait_done(self.m)["error"])
 
+    def test_a_left_out_device_is_skipped(self):
+        self.m.left_out = lambda: {"desk"}  # the Wing is left out on the Devices screen
+        self.put([{"dev": "wing", "do": "mute", "kind": "dca", "n": 1, "label": "Mute the band"},
+                  {"dev": "foyer", "do": "source", "to": "b", "label": "Foyer: Live"}])
+        self.m.run("m1", "FOH")
+        r = wait_done(self.m)
+        self.assertEqual((r["error"], self.desk.sets, self.foyer.l["source"]), ("", [], "b"))
+        self.assertTrue(r["log"][0]["skipped"])
+
     def test_stop_during_a_wait_and_only_one_at_a_time(self):
         self.put([{"dev": "wait", "secs": 30, "label": "Wait 30s"}, {"dev": "lights", "do": "go", "label": "Go"}])
         self.assertIsNone(self.m.run("m1", "FOH"))

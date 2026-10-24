@@ -126,6 +126,7 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
         <a href="RTA.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V12M9 20V6M14 20V10M19 20V4"/></svg>RTA</a>
         <a href="Show.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M10 8l5 2-5 2z"/><path d="M8 20h8"/></svg>Show</a>
         <a href="Lights.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>Lights</a>
+        <a href="Recording.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.5" fill="currentColor"/></svg>Record</a>
         <a href="Plan.dc.html" class="on" aria-current="page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h1M4 12h1M4 18h1"/></svg>Plan</a>
         <a href="Chat.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>Chat</a>
         <a href="Listen.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="15" width="4" height="6" rx="1.5"/><rect x="17" y="15" width="4" height="6" rx="1.5"/><path d="M10 9.5a2.5 2.5 0 0 1 4 0"/></svg>Listen</a>
@@ -140,6 +141,7 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
         <a href="RTA.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V12M9 20V6M14 20V10M19 20V4"/></svg>RTA</a>
         <a href="Show.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M10 8l5 2-5 2z"/><path d="M8 20h8"/></svg>Show</a>
         <a href="Lights.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>Lights</a>
+        <a href="Recording.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.5" fill="currentColor"/></svg>Record</a>
         <a href="Plan.dc.html" class="on" aria-current="page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h1M4 12h1M4 18h1"/></svg>Plan</a>
         <a href="Chat.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>Chat</a>
         <a href="Listen.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="15" width="4" height="6" rx="1.5"/><rect x="17" y="15" width="4" height="6" rx="1.5"/><path d="M10 9.5a2.5 2.5 0 0 1 4 0"/></svg>Listen</a>
@@ -210,6 +212,7 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
           </div>
           <sc-if value="{{notChoosing}}" hint-placeholder-val="{{ true }}"><button class="btn pri" onClick="{{startLoad}}">{{loadBtn}}</button></sc-if>
         </div>
+        <sc-if value="{{orderMsg}}" hint-placeholder-val="{{ false }}"><div role="status" style="font-size:13px;line-height:1.45;color:#F5C518">{{orderMsg}}</div></sc-if>
         <sc-if value="{{choosing}}" hint-placeholder-val="{{ false }}">
           <div style="display:flex;flex-direction:column;gap:8px">
             <button class="btn" style="text-align:left;min-height:56px" onClick="{{loadPP}}"><strong>ProPresenter playlist</strong><br><span style="font-size:12px;color:#A3ACB8">Mac mini · works with no internet</span></button>
@@ -359,7 +362,7 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
       </section>
 
       <div style="display:flex;align-items:center;gap:8px;padding:2px 4px">
-        <label style="flex:1;display:flex;align-items:center;gap:8px;font-size:13px"><input type="checkbox" checked="{{autoRun}}" onChange="{{toggleAuto}}" disabled="{{notAdmin}}"><span>Run macros by themselves<br><span style="font-size:12px;color:#A3ACB8">{{autoHint}}</span></span></label>
+        <div style="flex:1;font-size:13px;color:#A3ACB8">Nothing runs by itself. Tap Run on an item when you’re ready; a macro still asks first.</div>
         <button class="btn" onClick="{{toggleEdit}}">{{editLabel}}</button>
       </div>
 
@@ -426,8 +429,8 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
         </sc-for>
       </section>
       <div style="display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:8px">
-        <button class="btn">Export CSV</button>
-        <button class="btn">Export PDF</button>
+        <button class="btn" onClick="{{exportCsv}}">Export CSV</button>
+        <button class="btn" onClick="{{exportPdf}}">Print / PDF</button>
       </div>
     </sc-if>
   </main>
@@ -460,7 +463,7 @@ class Component extends DCLogic {
     const mk = (time, title, detail, macro, opts) => ({ id: 'it' + (id++), time, title, detail, macro, inPP: true, inPCO: true, pending: false, ...(opts || {}) });
     this.nextId = 100;
     this.state = {
-      view: 'plan', online: false, editing: false, loadedFrom: '', loadedAt: '', choosing: false, autoRun: (() => { try { return localStorage.getItem('booth.auto') === 'on'; } catch (e) { return false; } })(), ran: {}, admin: false, svcEdit: null, svcAsk: false, svcToast: '', svcTick: 0, queued: 0, nowId: 'it3',
+      view: 'plan', online: false, editing: false, loadedFrom: '', loadedAt: '', choosing: false, ran: {}, admin: false, svcEdit: null, svcAsk: false, svcToast: '', svcTick: 0, queued: 0, nowId: 'it3',
       items: [
         mk('9:45', 'Pre-service', 'Walk-in slides', 'Walk-in'),
         mk('10:00', 'Welcome', 'Host', 'None'),
@@ -518,7 +521,24 @@ class Component extends DCLogic {
         else { const t = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); this.setState({ ran: { ...this.state.ran, [x.id]: t }, mcMsg: {} }); }
       }).catch(() => say('The C3 Life server didn’t answer. Try again.')) } });
   }
-  componentWillUnmount() { clearInterval(this.userPoll); clearInterval(this.mcT); clearTimeout(this.ntT); }
+  // The running order from Planning Center or ProPresenter's playlist (GET /api/plan/order), and the service log (GET /api/log).
+  orderLoad(src) {
+    this.setState({ choosing: false, orderMsg: 'Loading from ' + (src === 'pco' ? 'Planning Center' : 'ProPresenter') + '…' });
+    let t = ''; try { t = (JSON.parse(localStorage.getItem('booth.session') || 'null') || {}).token || ''; } catch (e) {}
+    fetch('/api/plan/order?from=' + src, { headers: t ? { Authorization: 'Bearer ' + t } : {} }).then((r) => r.json().catch(() => ({})).then((j) => ({ code: r.status, j: j }))).then(({ code, j }) => {
+      if (code !== 200) { this.setState({ orderMsg: j.error || 'It didn’t load.' }); return; }
+      const names = this.state.mc ? this.state.mc.macros.map((m) => m.name.toLowerCase()) : [];
+      const items = j.items.filter((x) => !x.header).map((x, k) => ({ id: 'it' + (1000 + k), time: x.time || '—', title: x.title, detail: x.detail || (src === 'pco' ? 'From Planning Center' : 'In ProPresenter'),
+        macro: names.indexOf(x.title.toLowerCase()) > -1 ? this.state.mc.macros.find((m) => m.name.toLowerCase() === x.title.toLowerCase()).name : 'None',
+        inPP: src === 'pp' ? true : x.in_other !== false, inPCO: src === 'pco' ? true : x.in_other !== false, pending: false }));
+      this.setState({ items: items, loadedFrom: src === 'pco' ? 'Planning Center' + (j.plan ? ' · ' + j.plan : '') : 'ProPresenter playlist' + (j.playlist ? ' · ' + j.playlist : ''), loadedAt: j.at, orderMsg: '' });
+    }).catch(() => this.setState({ orderMsg: 'The C3 Life server didn’t answer.' }));
+  }
+  logLoad() {
+    let t = ''; try { t = (JSON.parse(localStorage.getItem('booth.session') || 'null') || {}).token || ''; } catch (e) {}
+    fetch('/api/log', { headers: t ? { Authorization: 'Bearer ' + t } : {} }).then((r) => (r.status === 200 ? r.json() : null)).then((j) => { if (j && j.lines) this.setState({ logLines: j.lines }); }).catch(() => {});
+  }
+  componentWillUnmount() { clearInterval(this.userPoll); clearInterval(this.logT); clearInterval(this.mcT); clearTimeout(this.ntT); }
   // Services: each has its own times (the RTA report marks them), saved setup and running order.
   svcDefaults() {
     return [
@@ -877,7 +897,7 @@ class Component extends DCLogic {
       saveSvc: () => { try { localStorage.setItem('booth.services', JSON.stringify(draft)); } catch (e) {} this.setState({ svcEdit: null, svcToast: '\u2713 Services saved. They are part of the saved setup.' }); },
       isPlan: v === 'plan', isLog: v === 'log',
       showPlan: () => this.setState({ view: 'plan' }),
-      showLog: () => this.setState({ view: 'log' }),
+      showLog: () => { this.setState({ view: 'log' }); if (!this.mcDemo) { this.logLoad(); clearInterval(this.logT); this.logT = setInterval(() => this.logLoad(), 3000); } },
       netText: s.online ? 'Online' : 'No internet',
       ppStatus: 'In sync',
       pcoSub: s.online ? 'Online · live sync' : 'Offline copy · synced Sat 18:42',
@@ -889,10 +909,7 @@ class Component extends DCLogic {
         queued: 0,
         items: !s.online ? items.map((x) => ({ ...x, pending: false })) : items
       }),
-      autoRun: s.autoRun,
       notAdmin: !s.admin,
-      autoHint: s.autoRun ? 'On: macros run when their item goes live (they still ask first).' : 'Off: nothing runs by itself. Tap Run on the item when you are ready.' + (s.admin ? '' : ' Only an Admin can change this.'),
-      toggleAuto: () => { const v = !s.autoRun; try { localStorage.setItem('booth.auto', v ? 'on' : 'off'); } catch (e) {} this.setState({ autoRun: v }); },
       editing: s.editing,
       editLabel: s.editing ? 'Done' : 'Edit order',
       toggleEdit: () => this.setState({ editing: !s.editing }),
@@ -904,14 +921,14 @@ class Component extends DCLogic {
       loadSub: s.loadedFrom ? 'From ' + s.loadedFrom + ' at ' + s.loadedAt + ' · ' + items.length + ' items' : 'Loading is manual. Choose the source when you\u2019re ready.',
       loadBorder: s.loadedFrom ? '#262C36' : '#F5C518',
       loadBtn: s.loadedFrom ? 'Reload' : 'Load running order',
-      choosing: s.choosing, notChoosing: !s.choosing,
+      choosing: s.choosing, notChoosing: !s.choosing, orderMsg: s.orderMsg || '',
       startLoad: () => this.setState({ choosing: true }),
       cancelLoad: () => this.setState({ choosing: false }),
       pcoDisabled: !s.online,
       pcoOpacity: s.online ? '1' : '0.5',
       pcoLoadSub: s.online ? 'Latest plan with times and team' : 'Needs internet · last synced Sat 18:42',
-      loadPP: () => this.setState({ choosing: false, loadedFrom: 'ProPresenter playlist', loadedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }),
-      loadPCO: () => this.setState({ choosing: false, loadedFrom: 'Planning Center', loadedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }),
+      loadPP: () => (this.mcDemo ? this.setState({ choosing: false, loadedFrom: 'ProPresenter playlist', loadedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }) : this.orderLoad('pp')),
+      loadPCO: () => (this.mcDemo ? this.setState({ choosing: false, loadedFrom: 'Planning Center', loadedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }) : this.orderLoad('pco')),
       notLoaded: !s.loadedFrom,
       items: (s.loadedFrom ? items : []).map((x, i) => {
         const now = x.id === s.nowId;
@@ -937,8 +954,13 @@ class Component extends DCLogic {
           addToPCO: () => this.change(items.map((y, j) => (j === i ? { ...y, inPCO: true, pending: !s.online } : y)))
         };
       }),
-      log: log,
-      logCount: log.length
+      ...(s.logLines ? (() => { const L = s.logLines.slice().reverse().map((x) => ({ t: x.at, what: x.text, src: x.level === 'info' ? '' : (x.level === 'warn' ? 'Warning' : 'Error') })); return { log: L, logCount: L.length }; })() : { log: log, logCount: log.length }),
+      exportCsv: () => {
+        const rows = [['time', 'what', 'level']].concat((s.logLines || []).map((x) => [x.at, x.text, x.level]));
+        const csv = rows.map((r) => r.map((c) => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\n');
+        const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = 'service-log-' + new Date().toISOString().slice(0, 10) + '.csv'; a.click();
+      },
+      exportPdf: () => window.print()
     };
   }
 }

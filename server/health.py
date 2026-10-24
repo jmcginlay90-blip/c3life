@@ -8,8 +8,14 @@ answer OSC) counts as there if the last scan saw its Bonjour announcement.
 
 Each device names the access area that sees it, so a musician hears about the Wing (their monitor mix) but not about
 ProPresenter, and where to go to look.
+
+Left out (the Devices screen): a device switched off there gives no warnings, and macros skip its steps. Events mode
+brings back the ones marked "events only" (the events Mac, Lightkey) for Christmas and special services, and leaves them
+out again afterwards. Both are kept in data/devices.json.
 """
 
+import json
+import os
 import threading
 import time
 import urllib.request
@@ -23,6 +29,44 @@ class Health:
         self.lock = threading.Lock()
         self.pp = None    # True / False / None (not asked yet)
         self.quiet = {}   # id -> since when it's been quiet
+        self.path = os.path.join(cfg["data_dir"], "devices.json") if cfg.get("data_dir") else ""
+        self.prefs = {"left": [], "events": [], "events_mode": False}
+        try:
+            with open(self.path, encoding="utf-8") as fh:
+                d = json.load(fh)
+            for k in self.prefs:
+                if isinstance(d.get(k), type(self.prefs[k])):
+                    self.prefs[k] = d[k]
+        except (OSError, ValueError, AttributeError):
+            pass
+
+    # ---- left out, and events mode ----
+    def left_out(self):
+        """The ids that are left out right now: switched off, or events-only while events mode is off."""
+        with self.lock:
+            p = self.prefs
+            return set(p["left"]) | (set() if p["events_mode"] else set(p["events"]))
+
+    def set_prefs(self, left=None, events=None, events_mode=None):
+        """-> error or None"""
+        ok = lambda x: isinstance(x, list) and len(x) <= 100 and all(isinstance(i, str) and 0 < len(i) <= 120 for i in x)
+        if (left is not None and not ok(left)) or (events is not None and not ok(events)) or \
+                (events_mode is not None and not isinstance(events_mode, bool)):
+            return "Bad request"
+        with self.lock:
+            if left is not None:
+                self.prefs["left"] = sorted(set(left))
+            if events is not None:
+                self.prefs["events"] = sorted(set(events))
+            if events_mode is not None:
+                self.prefs["events_mode"] = events_mode
+            d = dict(self.prefs)
+        if self.path:
+            tmp = self.path + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as fh:
+                json.dump(d, fh, indent=1)
+            os.replace(tmp, self.path)
+        return None
 
     # ---- asked once a minute, from the scan's watch ----
     def check(self):
@@ -73,6 +117,7 @@ class Health:
                             "area": "Music", "where": "Music.dc.html", "down": h.get("down_since") or 0,
                             "why": "Is that computer on, and logged in? The helper starts when someone logs in."})
         t = self.now()
+        left = self.left_out()
         with self.lock:
             for d in out:
                 if d["ok"]:
@@ -81,5 +126,7 @@ class Health:
                     self.quiet.setdefault(d["id"], d.pop("down", 0) or t)  # a helper knows when it stopped answering
                 d.pop("down", None)
                 d["since"] = self.quiet.get(d["id"], 0)
-                d["warn"] = (not d["ok"]) and t - d["since"] >= GRACE
+                d["left"] = d["id"] in left
+                d["event"] = d["id"] in self.prefs["events"]
+                d["warn"] = (not d["ok"]) and not d["left"] and t - d["since"] >= GRACE
         return out
