@@ -305,6 +305,12 @@ class Component extends DCLogic {
       fetch('/api/health').then((r) => (r.ok ? r.json() : null)).then((h) => {
         if (!h || h.service !== 'c3life') return;
         this.server = true;
+        // the people themselves: from the C3 Life server too (Admins only)
+        fetch('/api/users', { headers: { Authorization: 'Bearer ' + this.token() } }).then((r) => (r.ok ? r.json() : null)).then((j) => {
+          if (!j || !j.users) return;
+          const list = j.users.map((u) => ({ id: this.nextId++, old: u.name, name: u.name, role: u.role, pin: u.has_pin ? '\u2022' : '', active: u.active, chat: u.chat, mustChange: u.must_change, last: u.last || '' }));
+          this.setState({ list: list, saved: list });
+        }).catch(() => {});
         fetch('/api/listen/config', { headers: { Authorization: 'Bearer ' + this.token() } }).then((r) => (r.ok ? r.json() : null)).then((j) => {
           if (j && j.sources) this.setState({ sources: j.sources, lsnSaved: j.people || {}, lsn: j.people || {} });
         }).catch(() => {});
@@ -404,12 +410,13 @@ class Component extends DCLogic {
       undoDelete: () => { const r = s.removedLast; if (!r) return; const l = s.list.slice(); l.splice(Math.min(r.at, l.length), 0, r.u); this.setState({ list: l, removedLast: null }); },
       cantSave: !s.admin || noName || activeAdmins < 1,
       save: () => {
-        // What people can listen to needs the Admin password again, so nobody can change it on an unattended iPad.
-        if (lsnChanged.length) { this.setState({ ask: true, askPw: '', askErr: '' }); return; }
+        // What people can listen to (and, on the C3 Life server, who can sign in) needs the Admin password again,
+        // so nobody can change it on an unattended iPad.
+        if (lsnChanged.length || (this.server && n > 0)) { this.setState({ ask: true, askPw: '', askErr: '' }); return; }
         this.saveUsersNow();
       },
       asking: !!s.ask, askPw: s.askPw, askHasErr: !!s.askErr, askErr: s.askErr, askBusy: !!s.askBusy,
-      askText: 'You\u2019re changing what ' + lsnChanged.join(', ') + (lsnChanged.length === 1 ? ' can' : ' can') + ' listen to. They can\u2019t change it themselves.',
+      askText: lsnChanged.length ? 'You\u2019re changing what ' + lsnChanged.join(', ') + ' can listen to. They can\u2019t change it themselves.' : 'You\u2019re changing who can sign in. Type your Admin password to save it on the C3 Life server.',
       setAskPw: (e) => this.setState({ askPw: e.target.value, askErr: '' }),
       askNo: () => this.setState({ ask: false, askPw: '', askErr: '' }),
       askYes: () => {
@@ -432,6 +439,20 @@ class Component extends DCLogic {
               .then(({ code, j }) => { if (code === 200) send(names.slice(1)); else this.setState({ askBusy: false, askPw: '', askErr: j.error || 'Not saved.' }); })
               .catch(() => this.setState({ askBusy: false, askErr: 'Can\u2019t reach the C3 Life server.' }));
           };
+          if (n > 0) {  // the people first, then what they can hear
+            const people = s.list.map((u) => ({ old: u.old || '', name: u.name.trim(), role: u.role, pin: u.pin && u.pin !== '\u2022' ? u.pin : '', active: !!u.active,
+              chat: typeof u.chat === 'boolean' ? u.chat : u.role !== 'Listener', must_change: !!u.mustChange }));
+            fetch('/api/users', { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tok }, body: JSON.stringify({ password: pw, users: people, removed: removedNames }) })
+              .then((r) => r.json().then((j) => ({ code: r.status, j })))
+              .then(({ code, j }) => {
+                if (code !== 200) { this.setState({ askBusy: false, askPw: '', askErr: j.error || 'Not saved.' }); return; }
+                const list = j.users.map((u) => ({ id: this.nextId++, old: u.name, name: u.name, role: u.role, pin: u.has_pin ? '\u2022' : '', active: u.active, chat: u.chat, mustChange: u.must_change, last: u.last || '' }));
+                this.setState({ list: list, saved: list, pins: {} });
+                if (lsnChanged.length) send(lsnChanged); else { this.setState({ ask: false, askPw: '', askBusy: false, toast: 'Saved on the C3 Life server. These users can sign in now on every device.' }); }
+              })
+              .catch(() => this.setState({ askBusy: false, askErr: 'Can\u2019t reach the C3 Life server.' }));
+            return;
+          }
           send(lsnChanged);
           return;
         }

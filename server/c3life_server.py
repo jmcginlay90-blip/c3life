@@ -60,6 +60,10 @@ API (JSON):
   POST /api/macros/run {"id"} | /stop | /undo   (Macros control) nothing runs unless someone presses Run
   POST /api/power {"do": "app|restart|off|abort|cycle"}   (Settings or Mixer control; cycle: Admin) restart C3 Life,
                                            restart or shut down this computer (15 s, abort stops it), smart-plug reset
+  GET  /api/chat?since=<id> | POST /api/chat {"text", "ch", "stage"}   (Chat view / control, and chat on for that
+                                           person) team chat; the stage display channel also goes to ProPresenter
+  GET  /api/users | PUT /api/users {"password", "users", "removed"}   (Admin; saving needs the password again)
+                                           Users & PINs: names, roles, PINs, can sign in, team chat
   GET  /api/home                          (signed in) Home: the slide, Playback, the band DCA, the room level, devices,
                                            recording; each part only for a role that can see that area
   POST /api/home/do {"do": "play|stop|band|mark", "on", "name"}   Play/Stop to Playback (Show control), mute the band
@@ -194,6 +198,7 @@ import audio_engine as audio_engine_mod
 import recorder as recorder_mod
 import propresenter as propresenter_mod
 import power as power_mod
+import chat as chat_mod
 
 VERSION = "0.3.0"
 START = time.time()
@@ -381,6 +386,53 @@ class Store:
             u["pin"] = hash_pin(pin) if pin else ""
             write_json(self.users_path, data)
 
+    def public(self):
+        """Everyone, without their PIN hashes: for Users & PINs."""
+        return [{"name": u["name"], "role": u["role"], "has_pin": bool(u.get("pin")), "active": u.get("active", True),
+                 "chat": u.get("chat", u["role"] != "Listener"), "must_change": bool(u.get("must_change")), "last": u.get("last", "")} for u in self.users()]
+
+    def save_all(self, people, removed, roles):
+        """Users & PINs, saved together: people = [{"old", "name", "role", "pin"?, "active", "chat", "must_change"}] ("old" is
+        "" for someone new), removed = names. -> error or None. A new PIN is 4-6 digits; an Admin's password 8+ characters."""
+        if not isinstance(people, list) or not isinstance(removed, list) or len(people) > 100:
+            return "Bad request"
+        with self.lock:
+            cur = {u["name"]: u for u in self.users()}
+            out, names = [], set()
+            for p in people:
+                if not isinstance(p, dict):
+                    return "Bad request"
+                name, old, role = (p.get("name") or "").strip(), p.get("old") or "", p.get("role")
+                if not name or len(name) > 40:
+                    return "Each person needs a name, up to 40 characters."
+                if name in names:
+                    return "Two people are called %s." % name
+                names.add(name)
+                if role not in roles:
+                    return "%s: there's no role called %s." % (name, role)
+                if old and old not in cur:
+                    return "%s isn't on the list any more. Reload and try again." % old
+                u = dict(cur.get(old) or {"pin": ""})
+                u.update(name=name, role=role, active=bool(p.get("active", True)), chat=bool(p.get("chat", role != "Listener")),
+                         must_change=bool(p.get("must_change")))
+                pin = p.get("pin")
+                if isinstance(pin, str) and pin:
+                    if role == "Admin" and not valid_password(pin):
+                        return "%s: an Admin's password needs 8 or more characters, with a letter and a number or symbol." % name
+                    if role != "Admin" and not (pin.isdigit() and 4 <= len(pin) <= 6):
+                        return "%s: a PIN is 4 to 6 digits." % name
+                    u["pin"] = hash_pin(pin)
+                if role == "Admin" and not u.get("pin"):
+                    return "%s: an Admin needs a password." % name
+                out.append(u)
+            gone = [n for n in cur if n not in {p.get("old") for p in people if p.get("old")}]
+            if set(gone) - set(removed):
+                return "Reload Users & PINs: someone else changed it."
+            if not any(u["role"] == "Admin" and u["active"] for u in out):
+                return "Keep at least one Admin who can sign in."
+            write_json(self.users_path, {"users": out})
+        return None
+
     def mix_path(self, name):
         # The file name is a hash of the person's name: no path tricks, any characters allowed.
         return os.path.join(self.mix_dir, hashlib.sha256(name.encode("utf-8")).hexdigest()[:32] + ".json")
@@ -485,7 +537,7 @@ def _ip_ok(x):
         return False
 
 
-def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bible=None, cues=None, reports=None, plan=None, desk=None, tio=None, monitors=None, scanner=None, foyer=None, rta_inputs=None, dante_names=None, lights=None, rta_live=None, midi=None, music=None, helpers=None, health=None, macros=None, recorder=None, pp=None, midi_peers=None, power=None):
+def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bible=None, cues=None, reports=None, plan=None, desk=None, tio=None, monitors=None, scanner=None, foyer=None, rta_inputs=None, dante_names=None, lights=None, rta_live=None, midi=None, music=None, helpers=None, health=None, macros=None, recorder=None, pp=None, midi_peers=None, power=None, chat=None):
     nets = cfg["_nets"]
     remote_nets = cfg.get("_remote", [])
 
@@ -882,6 +934,24 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 if self.level("Foyer", "Show", "Mixer"):
                     self.send_json(200, dict(foyer.view(desk), ok=True))
                 return
+            if path == "/api/chat":
+                s = self.level("Chat")
+                if s:
+                    u = store.find_user(s["name"]) or {}
+                    if not u.get("chat", s["role"] != "Listener"):
+                        self.send_json(403, {"ok": False, "error": "Team chat is turned off for you. An Admin can turn it on in Users & PINs."})
+                        return
+                    q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+                    try:
+                        n = int((q.get("since") or ["0"])[0])
+                    except ValueError:
+                        n = 0
+                    self.send_json(200, {"ok": True, "me": s["name"], "messages": chat.since(n), "can": access.level(s["role"], "Chat") >= 2})
+                return
+            if path == "/api/users":
+                if self.admin() and self.session()[0]:
+                    self.send_json(200, {"ok": True, "users": store.public(), "roles": [r["name"] for r in access.roles()]})
+                return
             if path == "/api/home":
                 # Home: what's on screen, Playback, the band, the room, every device, whether it's recording;
                 # each part only for a role that can see that area.
@@ -1153,7 +1223,7 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                     self.send_json(429, {"ok": False, "error": "Too many wrong PINs. Wait 5 minutes, or ask an Admin."})
                     return
                 u = store.find_user(name)
-                good = bool(u) and ((not u.get("pin") and not pin) or (u.get("pin") and check_pin(pin, u["pin"])))
+                good = bool(u) and u.get("active", True) and ((not u.get("pin") and not pin) or (u.get("pin") and check_pin(pin, u["pin"])))
                 if not good:
                     sessions.failed(name)
                     log.warning("wrong PIN for %r from %s", name, self.client_address[0])
@@ -1268,6 +1338,19 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                     return
                 err = power.do(what, s["name"])
                 self.send_json(200 if not err else 409, {"ok": not err, "pending": power.pending, **({"error": err} if err else {})})
+                return
+            if path == "/api/chat":
+                s = self.level("Chat", need=2)
+                if not s:
+                    return
+                u = store.find_user(s["name"]) or {}
+                if not u.get("chat", s["role"] != "Listener"):
+                    self.send_json(403, {"ok": False, "error": "Team chat is turned off for you."})
+                    return
+                body = self.read_json() or {}
+                m, err = chat.send(s["name"], s["role"], body.get("text") if isinstance(body, dict) else "", body.get("ch", 0) if isinstance(body, dict) else 0,
+                                   body.get("stage") if isinstance(body, dict) else False)
+                self.send_json(200 if m else 400, {"ok": bool(m), "message": m, **({"error": err} if err else {})})
                 return
             if path == "/api/home/do":
                 body = self.read_json() or {}
@@ -2042,6 +2125,25 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 log.info("listen: %s set saved subtitles to %s days", s["name"], body["days"])
                 self.send_json(200, {"ok": True, "days": listen.transcripts.days, "transcripts": listen.transcripts.list()})
                 return
+            if self.route() == "/api/users":
+                s = self.admin()
+                if not s:
+                    return
+                body = self.read_json(limit=256 * 1024) or {}
+                me = store.find_user(s["name"])
+                # Changing who can sign in needs the Admin's password again, so an unattended signed-in iPad can't.
+                if not me or not isinstance(body.get("password"), str) or not check_pin(body["password"], me.get("pin", "")):
+                    sessions.failed(s["name"])
+                    self.send_json(401, {"ok": False, "error": "That password isn't right."})
+                    return
+                err = store.save_all(body.get("users"), body.get("removed") or [], [r["name"] for r in access.roles()])
+                if err:
+                    self.send_json(400, {"ok": False, "error": err})
+                    return
+                log.info("users: %s saved Users & PINs (%d people%s)", s["name"], len(body["users"]),
+                         ", removed " + ", ".join(body["removed"]) if body.get("removed") else "")
+                self.send_json(200, {"ok": True, "users": store.public()})
+                return
             if self.route() == "/api/listen/person":
                 s = self.admin()
                 if not s:
@@ -2207,6 +2309,7 @@ def serve(cfg):
     macros = macros_mod.Macros(cfg["data_dir"], cfg, log, desk=desk, music=music, foyer=foyer, lights=lights, midi=midi)
     recorder = recorder_mod.Recorder(cfg["data_dir"], cfg, log, engine, desk=desk, dante=dante)
     pp = propresenter_mod.ProPresenter(cfg, log)
+    chat = chat_mod.Chat(cfg["data_dir"], log, pp)
     power = power_mod.Power(cfg, log, before=lambda: recorder.rec and recorder.stop("the server power screen"))
     if engine.on:
         recorder.start_loop()  # watches for the recording drive, and ProPresenter's slides when they start or stop it
@@ -2220,7 +2323,7 @@ def serve(cfg):
         gone = lambda d, name: [name] if d and d.status()["status"] == "no answer" else []
         threading.Thread(target=scanner.watch, args=([lambda: gone(desk, desk.NAME), lambda: gone(tio, "the Tio"), health.check],), daemon=True).start()
     httpd = ThreadingHTTPServer((cfg["bind"], int(cfg["port"])), make_handler(cfg, store, sessions, listen, access, dante, tags, bible, cues, reports, plan, desk, tio, monitors, scanner, foyer, rta_inputs, dante_names, lights, rta_live, midi, music, helpers, health, macros, recorder, pp,
-                                                                              lambda: [p for p in midi.peers.values() if p.get("data") and time.time() - p["seen"] < 60], power))
+                                                                              lambda: [p for p in midi.peers.values() if p.get("data") and time.time() - p["seen"] < 60], power, chat))
     httpd.daemon_threads = True
     close = httpd.server_close
     httpd.server_close = lambda: (scanner.stop.set(), lights.close(), rta_live.stop(), midi.close(), recorder.close(), engine.stop(), close())

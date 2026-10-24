@@ -73,6 +73,9 @@ class FakePP:
         if path == "/v1/trigger/previous":
             self.at = (uid, max(0, i - 1))
             return None
+        if path == "/v1/stage/message":
+            self.stage = body
+            return None
         if path.startswith("/v1/clear/layer/"):
             self.cleared.append(path.rsplit("/", 1)[1])
             return None

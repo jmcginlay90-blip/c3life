@@ -163,6 +163,8 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
 
   <main class=" wide1" style="flex:1;overflow-y:auto;padding:4px 16px 12px;display:flex;flex-direction:column;gap:10px">
     <div><sc-if value="{{noChat}}" hint-placeholder-val="{{ false }}"><div role="status" style="background:#161A21;border:1px solid #262C36;border-radius:14px;padding:14px;font-size:15px;line-height:1.45">Team chat is turned off for {{chatWho}}.<br><span style="font-size:13px;color:#A3ACB8">An Admin can turn it on in Users &amp; PINs.</span></div></sc-if></div>
+    <sc-if value="{{srvOff}}" hint-placeholder-val="{{ false }}"><div role="status" style="background:#161A21;border:1px solid #262C36;border-radius:14px;padding:14px;font-size:15px;line-height:1.45">{{srvOff}}</div></sc-if>
+    <sc-if value="{{err}}" hint-placeholder-val="{{ false }}"><div role="alert" style="font-size:13px;color:#FF7A45">{{err}}</div></sc-if>
     <sc-for list="{{msgs}}" as="m" hint-placeholder-count="6">
       <sc-if value="{{m.mine}}" hint-placeholder-val="{{ false }}">
         <div style="align-self:flex-end;max-width:80%;display:flex;flex-direction:column;align-items:flex-end;gap:3px">
@@ -222,9 +224,34 @@ class Component extends DCLogic {
       ]
     };
   }
+  // On the C3 Life server the messages live there (GET/POST /api/chat), the same on every device.
+  tok() { try { const x = JSON.parse(localStorage.getItem('booth.session') || 'null'); return x ? x.token : ''; } catch (e) { return ''; } }
+  componentDidMount() { this.load(); this.poll = setInterval(() => this.load(), 2000); }
+  componentWillUnmount() { clearInterval(this.poll); }
+  load() {
+    if (this.demo || this.busy) return;
+    this.busy = true;
+    const t = this.tok();
+    fetch('/api/chat?since=' + (this.last || 0), { headers: t ? { Authorization: 'Bearer ' + t } : {} }).then((r) => r.json().catch(() => ({})).then((j) => ({ code: r.status, j: j }))).then(({ code, j }) => {
+      this.busy = false;
+      if (code === 404) { this.demo = true; clearInterval(this.poll); return; }
+      if (code === 403 || code === 401) { this.setState({ srvOff: j.error || 'Sign in to use team chat.' }); return; }
+      if (code !== 200) return;
+      const add = (j.messages || []).map((m) => ({ from: m.from, text: m.text, t: m.t, mine: m.from === j.me, ch: m.ch, stage: m.stage }));
+      if (j.messages && j.messages.length) this.last = j.messages[j.messages.length - 1].id;
+      this.setState({ server: true, srvOff: '', msgs: (this.state.server ? this.state.msgs : []).concat(add), can: j.can });
+    }).catch(() => { this.busy = false; });
+  }
   add(text) {
     if (!text) return;
     const s = this.state;
+    if (s.server) {
+      const t = this.tok();
+      fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(t ? { Authorization: 'Bearer ' + t } : {}) }, body: JSON.stringify({ text: text, ch: s.ch, stage: s.toStage }) })
+        .then((r) => r.json().catch(() => ({}))).then((j) => { this.setState({ draft: '', err: j.error || '' }); this.load(); })
+        .catch(() => this.setState({ err: 'The C3 Life server didn’t answer.' }));
+      return;
+    }
     const t = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     this.setState({ draft: '', msgs: s.msgs.concat([{ from: 'FOH', text: text, t: t, mine: true, ch: s.ch, stage: s.toStage || s.ch === 2 }]) });
   }
@@ -247,7 +274,8 @@ class Component extends DCLogic {
     const names = ['All team', 'Band', 'Stage display'];
     return {
       ...this.menuVals(),
-      ...(() => { let u = null; try { u = JSON.parse(localStorage.getItem('booth.user') || 'null'); } catch (e) {} const ok = !u || this.chatOk(u); return { canChat: ok, noChat: !ok, chatWho: u ? u.name : '' }; })(),
+      ...(() => { let u = null; try { u = JSON.parse(localStorage.getItem('booth.user') || 'null'); } catch (e) {} const ok = s.server ? s.can !== false : (!s.srvOff && (!u || this.chatOk(u))); return { canChat: ok, noChat: !ok && !s.srvOff, chatWho: u ? u.name : '' }; })(),
+      srvOff: s.srvOff || '', err: s.err || '',
       chans: names.map((l, i) => ({ label: l, on: s.ch === i, off: s.ch !== i, pick: () => this.setState({ ch: i }) })),
       msgs: s.msgs.filter((m) => s.ch === 0 || m.ch === s.ch).map((m) => ({
         from: m.from, text: m.text, mine: m.mine, theirs: !m.mine,
