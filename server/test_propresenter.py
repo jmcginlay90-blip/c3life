@@ -51,7 +51,10 @@ class FakePP:
             s = self.slides(uid)
             return {"current": {"text": s[i][1]}, "next": {"text": s[i + 1][1] if i + 1 < len(s) else ""}}
         if path == "/v1/playlist/active":
-            return {"presentation": {"playlist": {"name": "Sunday"}, "item": {"name": dict(self.playlist)[uid]}}}
+            return {"presentation": {"playlist": {"name": "Sunday", "uuid": "PL1"}, "item": {"name": dict(self.playlist)[uid]}}}
+        if path == "/v1/playlist/PL1":
+            return {"id": {"name": "Sunday"}, "items": [{"id": {"name": "Pre-service"}, "type": "header"}] +
+                    [{"id": {"name": n}, "type": "presentation", "presentation_info": {"presentation_uuid": u}} for u, n in self.playlist]}
         if path.startswith("/v1/presentation/") and "/thumbnail/" in path:
             return JPEG
         if path.startswith("/v1/presentation/") and path.endswith("/trigger"):
@@ -158,6 +161,8 @@ class Live(unittest.TestCase):
         self.assertEqual(self.fake.cleared, list(ppm.LAYERS))
         self.assertIn("can't be cleared", self.p.trigger("clear", layer="everything"))
         self.assertEqual(self.p.thumb("P1", 2, 320), JPEG)
+        pl = self.p.playlist()
+        self.assertEqual((pl["playlist"], [x["title"] for x in pl["items"]], pl["items"][0]["header"]), ("Sunday", ["Pre-service", "Song 1: Way Maker", "Message"], True))
 
     def test_timers(self):
         t = {x["id"]: x for x in self.p.timers()}
@@ -230,6 +235,12 @@ class Api(unittest.TestCase):
         code, img = self.call("/api/pp/thumb?u=P1&i=1&w=320&t=" + self.tok["Viewer"], raw=True)
         self.assertEqual((code, img), (200, JPEG))
         self.assertEqual(self.call("/api/pp/thumb?u=P1&i=1&t=nope")[0], 401)
+        code, j = self.call("/api/plan/order?from=pp", who="ProPresenter")
+        self.assertEqual((code, [x["title"] for x in j["items"]][1], j["source"]), (200, "Song 1: Way Maker", "pp"))
+        self.assertIsNone(j["items"][0]["in_other"])  # Planning Center isn't signed in here, so nobody knows
+        self.assertEqual(self.call("/api/plan/order?from=pp", who="Keys (musician)")[0], 403)
+        code, j = self.call("/api/log", who="ProPresenter")
+        self.assertTrue(any("loaded it from ProPresenter" in l["text"] for l in j["lines"]))
         code, j = self.call("/api/pp/timer", "POST", {"id": "T1", "do": "start"}, who="ProPresenter")
         self.assertEqual((code, {t["id"]: t for t in j["timers"]}["T1"]["running"]), (200, True))
 

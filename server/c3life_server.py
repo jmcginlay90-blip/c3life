@@ -64,6 +64,8 @@ API (JSON):
                                            recording; each part only for a role that can see that area
   POST /api/home/do {"do": "play|stop|band|mark", "on", "name"}   Play/Stop to Playback (Show control), mute the band
                                            DCA ("band_dca", Mixer control), a marker in the log (and the recording)
+  GET  /api/plan/order?from=pco|pp        (Running order view) the running order from Planning Center or ProPresenter's
+                                           playlist, each item marked if it's in the other one too
   GET  /api/log?since=<id>                 (Running order, Show or Mixer view) the service log: what C3 Life did today
   GET  /api/pp/status | /api/pp/timers     (Show or Running order view) ProPresenter's slide now, next and after it, and
                                            its timers; GET /api/pp/thumb?u=&i=&w=&t=<token> a slide's picture
@@ -921,6 +923,26 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                     out["rec"] = {"on": bool(rv["recording"]), "secs": (rv["recording"] or {}).get("secs", 0)}
                 out["devices"] = devs
                 self.send_json(200, out)
+                return
+            if path == "/api/plan/order":
+                if not self.level("Running order"):
+                    return
+                src = (urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).get("from") or ["pp"])[0]
+                try:
+                    d = plan.order() if src == "pco" else pp.playlist()
+                except (OSError, ValueError, LookupError, KeyError) as e:
+                    msg = str(e) if isinstance(e, (LookupError, ValueError)) else (pp._why(e) if src == "pp" else "Planning Center didn't answer (%s)." % e)
+                    self.send_json(502, {"ok": False, "error": msg})
+                    return
+                other = set()  # which items are in the other one too
+                try:
+                    other = {x["title"].strip().lower() for x in (pp.playlist() if src == "pco" else plan.order())["items"]}
+                except Exception:
+                    other = None
+                for x in d["items"]:
+                    x["in_other"] = None if other is None else x["title"].strip().lower() in other
+                log.info("running order: %s loaded it from %s (%d items)", self.session()[0]["name"], "Planning Center" if src == "pco" else "ProPresenter", len(d["items"]))
+                self.send_json(200, dict(d, ok=True, source=src, at=time.strftime("%H:%M")))
                 return
             if path == "/api/log":
                 if self.level("Running order", "Show", "Mixer"):

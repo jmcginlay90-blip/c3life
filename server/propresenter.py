@@ -157,6 +157,16 @@ class ProPresenter:
             self.log.info("propresenter: %s %s%s", who, do, " " + str(index if do == "go" else layer) if do in ("go", "clear") else "")
         return None
 
+    def playlist(self):
+        """The active playlist's items: [{"title", "detail"}] (presentations, headers, media...)."""
+        a = self._req("/v1/playlist/active") or {}
+        pl = (a.get("presentation") or {}).get("playlist") or {}
+        if not pl.get("uuid"):
+            raise ValueError("No playlist is open in ProPresenter.")
+        d = self._req("/v1/playlist/" + urllib.parse.quote(pl["uuid"])) or {}
+        return {"playlist": pl.get("name", ""), "items": [{"title": (x.get("id") or {}).get("name") or "", "detail": x.get("type") or "",
+                                                           "header": x.get("type") == "header"} for x in d.get("items") or []]}
+
     # ---- ProPresenter's timers ----
     def timers(self):
         """[{"id", "name", "kind", "secs", "time", "state", "running"}], or raises OSError/ValueError."""
