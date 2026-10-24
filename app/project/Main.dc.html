@@ -223,14 +223,14 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
     <section class="card" style="order:{{ord.now}};display:flex;flex-direction:column;gap:12px">
       <div style="display:flex;justify-content:space-between;align-items:baseline">
         <div class="lbl">Now</div>
-        <a href="Plan.dc.html" style="font-size:12px;text-decoration:none">Next: Song 3 ›</a>
+        <a href="Show.dc.html" style="font-size:12px;text-decoration:none">{{nowNext}}</a>
       </div>
-      <div style="font-size:21px;font-weight:600">Song 2 of 4</div>
-      <div style="height:6px;border-radius:3px;background:#0F1318;overflow:hidden"><div style="width:38%;height:6px;background:#F5C518"></div></div>
+      <div style="font-size:21px;font-weight:600">{{nowTitle}}</div>
+      <div style="height:6px;border-radius:3px;background:#0F1318;overflow:hidden"><div style="width:{{nowBar}};height:6px;background:#F5C518"></div></div>
       <div style="display:grid;grid-template-columns:repeat(3, minmax(0, 1fr));gap:8px">
         <a href="Show.dc.html" style="background:#0F1318;border-radius:10px;padding:10px;text-decoration:none;color:#ECEEF1">
           <div style="font-size:12px;color:#A3ACB8">Slides</div>
-          <div style="font-size:14px;font-weight:500;margin-top:2px">Chorus</div>
+          <div style="font-size:14px;font-weight:500;margin-top:2px">{{nowSlide}}</div>
         </a>
         <a href="Show.dc.html" style="background:#0F1318;border-radius:10px;padding:10px;text-decoration:none;color:#ECEEF1;border:1px solid {{pbBorder}}">
           <div style="font-size:12px;color:#A3ACB8">Playback</div>
@@ -250,6 +250,7 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
         <button class="{{q.cls}}" onClick="{{q.run}}" disabled="{{q.off}}" style="opacity:{{q.opacity}}">{{q.label}}<small>{{q.sub}}</small></button>
       </sc-for>
       <sc-if value="{{noQuick}}" hint-placeholder-val="{{ false }}"><div style="grid-column:1 / -1;font-size:13px;color:#A3ACB8">No quick buttons. Tap Edit to add some.</div></sc-if>
+      <sc-if value="{{hmMsg}}" hint-placeholder-val="{{ false }}"><div role="status" style="grid-column:1 / -1;font-size:13px;color:{{hmMsgColor}}">{{hmMsg}}</div></sc-if>
     </section>
     </sc-if>
 
@@ -532,6 +533,74 @@ class Component extends DCLogic {
     this.timer = setInterval(() => this.setState({ spl: Math.round((88 + Math.random() * 4) * 10) / 10, tms: this.readTimers() }), 1000);
     this.bsInit();
     this.mcLoad(); this.mcT = setInterval(() => this.mcLoad(), 2000);
+    this.hmLoad(); this.hmT = setInterval(() => this.hmLoad(), 2000);
+  }
+  // Home on the C3 Life server: GET /api/home (the slide, Playback, the band, the room, devices) and the quick buttons.
+  hmApi(path, method, body) {
+    const h = { 'Content-Type': 'application/json' }; const t = this.bsToken(); if (t) h.Authorization = 'Bearer ' + t;
+    return fetch(path, { method: method || 'GET', headers: h, body: body ? JSON.stringify(body) : undefined })
+      .then((r) => r.json().catch(() => ({})).then((j) => ({ code: r.status, j: j || {} })));
+  }
+  hmLoad() {
+    if (this.hmDemo || this.hmBusy) return;
+    this.hmBusy = true;
+    this.hmApi('/api/home').then(({ code, j }) => {
+      this.hmBusy = false;
+      if (code === 404) { this.hmDemo = true; clearInterval(this.hmT); return; }
+      if (code === 200 && j.ok) this.setState({ hm: j });
+    }).catch(() => { this.hmBusy = false; });
+    if (this.state.hm && this.state.hm.pp && (this.hmN = (this.hmN || 0) + 1) % 3 === 1)
+      this.hmApi('/api/pp/timers').then(({ code, j }) => { if (code === 200) this.setState({ hmTimers: j.timers || [] }); }).catch(() => {});
+  }
+  hmSay(t, bad) { this.setState({ hmMsg: t, hmBad: !!bad }); clearTimeout(this.hmSayT); this.hmSayT = setTimeout(() => this.setState({ hmMsg: '' }), 4000); }
+  hmDo(path, body, done) {
+    return this.hmApi(path, 'POST', body).then(({ j }) => { this.hmSay((j && j.error) || done || '', !!(j && j.error)); this.hmLoad(); })
+      .catch(() => this.hmSay('The C3 Life server didn’t answer.', true));
+  }
+  hmVals(qDefs, timersDemo) {
+    const s = this.state, H = s.hm, p = H.pp || {}, can = H.can || {};
+    const ts = s.hmTimers || [];
+    const msgT = ts.find((x) => /message/i.test(x.name));
+    const fy = H.foyer, fyLive = fy && fy.live && fy.live.source === 'b';
+    const q = {
+      next: { name: 'Next slide', label: 'Next slide', sub: p.current ? (p.current.group || p.presentation) + ' · ' + (p.index + 1) + '/' + p.count : (p.error ? 'ProPresenter not connected' : 'ProPresenter'), off: !can.show,
+        run: () => this.hmDo('/api/pp/trigger', { do: 'next' }) },
+      play: { name: 'Play / Stop', label: s.hmPlaying ? 'Stop playback' : 'Play', sub: H.playback && H.playback.connected ? 'Playback · ' + H.playback.name : 'Playback not connected', off: !can.show || !(H.playback && H.playback.connected),
+        run: () => { const v = !s.hmPlaying; this.setState({ hmPlaying: v }); this.hmDo('/api/home/do', { do: v ? 'play' : 'stop' }, v ? 'Play sent to Playback' : 'Stop sent to Playback'); } },
+      band: { name: 'Mute band', label: H.band && H.band.muted ? 'Band muted' : 'Mute band', sub: H.band ? (H.band.muted ? 'Tap to unmute' : 'Wing · ' + H.band.name) : 'Wing', hot: !!(H.band && H.band.muted), off: !can.mixer || !(H.band && H.band.connected),
+        run: () => { const m = H.band && H.band.muted; this.setState({ ask: m ? { title: 'Unmute the band?', text: H.band.name + ' on the Wing comes back on. Everyone hears the band again.', btn: 'Yes, unmute', act: () => this.hmDo('/api/home/do', { do: 'band', on: false }, 'Band unmuted') }
+          : { title: 'Mute the band?', text: H.band.name + ' on the Wing is muted. The room and the stream stop hearing the band.', btn: 'Yes, mute', act: () => this.hmDo('/api/home/do', { do: 'band', on: true }, 'Band muted') } }); } },
+      mark: { name: 'Add marker', label: 'Add marker', sub: H.rec && H.rec.on ? 'In the log and the recording' : 'In the service log',
+        run: () => { const t = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); this.hmDo('/api/home/do', { do: 'mark', name: 'Marker ' + t }, 'Marker added at ' + t); } },
+      msgplus: { name: 'Message +1 min', label: 'Message +1 min', sub: msgT ? msgT.name + ' ' + this.tmFmt(Math.round(msgT.secs)) : 'No “Message” timer in ProPresenter', off: !can.show || !msgT,
+        run: () => msgT && this.hmDo('/api/pp/timer', { id: msgT.id, do: 'add', secs: 60 }, msgT.name + ' +1 min') },
+      lights: { name: 'Lights Go', label: 'Lights Go', sub: 'Lightkey', off: !can.lights, run: () => this.hmDo('/api/lights/do', { do: 'go' }, 'Lights: Go') },
+      foyer: { name: 'Foyer source', label: fy ? fy.name + ': ' + (fyLive ? fy.b : fy.a) : 'Foyer', sub: 'Tap to switch', off: !can.foyer || !fy,
+        run: () => this.setState({ ask: { title: 'Switch the ' + fy.name + ' to ' + (fyLive ? fy.a : fy.b) + '?', text: 'The speakers change straight away.', btn: 'Switch', act: () => this.hmDo('/api/foyer/do', { do: 'source', to: fyLive ? 'a' : 'b' }, fy.name + ' switched') } }) },
+      mdtest: qDefs.mdtest
+    };
+    const devices = (H.devices || []).map((d) => {
+      const k = d.ok ? 'ok' : (d.info ? 'off' : 'lost');
+      return { name: d.name, where: d.detail || ({ Mixer: 'Mixer', Show: 'Show', Lights: 'Lights', Music: 'Music', RTA: 'Sound', Recording: 'Record' }[d.area] || d.area), status: d.ok ? 'Connected' : (d.info ? d.why : 'Not answering'),
+        k: k, ok: k === 'ok', lost: k === 'lost', off: k === 'off', statusColor: k === 'lost' ? '#FF7A45' : (k === 'off' ? '#A3ACB8' : '#ECEEF1'), nameColor: k === 'lost' ? '#FF7A45' : '#ECEEF1' };
+    });
+    const fmt = (v) => this.tmFmt(Math.round(v));
+    return {
+      q: q, devices: devices,
+      nowTitle: p.presentation ? p.presentation : (p.error ? 'ProPresenter not connected' : 'Nothing on screen'),
+      nowSlide: p.current ? (p.current.group || '—') : '—',
+      nowNext: p.next ? 'Next: ' + (p.next.group || 'slide ' + (p.next.index + 1)) + ' ›' : 'Show ›',
+      nowBar: p.count ? Math.round(100 * (p.index + 1) / p.count) + '%' : '0%',
+      spl: typeof H.dba === 'number' ? H.dba.toFixed(1) : '---',
+      pbText: H.playback ? (H.playback.connected ? 'Connected' : 'Not connected') : '—',
+      pbColor: H.playback && !H.playback.connected ? '#FF7A45' : '#ECEEF1', pbBorder: H.playback && !H.playback.connected ? '#FF7A45' : 'transparent',
+      timers: ts.map((x) => ({
+        name: x.name, kind: x.kind, time: fmt(x.secs), state: x.running ? 'Running' : 'Stopped', color: x.secs < 0 ? '#FF7A45' : (x.running ? '#F5C518' : '#ECEEF1'),
+        btn: x.running ? 'Stop' : 'Start', toggle: () => this.hmDo('/api/pp/timer', { id: x.id, do: x.running ? 'stop' : 'start' }), reset: () => this.hmDo('/api/pp/timer', { id: x.id, do: 'reset' }),
+        steps: [-300, -60, 60, 300].map((secs) => ({ label: (secs > 0 ? '+' : '−') + Math.abs(secs / 60), aria: (secs > 0 ? 'Add ' : 'Take off ') + Math.abs(secs / 60) + ' minutes', run: () => this.hmDo('/api/pp/timer', { id: x.id, do: 'add', secs: secs }) })),
+        editing: false, notEditing: true, editVal: '', openSet: () => {}, setVal: () => {}, badVal: true, cancelSet: () => {}, sendSet: () => {}, setAria: x.name
+      })).concat(ts.length ? [] : timersDemo ? [] : [])
+    };
   }
   // Macros on the C3 Life server (the same run sheet as the Macros screen). In the preview, the demo chips below.
   mcApi(path, method, body) {
@@ -582,7 +651,7 @@ class Component extends DCLogic {
       mcMsgColor: s.mcBad || (r && r.error && !s.mcMsg) ? '#FF7A45' : '#A3ACB8'
     };
   }
-  componentWillUnmount() { clearInterval(this.timer); clearInterval(this.mcT); clearTimeout(this.t); clearTimeout(this.tmT); clearTimeout(this.bsT); this.unwatchUser(); }
+  componentWillUnmount() { clearInterval(this.timer); clearInterval(this.mcT); clearInterval(this.hmT); clearTimeout(this.hmSayT); clearTimeout(this.t); clearTimeout(this.tmT); clearTimeout(this.bsT); this.unwatchUser(); }
   // Each user has their own Home layout, starting from a default for their role.
   homeDefault(role) {
     const d = {
@@ -960,6 +1029,8 @@ class Component extends DCLogic {
       foyer: { name: 'Foyer source', label: s.foyerLive ? 'Foyer: Live' : 'Foyer: Spotify', sub: 'Tap to switch', run: () => this.setState({ foyerLive: !s.foyerLive }) },
       mdtest: { name: 'MD talk test', label: 'MD talk test', sub: s.mdTest || 'Every screen goes green', run: () => this.setState({ mdTest: 'Test sent ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }) }
     };
+    const HV = s.hm ? this.hmVals(qDefs) : null;
+    if (HV) Object.keys(HV.q).forEach((k) => { qDefs[k] = HV.q[k]; });
     const md = this.readMd();
     const move = (i, d) => { const sec = L.sections.slice(); const j = i + d; [sec[i], sec[j]] = [sec[j], sec[i]]; this.saveLayout({ ...L, sections: sec }); };
     let ml = []; try { ml = JSON.parse(localStorage.getItem('booth.miclow') || '[]'); } catch (e) {}
@@ -1034,7 +1105,12 @@ class Component extends DCLogic {
       nOff: devices.filter((d) => d.off).length,
       showAll: s.showAll,
       allLabel: s.showAll ? 'Hide device list' : 'Show all devices',
-      toggleAll: () => this.setState({ showAll: !s.showAll })
+      toggleAll: () => this.setState({ showAll: !s.showAll }),
+      hmMsg: s.hmMsg || '', hmMsgColor: s.hmBad ? '#FF7A45' : '#6CB4F5',
+      nowTitle: 'Song 2 of 4', nowSlide: 'Chorus', nowNext: 'Next: Song 3 ›', nowBar: '38%',
+      ...(HV ? { nowTitle: HV.nowTitle, nowSlide: HV.nowSlide, nowNext: HV.nowNext, nowBar: HV.nowBar, spl: HV.spl, pbText: HV.pbText, pbColor: HV.pbColor, pbBorder: HV.pbBorder,
+        timers: HV.timers, devices: HV.devices, nOk: HV.devices.filter((d) => d.ok).length, nLost: HV.devices.filter((d) => d.lost).length,
+        anyLost: HV.devices.some((d) => d.lost), nOff: HV.devices.filter((d) => d.off).length } : {})
     };
   }
 }

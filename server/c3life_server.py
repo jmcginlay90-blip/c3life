@@ -58,6 +58,15 @@ API (JSON):
                                            control) "choices": the steps C3 Life can run, named from what's set up
   PUT  /api/macros {"macros","playback"}   (Macros control) the macros, and the notes Playback steps send
   POST /api/macros/run {"id"} | /stop | /undo   (Macros control) nothing runs unless someone presses Run
+  GET  /api/home                          (signed in) Home: the slide, Playback, the band DCA, the room level, devices,
+                                           recording; each part only for a role that can see that area
+  POST /api/home/do {"do": "play|stop|band|mark", "on", "name"}   Play/Stop to Playback (Show control), mute the band
+                                           DCA ("band_dca", Mixer control), a marker in the log (and the recording)
+  GET  /api/log?since=<id>                 (Running order, Show or Mixer view) the service log: what C3 Life did today
+  GET  /api/pp/status | /api/pp/timers     (Show or Running order view) ProPresenter's slide now, next and after it, and
+                                           its timers; GET /api/pp/thumb?u=&i=&w=&t=<token> a slide's picture
+  POST /api/pp/trigger {"do": "next|previous|go|clear", "index", "layer"}   (Show control)
+  POST /api/pp/timer {"id", "do": "start|stop|reset|add|set", "secs"}       (Show control)
   GET  /api/recording                      (Recording view) the recording drive, what's recording, its tracks (named from
                                            the Wing) and levels, the recordings on the drive, playback, the settings
   PUT  /api/recording/settings {...}       (Recording control) start by itself (off | slide | plug), the start and end
@@ -179,10 +188,43 @@ import rta_live as rta_live_mod
 import midi_in as midi_mod
 import audio_engine as audio_engine_mod
 import recorder as recorder_mod
+import propresenter as propresenter_mod
 
 VERSION = "0.3.0"
 START = time.time()
 log = logging.getLogger("c3life")
+
+
+class ServiceLog(logging.Handler):
+    """The service log on Plan › Log: the last few hundred things C3 Life did, as it says them in its own log
+    (macros, cues, recording, the desk, markers...). Every device reads the same list (GET /api/log)."""
+    KEEP = 500
+
+    def __init__(self):
+        super().__init__(logging.INFO)
+        self.lines, self.n = [], 0
+        self.lk = threading.Lock()
+
+    def emit(self, rec):
+        try:
+            msg = rec.getMessage()
+        except Exception:
+            return
+        with self.lk:
+            self.n += 1
+            self.lines.append({"id": self.n, "t": rec.created, "at": time.strftime("%H:%M:%S", time.localtime(rec.created)),
+                               "level": "error" if rec.levelno >= logging.ERROR else ("warn" if rec.levelno >= logging.WARNING else "info"),
+                               "text": msg[:300]})
+            del self.lines[:-self.KEEP]
+
+    def since(self, n=0):
+        with self.lk:
+            return [x for x in self.lines if x["id"] > n]
+
+
+SERVICE_LOG = ServiceLog()
+log.addHandler(SERVICE_LOG)
+log.setLevel(logging.INFO)  # the service log keeps INFO and up, whatever the file log does
 
 DEFAULTS = {
     "port": 80,
@@ -434,7 +476,7 @@ def _ip_ok(x):
         return False
 
 
-def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bible=None, cues=None, reports=None, plan=None, desk=None, tio=None, monitors=None, scanner=None, foyer=None, rta_inputs=None, dante_names=None, lights=None, rta_live=None, midi=None, music=None, helpers=None, health=None, macros=None, recorder=None):
+def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bible=None, cues=None, reports=None, plan=None, desk=None, tio=None, monitors=None, scanner=None, foyer=None, rta_inputs=None, dante_names=None, lights=None, rta_live=None, midi=None, music=None, helpers=None, health=None, macros=None, recorder=None, pp=None, midi_peers=None):
     nets = cfg["_nets"]
     remote_nets = cfg.get("_remote", [])
 
@@ -831,6 +873,90 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 if self.level("Foyer", "Show", "Mixer"):
                     self.send_json(200, dict(foyer.view(desk), ok=True))
                 return
+            if path == "/api/home":
+                # Home: what's on screen, Playback, the band, the room, every device, whether it's recording;
+                # each part only for a role that can see that area.
+                s, _ = self.session()
+                if not s:
+                    return
+                lv = lambda a: access.level(s["role"], a)
+                out = {"ok": True, "can": {"show": lv("Show") >= 2, "mixer": lv("Mixer") >= 2, "foyer": lv("Foyer") >= 2, "lights": lv("Lights") >= 2,
+                                           "recording": lv("Recording") >= 2}}
+                if lv("Show") >= 1 or lv("Running order") >= 1:
+                    st = pp.status()
+                    out["pp"] = {k: st[k] for k in ("presentation", "index", "count", "current", "next", "error", "connected")}
+                    peers = midi_peers() if midi_peers else []
+                    out["playback"] = {"connected": bool(peers), "name": peers[0]["name"] if peers else ""}
+                if lv("Mixer") >= 1:
+                    n = int(cfg.get("band_dca", 1))
+                    dca = ((desk.state().get("strips") or {}).get("dca") or {}).get(str(n)) or {}
+                    out["band"] = {"n": n, "name": dca.get("name") or "DCA %d" % n, "muted": bool(dca.get("mute")), "known": "mute" in dca,
+                                   "connected": desk.status()["status"] == "connected"}
+                if lv("RTA") >= 1:
+                    out["dba"] = rta_live.state().get("dba")
+                if lv("Foyer") >= 1:
+                    fv = foyer.view(desk)
+                    out["foyer"] = {"name": fv.get("name"), "a": fv.get("mix_a_name"), "b": fv.get("mix_b_name"), "live": foyer.live(desk)}
+                see = lambda area: lv(area) >= 1 or (area == "Mixer" and lv("Own monitor mix") >= 1)
+                devs = [d for d in health.devices() if see(d["area"])]
+                if recorder and recorder.engine and recorder.engine.on and see("RTA"):
+                    ev = recorder.engine.view()
+                    devs.append({"id": "engine", "name": "Dante Virtual Soundcard (ASIO)", "ok": ev["status"] == "running", "area": "RTA",
+                                 "where": "Recording.dc.html", "why": ev.get("reason") or "", "detail": "%d channels" % ev["channels"]})
+                if "playback" in out:
+                    devs.append({"id": "playback", "name": "Playback (network MIDI)", "ok": out["playback"]["connected"], "area": "Show",
+                                 "where": "NetMidi.dc.html", "why": "Not connected to C3 Life's network MIDI session.", "info": True,
+                                 "detail": out["playback"]["name"]})
+                if recorder and see("Recording"):
+                    rv = recorder.view()
+                    devs.append({"id": "drive", "name": "Recording drive", "ok": bool(rv["drive"]), "area": "Recording", "where": "Recording.dc.html",
+                                 "why": "Not plugged in.", "info": True, "detail": (rv["drive"] or {}).get("label", "")})
+                    out["rec"] = {"on": bool(rv["recording"]), "secs": (rv["recording"] or {}).get("secs", 0)}
+                out["devices"] = devs
+                self.send_json(200, out)
+                return
+            if path == "/api/log":
+                if self.level("Running order", "Show", "Mixer"):
+                    q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+                    try:
+                        n = int((q.get("since") or ["0"])[0])
+                    except ValueError:
+                        n = 0
+                    self.send_json(200, {"ok": True, "lines": SERVICE_LOG.since(n)})
+                return
+            if path == "/api/pp/status":
+                if self.level("Show", "Running order"):
+                    self.send_json(200, dict(pp.status(), ok=True))
+                return
+            if path == "/api/pp/timers":
+                if self.level("Show", "Running order"):
+                    try:
+                        self.send_json(200, {"ok": True, "timers": pp.timers()})
+                    except (OSError, ValueError) as e:
+                        self.send_json(502, {"ok": False, "error": pp._why(e), "timers": []})
+                return
+            if path == "/api/pp/thumb":
+                # an <img> can't send the sign-in header, so the token comes in the address (like Listen's streams)
+                q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+                s, _ = self.session(tok=(q.get("t") or [""])[0])
+                if not s:
+                    return
+                if max(access.level(s["role"], a) for a in ("Show", "Running order")) < 1:
+                    self.send_json(403, {"ok": False, "error": "Your role can't do this (Access levels)."})
+                    return
+                try:
+                    i, w = int((q.get("i") or ["0"])[0]), max(80, min(1280, int((q.get("w") or ["320"])[0])))
+                    img = pp.thumb((q.get("u") or [""])[0], i, w)
+                except (ValueError, OSError) as e:
+                    self.send_json(502, {"ok": False, "error": pp._why(e) if isinstance(e, OSError) else "Bad request"})
+                    return
+                self.send_response(200)
+                self.send_header("Content-Type", "image/jpeg")
+                self.send_header("Content-Length", str(len(img)))
+                self.send_header("Cache-Control", "private, max-age=300")
+                self.end_headers()
+                self.wfile.write(img)
+                return
             if path == "/api/recording":
                 s = self.level("Recording")
                 if s:
@@ -1101,6 +1227,54 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 ok, msg = rta_live.calibrate(float(spl), weight)
                 log.info("rta: %s calibrating: %s", s["name"], msg)
                 self.send_json(200 if ok else 409, dict(rta_live.state(), ok=ok, message=msg, **({} if ok else {"error": msg})))
+                return
+            if path == "/api/home/do":
+                body = self.read_json() or {}
+                what = body.get("do") if isinstance(body, dict) else None
+                need = {"play": "Show", "stop": "Show", "band": "Mixer", "mark": None}.get(what, "?")
+                if need == "?":
+                    self.send_json(400, {"ok": False, "error": "Bad request"})
+                    return
+                s = self.level(need, need=2) if need else self.level("Show", "Running order", "Mixer", "Recording")
+                if not s:
+                    return
+                if what in ("play", "stop"):
+                    _, err = macros.step({"dev": "playback", "do": what, "label": what.capitalize()})
+                    if not err:
+                        log.info("home: %s sent %s to Playback", s["name"], what)
+                elif what == "band":
+                    n = int(cfg.get("band_dca", 1))
+                    err = desk.set("dca", n, "mute", bool(body.get("on")))
+                    if not err:
+                        log.info("home: %s %s the band (DCA %d)", s["name"], "muted" if body.get("on") else "unmuted", n)
+                else:
+                    name = (body.get("name") if isinstance(body.get("name"), str) else "") or "Marker"
+                    err = None
+                    if recorder and recorder.rec:
+                        recorder.marker(name[:80], s["name"], quiet=True)
+                    log.info("marker: %s (%s)", name[:80], s["name"])
+                self.send_json(200 if not err else 409, {"ok": not err, **({"error": err} if err else {})})
+                return
+            if path in ("/api/pp/trigger", "/api/pp/timer"):
+                s = self.level("Show", need=2)
+                if not s:
+                    return
+                body = self.read_json() or {}
+                if not isinstance(body, dict):
+                    self.send_json(400, {"ok": False, "error": "Bad request"})
+                    return
+                if path.endswith("/trigger"):
+                    err = pp.trigger(body.get("do"), body.get("index"), body.get("layer"), s["name"])
+                    out = dict(pp.status(), ok=not err)
+                else:
+                    err = pp.timer(body.get("id"), body.get("do"), body.get("secs", 0), s["name"])
+                    try:
+                        out = {"ok": not err, "timers": pp.timers()}
+                    except (OSError, ValueError):
+                        out = {"ok": not err, "timers": []}
+                if err:
+                    out["error"] = err
+                self.send_json(200 if not err else 409, out)
                 return
             if path.startswith("/api/recording/") and path.split("/")[-1] in ("start", "stop", "marker", "drive", "plan", "play", "stage", "copy"):
                 what = path.split("/")[-1]
@@ -1991,6 +2165,7 @@ def serve(cfg):
     midi.start()
     macros = macros_mod.Macros(cfg["data_dir"], cfg, log, desk=desk, music=music, foyer=foyer, lights=lights, midi=midi)
     recorder = recorder_mod.Recorder(cfg["data_dir"], cfg, log, engine, desk=desk, dante=dante)
+    pp = propresenter_mod.ProPresenter(cfg, log)
     if engine.on:
         recorder.start_loop()  # watches for the recording drive, and ProPresenter's slides when they start or stop it
     cfg.setdefault("_my_ips", _my_ips())
@@ -2002,13 +2177,14 @@ def serve(cfg):
         threading.Thread(target=scanner.loop, daemon=True).start()
         gone = lambda d, name: [name] if d and d.status()["status"] == "no answer" else []
         threading.Thread(target=scanner.watch, args=([lambda: gone(desk, desk.NAME), lambda: gone(tio, "the Tio"), health.check],), daemon=True).start()
-    httpd = ThreadingHTTPServer((cfg["bind"], int(cfg["port"])), make_handler(cfg, store, sessions, listen, access, dante, tags, bible, cues, reports, plan, desk, tio, monitors, scanner, foyer, rta_inputs, dante_names, lights, rta_live, midi, music, helpers, health, macros, recorder))
+    httpd = ThreadingHTTPServer((cfg["bind"], int(cfg["port"])), make_handler(cfg, store, sessions, listen, access, dante, tags, bible, cues, reports, plan, desk, tio, monitors, scanner, foyer, rta_inputs, dante_names, lights, rta_live, midi, music, helpers, health, macros, recorder, pp,
+                                                                              lambda: [p for p in midi.peers.values() if p.get("data") and time.time() - p["seen"] < 60]))
     httpd.daemon_threads = True
     close = httpd.server_close
     httpd.server_close = lambda: (scanner.stop.set(), lights.close(), rta_live.stop(), midi.close(), recorder.close(), engine.stop(), close())
     httpd.store, httpd.sessions, httpd.listen, httpd.access, httpd.tags, httpd.bible, httpd.reports, httpd.plan, httpd.desk, httpd.tio, httpd.monitors, httpd.scanner, httpd.foyer, httpd.rta_inputs, httpd.lights, httpd.rta_live, httpd.midi, httpd.music, httpd.helpers, httpd.health, httpd.macros = store, sessions, listen, access, tags, bible, reports, plan, desk, tio, monitors, scanner, foyer, rta_inputs, lights, rta_live, midi, music, helpers, health, macros
     httpd.wing = desk  # the tests, and older code, call it this
-    httpd.engine, httpd.recorder = engine, recorder
+    httpd.engine, httpd.recorder, httpd.pp = engine, recorder, pp
     return httpd
 
 
