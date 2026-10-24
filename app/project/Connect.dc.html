@@ -248,6 +248,13 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
 
     <div style="font-size:12px;color:#A3ACB8;padding:0 4px;line-height:1.45">Internet is only used for Planning Center sync and sending reports. The desk, Dante and show control never depend on it.</div>
 
+    <sc-if value="{{live}}" hint-placeholder-val="{{ false }}">
+      <section class="card" style="display:flex;flex-direction:column;gap:6px">
+        <div style="font-size:15px;font-weight:600">RTA log and activity report emails</div>
+        <div style="font-size:13px;color:#C9CFD7;line-height:1.45">Not in this build yet. Today the service log is on Plan › Log (with Export), problems go by Report an issue, and Help › Send support report sends the log and the system check.</div>
+      </section>
+    </sc-if>
+    <sc-if value="{{demoOnly}}" hint-placeholder-val="{{ true }}">
     <section class="card" style="display:flex;flex-direction:column;gap:10px">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <div>
@@ -317,11 +324,14 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
         <span class="mono" style="font-size:12px;color:#A3ACB8">last 10:45</span>
       </div>
     </section>
+    </sc-if>
 
     <section class="card" style="display:flex;flex-direction:column;gap:8px">
       <label for="mail" style="font-size:15px;font-weight:600">Reports go to</label>
-      <input id="mail" type="email" placeholder="you@example.com">
-      <div style="font-size:12px;color:#A3ACB8">Both reports are sent when you <a href="Shutdown.dc.html">shut down the booth</a>, as two separate emails. With no internet they stay on the drive and send by themselves once it's back.</div>
+      <input id="mail" type="email" placeholder="you@example.com" value="{{mailTo}}" onChange="{{setMail}}" disabled="{{mailLocked}}">
+      <sc-if value="{{live}}" hint-placeholder-val="{{ false }}"><button class="btn" onClick="{{saveMail}}" disabled="{{mailLocked}}">Save</button></sc-if>
+      <sc-if value="{{hasMailMsg}}" hint-placeholder-val="{{ false }}"><div role="status" style="font-size:13px;color:{{mailColor}}">{{mailMsg}}</div></sc-if>
+      <div style="font-size:12px;color:#A3ACB8">{{mailNote}}</div>
     </section>
 
     <section class="card" style="display:flex;flex-direction:column;gap:2px;padding:10px 14px">
@@ -352,12 +362,24 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { online: false, picked: null, sentToday: false, rtaMode: 0 };
+    this.state = { srv: null, mail: null, online: false, picked: null, sentToday: false, rtaMode: 0 };
   }
-  componentWillUnmount() { clearTimeout(this.wfT); }
+  componentWillUnmount() { clearTimeout(this.wfT); clearInterval(this.srvT); }
+  tok() { try { const x = JSON.parse(localStorage.getItem('booth.session') || 'null'); return x ? x.token : ''; } catch (e) { return ''; } }
+  componentDidMount() { this.load(); this.srvT = setInterval(() => this.load(), 10000); }
+  load() {
+    const h = { headers: { Authorization: 'Bearer ' + this.tok() } };
+    fetch('/api/network', h).then((r) => (r.status === 404 ? null : r.json())).then((j) => {
+      if (!j) { clearInterval(this.srvT); return; }
+      if (!j.ok) return;
+      this.setState({ srv: j });
+      if (j.admin) fetch('/api/reports', h).then((r) => r.json()).then((k) => k.ok && this.setState({ reps: k, mail: this.state.mail == null ? k.settings.to : this.state.mail })).catch(() => {});
+    }).catch(() => {});
+  }
   wfJoined(n, net) { this.setState({ online: true, sentToday: true, picked: net.ssid }); }
   // Wi-Fi scan: the C3 Life server lists the networks it can hear, you pick one and type the password.
   wfFound() {
+    if (this.state.srv) return (this.state.srvNets || []).map((n, i) => ({ id: 'n' + i, ssid: n.ssid, sig: Math.max(1, Math.ceil(n.signal / 25)), sec: /^open/i.test(n.auth) ? 'Open' : n.auth, auth: n.auth, band: n.band || '' }));
     return [
       { id: 'w-staff', ssid: 'StMarys-Staff', sig: 4, sec: 'WPA2', band: '5 GHz' },
       { id: 'w-booth', ssid: 'Booth Control', sig: 4, sec: 'WPA3', band: '5 GHz', booth: true },
@@ -369,15 +391,31 @@ class Component extends DCLogic {
     ];
   }
   wfSaved() {
+    if (this.state.srv) return this.state.srv.saved || [];
     try { const n = JSON.parse(localStorage.getItem('booth.net') || 'null'); if (n && n.order) return n.order.map((o) => o.name.replace(/^(Wi-Fi|Phone hotspot) · /, '')); } catch (e) {}
     return ['StMarys-Staff', 'Church Office', 'Booth iPhone'];
   }
   wfScanNow() {
+    if (this.state.srv) {
+      this.setState({ wfScan: 'scanning', wfPick: '', wfJoin: 'idle', wfMsg: '' });
+      fetch('/api/network/scan', { headers: { Authorization: 'Bearer ' + this.tok() } }).then((r) => r.json())
+        .then((j) => this.setState({ wfScan: 'done', srvNets: j.networks || [] })).catch(() => this.setState({ wfScan: 'done', srvNets: [] }));
+      return;
+    }
     this.setState({ wfScan: 'scanning', wfPick: '', wfJoin: 'idle', wfMsg: '' });
     clearTimeout(this.wfT); this.wfT = setTimeout(() => this.setState({ wfScan: 'done' }), 1600);
   }
   wfDoJoin(net) {
     const s = this.state;
+    if (s.srv) {
+      this.setState({ wfJoin: 'joining', wfMsg: '' });
+      fetch('/api/network/join', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + this.tok() },
+        body: JSON.stringify({ ssid: net.ssid, password: net.saved ? '' : (s.wfPw || ''), auth: net.auth || (net.sec === 'Open' ? 'Open' : 'WPA2-Personal') }) })
+        .then((r) => r.json())
+        .then((j) => { this.setState(j.ok ? { wfJoin: 'ok', wfPick: '', wfPw: '', wfMsg: 'Joined ' + net.ssid + ' and saved, so Windows joins it again by itself.' } : { wfJoin: 'fail', wfMsg: j.error }); this.load(); })
+        .catch(() => this.setState({ wfJoin: 'fail', wfMsg: 'The C3 Life server didn’t answer.' }));
+      return;
+    }
     const pw = s.wfPw || '';
     this.setState({ wfJoin: 'joining', wfMsg: '' });
     clearTimeout(this.wfT);
@@ -462,7 +500,27 @@ class Component extends DCLogic {
       { name: 'Activity report · last Sunday', detail: 'Emailed Sun 12:16 · 187 entries', queued: false, sent: true }
     ];
     const svcC = this.svcCur();
+    const v = s.srv;
+    const live = v ? {
+      live: true, demoOnly: false,
+      ...this.wfVals(!v.admin),
+      online: !!v.internet, offline: !v.internet,
+      netTitle: v.internet ? 'Online' + (v.wifi && v.wifi.state === 'connected' && v.wifi.ssid ? ' · ' + v.wifi.ssid : '') : 'No internet',
+      netHint: v.error || (v.internet ? 'Reports send straight away' : 'Everything still works offline · reports wait on the server'),
+      mailTo: s.mail == null ? '' : s.mail, mailLocked: !v.admin, setMail: (e) => this.setState({ mail: e.target.value }),
+      saveMail: () => fetch('/api/reports/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + this.tok() }, body: JSON.stringify({ to: (s.mail || '').trim() }) })
+        .then((r) => r.json()).then((j) => this.setState({ mailMsg: j.ok ? 'Saved.' : j.error, mailColor: j.ok ? '#6CB4F5' : '#FF8A80' })).catch(() => {}),
+      hasMailMsg: !!s.mailMsg, mailMsg: s.mailMsg || '', mailColor: s.mailColor || '#A3ACB8',
+      mailNote: v.admin ? 'Report an issue and support reports go here. With no internet they wait on the C3 Life server and send by themselves once it’s back.' : 'Only an Admin can change this.',
+      outbox: ((s.reps && s.reps.reports) || []).slice(0, 8).map((r) => ({ name: r.subject, detail: r.at + ' · ' + r.who + (r.email === 'sent' ? ' · emailed ' + r.email_at : (r.email_error ? ' · ' + r.email_error : ' · sends when online')),
+        queued: r.email !== 'sent', sent: r.email === 'sent' }))
+    } : null;
+    return live ? Object.assign(this.demoVals(svcC, nets, outbox, s), live) : this.demoVals(svcC, nets, outbox, s);
+  }
+  demoVals(svcC, nets, outbox, s) {
     return {
+      live: false, demoOnly: true, mailTo: '', mailLocked: false, setMail: () => {}, saveMail: () => {}, hasMailMsg: false, mailMsg: '', mailColor: '#A3ACB8',
+      mailNote: 'Both reports are sent when you shut down the booth, as two separate emails. With no internet they stay on the drive and send by themselves once it\'s back.',
       svcName: svcC.name, svcTimes: svcC.start + '\u2013' + svcC.end,
       ...this.wfVals(false),
       online: s.online,

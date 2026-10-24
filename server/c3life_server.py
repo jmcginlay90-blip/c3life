@@ -91,6 +91,9 @@ API (JSON):
                      {"do": "balance", "mix": "a"|"b", "db"}  (Foyer setup control: each mix's send level to the matrix)
                                            which mix the foyer hears, its volume (never above the maximum) and mute,
                                            on the Wing (Control); GET /api/foyer has "live", what the desk is doing now
+  GET  /api/network | /api/network/scan     (Settings view) the server's own connections and the Wi-Fi it can hear (Windows)
+  POST /api/network/join|forget|order       (Admin; the screen asks first) join a Wi-Fi with its password, forget one, or
+                                           set the order Windows tries them (passwords are never logged or kept)
   GET  /api/midi/buttons | PUT {"on","maps"} (Show/Mixer/Settings view; Settings control) MIDI buttons: a pad or
                                            footswitch on network MIDI runs a macro, next/previous slide, Lights Go, Playback
   POST /api/midi/buttons/learn              (Settings control) the next note or CC heard is taken for a new button
@@ -227,6 +230,7 @@ import setup as setup_mod
 import mdtalk as mdtalk_mod
 import shure as shure_mod
 import midi_buttons as midi_buttons_mod
+import netwin as netwin_mod
 import chat as chat_mod
 
 VERSION = "0.3.0"
@@ -566,7 +570,7 @@ def _ip_ok(x):
         return False
 
 
-def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bible=None, cues=None, reports=None, plan=None, desk=None, tio=None, monitors=None, scanner=None, foyer=None, rta_inputs=None, dante_names=None, lights=None, rta_live=None, midi=None, music=None, helpers=None, health=None, macros=None, recorder=None, pp=None, midi_peers=None, power=None, chat=None, setup=None, md=None, mics=None, buttons=None):
+def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bible=None, cues=None, reports=None, plan=None, desk=None, tio=None, monitors=None, scanner=None, foyer=None, rta_inputs=None, dante_names=None, lights=None, rta_live=None, midi=None, music=None, helpers=None, health=None, macros=None, recorder=None, pp=None, midi_peers=None, power=None, chat=None, setup=None, md=None, mics=None, buttons=None, network=None):
     nets = cfg["_nets"]
     remote_nets = cfg.get("_remote", [])
 
@@ -942,6 +946,14 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                                      "names": {n: v.get("name", "") for n, v in st["strips"]["ch"].items()}, "locked": d["locked"],
                                      "aux_names": {n: v.get("name", "") for n, v in st["strips"]["aux"].items()}, "eq": desk.bus_eq(b),
                                      "can_change": desk.settings["mode"] == "control" and not monitors.may_change(s["name"], mixer, b) if b in d["buses"] else mixer >= 2 and desk.settings["mode"] == "control"})
+                return
+            if path in ("/api/network", "/api/network/scan"):
+                s = self.level("Settings")
+                if s:
+                    if path.endswith("/scan"):
+                        self.send_json(200, {"ok": True, "networks": network.scan()})
+                    else:
+                        self.send_json(200, dict(network.view(), ok=True, admin=s["role"] == "Admin", internet=syscheck_mod.internet()))
                 return
             if path == "/api/midi/buttons":
                 s = self.level("Show", "Mixer", "Settings")
@@ -1851,6 +1863,19 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 again = power.do("app", s["name"]) if power else "Restart C3 Life to load it."
                 self.send_json(200, {"ok": True, "restarting": not again, "note": "" if not again else "Restored. " + again + " C3 Life loads the restored setup when it starts again."})
                 return
+            if path in ("/api/network/join", "/api/network/forget", "/api/network/order"):
+                s = self.admin()
+                if not s:
+                    return
+                body = self.read_json() or {}
+                if path.endswith("/join"):
+                    err = network.join(body.get("ssid"), body.get("password") or "", body.get("auth") or "", s["name"])
+                elif path.endswith("/forget"):
+                    err = network.forget(body.get("ssid"), s["name"])
+                else:
+                    err = network.order(body.get("ssids"), s["name"])
+                self.send_json(409 if err else 200, {"ok": not err, "error": err or ""})
+                return
             if path == "/api/midi/buttons/learn":
                 if self.level("Settings", need=2):
                     buttons.learn()
@@ -2551,6 +2576,7 @@ def serve(cfg):
         "stop": lambda arg, who: macros.step({"dev": "playback", "do": "stop", "label": "Stop"})[1],
         "marker": _mark})
     midi.buttons = buttons
+    network = netwin_mod.Network(log)
     mics.start()
     setup = setup_mod.Setup(cfg["data_dir"], cfg, log, drives=lambda: list(recorder.drives) if recorder else [], version=VERSION)
     if engine.on:
@@ -2565,12 +2591,12 @@ def serve(cfg):
         gone = lambda d, name: [name] if d and d.status()["status"] == "no answer" else []
         threading.Thread(target=scanner.watch, args=([lambda: gone(desk, desk.NAME), lambda: gone(tio, "the Tio"), health.check],), daemon=True).start()
     httpd = ThreadingHTTPServer((cfg["bind"], int(cfg["port"])), make_handler(cfg, store, sessions, listen, access, dante, tags, bible, cues, reports, plan, desk, tio, monitors, scanner, foyer, rta_inputs, dante_names, lights, rta_live, midi, music, helpers, health, macros, recorder, pp,
-                                                                              lambda: [p for p in midi.peers.values() if p.get("data") and time.time() - p["seen"] < 60], power, chat, setup, md, mics, buttons))
+                                                                              lambda: [p for p in midi.peers.values() if p.get("data") and time.time() - p["seen"] < 60], power, chat, setup, md, mics, buttons, network))
     httpd.daemon_threads = True
     close = httpd.server_close
     httpd.server_close = lambda: (scanner.stop.set(), md.stop_ev.set(), mics.stop_ev.set(), lights.close(), rta_live.stop(), midi.close(), recorder.close(), engine.stop(), close())
     httpd.store, httpd.sessions, httpd.listen, httpd.access, httpd.tags, httpd.bible, httpd.reports, httpd.plan, httpd.desk, httpd.tio, httpd.monitors, httpd.scanner, httpd.foyer, httpd.rta_inputs, httpd.lights, httpd.rta_live, httpd.midi, httpd.music, httpd.helpers, httpd.health, httpd.macros = store, sessions, listen, access, tags, bible, reports, plan, desk, tio, monitors, scanner, foyer, rta_inputs, lights, rta_live, midi, music, helpers, health, macros
-    httpd.md, httpd.setup, httpd.mics, httpd.buttons = md, setup, mics, buttons
+    httpd.md, httpd.setup, httpd.mics, httpd.buttons, httpd.network = md, setup, mics, buttons, network
     httpd.wing = desk  # the tests, and older code, call it this
     httpd.engine, httpd.recorder, httpd.pp, httpd.power = engine, recorder, pp, power
     return httpd
