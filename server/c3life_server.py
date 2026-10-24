@@ -58,6 +58,13 @@ API (JSON):
                                            control) "choices": the steps C3 Life can run, named from what's set up
   PUT  /api/macros {"macros","playback"}   (Macros control) the macros, and the notes Playback steps send
   POST /api/macros/run {"id"} | /stop | /undo   (Macros control) nothing runs unless someone presses Run
+  GET  /api/recording                      (Recording view) the recording drive, what's recording, its tracks (named from
+                                           the Wing) and levels, the recordings on the drive, playback, the settings
+  PUT  /api/recording/settings {...}       (Recording control) start by itself (off | slide | plug), the start and end
+                                           slides, the most hours, markers from presentations or playlist items, channels
+  POST /api/recording/start | /stop | /marker {"name"} | /drive {"id","use"} | /plan {"name"}   (Recording control)
+  POST /api/recording/copy {"name","where","to"}   (Recording control) copy a recording onto a plugged-in drive
+  POST /api/recording/play {"name","from","where"} | /stage   (Recording + Mixer control) play back to the desk; put it back
   PUT  /api/rta/ringout {"on","sens"}      (RTA settings control) the feedback watch; GET /api/rta/live has "ringout"
   POST /api/rta/ringout/cut {"f"}          (RTA settings + Mixer control, the Wing in Control) a narrow cut on a flat band
                                            of Main 1's EQ; again on the same note goes deeper
@@ -171,6 +178,7 @@ import macros as macros_mod
 import rta_live as rta_live_mod
 import midi_in as midi_mod
 import audio_engine as audio_engine_mod
+import recorder as recorder_mod
 
 VERSION = "0.3.0"
 START = time.time()
@@ -426,7 +434,7 @@ def _ip_ok(x):
         return False
 
 
-def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bible=None, cues=None, reports=None, plan=None, desk=None, tio=None, monitors=None, scanner=None, foyer=None, rta_inputs=None, dante_names=None, lights=None, rta_live=None, midi=None, music=None, helpers=None, health=None, macros=None):
+def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bible=None, cues=None, reports=None, plan=None, desk=None, tio=None, monitors=None, scanner=None, foyer=None, rta_inputs=None, dante_names=None, lights=None, rta_live=None, midi=None, music=None, helpers=None, health=None, macros=None, recorder=None):
     nets = cfg["_nets"]
     remote_nets = cfg.get("_remote", [])
 
@@ -608,7 +616,8 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 return
             if path == "/api/health":
                 self.send_json(200, {"ok": True, "service": "c3life", "version": VERSION, "sync": True, "listen": True, "desk": desk.NAME, "remote_support": bool(cfg.get("remote_support_roles")) and bool(remote_nets), "remote": self.remote,
-                                     "uptime_s": int(time.time() - START), "app": os.path.basename(cfg["app_dir"])})
+                                     "uptime_s": int(time.time() - START), "app": os.path.basename(cfg["app_dir"]),
+                                     "sound": {k: v for k, v in recorder.engine.view().items() if k in ("kind", "status", "reason", "channels")} if recorder and recorder.engine else {}})
                 return
             if path.startswith("/listen/") and path.endswith(".mp3"):
                 tok = self.path.split("t=", 1)[1].split("&")[0] if "t=" in self.path else ""
@@ -806,7 +815,8 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
             if path == "/api/rta/live":
                 if self.level("RTA"):
                     rta_live.ask()
-                    self.send_json(200, dict(rta_live.state(), ok=True))
+                    r = recorder.rec if recorder else None
+                    self.send_json(200, dict(rta_live.state(), ok=True, rec={"on": True, "secs": round(recorder.now(), 1)} if r else {"on": False}))
                 return
             if path == "/api/rta/plan":
                 if not self.level("RTA"):
@@ -820,6 +830,13 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
             if path == "/api/foyer":
                 if self.level("Foyer", "Show", "Mixer"):
                     self.send_json(200, dict(foyer.view(desk), ok=True))
+                return
+            if path == "/api/recording":
+                s = self.level("Recording")
+                if s:
+                    out = dict(recorder.view(full=True), ok=True, can=access.level(s["role"], "Recording") >= 2)
+                    out["can_play"] = out["can"] and access.level(s["role"], "Mixer") >= 2
+                    self.send_json(200, out)
                 return
             if path == "/api/macros":
                 s = self.level("Macros")
@@ -1084,6 +1101,42 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 ok, msg = rta_live.calibrate(float(spl), weight)
                 log.info("rta: %s calibrating: %s", s["name"], msg)
                 self.send_json(200 if ok else 409, dict(rta_live.state(), ok=ok, message=msg, **({} if ok else {"error": msg})))
+                return
+            if path.startswith("/api/recording/") and path.split("/")[-1] in ("start", "stop", "marker", "drive", "plan", "play", "stage", "copy"):
+                what = path.split("/")[-1]
+                s = self.level("Recording", need=2)
+                if not s:
+                    return
+                if what in ("play", "stage") and access.level(s["role"], "Mixer") < 2:
+                    self.send_json(403, {"ok": False, "error": "Playing back to the desk needs Mixer control too (Access levels)."})
+                    return
+                body = self.read_json() or {}
+                if not isinstance(body, dict):
+                    self.send_json(400, {"ok": False, "error": "Bad request"})
+                    return
+                extra = {}
+                if what == "start":
+                    err = recorder.start(s["name"])
+                elif what == "stop":
+                    err = recorder.stop(s["name"])
+                elif what == "marker":
+                    err = recorder.marker(body.get("name") if isinstance(body.get("name"), str) else "", s["name"])
+                elif what == "drive":
+                    err = recorder.use_drive(body.get("id"), bool(body.get("use")), s["name"])
+                elif what == "plan":
+                    extra["plan"], err = recorder.play_plan(body.get("name"), body.get("where", "drive"))
+                elif what == "play":
+                    at = body.get("from", 0)
+                    err = "Bad request" if not isinstance(at, (int, float)) or isinstance(at, bool) or at < 0 else \
+                        recorder.play(body.get("name"), at, s["name"], body.get("where", "drive"))
+                elif what == "copy":
+                    err = recorder.copy([(body.get("name"), body.get("where", "drive"))], body.get("to"), s["name"])
+                else:
+                    err = recorder.back_to_stage(s["name"])
+                out = dict(recorder.view(full=True), ok=not err, **extra)
+                if err:
+                    out["error"] = err
+                self.send_json(200 if not err else 409, out)
                 return
             if path in ("/api/macros/run", "/api/macros/stop", "/api/macros/undo"):
                 s = self.level("Macros", need=2)
@@ -1558,6 +1611,14 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                          d["mic"]["from"], d["mic"]["via"], d["mic"]["ch"], d["ref"]["from"], d["ref"]["via"], d["ref"]["ch"])
                 self.send_json(200, dict(rta_inputs.view(dante, desk), ok=True))
                 return
+            if self.route() == "/api/recording/settings":
+                s = self.level("Recording", need=2)
+                if not s:
+                    return
+                body = self.read_json()
+                err = recorder.save_settings(body if isinstance(body, dict) else None, s["name"]) if isinstance(body, dict) else "Bad request"
+                self.send_json(200 if not err else 400, dict(recorder.view(full=True), ok=not err, **({"error": err} if err else {})))
+                return
             if self.route() == "/api/macros":
                 s = self.level("Macros", need=2)
                 if not s:
@@ -1929,6 +1990,9 @@ def serve(cfg):
     midi = midi_mod.Midi(cfg["data_dir"], cfg, log, lights, allowed=lambda ip: any(ipaddress.ip_address(ip) in n for n in cfg["_nets"]))
     midi.start()
     macros = macros_mod.Macros(cfg["data_dir"], cfg, log, desk=desk, music=music, foyer=foyer, lights=lights, midi=midi)
+    recorder = recorder_mod.Recorder(cfg["data_dir"], cfg, log, engine, desk=desk, dante=dante)
+    if engine.on:
+        recorder.start_loop()  # watches for the recording drive, and ProPresenter's slides when they start or stop it
     cfg.setdefault("_my_ips", _my_ips())
     scanner = scan_mod.Scanner(cfg["data_dir"], cfg, log, wing=desk, tio=tio,
                                wing_find=lambda: desk.find(target=cfg.get("wing_find_target", "255.255.255.255")))
@@ -1938,13 +2002,13 @@ def serve(cfg):
         threading.Thread(target=scanner.loop, daemon=True).start()
         gone = lambda d, name: [name] if d and d.status()["status"] == "no answer" else []
         threading.Thread(target=scanner.watch, args=([lambda: gone(desk, desk.NAME), lambda: gone(tio, "the Tio"), health.check],), daemon=True).start()
-    httpd = ThreadingHTTPServer((cfg["bind"], int(cfg["port"])), make_handler(cfg, store, sessions, listen, access, dante, tags, bible, cues, reports, plan, desk, tio, monitors, scanner, foyer, rta_inputs, dante_names, lights, rta_live, midi, music, helpers, health, macros))
+    httpd = ThreadingHTTPServer((cfg["bind"], int(cfg["port"])), make_handler(cfg, store, sessions, listen, access, dante, tags, bible, cues, reports, plan, desk, tio, monitors, scanner, foyer, rta_inputs, dante_names, lights, rta_live, midi, music, helpers, health, macros, recorder))
     httpd.daemon_threads = True
     close = httpd.server_close
-    httpd.server_close = lambda: (scanner.stop.set(), lights.close(), rta_live.stop(), midi.close(), engine.stop(), close())
+    httpd.server_close = lambda: (scanner.stop.set(), lights.close(), rta_live.stop(), midi.close(), recorder.close(), engine.stop(), close())
     httpd.store, httpd.sessions, httpd.listen, httpd.access, httpd.tags, httpd.bible, httpd.reports, httpd.plan, httpd.desk, httpd.tio, httpd.monitors, httpd.scanner, httpd.foyer, httpd.rta_inputs, httpd.lights, httpd.rta_live, httpd.midi, httpd.music, httpd.helpers, httpd.health, httpd.macros = store, sessions, listen, access, tags, bible, reports, plan, desk, tio, monitors, scanner, foyer, rta_inputs, lights, rta_live, midi, music, helpers, health, macros
     httpd.wing = desk  # the tests, and older code, call it this
-    httpd.engine = engine
+    httpd.engine, httpd.recorder = engine, recorder
     return httpd
 
 

@@ -12,8 +12,8 @@
       where R Remote and Dante Controller are so C3 Life can open them
   It shows what it will do and asks first. Run it again after an update: your settings in config.json are kept.
 
-  The app it installs for now is the clickable C3 Life mock-up. The real app replaces the app folder later;
-  nothing else changes.
+  Sound: by default C3 Life opens Dante Virtual Soundcard in ASIO mode (64 x 64) for Listen, the RTA, the MD log,
+  recording and playback (-AudioEngine asio). Set DVS to ASIO and 64 x 64 in its Settings first.
 
 .EXAMPLE
   Sign in as booth once first (so its profile exists), then sign in as admin and in an Administrator PowerShell:
@@ -29,6 +29,9 @@ param(
   # 10.x...), and the firewall follows this PC's own network if it ever changes.
   [string]$BoothNetwork = '',
   [switch]$NoKiosk,
+  # How C3 Life hears Dante Virtual Soundcard. asio: DVS in ASIO mode, 64 x 64; C3 Life opens it once and shares it with
+  # Listen, the RTA, the MD log, recording and playback. wdm: DVS in WDM mode (16 channels), no recording.
+  [ValidateSet('asio', 'wdm')][string]$AudioEngine = 'asio',
   [switch]$ListenFromHome,
   # Remote support: Admins can use the whole app from anywhere through Tailscale (everyone else: Listen only).
   [switch]$RemoteSupport,
@@ -96,7 +99,7 @@ $here = $PSScriptRoot
 
 $p = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
 if (-not $p.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { throw 'Run this in an Administrator PowerShell.' }
-foreach ($need in 'server\c3life_server.py', 'server\listen.py', 'server\access.py', 'server\dante.py', 'server\nametags.py', 'server\scripture.py', 'server\cues.py', 'server\reports.py', 'server\pco.py', 'server\wing.py', 'server\tio.py', 'server\monitors.py', 'server\scan.py', 'server\hwcheck.py', 'server\foyer.py', 'server\rta_inputs.py', 'server\rta_patch.py', 'server\dante_names.py', 'server\lightkey.py', 'server\rta_live.py', 'server\midi_in.py', 'server\desk.py', 'server\music.py', 'server\helpers.py', 'server\health.py', 'server\ringout.py', 'server\macros.py', 'server\bibles\KJV.txt.gz', 'server\bibles\WEBBE.txt.gz', 'app\player.html') {
+foreach ($need in 'server\c3life_server.py', 'server\listen.py', 'server\access.py', 'server\dante.py', 'server\nametags.py', 'server\scripture.py', 'server\cues.py', 'server\reports.py', 'server\pco.py', 'server\wing.py', 'server\tio.py', 'server\monitors.py', 'server\scan.py', 'server\hwcheck.py', 'server\foyer.py', 'server\rta_inputs.py', 'server\rta_patch.py', 'server\dante_names.py', 'server\lightkey.py', 'server\rta_live.py', 'server\midi_in.py', 'server\desk.py', 'server\music.py', 'server\helpers.py', 'server\health.py', 'server\ringout.py', 'server\macros.py', 'server\audio_engine.py', 'server\recorder.py', 'server\bibles\KJV.txt.gz', 'server\bibles\WEBBE.txt.gz', 'app\player.html') {
   if (-not (Test-Path (Join-Path $here $need))) { throw "Missing $need next to this script. Copy the whole c3life-server folder." }
 }
 
@@ -135,7 +138,8 @@ if ($ffmpeg) {
   if ($m.Count -eq 0) { $m = [regex]::Matches($devs, '"([^"]*Dante[^"]*)"') }
   if ($m.Count) { $dvsDevice = $m[0].Groups[1].Value }
   Write-Host "ffmpeg: $ffmpeg"
-  if ($dvsDevice) { Write-Host "Listen will use the sound device: $dvsDevice" } else { Write-Warning 'No Dante sound device found yet. Start Dante Virtual Soundcard (WDM, 16 x 16), then run this again.' }
+  if ($AudioEngine -eq 'asio') { Write-Host 'Sound: Dante Virtual Soundcard in ASIO mode (64 x 64), opened by C3 Life itself' }
+  elseif ($dvsDevice) { Write-Host "Listen will use the sound device: $dvsDevice" } else { Write-Warning 'No Dante sound device found yet. Start Dante Virtual Soundcard (WDM, 16 x 16), then run this again.' }
 } else {
   Write-Warning 'ffmpeg is not installed, so Listen will have no sound. Install it for everyone:  winget install Gyan.FFmpeg --scope machine   then run this again.'
 }
@@ -188,6 +192,8 @@ Write-Host "  2. Start C3 Life on port $Port whenever $BoothUser signs in, and r
 Write-Host "  3. Allow ports $Port (C3 Life) and 8000 (Companion) through the firewall, for $BoothNetwork only"
 if ($ListenFromHome) { Write-Host "     and let Tailscale devices ($TailscaleNetwork) reach Listen only, to listen from home" } else { Write-Host '     Listening from home stays off (use -ListenFromHome to turn it on)' }
 if ($RemoteSupport) { Write-Host '     and let Admins signed in through Tailscale use the whole app (remote support)' } else { Write-Host '     Remote support stays off (use -RemoteSupport to turn it on)' }
+if ($AudioEngine -eq 'asio') { Write-Host '     and hear Dante Virtual Soundcard in ASIO mode, 64 x 64 (install sounddevice for Python), for Listen, the RTA and recording' }
+else { Write-Host '     and hear Dante Virtual Soundcard in WDM mode, 16 channels (-AudioEngine wdm: no recording)' }
 if ($NoSubtitles) { Write-Host '     Subtitles on Listen stay off (-NoSubtitles)' } else { Write-Host "     and set up subtitles: install Vosk for Python and download the English speech model (about 40 MB, once) to $InstallDir\speech-model" }
 if (-not $NoSubtitles -and $Languages) { Write-Host "     and translated subtitles in: $Languages (about 100 MB each, once) to $InstallDir\translate" }
 if ($startup) {
@@ -208,12 +214,17 @@ if (-not $go) { Write-Host 'Nothing was changed.'; Stop-Transcript | Out-Null; r
 Stop-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
 Get-CimInstance Win32_Process -Filter "Name like 'python%'" | Where-Object { $_.CommandLine -like '*c3life_server.py*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 New-Item -ItemType Directory -Force -Path $serverDir, $appDir | Out-Null
-Copy-Item -Force (Join-Path $here 'server\c3life_server.py'), (Join-Path $here 'server\listen.py'), (Join-Path $here 'server\access.py'), (Join-Path $here 'server\dante.py'), (Join-Path $here 'server\nametags.py'), (Join-Path $here 'server\scripture.py'), (Join-Path $here 'server\cues.py'), (Join-Path $here 'server\reports.py'), (Join-Path $here 'server\pco.py'), (Join-Path $here 'server\wing.py'), (Join-Path $here 'server\tio.py'), (Join-Path $here 'server\monitors.py'), (Join-Path $here 'server\scan.py'), (Join-Path $here 'server\hwcheck.py'), (Join-Path $here 'server\foyer.py'), (Join-Path $here 'server\rta_inputs.py'), (Join-Path $here 'server\rta_patch.py'), (Join-Path $here 'server\dante_names.py'), (Join-Path $here 'server\lightkey.py'), (Join-Path $here 'server\rta_live.py'), (Join-Path $here 'server\midi_in.py'), (Join-Path $here 'server\desk.py'), (Join-Path $here 'server\music.py'), (Join-Path $here 'server\helpers.py'), (Join-Path $here 'server\health.py'), (Join-Path $here 'server\ringout.py'), (Join-Path $here 'server\macros.py') $serverDir
+Copy-Item -Force (Join-Path $here 'server\c3life_server.py'), (Join-Path $here 'server\listen.py'), (Join-Path $here 'server\access.py'), (Join-Path $here 'server\dante.py'), (Join-Path $here 'server\nametags.py'), (Join-Path $here 'server\scripture.py'), (Join-Path $here 'server\cues.py'), (Join-Path $here 'server\reports.py'), (Join-Path $here 'server\pco.py'), (Join-Path $here 'server\wing.py'), (Join-Path $here 'server\tio.py'), (Join-Path $here 'server\monitors.py'), (Join-Path $here 'server\scan.py'), (Join-Path $here 'server\hwcheck.py'), (Join-Path $here 'server\foyer.py'), (Join-Path $here 'server\rta_inputs.py'), (Join-Path $here 'server\rta_patch.py'), (Join-Path $here 'server\dante_names.py'), (Join-Path $here 'server\lightkey.py'), (Join-Path $here 'server\rta_live.py'), (Join-Path $here 'server\midi_in.py'), (Join-Path $here 'server\desk.py'), (Join-Path $here 'server\music.py'), (Join-Path $here 'server\helpers.py'), (Join-Path $here 'server\health.py'), (Join-Path $here 'server\ringout.py'), (Join-Path $here 'server\macros.py'), (Join-Path $here 'server\audio_engine.py'), (Join-Path $here 'server\recorder.py') $serverDir
 New-Item -ItemType Directory -Force -Path (Join-Path $serverDir 'bibles') | Out-Null
 Copy-Item -Force (Join-Path $here 'server\bibles\*') (Join-Path $serverDir 'bibles')
 # netaudio reads the Dante routing (read only), so Listen sources can be named from Dante.
 & $py -m pip install --quiet --disable-pip-version-check netaudio
 if ($LASTEXITCODE -ne 0) { Write-Warning 'netaudio did not install: Listen settings will use the routes saved on Mixer > Dante for names.' }
+# sounddevice: PortAudio with ASIO, so C3 Life can open Dante Virtual Soundcard's 64 channels itself.
+if ($AudioEngine -eq 'asio') {
+  & $py -m pip install --quiet --disable-pip-version-check sounddevice
+  if ($LASTEXITCODE -ne 0) { Write-Warning 'sounddevice did not install: C3 Life will hear nothing until it does. Run this again with internet.' }
+}
 if (Test-Path $appDir) { Get-ChildItem $appDir | Remove-Item -Recurse -Force }
 Copy-Item -Recurse -Force (Join-Path $here 'app\*') $appDir
 if (Test-Path $cfgPath) { $cfg = Get-Content $cfgPath -Raw | ConvertFrom-Json }
@@ -221,6 +232,7 @@ else { $cfg = [pscustomobject][ordered]@{ port = $Port; bind = '0.0.0.0'; app_di
 # Listen settings are refreshed every time: where ffmpeg is, the DVS sound device, and listening from home.
 if ($ffmpeg) { $cfg | Add-Member -Force -NotePropertyName ffmpeg -NotePropertyValue $ffmpeg }
 if ($dvsDevice) { $cfg | Add-Member -Force -NotePropertyName listen_device -NotePropertyValue $dvsDevice }
+$cfg | Add-Member -Force -NotePropertyName audio_engine -NotePropertyValue $(if ($AudioEngine -eq 'asio') { 'asio' } else { '' })
 $cfg | Add-Member -Force -NotePropertyName data_dir -NotePropertyValue $dataDir
 # Name tags (Running order and Show). The token stays in config.json on this PC; phones never see it.
 if ($PlanningCenterAppId -and $PlanningCenterSecret) {

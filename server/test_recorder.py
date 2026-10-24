@@ -86,6 +86,7 @@ class Drives(Base):
     def test_only_a_drive_someone_chose_or_already_prepared(self):
         self.r.check_drives()
         self.assertIsNone(self.r.drive)  # a new drive: not written to until someone says so
+        self.r.save_settings({"local": False}, "FOH")
         self.assertIn("No recording drive", self.r.start("FOH"))
         did = self.r.drives[0]["id"]
         self.assertIsNone(self.r.use_drive(did, True, "FOH"))
@@ -97,6 +98,43 @@ class Drives(Base):
         self.roots[:] = [other]
         self.r.check_drives()
         self.assertEqual(self.r.drive["label"], "Prepared")
+
+
+class OnThisComputer(Base):
+    def test_records_here_with_no_drive_then_copies_when_one_is_plugged_in(self):
+        self.r.check_drives()
+        self.assertIsNone(self.r.drive)
+        self.assertIsNone(self.r.start("FOH"))  # no drive: onto this computer
+        self.assertEqual(self.r.rec["drive"], "local")
+        self.r.check_drives()
+        self.assertIsNotNone(self.r.rec)  # not "unplugged"
+        time.sleep(0.4)
+        self.r.stop("FOH")
+        name = self.r.last["name"]
+        here = os.path.join(self.tmp, "recordings", rec.FOLDER, name)
+        self.assertTrue(os.path.isfile(os.path.join(here, "01 Lead Vox.wav")))
+        self.assertEqual([(x["name"], x["where"]) for x in self.r.sessions()], [(name, "local")])
+        size = os.path.getsize(os.path.join(here, "01 Lead Vox.wav"))
+        os.makedirs(os.path.join(self.usb, rec.FOLDER))  # the recording drive is plugged in: copied by itself
+        self.r.check_drives()
+        self.assertTrue(wait(lambda: self.r.job and self.r.job["finished"]))
+        self.assertEqual(self.r.job["error"], "")
+        there = os.path.join(self.usb, rec.FOLDER, name)
+        self.assertEqual(os.path.getsize(os.path.join(there, "01 Lead Vox.wav")), size)
+        self.assertTrue(os.path.isfile(os.path.join(there, name + ".RPP")))
+        self.assertFalse(os.path.exists(here))  # checked, then cleared from this computer
+        self.assertEqual([(x["name"], x["where"]) for x in self.r.sessions()], [(name, "drive")])
+        # another drive (to take home): a copy with the button; the recording drive keeps its own
+        home = os.path.join(self.tmp, "Take home")
+        os.makedirs(home)
+        self.roots.append(home)
+        self.r.check_drives()
+        other = next(d["id"] for d in self.r.drives if d["label"] == "Take home")
+        self.assertIsNone(self.r.copy([(name, "drive")], other, "FOH"))
+        self.assertTrue(wait(lambda: self.r.job["finished"]))
+        self.assertTrue(os.path.isfile(os.path.join(home, rec.FOLDER, name, "01 Lead Vox.wav")))
+        self.assertTrue(os.path.isfile(os.path.join(there, "01 Lead Vox.wav")))
+        self.assertIn("isn't plugged in", self.r.copy([(name, "drive")], "nope", "FOH"))
 
 
 class Ready(Base):
@@ -267,3 +305,89 @@ class Slides(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Api(unittest.TestCase):
+    """Through the C3 Life server: who may, recording to the drive, and playing back to the (fake) Wing."""
+
+    def setUp(self):
+        import urllib.request  # noqa
+        import c3life_server as s
+        from test_wing import FakeWing
+        self.s = s
+        self.fw = FakeWing()
+        self.fw.vals.update({"/ch/3/name": "Lead Vox", "/io/out/CRD/1/grp": "LCL", "/io/out/CRD/1/in": 3})
+        self.tmp = tempfile.mkdtemp()
+        usb = os.path.join(self.tmp, "USB")
+        os.makedirs(os.path.join(usb, rec.FOLDER))
+        app = os.path.join(self.tmp, "app")
+        os.makedirs(os.path.join(app, "project"))
+        with open(os.path.join(app, "player.html"), "w") as fh:
+            fh.write("<!doctype html>")
+        cfg = s.load_config(None)
+        cfg.update(port=0, bind="127.0.0.1", app_dir=app, data_dir=os.path.join(self.tmp, "data"), propresenter="",
+                   wing_ip="127.0.0.1", wing_osc_port=self.fw.osc_port, wing_native_port=self.fw.native_port,
+                   audio_engine="fake", engine_port=0, engine_channels=8, record_drive_roots=[usb])
+        cfg["_nets"] = [s.ipaddress.ip_network("127.0.0.0/8")]
+        self.httpd = s.serve(cfg)
+        self.httpd.recorder.dante = FakeDante()
+        self.port = self.httpd.server_address[1]
+        threading.Thread(target=self.httpd.serve_forever, daemon=True).start()
+        self.tok = {}
+        for n in ("Admin", "FOH sound", "ProPresenter"):
+            body = {"name": n, "password": "c3life-admin"} if n == "Admin" else {"name": n, "pin": "1234"}
+            self.tok[n] = self.call("/api/login", "POST", body)[1]["token"]
+
+    def tearDown(self):
+        self.httpd.tio.close(); self.httpd.wing.close()
+        self.httpd.shutdown(); self.httpd.server_close()
+        self.fw.close()
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def call(self, path, method="GET", body=None, who=None):
+        import urllib.error
+        import urllib.request
+        req = urllib.request.Request("http://127.0.0.1:%d%s" % (self.port, path), data=json.dumps(body).encode() if body is not None else None, method=method)
+        req.add_header("Content-Type", "application/json")
+        if who:
+            req.add_header("Authorization", "Bearer " + self.tok[who])
+        try:
+            with urllib.request.urlopen(req, timeout=10) as r:
+                return r.status, json.loads(r.read())
+        except urllib.error.HTTPError as e:
+            return e.code, json.loads(e.read() or b"{}")
+
+    def test_record_and_play_back_through_the_server(self):
+        self.assertTrue(wait(lambda: self.call("/api/recording", who="FOH sound")[1].get("drive")))
+        code, j = self.call("/api/recording", who="ProPresenter")
+        self.assertEqual((code, j["can"], j["drive"]["label"]), (200, False, "USB"))
+        self.assertEqual(self.call("/api/recording/start", "POST", {}, who="ProPresenter")[0], 403)
+        self.assertTrue(wait(lambda: self.httpd.wing.status()["status"] == "connected"))
+        self.assertTrue(wait(lambda: (self.httpd.wing.state()["strips"]["ch"]["3"].get("src_grp") == "LCL")))
+        self.httpd.wing.outputs()
+        self.assertTrue(wait(lambda: "CRD/1" in self.httpd.wing.outputs()))
+        self.httpd.recorder.names_cache = (0, {})
+        code, j = self.call("/api/recording/start", "POST", {}, who="FOH sound")
+        self.assertEqual(code, 200, j)
+        self.assertEqual(j["tracks"][0]["name"], "Lead Vox")
+        self.assertTrue(self.call("/api/rta/live", who="FOH sound")[1]["rec"]["on"])
+        self.assertEqual(self.call("/api/recording/marker", "POST", {"name": "Song 1"}, who="FOH sound")[0], 200)
+        time.sleep(0.5)
+        code, j = self.call("/api/recording/stop", "POST", {}, who="FOH sound")
+        self.assertEqual((code, j["last"]["markers"][0]["name"]), (200, "Song 1"))
+        name = j["sessions"][0]["name"]
+        code, j = self.call("/api/recording/plan", "POST", {"name": name}, who="FOH sound")
+        self.assertEqual([(x["wing_ch"], x["to"]) for x in j["plan"]["steps"]], [(3, "CRD/11")])
+        code, j = self.call("/api/recording/play", "POST", {"name": name}, who="FOH sound")
+        self.assertEqual(code, 409); self.assertIn("Watch only", j["error"])  # nothing changes on the desk in Watch only
+        self.httpd.wing.configure(mode="control")
+        code, j = self.call("/api/recording/play", "POST", {"name": name}, who="FOH sound")
+        self.assertEqual(code, 200, j)
+        self.assertFalse(j["on_stage"])
+        self.assertTrue(wait(lambda: ("/ch/3/in/conn/grp", "CRD") in self.fw.sets))
+        self.assertIn(("/ch/3/in/conn/in", 11), self.fw.sets)
+        code, j = self.call("/api/recording/stage", "POST", {}, who="FOH sound")
+        self.assertEqual((code, j["on_stage"]), (200, True))
+        self.assertTrue(wait(lambda: self.fw.sets[-2:] == [("/ch/3/in/conn/grp", "LCL"), ("/ch/3/in/conn/in", 3)] or
+                             ("/ch/3/in/conn/grp", "LCL") in self.fw.sets))
+        self.assertEqual(self.call("/api/recording/settings", "PUT", {"auto": "plug"}, who="FOH sound")[1]["settings"]["auto"], "plug")

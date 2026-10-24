@@ -120,13 +120,20 @@ if ($task) { Out-Check 'C3 Life start-up' 'OK' "Starts when $BoothUser signs in"
 try {
   $h = Invoke-RestMethod -Uri "http://127.0.0.1:$Port/api/health" -TimeoutSec 3
   Out-Check 'C3 Life' 'OK' ("Running, version {0}, up {1} min" -f $h.version, [int]($h.uptime_s / 60))
+  if ($h.sound.kind -eq 'asio') {
+    if ($h.sound.status -eq 'running') { Out-Check 'Sound (DVS in ASIO)' 'OK' ("{0} channels: Listen, the RTA, the MD log and recording" -f $h.sound.channels) }
+    else { Out-Check 'Sound (DVS in ASIO)' 'PROBLEM' ("Not hearing DVS: {0}. In Dante Virtual Soundcard: Stop, Settings > Audio Interface = ASIO, 64 x 64, Start" -f $h.sound.reason) }
+    if ($h.sound.channels -and $h.sound.channels -lt 64) { Out-Check 'DVS channels' 'CHECK' ("{0}. Set 64 x 64 in DVS's Settings to record up to 64" -f $h.sound.channels) }
+  }
 } catch { Out-Check 'C3 Life' 'PROBLEM' "Not answering on port $Port. C3 Life server power > Restart C3 Life, or restart the PC" }
 # Listen
 $cfgFile = Join-Path $InstallDir 'server\config.json'
 if (Test-Path $cfgFile) {
   $cf = Get-Content $cfgFile -Raw | ConvertFrom-Json
   if ($cf.ffmpeg -and (Test-Path $cf.ffmpeg)) { Out-Check 'Listen: ffmpeg' 'OK' $cf.ffmpeg } else { Out-Check 'Listen: ffmpeg' 'PROBLEM' 'Not found: Listen has no sound. winget install Gyan.FFmpeg --scope machine, then Install-C3Life.ps1' }
-  if ($cf.listen_device) { Out-Check 'Listen: sound device' 'OK' $cf.listen_device } else { Out-Check 'Listen: sound device' 'CHECK' 'DVS device not set. Start DVS, then run Install-C3Life.ps1 again' }
+  if ($cf.audio_engine -ne 'asio') {  # in ASIO mode C3 Life opens DVS itself (checked above)
+    if ($cf.listen_device) { Out-Check 'Listen: sound device' 'OK' $cf.listen_device } else { Out-Check 'Listen: sound device' 'CHECK' 'DVS device not set. Start DVS, then run Install-C3Life.ps1 again' }
+  }
   if ($cf.captions_model -and (Test-Path (Join-Path $cf.captions_model 'am'))) { Out-Check 'Listen: subtitles' 'OK' $cf.captions_model } else { Out-Check 'Listen: subtitles' 'CHECK' 'Speech model not installed: subtitles are off. Run Install-C3Life.ps1 again (needs internet once)' }
   $tr = @(Get-ChildItem (Join-Path $InstallDir 'translate') -Directory -ErrorAction SilentlyContinue | Where-Object { Test-Path (Join-Path $_.FullName 'metadata.json') })
   if ($tr.Count) { Out-Check 'Listen: translation' 'OK' ("Languages: " + ($tr.Name -join ', ')) } else { Out-Check 'Listen: translation' 'OK' 'No languages installed (Install-C3Life.ps1 -Languages es,fa)' }

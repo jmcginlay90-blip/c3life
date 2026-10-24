@@ -49,7 +49,10 @@ DEFAULTS = {"auto": "off",                 # "off" | "slide" (the start slide) |
             "stop": {"kind": "presentation", "text": ""},
             "max_hours": 4,                # stops by itself after this long, if nothing else has
             "markers": "presentation",     # "presentation" | "item" (the playlist item's name) | "off"
-            "channels": "routed"}          # "routed" (every DVS channel Dante feeds) or [1, 2, ...]
+            "channels": "routed",          # "routed" (every DVS channel Dante feeds) or [1, 2, ...]
+            "local": True,                 # no recording drive plugged in: record onto this computer instead
+            "copy_auto": True,             # copy what's on this computer to the recording drive when it's plugged in
+            "free_local": True}            # once a copy is checked, delete it from this computer
 LOW_SPACE = 1 << 30                        # stops with 1 GB left
 HEADER_EVERY = 5.0                         # seconds between WAV header updates (a power cut keeps what was written)
 WRITE_Q = 500                              # blocks waiting to be written (about 10 s)
@@ -238,6 +241,8 @@ def valid_settings(s):
         return "Say which slide starts the recording."
     if not isinstance(s.get("max_hours"), (int, float)) or isinstance(s.get("max_hours"), bool) or not 0.5 <= s["max_hours"] <= 12:
         return "Stop after 0.5 to 12 hours."
+    if not all(isinstance(s.get(k), bool) for k in ("local", "copy_auto", "free_local")):
+        return "Settings not understood."
     if s.get("markers") not in ("presentation", "item", "off"):
         return "Markers: presentation, playlist item or off."
     c = s.get("channels")
@@ -273,6 +278,10 @@ class Recorder:
         self.slide = None
         self.watch = SlideWatch(cfg, self._on_slide)
         self.running = False
+        self.local = {"id": "local", "label": "This computer", "ok": True,
+                      "root": cfg.get("record_local_dir") or os.path.join(os.path.dirname(os.path.abspath(data_dir)), "recordings")}
+        self.job = None                      # a copy going on: {"name", "to", "done", "total", "error"}
+        self.job_lock = threading.Lock()
 
     # ---- settings and drives ----
     def _save(self):
@@ -326,7 +335,11 @@ class Recorder:
         self.drives = drives
         ready = next((d for d in drives if d["ok"]), None)
         self.drive = ready
-        if self.rec and not any(d["id"] == self.rec["drive"] for d in drives):
+        if self.rec and self.rec["drive"] == "local":
+            loc = self._local_drive()
+            if loc and loc["free"] < LOW_SPACE:
+                self.stop("this computer is full", error="This computer's drive is nearly full, so the recording stopped.")
+        elif self.rec and not any(d["id"] == self.rec["drive"] for d in drives):
             self.stop("the recording drive was unplugged", error="The recording drive was unplugged, so the recording stopped. What was recorded up to then is on it.")
         elif self.rec and ready and ready["id"] == self.rec["drive"] and ready["free"] < LOW_SPACE:
             self.stop("the drive is full", error="The recording drive is nearly full, so the recording stopped.")
@@ -338,6 +351,10 @@ class Recorder:
             self.log.info("recording: %s is plugged in (%s free)", ready["label"], gb(ready["free"]))
             if self.settings["auto"] == "plug" and not self.rec and not self.player:
                 self.start("auto: the drive was plugged in")
+        if ready and self.settings["copy_auto"] and not self.rec and not self.job:
+            waiting = [x["name"] for x in self._list(self.local)]
+            if waiting:
+                self.copy([(n, "local") for n in reversed(waiting)], ready["id"], "auto: %s was plugged in" % ready["label"])
 
     # ---- names, from Dante and the Wing ----
     def names(self, fresh=False):
@@ -376,7 +393,9 @@ class Recorder:
                 if num is None and chn.isdigit():
                     num = int(chn)
                 o = outs.get("CRD/%d" % num) if num else None
-                if o and o.get("grp"):
+                if o and o.get("grp") == "OFF":
+                    item["name"] = "Wing card out %d (off)" % num
+                elif o and o.get("grp"):
                     grp, idx = o["grp"], o.get("in")
                     item["src"] = "%s/%s" % (grp, idx)
                     for n, s in strips.items():
@@ -384,7 +403,8 @@ class Recorder:
                             item.update(name=s.get("name") or "Ch %s" % n, wing_ch=int(n))
                             break
                     else:
-                        item["name"] = {"MAIN": "Main", "BUS": "Bus", "MTX": "Matrix"}.get(grp, grp) + " %s" % idx
+                        from rta_patch import _src_text
+                        item["name"] = _src_text(grp, int(idx or 0))
                 elif num:
                     item["name"] = "Wing card out %d" % num
             out[int(k)] = item
@@ -414,7 +434,7 @@ class Recorder:
                 return "Not while playing back. Press Back to stage first."
             if not self.engine or self.engine.status != "running":
                 return "C3 Life isn't hearing Dante Virtual Soundcard (%s)." % ((self.engine and self.engine.reason) or "the audio engine is off")
-            d = self.drive
+            d = self.drive or (self._local_drive() if self.settings["local"] else None)
             if not d:
                 return "No recording drive is plugged in."
             if d["free"] < LOW_SPACE:
@@ -589,8 +609,28 @@ class Recorder:
         self.back_to_stage("the server stopping")
 
     # ---- recordings on the drive ----
+    def _local_drive(self):
+        try:
+            os.makedirs(os.path.join(self.local["root"], FOLDER), exist_ok=True)
+            u = shutil.disk_usage(self.local["root"])
+        except OSError:
+            return None
+        return dict(self.local, free=u.free, total=u.total, fs="")
+
+    def _where(self, where):
+        """"drive" (the recording drive), "local" (this computer) or a plugged-in drive's id -> that drive, or None."""
+        if where == "local":
+            return self._local_drive()
+        if where in (None, "", "drive"):
+            return self.drive
+        return next((d for d in self.drives if d["id"] == where), None)
+
     def sessions(self):
-        d = self.drive
+        """What's recorded: on the recording drive, then on this computer (waiting to be copied)."""
+        out = [dict(x, where="drive") for x in self._list(self.drive)] if self.drive else []
+        return out + [dict(x, where="local") for x in self._list(self.local)]
+
+    def _list(self, d):
         if not d:
             return []
         base = os.path.join(d["root"], FOLDER)
@@ -609,8 +649,8 @@ class Recorder:
                 continue
         return out
 
-    def _session(self, name):
-        d = self.drive
+    def _session(self, name, where="drive"):
+        d = self._where(where)
         if not d or not isinstance(name, str) or "/" in name or "\\" in name or name.startswith("."):
             return None, None
         folder = os.path.join(d["root"], FOLDER, name)
@@ -643,9 +683,9 @@ class Recorder:
                     pass
         return out
 
-    def play_plan(self, name):
+    def play_plan(self, name, where="drive"):
         """What Play would do, to ask first: [{"track", "wing_ch", "now", "to"}], and anything that stops it."""
-        folder, s = self._session(name)
+        folder, s = self._session(name, where)
         if not s:
             return None, "That recording isn't on the drive."
         ins = self.card_ins()
@@ -671,12 +711,12 @@ class Recorder:
         return {"name": name, "steps": steps, "notes": notes, "length": s.get("length", 0),
                 "markers": [m for m in s.get("markers") or [] if m.get("name") not in ("Start", "End")]}, None
 
-    def play(self, name, start_at, who):
+    def play(self, name, start_at, who, where="drive"):
         if self.rec:
             return "Not while recording."
         if self.player:
             return "It's already playing. Press Back to stage first."
-        plan, err = self.play_plan(name)
+        plan, err = self.play_plan(name, where)
         if err:
             return err
         if not plan["steps"]:
@@ -697,7 +737,7 @@ class Recorder:
                     self.desk.set_src(n, g, x)
                 return e
         self.stage = saved
-        folder, s = self._session(name)
+        folder, s = self._session(name, where)
         try:
             self.player = Player(folder, s, plan["steps"], self.engine, start_at)
         except OSError as e:
@@ -725,14 +765,71 @@ class Recorder:
             self.stage = []
         return ("Some channels couldn't be put back: " + "; ".join(errs)) if errs else None
 
+    # ---- copying recordings to a drive ----
+    def copy(self, items, to, who):
+        """Copy recordings [(name, where)] onto drive `to` (its id), one after another, in the background. Each copy is
+        checked (every file the same size); one from this computer is then deleted from it if free_local is on."""
+        dest = self._where(to)
+        if not dest or dest["id"] == "local":
+            return "That drive isn't plugged in."
+        with self.job_lock:
+            if self.job and not self.job.get("finished"):
+                return "It's already copying. Wait for it to finish."
+            if self.rec and self.rec["drive"] == dest["id"]:
+                return "Not while recording onto that drive."
+            todo = []
+            for name, where in items:
+                folder, s = self._session(name, where)
+                if not s:
+                    return "%s isn't there any more." % name
+                todo.append((name, where, folder))
+            total = sum(os.path.getsize(os.path.join(f, x)) for _, _, f in todo for x in os.listdir(f))
+            if total > dest["free"] - LOW_SPACE:
+                return "There isn't room on %s (%s needed, %s free)." % (dest["label"], gb(total), gb(dest["free"]))
+            self.job = {"names": [n for n, _, _ in todo], "to": dest["label"], "done": 0, "total": total, "error": "", "finished": False, "by": who}
+        threading.Thread(target=self._copy, args=(self.job, todo, dest), daemon=True).start()
+        self.log.info("recording: %s is copying %d recording(s) to %s", who, len(todo), dest["label"])
+        return None
+
+    def _copy(self, job, todo, dest):
+        for name, where, folder in todo:
+            target = os.path.join(dest["root"], FOLDER, name)
+            n = 2
+            while os.path.exists(target):  # never over another recording
+                target = os.path.join(dest["root"], FOLDER, "%s (%d)" % (name, n))
+                n += 1
+            try:
+                os.makedirs(target)
+                for x in sorted(os.listdir(folder)):
+                    src, dst = os.path.join(folder, x), os.path.join(target, x)
+                    with open(src, "rb") as a, open(dst, "wb") as b:
+                        while True:
+                            buf = a.read(1 << 20)
+                            if not buf:
+                                break
+                            b.write(buf)
+                            job["done"] += len(buf)
+                        b.flush()
+                        os.fsync(b.fileno())
+                    if os.path.getsize(dst) != os.path.getsize(src):
+                        raise OSError("%s didn't copy fully" % x)
+            except OSError as e:
+                job["error"] = "%s didn't copy to %s (%s). It's still on %s." % (name, dest["label"], e, "this computer" if where == "local" else "the drive")
+                self.log.error("recording: %s", job["error"])
+                break
+            if where == "local" and self.settings["free_local"]:
+                shutil.rmtree(folder, ignore_errors=True)
+            self.log.info("recording: copied %s to %s", name, dest["label"])
+        job["finished"] = True
+
     # ---- what the screen shows ----
     def view(self, full=False):
         r, p = self.rec, self.player
         out = {"settings": self.settings, "drive": self._drive_view(self.drive), "recording": None, "last": self.last,
                "playing": None, "on_stage": not self.stage, "engine": self.engine.view() if self.engine else {"status": "off"},
-               "slide": self.slide, "propresenter": self.watch.error}
+               "slide": self.slide, "propresenter": self.watch.error, "copy": self.job}
         if r:
-            out["recording"] = {"name": r["name"], "by": r["by"], "secs": round(self.now(), 1), "tracks": len(r["tracks"]),
+            out["recording"] = {"name": r["name"], "by": r["by"], "where": r["drive_label"], "secs": round(self.now(), 1), "tracks": len(r["tracks"]),
                                 "markers": [m for m in r["markers"] if m["name"] != "Start"], "dropped": r["dropped"], "error": r["error"]}
         if p:
             out["playing"] = {"name": p.name, "secs": round(p.pos / p.rate, 1), "length": p.length, "by": getattr(p, "who", ""),
@@ -745,9 +842,11 @@ class Recorder:
             out["tracks"] = [{"dvs": t["dvs"], "name": t["name"], "wing_ch": t["wing_ch"],
                               "level": round(lv[t["dvs"] - 1], 3) if t["dvs"] - 1 < len(lv) else 0} for t in tracks]
             out["sessions"] = self.sessions()
+            rate = (self.engine.rate if self.engine else 48000) * 3 * max(len(tracks), 1)
             if self.drive:
-                rate = (self.engine.rate if self.engine else 48000) * 3 * max(len(tracks), 1)
                 out["drive"]["hours_left"] = round(self.drive["free"] / rate / 3600, 1)
+            loc = self._local_drive() if self.settings["local"] else None
+            out["local"] = {"free_text": gb(loc["free"]), "hours_left": round(loc["free"] / rate / 3600, 1)} if loc else None
         return out
 
     @staticmethod
