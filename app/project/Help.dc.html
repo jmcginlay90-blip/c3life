@@ -645,7 +645,7 @@ class Component extends DCLogic {
         'That is normal. Nothing on the Sunday run sheet runs by itself. (Only recording can start by itself, if it\u2019s set to.)',
         'Tap Run on the item in Plan, the macro button on Home, or run it from Macros.',
         'Ran it too early? Tap Undo on Home or Macros within 10 minutes. It asks first, then puts back the Wing\u2019s mutes, faders and sends, the foyer, and the lights master and blackout. Music, cues, ProPresenter and Playback can\u2019t be put back, and Undo says so.'] },
-      { q: 'Recording: it isn\u2019t hearing Dante Virtual Soundcard', c: '#E5484D', href: 'Recording.dc.html', go: 'Record', steps: [
+      { q: 'Recording: Dante Virtual Soundcard isn\u2019t connected', c: '#E5484D', href: 'Recording.dc.html', go: 'Record', steps: [
         'C3 Life opens Dante Virtual Soundcard itself, in ASIO mode, 64 x 64. Listen, the RTA, the MD log and recording all come through it.',
         'On the C3 Life server, open Dante Virtual Soundcard. Press Stop, then Settings \u203a Audio Interface = ASIO, and the channel count 64 x 64. Press Start.',
         'Don\u2019t open another program that uses DVS in ASIO (for example Tracks Live) while C3 Life is running: only one program can.',
@@ -661,7 +661,7 @@ class Component extends DCLogic {
         'The start slide must match exactly what ProPresenter calls it: a presentation\u2019s name, a slide group (such as Welcome) or a slide label.',
         'ProPresenter must be open with its network API on (ProPresenter \u203a Settings \u203a Network).',
         'You can always press Record yourself. It stops on the end slide, or after the most hours set, or when someone presses Stop (it asks first).'] },
-      { q: 'Playing a recording back: the desk hears nothing', c: '#6CB4F5', href: 'Recording.dc.html', go: 'Record', steps: [
+      { q: 'Playing a recording back to the desk doesn\u2019t work', c: '#6CB4F5', href: 'Recording.dc.html', go: 'Record', steps: [
         'Each track goes out on the DVS output with the same number it was recorded from. In Dante Controller, route those DVS outputs (C3LIFE Tx) to the Wing card\u2019s inputs.',
         'Play asks first and lists each Wing channel it will switch to the card. A track that isn\u2019t routed is listed as skipped.',
         'The Wing must be in Control (Mixer). In Watch only nothing changes.',
