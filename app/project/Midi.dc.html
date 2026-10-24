@@ -186,6 +186,14 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
       <button class="btn pri" onClick="{{learn}}">Learn a new button</button>
     </sc-if>
 
+    <sc-if value="{{live}}" hint-placeholder-val="{{ false }}">
+      <section class="card" style="display:flex;flex-direction:column;gap:8px">
+        <label style="display:flex;align-items:center;gap:10px;font-size:15px;font-weight:600"><input type="checkbox" checked="{{btnOn}}" onChange="{{toggleOn}}" disabled="{{cantEdit}}"> MIDI buttons are on</label>
+        <div style="font-size:12px;color:#A3ACB8;line-height:1.45">{{onHint}}</div>
+        <sc-if value="{{hasMsg}}" hint-placeholder-val="{{ false }}"><div role="status" style="font-size:13px;color:{{msgColor}}">{{msg}}</div></sc-if>
+      </section>
+    </sc-if>
+    <sc-if value="{{demoOnly}}" hint-placeholder-val="{{ true }}">
     <section class="card" style="display:flex;flex-direction:column;gap:10px;border-color:{{abBorder}}">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <div>
@@ -243,6 +251,7 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
       <label style="display:flex;align-items:center;gap:8px;font-size:13px"><input type="checkbox" checked style="width:20px;height:20px;accent-color:#F5C518"> Follow the desk: if someone mutes the channel on the Wing, flip to A</label>
       <div style="font-size:12px;color:#A3ACB8">Changing the channel updates both sides. If that channel is renamed on the Wing, the new name shows here.</div>
     </section>
+    </sc-if>
 
     <section class="card" style="display:flex;flex-direction:column;padding:8px 14px">
       <div class="lbl" style="padding:4px 0 6px">Button → action</div>
@@ -263,7 +272,7 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
       </sc-for>
     </section>
 
-    <div style="font-size:12px;color:#A3ACB8;padding:0 4px;line-height:1.45">The controller is plugged into the MacBook Pro. Buttons marked <b>Playback</b> are handled by Playback on the Mac and ignored by the app. Buttons marked <b>App</b> reach the booth app over network MIDI. Every press is logged.</div>
+    <div style="font-size:12px;color:#A3ACB8;padding:0 4px;line-height:1.45">The controller is plugged into a Mac or iPad on the network MIDI session “C3 Life”. A note or CC that isn’t a button here is left for Lights (Follow Playback), and Playback on the Mac can use the same controller itself. Every press is logged. Not tried with our controller yet.</div>
   </main>
 
   <div class="rtabar" style="flex:none">
@@ -280,6 +289,7 @@ class Component extends DCLogic {
     super(props);
     this.nextNote = 40;
     this.state = {
+      srv: null,  // from the C3 Life server; null = the demo
       learning: false, last: 'Note 36 · vel 100', flash: false, hit: -1, abState: 'A', abFlash: false, abUndo: null, abGesture: 1,
       ab: { msg: 'CC 65', label: 'Footswitch 2', ch: this.chLabel(15),
         A: [['Wing', 'Mute Ch 15 · Pastor HH'], ['ProPresenter', 'Stage layout: Band']],
@@ -295,6 +305,7 @@ class Component extends DCLogic {
     };
   }
   componentDidMount() {
+    this.load(); this.srvT = setInterval(() => this.load(), 1000);
     this.tick = setInterval(() => {
       const u = this.state.abUndo;
       if (u && !u.done && u.left > 0) this.setState({ abUndo: { ...u, left: u.left - 1 } });
@@ -307,7 +318,7 @@ class Component extends DCLogic {
       this.t2 = setTimeout(() => this.setState({ flash: false, hit: -1 }), 500);
     }, 4000);
   }
-  componentWillUnmount() { clearInterval(this.timer); clearInterval(this.tick); clearTimeout(this.t); clearTimeout(this.t2); clearTimeout(this.t3); }
+  componentWillUnmount() { clearInterval(this.srvT); clearInterval(this.timer); clearInterval(this.tick); clearTimeout(this.t); clearTimeout(this.t2); clearTimeout(this.t3); }
   // Channel, bus and DCA names come from the Wing. Every screen reads this one list, so they always match the desk.
   wnDefaults() {
     return {
@@ -328,9 +339,58 @@ class Component extends DCLogic {
     try { localStorage.setItem('booth.wingnames', JSON.stringify(w)); } catch (e) {}
     return w;
   }
+  tok() { try { const x = JSON.parse(localStorage.getItem('booth.session') || 'null'); return x ? x.token : ''; } catch (e) { return ''; } }
+  load() {
+    fetch('/api/midi/buttons', { headers: { Authorization: 'Bearer ' + this.tok() } })
+      .then((r) => (r.status === 404 ? null : r.json()))
+      .then((j) => {
+        if (!j) { clearInterval(this.srvT); return; }
+        if (!j.ok) return;
+        clearInterval(this.timer);  // the demo's made-up presses
+        const was = this.state.srv;
+        this.setState({ srv: j });
+        // Learn finished: add the button it heard (a log marker until an action is picked)
+        if (was && was.learning && !j.learning && j.learned && !j.settings.maps.some((m) => m.msg === j.learned))
+          this.save(Object.assign({}, j.settings, { maps: j.settings.maps.concat([{ msg: j.learned, label: '', do: 'marker', arg: '' }]) }), 'Added ' + j.learned.replace('note:', 'Note ').replace('cc:', 'CC ') + '. Pick what it does.');
+      }).catch(() => {});
+  }
+  save(d, done) {
+    fetch('/api/midi/buttons', { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + this.tok() }, body: JSON.stringify(d) })
+      .then((r) => r.json())
+      .then((j) => this.setState(j.ok ? { srv: Object.assign({}, this.state.srv, j), msg: done || '', msgColor: '#6CB4F5' } : { msg: j.error || 'That wasn’t saved.', msgColor: '#FF7A45' }))
+      .catch(() => this.setState({ msg: 'The C3 Life server didn’t answer, so nothing changed.', msgColor: '#FF7A45' }));
+  }
+  srvVals() {
+    const s = this.state, v = s.srv, st = v.settings;
+    const fixed = [['pp_next', 'ProPresenter: Next slide'], ['pp_prev', 'ProPresenter: Previous slide'], ['lights_go', 'Lights: Go'], ['play', 'Playback: Play'], ['stop', 'Playback: Stop'], ['marker', 'Add a log marker']];
+    const acts = (v.macros || []).map((m) => ['macro', 'Macro: ' + m.name, m.id]).concat(fixed.map(([d, n]) => [d, n, '']));
+    const nameOf = (m) => { const a = acts.find((x) => x[0] === m.do && (m.do !== 'macro' || x[2] === m.arg)); return a ? a[1] : 'Macro: (deleted)'; };
+    const h = (v.heard || [])[0];
+    const no = !v.can ? () => this.setState({ msg: 'Your role can’t change MIDI buttons (Settings control, Access levels).', msgColor: '#FF7A45' }) : null;
+    const msgName = (m) => m.replace('note:', 'Note ').replace('cc:', 'CC ');
+    return {
+      live: true, demoOnly: false, cantEdit: !v.can,
+      btnOn: st.on, toggleOn: () => no ? no() : this.save(Object.assign({}, st, { on: !st.on }), st.on ? 'MIDI buttons are off: presses are only shown.' : 'MIDI buttons are on.'),
+      onHint: st.on ? 'A press does its action straight away (pressing the button is choosing to). Turn this off to only see what a press would do.' : 'Off: each press is shown under Last message with what it would have done. Nothing is sent.',
+      hasMsg: !!s.msg, msg: s.msg || '', msgColor: s.msgColor || '#A3ACB8',
+      ctrls: (v.peers || []).length ? v.peers.map((p) => ({ name: p.name, how: 'Network MIDI from ' + p.ip + (p.live ? '' : ' · not heard lately') })) : [{ name: 'No controller connected', how: 'On the Mac or iPad the controller is plugged into: Audio MIDI Setup › Network › connect to “C3 Life”' }],
+      last: h ? h.msg + ' · ' + h.did : 'Nothing yet', lastColor: '#ECEEF1',
+      learning: !!v.learning, notLearning: !v.learning,
+      learn: () => no ? no() : fetch('/api/midi/buttons/learn', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + this.tok() }, body: '{}' }).then((r) => r.json()).then((j) => j.ok && this.setState({ srv: Object.assign({}, v, j) })),
+      actions: acts.map((a) => a[1]),
+      maps: st.maps.map((m, i) => ({
+        msg: msgName(m.msg), label: m.label || '', action: nameOf(m),
+        to: 'App', toBg: '#F5C518', ring: '#333B47',
+        pick: (e) => { if (no) return no(); const a = acts.find((x) => x[1] === e.target.value); if (!a) return; this.save(Object.assign({}, st, { maps: st.maps.map((x, j) => (j === i ? Object.assign({}, x, { do: a[0], arg: a[2] }) : x)) }), msgName(m.msg) + ' → ' + a[1]); },
+        remove: () => no ? no() : this.save(Object.assign({}, st, { maps: st.maps.filter((_, j) => j !== i) }), msgName(m.msg) + ' removed.')
+      }))
+    };
+  }
   renderVals() {
     const s = this.state;
+    if (s.srv) return this.srvVals();
     return {
+      live: false, demoOnly: true, hasMsg: false, msg: '', msgColor: '#A3ACB8', btnOn: false, toggleOn: () => {}, onHint: '', cantEdit: true,
       ctrls: [
         { name: 'USB MIDI controller', how: 'Plugged into MacBook Pro · USB' },
         { name: 'Network MIDI · C3 Life Session', how: 'MacBook Pro forwards the controller to the app' }

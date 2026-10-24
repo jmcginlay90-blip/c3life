@@ -91,6 +91,9 @@ API (JSON):
                      {"do": "balance", "mix": "a"|"b", "db"}  (Foyer setup control: each mix's send level to the matrix)
                                            which mix the foyer hears, its volume (never above the maximum) and mute,
                                            on the Wing (Control); GET /api/foyer has "live", what the desk is doing now
+  GET  /api/midi/buttons | PUT {"on","maps"} (Show/Mixer/Settings view; Settings control) MIDI buttons: a pad or
+                                           footswitch on network MIDI runs a macro, next/previous slide, Lights Go, Playback
+  POST /api/midi/buttons/learn              (Settings control) the next note or CC heard is taken for a new button
   GET  /api/mics | PUT /api/mics {"receivers","warn"}  (Mixer view / control) wireless mics from networked Shure
                                            receivers: battery, signal, names from the Wing (watch only: it only asks)
   GET  /api/md/live                        (signed in) is the MD talking now? Every screen asks, for the green box
@@ -223,6 +226,7 @@ import syscheck as syscheck_mod
 import setup as setup_mod
 import mdtalk as mdtalk_mod
 import shure as shure_mod
+import midi_buttons as midi_buttons_mod
 import chat as chat_mod
 
 VERSION = "0.3.0"
@@ -562,7 +566,7 @@ def _ip_ok(x):
         return False
 
 
-def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bible=None, cues=None, reports=None, plan=None, desk=None, tio=None, monitors=None, scanner=None, foyer=None, rta_inputs=None, dante_names=None, lights=None, rta_live=None, midi=None, music=None, helpers=None, health=None, macros=None, recorder=None, pp=None, midi_peers=None, power=None, chat=None, setup=None, md=None, mics=None):
+def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bible=None, cues=None, reports=None, plan=None, desk=None, tio=None, monitors=None, scanner=None, foyer=None, rta_inputs=None, dante_names=None, lights=None, rta_live=None, midi=None, music=None, helpers=None, health=None, macros=None, recorder=None, pp=None, midi_peers=None, power=None, chat=None, setup=None, md=None, mics=None, buttons=None):
     nets = cfg["_nets"]
     remote_nets = cfg.get("_remote", [])
 
@@ -938,6 +942,13 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                                      "names": {n: v.get("name", "") for n, v in st["strips"]["ch"].items()}, "locked": d["locked"],
                                      "aux_names": {n: v.get("name", "") for n, v in st["strips"]["aux"].items()}, "eq": desk.bus_eq(b),
                                      "can_change": desk.settings["mode"] == "control" and not monitors.may_change(s["name"], mixer, b) if b in d["buses"] else mixer >= 2 and desk.settings["mode"] == "control"})
+                return
+            if path == "/api/midi/buttons":
+                s = self.level("Show", "Mixer", "Settings")
+                if s:
+                    v = midi.view()
+                    self.send_json(200, dict(buttons.view(), ok=True, can=access.level(s["role"], "Settings") >= 2, heard=v["heard"][:10],
+                                             peers=v["peers"], macros=[{"id": m["id"], "name": m["name"]} for m in macros.d["macros"]]))
                 return
             if path == "/api/mics":
                 s = self.level("Mixer", "Own monitor mix")
@@ -1840,6 +1851,11 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 again = power.do("app", s["name"]) if power else "Restart C3 Life to load it."
                 self.send_json(200, {"ok": True, "restarting": not again, "note": "" if not again else "Restored. " + again + " C3 Life loads the restored setup when it starts again."})
                 return
+            if path == "/api/midi/buttons/learn":
+                if self.level("Settings", need=2):
+                    buttons.learn()
+                    self.send_json(200, dict(buttons.view(), ok=True))
+                return
             if path in ("/api/md/test", "/api/md/clear"):
                 s = self.level("Mixer", need=2)
                 if not s:
@@ -2003,6 +2019,13 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
 
         def do_PUT(self):
             if not self.client_ok():
+                return
+            if self.route() == "/api/midi/buttons":
+                s = self.level("Settings", need=2)
+                if not s:
+                    return
+                err = buttons.save(self.read_json() or {}, s["name"])
+                self.send_json(400 if err else 200, dict(buttons.view(), ok=not err, error=err or ""))
                 return
             if self.route() == "/api/mics":
                 s = self.level("Mixer", need=2)
@@ -2504,6 +2527,30 @@ def serve(cfg):
     md = mdtalk_mod.MDTalk(cfg["data_dir"], cfg, log, desk, listen=listen, pp=pp)
     md.start()
     mics = shure_mod.Mics(cfg["data_dir"], cfg, log)
+
+    def _mark(arg, who):
+        if recorder and recorder.rec:
+            recorder.marker("Marker", who, quiet=True)
+        log.info("marker: Marker (%s)", who)
+
+    def _lights_go(arg, who):
+        ok, err, _ = lights.do({"do": "go"}, who)
+        return None if ok else err
+
+    def _describe(do, arg):
+        if do == "macro":
+            m = next((x for x in macros.d["macros"] if x["id"] == arg), None)
+            return "Macro: " + (m["name"] if m else "(deleted)")
+        return {"pp_next": "ProPresenter: Next slide", "pp_prev": "ProPresenter: Previous slide", "lights_go": "Lights: Go",
+                "play": "Playback: Play", "stop": "Playback: Stop", "marker": "Add a log marker"}.get(do, do)
+    buttons = midi_buttons_mod.Buttons(cfg["data_dir"], log, describe=_describe, actions={
+        "macro": lambda arg, who: macros.run(arg, who),
+        "pp_next": lambda arg, who: pp.trigger("next", who=who), "pp_prev": lambda arg, who: pp.trigger("previous", who=who),
+        "lights_go": _lights_go,
+        "play": lambda arg, who: macros.step({"dev": "playback", "do": "play", "label": "Play"})[1],
+        "stop": lambda arg, who: macros.step({"dev": "playback", "do": "stop", "label": "Stop"})[1],
+        "marker": _mark})
+    midi.buttons = buttons
     mics.start()
     setup = setup_mod.Setup(cfg["data_dir"], cfg, log, drives=lambda: list(recorder.drives) if recorder else [], version=VERSION)
     if engine.on:
@@ -2518,12 +2565,12 @@ def serve(cfg):
         gone = lambda d, name: [name] if d and d.status()["status"] == "no answer" else []
         threading.Thread(target=scanner.watch, args=([lambda: gone(desk, desk.NAME), lambda: gone(tio, "the Tio"), health.check],), daemon=True).start()
     httpd = ThreadingHTTPServer((cfg["bind"], int(cfg["port"])), make_handler(cfg, store, sessions, listen, access, dante, tags, bible, cues, reports, plan, desk, tio, monitors, scanner, foyer, rta_inputs, dante_names, lights, rta_live, midi, music, helpers, health, macros, recorder, pp,
-                                                                              lambda: [p for p in midi.peers.values() if p.get("data") and time.time() - p["seen"] < 60], power, chat, setup, md, mics))
+                                                                              lambda: [p for p in midi.peers.values() if p.get("data") and time.time() - p["seen"] < 60], power, chat, setup, md, mics, buttons))
     httpd.daemon_threads = True
     close = httpd.server_close
     httpd.server_close = lambda: (scanner.stop.set(), md.stop_ev.set(), mics.stop_ev.set(), lights.close(), rta_live.stop(), midi.close(), recorder.close(), engine.stop(), close())
     httpd.store, httpd.sessions, httpd.listen, httpd.access, httpd.tags, httpd.bible, httpd.reports, httpd.plan, httpd.desk, httpd.tio, httpd.monitors, httpd.scanner, httpd.foyer, httpd.rta_inputs, httpd.lights, httpd.rta_live, httpd.midi, httpd.music, httpd.helpers, httpd.health, httpd.macros = store, sessions, listen, access, tags, bible, reports, plan, desk, tio, monitors, scanner, foyer, rta_inputs, lights, rta_live, midi, music, helpers, health, macros
-    httpd.md, httpd.setup, httpd.mics = md, setup, mics
+    httpd.md, httpd.setup, httpd.mics, httpd.buttons = md, setup, mics, buttons
     httpd.wing = desk  # the tests, and older code, call it this
     httpd.engine, httpd.recorder, httpd.pp, httpd.power = engine, recorder, pp, power
     return httpd
