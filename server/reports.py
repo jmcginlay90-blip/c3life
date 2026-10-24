@@ -111,9 +111,15 @@ class Reports:
     def _path(self, rid):
         return os.path.join(self.dir, rid)
 
-    def add(self, b, signed_in):
+    def add(self, b, signed_in, files=None, kind="issue"):
+        """files: [(name, bytes)] attached as they are (the daily RTA and activity reports); kind "daily" isn't an issue."""
         rid = time.strftime("%Y%m%d-%H%M%S-") + uuid.uuid4().hex[:6]
         os.makedirs(self._path(rid))
+        names = []
+        for name, data in files or []:
+            with open(os.path.join(self._path(rid), name), "wb") as f:
+                f.write(data)
+            names.append(name)
         photos = []
         for i, p in enumerate(b.get("photos") or []):
             ext = {"image/jpeg": ".jpg", "image/png": ".png", "image/heic": ".heic", "image/webp": ".webp"}[p["type"]]
@@ -123,7 +129,7 @@ class Reports:
             photos.append(name)
         r = {"id": rid, "subject": b["subject"].strip(), "text": b["text"].strip(), "who": b["who"].strip(), "signed_in": signed_in,
              "to": (b.get("to") or "").strip(), "page": b.get("page", ""), "device": b.get("device", ""), "at": time.strftime("%Y-%m-%d %H:%M"),
-             "photos": photos, "email": "waiting", "email_at": "", "email_error": "", "monday": "", "monday_item": "", "tries": 0}
+             "photos": photos, "files": names, "kind": kind, "email": "waiting", "email_at": "", "email_error": "", "monday": "", "monday_item": "", "tries": 0}
         self._write(r)
         self.wake.set()
         self.start()
@@ -151,7 +157,8 @@ class Reports:
         return out
 
     def view(self, r):
-        return {k: r[k] for k in ("id", "subject", "who", "at", "to", "email", "email_at", "email_error", "monday", "photos")}
+        return dict({k: r[k] for k in ("id", "subject", "who", "at", "to", "email", "email_at", "email_error", "monday", "photos")},
+                    files=r.get("files", []), kind=r.get("kind", "issue"))
 
     # ---- sending ----
     def address(self, r):
@@ -165,13 +172,16 @@ class Reports:
         if not to:
             raise RuntimeError("No address to send reports to. An Admin sets it on Report an issue.")
         m = EmailMessage()
-        m["Subject"] = "C3 Life issue: " + r["subject"]
+        m["Subject"] = ("C3 Life: " if r.get("kind") == "daily" else "C3 Life issue: ") + r["subject"]
         m["From"] = cfg.get("smtp_from") or cfg.get("smtp_user", "")
         m["To"] = to
-        m.set_content("%s\n\nReported by: %s%s\nWhen: %s\nScreen: %s\nDevice: %s\n\nSent by C3 Life on the C3 Life server. %d photo(s) attached." % (
+        if r.get("kind") == "daily":
+            m.set_content(r["text"] + "\n\nSent by C3 Life on the C3 Life server.")
+        else:
+            m.set_content("%s\n\nReported by: %s%s\nWhen: %s\nScreen: %s\nDevice: %s\n\nSent by C3 Life on the C3 Life server. %d photo(s) attached." % (
             r["text"], r["who"], " (signed in as %s)" % r["signed_in"] if r["signed_in"] and r["signed_in"] != r["who"] else "",
             r["at"], r["page"] or "-", r["device"] or "-", len(r["photos"])))
-        for name in r["photos"]:
+        for name in r["photos"] + r.get("files", []):
             with open(os.path.join(self._path(r["id"]), name), "rb") as f:
                 data = f.read()
             mt = (mimetypes.guess_type(name)[0] or "image/jpeg").split("/")

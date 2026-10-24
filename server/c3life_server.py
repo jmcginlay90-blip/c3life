@@ -91,6 +91,10 @@ API (JSON):
                      {"do": "balance", "mix": "a"|"b", "db"}  (Foyer setup control: each mix's send level to the matrix)
                                            which mix the foyer hears, its volume (never above the maximum) and mute,
                                            on the Wing (Control); GET /api/foyer has "live", what the desk is doing now
+  GET  /api/daily | PUT /api/daily {...}    (Settings or RTA view / Admin) the daily RTA and activity reports: logging
+                                           times, the service times, which days were logged and sent
+  POST /api/daily/send {"day"}              (Admin) email that day's RTA and activity reports now (shutting down does it too)
+  GET  /api/daily/file?t=&day=&kind=        (Admin) download a day's RTA readings, spectrum or activity log
   GET  /api/network | /api/network/scan     (Settings view) the server's own connections and the Wi-Fi it can hear (Windows)
   POST /api/network/join|forget|order       (Admin; the screen asks first) join a Wi-Fi with its password, forget one, or
                                            set the order Windows tries them (passwords are never logged or kept)
@@ -231,6 +235,7 @@ import mdtalk as mdtalk_mod
 import shure as shure_mod
 import midi_buttons as midi_buttons_mod
 import netwin as netwin_mod
+import daily as daily_mod
 import chat as chat_mod
 
 VERSION = "0.3.0"
@@ -570,7 +575,7 @@ def _ip_ok(x):
         return False
 
 
-def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bible=None, cues=None, reports=None, plan=None, desk=None, tio=None, monitors=None, scanner=None, foyer=None, rta_inputs=None, dante_names=None, lights=None, rta_live=None, midi=None, music=None, helpers=None, health=None, macros=None, recorder=None, pp=None, midi_peers=None, power=None, chat=None, setup=None, md=None, mics=None, buttons=None, network=None):
+def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bible=None, cues=None, reports=None, plan=None, desk=None, tio=None, monitors=None, scanner=None, foyer=None, rta_inputs=None, dante_names=None, lights=None, rta_live=None, midi=None, music=None, helpers=None, health=None, macros=None, recorder=None, pp=None, midi_peers=None, power=None, chat=None, setup=None, md=None, mics=None, buttons=None, network=None, daily=None):
     nets = cfg["_nets"]
     remote_nets = cfg.get("_remote", [])
 
@@ -946,6 +951,30 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                                      "names": {n: v.get("name", "") for n, v in st["strips"]["ch"].items()}, "locked": d["locked"],
                                      "aux_names": {n: v.get("name", "") for n, v in st["strips"]["aux"].items()}, "eq": desk.bus_eq(b),
                                      "can_change": desk.settings["mode"] == "control" and not monitors.may_change(s["name"], mixer, b) if b in d["buses"] else mixer >= 2 and desk.settings["mode"] == "control"})
+                return
+            if path == "/api/daily":
+                s = self.level("Settings", "RTA")
+                if s:
+                    self.send_json(200, dict(daily.view(), ok=True, admin=s["role"] == "Admin"))
+                return
+            if path == "/api/daily/file":
+                q = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
+                ss = sessions.get((q.get("t") or [""])[0])
+                if not ss or ss["role"] != "Admin":
+                    self.send_json(403, {"ok": False, "error": "Only an Admin can download the reports."})
+                    return
+                f = daily.file((q.get("day") or [""])[0], (q.get("kind") or [""])[0])
+                if not f:
+                    self.send_json(404, {"ok": False, "error": "Nothing was logged then."})
+                    return
+                with open(f, "rb") as fh:
+                    data = fh.read()
+                self.send_response(200)
+                self.send_header("Content-Type", "text/csv" if f.endswith(".csv") else "text/plain; charset=utf-8")
+                self.send_header("Content-Disposition", 'attachment; filename="%s"' % os.path.basename(f))
+                self.send_header("Content-Length", str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
                 return
             if path in ("/api/network", "/api/network/scan"):
                 s = self.level("Settings")
@@ -1466,6 +1495,8 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                     s = self.level("Settings", "Mixer", need=2)
                 if not s:
                     return
+                if what == "off" and daily:
+                    daily.send(time.strftime("%Y-%m-%d"), s["name"])  # the day's RTA and activity reports, before the booth shuts down
                 err = power.do(what, s["name"])
                 self.send_json(200 if not err else 409, {"ok": not err, "pending": power.pending, **({"error": err} if err else {})})
                 return
@@ -1863,6 +1894,17 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 again = power.do("app", s["name"]) if power else "Restart C3 Life to load it."
                 self.send_json(200, {"ok": True, "restarting": not again, "note": "" if not again else "Restored. " + again + " C3 Life loads the restored setup when it starts again."})
                 return
+            if path == "/api/daily/send":
+                s = self.admin()
+                if not s:
+                    return
+                day = (self.read_json() or {}).get("day") or time.strftime("%Y-%m-%d")
+                if not isinstance(day, str) or not re.match(r"^\d{4}-\d\d-\d\d$", day):
+                    self.send_json(400, {"ok": False, "error": "Bad request"})
+                    return
+                err, sent = daily.send(day, s["name"])
+                self.send_json(409 if err else 200, dict(daily.view(), ok=not err, error=err or "", sent=sent))
+                return
             if path in ("/api/network/join", "/api/network/forget", "/api/network/order"):
                 s = self.admin()
                 if not s:
@@ -2044,6 +2086,13 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
 
         def do_PUT(self):
             if not self.client_ok():
+                return
+            if self.route() == "/api/daily":
+                s = self.admin()
+                if not s:
+                    return
+                err = daily.set(self.read_json() or {}, s["name"])
+                self.send_json(400 if err else 200, dict(daily.view(), ok=not err, error=err or ""))
                 return
             if self.route() == "/api/midi/buttons":
                 s = self.level("Settings", need=2)
@@ -2577,6 +2626,11 @@ def serve(cfg):
         "marker": _mark})
     midi.buttons = buttons
     network = netwin_mod.Network(log)
+    for h in [h for h in log.handlers if isinstance(h, daily_mod.ActivityLog)]:
+        log.removeHandler(h)  # one per server (the tests start several)
+    log.addHandler(daily_mod.ActivityLog(os.path.join(cfg["data_dir"], "activity")))
+    daily = daily_mod.Daily(cfg["data_dir"], cfg, log, rta=rta_live, reports=reports)
+    daily.start()
     mics.start()
     setup = setup_mod.Setup(cfg["data_dir"], cfg, log, drives=lambda: list(recorder.drives) if recorder else [], version=VERSION)
     if engine.on:
@@ -2591,12 +2645,12 @@ def serve(cfg):
         gone = lambda d, name: [name] if d and d.status()["status"] == "no answer" else []
         threading.Thread(target=scanner.watch, args=([lambda: gone(desk, desk.NAME), lambda: gone(tio, "the Tio"), health.check],), daemon=True).start()
     httpd = ThreadingHTTPServer((cfg["bind"], int(cfg["port"])), make_handler(cfg, store, sessions, listen, access, dante, tags, bible, cues, reports, plan, desk, tio, monitors, scanner, foyer, rta_inputs, dante_names, lights, rta_live, midi, music, helpers, health, macros, recorder, pp,
-                                                                              lambda: [p for p in midi.peers.values() if p.get("data") and time.time() - p["seen"] < 60], power, chat, setup, md, mics, buttons, network))
+                                                                              lambda: [p for p in midi.peers.values() if p.get("data") and time.time() - p["seen"] < 60], power, chat, setup, md, mics, buttons, network, daily))
     httpd.daemon_threads = True
     close = httpd.server_close
-    httpd.server_close = lambda: (scanner.stop.set(), md.stop_ev.set(), mics.stop_ev.set(), lights.close(), rta_live.stop(), midi.close(), recorder.close(), engine.stop(), close())
+    httpd.server_close = lambda: (scanner.stop.set(), md.stop_ev.set(), daily.stop_ev.set(), mics.stop_ev.set(), lights.close(), rta_live.stop(), midi.close(), recorder.close(), engine.stop(), close())
     httpd.store, httpd.sessions, httpd.listen, httpd.access, httpd.tags, httpd.bible, httpd.reports, httpd.plan, httpd.desk, httpd.tio, httpd.monitors, httpd.scanner, httpd.foyer, httpd.rta_inputs, httpd.lights, httpd.rta_live, httpd.midi, httpd.music, httpd.helpers, httpd.health, httpd.macros = store, sessions, listen, access, tags, bible, reports, plan, desk, tio, monitors, scanner, foyer, rta_inputs, lights, rta_live, midi, music, helpers, health, macros
-    httpd.md, httpd.setup, httpd.mics, httpd.buttons, httpd.network = md, setup, mics, buttons, network
+    httpd.md, httpd.setup, httpd.mics, httpd.buttons, httpd.network, httpd.daily = md, setup, mics, buttons, network, daily
     httpd.wing = desk  # the tests, and older code, call it this
     httpd.engine, httpd.recorder, httpd.pp, httpd.power = engine, recorder, pp, power
     return httpd
