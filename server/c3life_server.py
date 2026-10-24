@@ -989,7 +989,8 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 if s:
                     v = midi.view()
                     self.send_json(200, dict(buttons.view(), ok=True, can=access.level(s["role"], "Settings") >= 2, heard=v["heard"][:10],
-                                             peers=v["peers"], macros=[{"id": m["id"], "name": m["name"]} for m in macros.d["macros"]]))
+                                             peers=v["peers"], macros=[{"id": m["id"], "name": m["name"]} for m in macros.d["macros"]],
+                                             names={n: x.get("name", "") for n, x in desk.state()["strips"]["ch"].items()}))
                 return
             if path == "/api/mics":
                 s = self.level("Mixer", "Own monitor mix")
@@ -2616,7 +2617,7 @@ def serve(cfg):
             m = next((x for x in macros.d["macros"] if x["id"] == arg), None)
             return "Macro: " + (m["name"] if m else "(deleted)")
         return {"pp_next": "ProPresenter: Next slide", "pp_prev": "ProPresenter: Previous slide", "lights_go": "Lights: Go",
-                "play": "Playback: Play", "stop": "Playback: Stop", "marker": "Add a log marker"}.get(do, do)
+                "play": "Playback: Play", "stop": "Playback: Stop", "marker": "Add a log marker", "ab": "A/B switch"}.get(do, do)
     buttons = midi_buttons_mod.Buttons(cfg["data_dir"], log, describe=_describe, actions={
         "macro": lambda arg, who: macros.run(arg, who),
         "pp_next": lambda arg, who: pp.trigger("next", who=who), "pp_prev": lambda arg, who: pp.trigger("previous", who=who),
@@ -2625,6 +2626,15 @@ def serve(cfg):
         "stop": lambda arg, who: macros.step({"dev": "playback", "do": "stop", "label": "Stop"})[1],
         "marker": _mark})
     midi.buttons = buttons
+    buttons.send = lambda m: midi.send(m)  # light an A/B switch's button on the controller
+
+    def _follow():
+        while not scanner.stop.wait(1.0):
+            try:
+                buttons.follow(desk.state().get("strips", {}).get("ch", {}))
+            except Exception:  # noqa: BLE001
+                pass
+    threading.Thread(target=_follow, daemon=True).start()
     network = netwin_mod.Network(log)
     for h in [h for h in log.handlers if isinstance(h, daily_mod.ActivityLog)]:
         log.removeHandler(h)  # one per server (the tests start several)

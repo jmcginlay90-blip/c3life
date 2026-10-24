@@ -37,6 +37,24 @@ class Buttons(unittest.TestCase):
         self.assertEqual(self.done, [("next", "MIDI button"), ("macro", "m1")])
         self.assertIsNone(self.b.handle(0x90, [50, 100]))  # not a button: left for Lights
 
+    def test_ab_switch(self):
+        sent = []
+        self.b.send = sent.append
+        self.assertIsNone(self.b.save({"on": True, "maps": [{"msg": "cc:65", "label": "Footswitch 2", "do": "ab", "a": "mA", "b": "mB", "light": True, "follow": 15}]}, "A"))
+        self.assertIn("Footswitch 2: B", self.b.handle(0xB0, [65, 127])[1])
+        self.b.handle(0xB0, [65, 0])  # the release: nothing for a switch that flips
+        self.assertIn(": A", self.b.handle(0xB0, [65, 127])[1])
+        self.assertEqual(self.done, [("macro", "mB"), ("macro", "mA")])
+        self.assertEqual(sent, [[0xB0, 65, 127], [0xB0, 65, 0]])  # the button lit on B
+        self.b.handle(0xB0, [65, 0]); self.b.handle(0xB0, [65, 127])  # B again
+        self.b.follow({"15": {"mute": 1}})  # muted on the Wing: back to A, nothing run
+        self.assertEqual((self.b.view()["sides"]["cc:65"], len(self.done)), ("A", 3))
+        # held: B only while it's down
+        self.b.save({"on": True, "maps": [{"msg": "note:40", "do": "ab", "a": "mA", "b": "mB", "hold": True}]}, "A")
+        self.b.handle(0x90, [40, 100]); self.b.handle(0x80, [40, 0])
+        self.assertEqual(self.done[-2:], [("macro", "mB"), ("macro", "mA")])
+        self.assertIn("needs a macro", self.b.save({"on": True, "maps": [{"msg": "note:41", "do": "ab"}]}, "A"))
+
     def test_bad_maps(self):
         self.assertIn("two buttons", self.b.save({"on": True, "maps": [{"msg": "note:1", "do": "pp_next"}, {"msg": "note:1", "do": "marker"}]}, "A"))
         self.assertIn("which macro", self.b.save({"on": True, "maps": [{"msg": "note:1", "do": "macro"}]}, "A"))

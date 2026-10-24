@@ -192,6 +192,23 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
         <div style="font-size:12px;color:#A3ACB8;line-height:1.45">{{onHint}}</div>
         <sc-if value="{{hasMsg}}" hint-placeholder-val="{{ false }}"><div role="status" style="font-size:13px;color:{{msgColor}}">{{msg}}</div></sc-if>
       </section>
+      <sc-for list="{{abs}}" as="x" hint-placeholder-count="1">
+        <section class="card" style="display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+            <div><div style="font-size:15px;font-weight:600">A/B switch · {{x.msg}}</div><div style="font-size:12px;color:#A3ACB8">Each press flips A ↔ B and runs that side’s macro</div></div>
+            <span class="mono" style="font-size:20px;font-weight:600;border-radius:8px;padding:2px 12px;background:{{x.sideBg}};color:#0D1015">{{x.side}}</span>
+          </div>
+          <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#A3ACB8">A runs
+            <select value="{{x.a}}" onChange="{{x.pickA}}" disabled="{{cantEdit}}"><sc-for list="{{macroOpts}}" as="o" hint-placeholder-count="4"><option value="{{o.id}}">{{o.name}}</option></sc-for></select></label>
+          <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#A3ACB8">B runs
+            <select value="{{x.b}}" onChange="{{x.pickB}}" disabled="{{cantEdit}}"><sc-for list="{{macroOpts}}" as="o" hint-placeholder-count="4"><option value="{{o.id}}">{{o.name}}</option></sc-for></select></label>
+          <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#A3ACB8">Follow the desk: if this channel is muted on the Wing, show A again
+            <select value="{{x.follow}}" onChange="{{x.pickFollow}}" disabled="{{cantEdit}}"><sc-for list="{{chOpts}}" as="o" hint-placeholder-count="4"><option value="{{o.id}}">{{o.name}}</option></sc-for></select></label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px"><input type="checkbox" checked="{{x.light}}" onChange="{{x.toggleLight}}" disabled="{{cantEdit}}"> Light the button on the controller (on = B)</label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px"><input type="checkbox" checked="{{x.hold}}" onChange="{{x.toggleHold}}" disabled="{{cantEdit}}"> Momentary: B only while the button is held</label>
+          <div style="font-size:12px;color:#A3ACB8">Undo a side with Macros › Undo. Make the macros on the Macros screen (for example: mute Ch 15 and the band stage layout).</div>
+        </section>
+      </sc-for>
     </sc-if>
     <sc-if value="{{demoOnly}}" hint-placeholder-val="{{ true }}">
     <section class="card" style="display:flex;flex-direction:column;gap:10px;border-color:{{abBorder}}">
@@ -362,13 +379,25 @@ class Component extends DCLogic {
   }
   srvVals() {
     const s = this.state, v = s.srv, st = v.settings;
-    const fixed = [['pp_next', 'ProPresenter: Next slide'], ['pp_prev', 'ProPresenter: Previous slide'], ['lights_go', 'Lights: Go'], ['play', 'Playback: Play'], ['stop', 'Playback: Stop'], ['marker', 'Add a log marker']];
+    const fixed = [['ab', 'A/B switch (two macros)'], ['pp_next', 'ProPresenter: Next slide'], ['pp_prev', 'ProPresenter: Previous slide'], ['lights_go', 'Lights: Go'], ['play', 'Playback: Play'], ['stop', 'Playback: Stop'], ['marker', 'Add a log marker']];
     const acts = (v.macros || []).map((m) => ['macro', 'Macro: ' + m.name, m.id]).concat(fixed.map(([d, n]) => [d, n, '']));
     const nameOf = (m) => { const a = acts.find((x) => x[0] === m.do && (m.do !== 'macro' || x[2] === m.arg)); return a ? a[1] : 'Macro: (deleted)'; };
     const h = (v.heard || [])[0];
     const no = !v.can ? () => this.setState({ msg: 'Your role can’t change MIDI buttons (Settings control, Access levels).', msgColor: '#FF7A45' }) : null;
     const msgName = (m) => m.replace('note:', 'Note ').replace('cc:', 'CC ');
+    const setAb = (i, patch, done) => no ? no() : this.save(Object.assign({}, st, { maps: st.maps.map((x, j) => (j === i ? Object.assign({}, x, patch) : x)) }), done);
+    const names = v.names || {};
     return {
+      macroOpts: [{ id: '', name: 'Nothing' }].concat((v.macros || []).map((m) => ({ id: m.id, name: m.name }))),
+      chOpts: [{ id: '0', name: 'Off' }].concat(Array.from({ length: 40 }, (_, k) => ({ id: String(k + 1), name: 'Ch ' + String(k + 1).padStart(2, '0') + (names[k + 1] ? ' · ' + names[k + 1] : '') }))),
+      abs: st.maps.map((m, i) => ({ m, i })).filter((x) => x.m.do === 'ab').map(({ m, i }) => {
+        const side = (v.sides || {})[m.msg] || 'A';
+        return { msg: msgName(m.msg), side, sideBg: side === 'A' ? '#F5C518' : '#6CB4F5', a: m.a || '', b: m.b || '', follow: String(m.follow || 0), light: !!m.light, hold: !!m.hold,
+          pickA: (e) => setAb(i, { a: e.target.value }, 'A runs ' + e.target.selectedOptions[0].text + '.'),
+          pickB: (e) => setAb(i, { b: e.target.value }, 'B runs ' + e.target.selectedOptions[0].text + '.'),
+          pickFollow: (e) => setAb(i, { follow: Number(e.target.value) }, 'Saved.'),
+          toggleLight: () => setAb(i, { light: !m.light }, 'Saved.'), toggleHold: () => setAb(i, { hold: !m.hold }, 'Saved.') };
+      }),
       live: true, demoOnly: false, cantEdit: !v.can,
       btnOn: st.on, toggleOn: () => no ? no() : this.save(Object.assign({}, st, { on: !st.on }), st.on ? 'MIDI buttons are off: presses are only shown.' : 'MIDI buttons are on.'),
       onHint: st.on ? 'A press does its action straight away (pressing the button is choosing to). Turn this off to only see what a press would do.' : 'Off: each press is shown under Last message with what it would have done. Nothing is sent.',
@@ -381,7 +410,11 @@ class Component extends DCLogic {
       maps: st.maps.map((m, i) => ({
         msg: msgName(m.msg), label: m.label || '', action: nameOf(m),
         to: 'App', toBg: '#F5C518', ring: '#333B47',
-        pick: (e) => { if (no) return no(); const a = acts.find((x) => x[1] === e.target.value); if (!a) return; this.save(Object.assign({}, st, { maps: st.maps.map((x, j) => (j === i ? Object.assign({}, x, { do: a[0], arg: a[2] }) : x)) }), msgName(m.msg) + ' → ' + a[1]); },
+        pick: (e) => { if (no) return no(); const a = acts.find((x) => x[1] === e.target.value); if (!a) return;
+          const first = (v.macros || [])[0];
+          if (a[0] === 'ab' && !first) return this.setState({ msg: 'Make a macro first (Macros): each side of an A/B switch runs one.', msgColor: '#FF7A45' });
+          const extra = a[0] === 'ab' ? { a: m.a || first.id, b: m.b || '', hold: !!m.hold, light: !!m.light, follow: m.follow || 0 } : {};
+          this.save(Object.assign({}, st, { maps: st.maps.map((x, j) => (j === i ? Object.assign({}, x, { do: a[0], arg: a[2] }, extra) : x)) }), msgName(m.msg) + ' → ' + a[1]); },
         remove: () => no ? no() : this.save(Object.assign({}, st, { maps: st.maps.filter((_, j) => j !== i) }), msgName(m.msg) + ' removed.')
       }))
     };
@@ -390,6 +423,7 @@ class Component extends DCLogic {
     const s = this.state;
     if (s.srv) return this.srvVals();
     return {
+      abs: [], macroOpts: [], chOpts: [],
       live: false, demoOnly: true, hasMsg: false, msg: '', msgColor: '#A3ACB8', btnOn: false, toggleOn: () => {}, onHint: '', cantEdit: true,
       ctrls: [
         { name: 'USB MIDI controller', how: 'Plugged into MacBook Pro · USB' },
