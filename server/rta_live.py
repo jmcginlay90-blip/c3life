@@ -11,7 +11,8 @@ Levels: the mic's are dB SPL once it's calibrated (Calibrate: a 94 dB calibrator
 then they're an estimate (0 dBFS = 120 dB SPL). The desk reference is digital, so it's moved up or down to sit on the
 room's curve (matched between 250 Hz and 4 kHz); its shape is what matters.
 
-Plain Python (no numpy needed): a 4096-point FFT five times a second, two channels at a time.
+A 4096-point FFT five times a second, two channels at a time: numpy's when it's installed (the installer adds it),
+else plain Python (slower, and it can hold up the audio engine for a moment on a busy server).
 
 data/rta_live.json: {"offset": 120.0, "calibrated": "2026-10-21 10:30", "how": "94 dB calibrator"}
 """
@@ -28,6 +29,11 @@ import time
 
 import ringout
 import rta_inputs as rta_inputs_mod
+
+try:  # much quicker (and it leaves the audio engine alone): installed with sounddevice; plain Python works without it
+    import numpy as np
+except ImportError:
+    np = None
 
 RATE = 48000
 N = 4096
@@ -88,6 +94,19 @@ class Spectrum:
     def powers(self, x, y=None):
         """Per-bin power for one or two channels (lists of n floats): ([...], [...] or None)."""
         n, w = self.n, self.win
+        if np is not None:
+            if not hasattr(self, "npwin"):
+                self.npwin = np.array(w)
+            out = []
+            for v in (x, y):
+                if v is None:
+                    out.append(None)
+                    continue
+                f = np.fft.rfft(np.asarray(v[:n], dtype=float) * self.npwin)[:n // 2]
+                p = (f.real * f.real + f.imag * f.imag) * self.norm
+                p[0] = 0.0
+                out.append(p.tolist())
+            return out[0], out[1]
         z = self.fft([complex(x[i] * w[i], (y[i] * w[i]) if y is not None else 0.0) for i in range(n)])
         px, py = [0.0] * (n // 2), ([0.0] * (n // 2) if y is not None else None)
         for k in range(1, n // 2):
