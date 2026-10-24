@@ -357,6 +357,19 @@ class Api(unittest.TestCase):
         except urllib.error.HTTPError as e:
             return e.code, json.loads(e.read() or b"{}")
 
+    def test_wing_patch_through_the_server(self):
+        self.assertTrue(wait(lambda: self.httpd.wing.status()["status"] == "connected"))
+        self.assertTrue(wait(lambda: self.httpd.wing.state()["strips"]["ch"]["3"].get("src_grp") == "LCL"))
+        self.call("/api/wing/patch", who="FOH sound")
+        self.assertTrue(wait(lambda: "CRD/1" in self.call("/api/wing/patch", who="FOH sound")[1]["outs"]))
+        code, j = self.call("/api/wing/patch", who="FOH sound")
+        self.assertEqual((j["outs"]["CRD/1"], j["used"].get("LCL/3"), j["count"]["CRD"]), ({"grp": "LCL", "in": 3}, "Lead Vox", 64))
+        self.assertIn("Watch only", self.call("/api/wing/patch", "POST", {"out": "CRD/1", "grp": "A", "idx": 5}, who="FOH sound")[1]["error"])
+        self.assertEqual(self.call("/api/wing/patch", "POST", {"out": "CRD/1", "grp": "A", "idx": 5}, who="ProPresenter")[0], 403)
+        self.httpd.wing.configure(mode="control")
+        self.assertEqual(self.call("/api/wing/patch", "POST", {"out": "CRD/1", "grp": "A", "idx": 5}, who="FOH sound")[0], 200)
+        self.assertTrue(wait(lambda: self.fw.vals.get("/io/out/CRD/1/grp") == "A" and self.fw.vals.get("/io/out/CRD/1/in") == 5))
+
     def test_record_and_play_back_through_the_server(self):
         self.assertTrue(wait(lambda: self.call("/api/recording", who="FOH sound")[1].get("drive")))
         code, j = self.call("/api/recording", who="ProPresenter")

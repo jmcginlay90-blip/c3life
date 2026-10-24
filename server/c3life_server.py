@@ -60,6 +60,7 @@ API (JSON):
   POST /api/macros/run {"id"} | /stop | /undo   (Macros control) nothing runs unless someone presses Run
   POST /api/power {"do": "app|restart|off|abort|cycle"}   (Settings or Mixer control; cycle: Admin) restart C3 Life,
                                            restart or shut down this computer (15 s, abort stops it), smart-plug reset
+  GET  /api/midi                          (Show, Lights or Mixer view) C3 Life's network MIDI session: who's connected, what came in
   GET  /api/chat?since=<id> | POST /api/chat {"text", "ch", "stage"}   (Chat view / control, and chat on for that
                                            person) team chat; the stage display channel also goes to ProPresenter
   GET  /api/users | PUT /api/users {"password", "users", "removed"}   (Admin; saving needs the password again)
@@ -90,8 +91,14 @@ API (JSON):
                      {"do": "balance", "mix": "a"|"b", "db"}  (Foyer setup control: each mix's send level to the matrix)
                                            which mix the foyer hears, its volume (never above the maximum) and mute,
                                            on the Wing (Control); GET /api/foyer has "live", what the desk is doing now
+  GET  /api/check                          (the sound, Show, Lights or Settings teams) Help's system check, from what the server
+                                           knows now: the server, DVS, each device, Dante, the scan, the drive, storage, internet
+  POST /api/support {"note"}                (the same) a support report: the check, the last 200 log lines and the settings
+                                           (no passwords, PINs or keys), saved and emailed like Report an issue
   GET  /api/devices                        (signed in) what's set up and whether it's answering, for the warning on
                                            every screen: only what this role can see (Wing and Tio: Mixer or Own monitor mix)
+  PUT  /api/devices {"left","events","events_mode"}  (Settings control) leave devices out (no warnings, macros skip
+                                           their steps), mark some events only, and turn events mode on or off
   POST /api/helpers/find                   (Music or Settings control) scan the network now for C3 Life helpers
   POST /api/helpers/key {"id","key"}       (Admin) a helper's key, checked with the helper; kept here, never sent back
   POST /api/helpers/forget {"id"}          (Admin) take a helper off the list
@@ -115,6 +122,8 @@ API (JSON):
   GET  /api/tio                            (Mixer view) the Tio1608-D's 16 inputs: gain, phantom power, low cut
   POST /api/tio/set {"n","field","value"}  (Mixer control) gain, vph, hpf or hpff
   PUT  /api/tio/settings {"ip"?,"mode"?,"card_from"?}  (Admin)
+  GET  /api/wing/patch                     (Wing patch view) the Wing's card and USB outputs and what feeds each one
+  POST /api/wing/patch {"out","grp","idx"}  (Wing patch control, Wing in Control) patch one output; the screen asks first
   GET  /api/rta/inputs                     (RTA view) where the room mic and the desk reference come from, how they reach
                                            this server (DVS, AES67 or USB channel), and the route Dante really has
   PUT  /api/rta/inputs {"mic","ref"}        (RTA settings control) choose them; nothing changes on the desk or on Dante
@@ -180,6 +189,7 @@ import cues as cues_mod
 import reports as reports_mod
 import pco as pco_mod
 import desk as desk_mod
+import wing as wing_mod
 import tio as tio_mod
 import monitors as monitors_mod
 import scan as scan_mod
@@ -198,6 +208,7 @@ import audio_engine as audio_engine_mod
 import recorder as recorder_mod
 import propresenter as propresenter_mod
 import power as power_mod
+import syscheck as syscheck_mod
 import chat as chat_mod
 
 VERSION = "0.3.0"
@@ -651,6 +662,10 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 return None
             return s
 
+        def check_parts(self):
+            return {"version": VERSION, "start": START, "cfg": cfg, "health": health, "engine": recorder.engine if recorder else None,
+                    "recorder": recorder, "scanner": scanner, "dante": dante, "listen": listen}
+
         def admin(self):
             s, _ = self.session()
             if s and s["role"] != "Admin":
@@ -910,6 +925,21 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                                      "aux_names": {n: v.get("name", "") for n, v in st["strips"]["aux"].items()}, "eq": desk.bus_eq(b),
                                      "can_change": desk.settings["mode"] == "control" and not monitors.may_change(s["name"], mixer, b) if b in d["buses"] else mixer >= 2 and desk.settings["mode"] == "control"})
                 return
+            if path == "/api/check":
+                if self.level("Mixer", "Settings", "Show", "Lights", "RTA"):
+                    self.send_json(200, {"ok": True, "results": syscheck_mod.check(self.check_parts())})
+                return
+            if path == "/api/wing/patch":
+                if self.level("Wing patch"):
+                    outs = desk.outputs() if hasattr(desk, "outputs") else {}
+                    st = desk.state()
+                    used = {}  # "A/3" -> the channel name using that input, so a source reads "A 3 · Lead Vox"
+                    for n, v in st["strips"]["ch"].items():
+                        if v.get("src_grp") and v.get("src_in"):
+                            used.setdefault("%s/%s" % (v["src_grp"], v["src_in"]), v.get("name") or "Ch %s" % n)
+                    self.send_json(200, {"ok": True, "status": st["status"], "mode": st.get("mode", ""), "outs": outs, "used": used,
+                                         "groups": wing_mod.OUT_SRC, "count": wing_mod.OUTS})
+                return
             if path == "/api/rta/inputs":
                 if self.level("RTA"):
                     desk.outputs()  # start reading the Wing's card outputs, for "Set it up for me"
@@ -1075,13 +1105,19 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 s, _ = self.session()
                 if s:
                     see = lambda area: access.level(s["role"], area) >= 1 or (area == "Mixer" and access.level(s["role"], "Own monitor mix") >= 1)
-                    self.send_json(200, {"ok": True, "devices": [d for d in health.devices() if see(d["area"])]})
+                    self.send_json(200, {"ok": True, "devices": [d for d in health.devices() if see(d["area"])], "events_mode": health.prefs["events_mode"], "left": health.prefs["left"],
+                                         "can": access.level(s["role"], "Settings") >= 2})
                 return
             if path == "/api/music":
                 s = self.level("Music")
                 if s:
                     self.send_json(200, dict(music.view(), ok=True, can=access.level(s["role"], "Music") >= 2, admin=s["role"] == "Admin",
                                              scanning=scanner.state()["running"]))
+                return
+            if path == "/api/midi":
+                if self.level("Show", "Lights", "Mixer"):
+                    v = midi.view()
+                    self.send_json(200, {"ok": True, "session": v["session"], "port": v["port"], "error": v["error"], "peers": v["peers"], "heard": v["heard"][:20]})
                 return
             if path == "/api/lights/midi":
                 if self.level("Lights"):
@@ -1521,6 +1557,16 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                     out["error"] = err
                 self.send_json(200 if not err else 409, out)
                 return
+            if path == "/api/wing/patch":
+                s = self.level("Wing patch", need=2)
+                if not s:
+                    return
+                body = self.read_json() or {}
+                err = desk.set_out(body.get("out"), body.get("grp"), body.get("idx"))
+                if not err:
+                    log.info("wing: %s patched %s to %s %s", s["name"], body.get("out"), body.get("grp"), body.get("idx"))
+                self.send_json(409 if err else 200, {"ok": not err, "error": err or ""})
+                return
             if path in ("/api/rta/patch", "/api/rta/unpatch"):
                 body = self.read_json() or {}
                 which = body.get("which")
@@ -1697,6 +1743,20 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                     return
                 self.send_json(200, dict(plan.timer_list(), ok=True, signed_in=True))
                 return
+            if path == "/api/support":
+                s = self.level("Mixer", "Settings", "Show", "Lights", "RTA")
+                if not s:
+                    return
+                body = self.read_json() or {}
+                note = body.get("note") or ""
+                if not isinstance(note, str) or len(note) > 2000:
+                    self.send_json(400, {"ok": False, "error": "Bad request"})
+                    return
+                text = syscheck_mod.report_text(s["name"], note.strip(), syscheck_mod.check(self.check_parts()), SERVICE_LOG.since(0)[-200:], cfg)
+                r = reports.add({"subject": "Support report from %s" % s["name"], "text": text, "who": s["name"], "page": "Help"}, s["name"])
+                log.info("support: %s sent a support report (%s)", s["name"], r["id"])
+                self.send_json(200, {"ok": True, "report": reports.view(r)})
+                return
             if path == "/api/reports":
                 # anyone on the booth network can report an issue, signed in or not
                 body = self.read_json(limit=16 * 1024 * 1024)
@@ -1839,6 +1899,17 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
 
         def do_PUT(self):
             if not self.client_ok():
+                return
+            if self.route() == "/api/devices":
+                s = self.level("Settings", need=2)
+                if not s:
+                    return
+                body = self.read_json() or {}
+                err = health.set_prefs(body.get("left"), body.get("events"), body.get("events_mode"))
+                if not err:
+                    log.info("devices: %s: left out %s, events mode %s", s["name"], ", ".join(sorted(health.left_out())) or "nothing",
+                             "on" if health.prefs["events_mode"] else "off")
+                self.send_json(400 if err else 200, {"ok": not err, "error": err or ""})
                 return
             if self.route() in ("/api/pco/service_type", "/api/pco/length"):
                 body = self.read_json() or {}
@@ -2307,6 +2378,7 @@ def serve(cfg):
     midi = midi_mod.Midi(cfg["data_dir"], cfg, log, lights, allowed=lambda ip: any(ipaddress.ip_address(ip) in n for n in cfg["_nets"]))
     midi.start()
     macros = macros_mod.Macros(cfg["data_dir"], cfg, log, desk=desk, music=music, foyer=foyer, lights=lights, midi=midi)
+    macros.left_out = health.left_out
     recorder = recorder_mod.Recorder(cfg["data_dir"], cfg, log, engine, desk=desk, dante=dante)
     pp = propresenter_mod.ProPresenter(cfg, log)
     chat = chat_mod.Chat(cfg["data_dir"], log, pp)

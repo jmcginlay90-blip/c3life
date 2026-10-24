@@ -194,8 +194,9 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
       <sc-if value="{{showTech}}" hint-placeholder-val="{{ true }}">
       <section class="card" style="display:flex;flex-direction:column;gap:10px">
         <div style="font-size:16px;font-weight:600">System check</div>
-        <div style="font-size:13px;color:#A3ACB8">Tests every device, the network, audio, the foyer and storage in about 10 seconds.</div>
+        <div style="font-size:13px;color:#A3ACB8">Asks the C3 Life server about every device, the sound, Dante, the recording drive, storage and the internet. It changes nothing.</div>
         <button class="btn pri" onClick="{{runCheck}}" disabled="{{checking}}">{{checkLabel}}</button>
+        <sc-if value="{{hasCheckErr}}" hint-placeholder-val="{{ false }}"><div role="alert" style="font-size:13px;color:#FF7A45">{{checkErr}}</div></sc-if>
         <sc-if value="{{hasResults}}" hint-placeholder-val="{{ false }}">
           <div style="display:flex;flex-direction:column">
             <sc-for list="{{results}}" as="r" hint-placeholder-count="8">
@@ -243,16 +244,17 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
           <li>Send a support report to the Admin. It includes the log and settings, but no PINs.</li>
           <li>An Admin or FOH can restart the app. It takes about 10 seconds and doesn't touch the desk.</li>
         </ol>
-        <button class="btn" onClick="{{askReport}}">Send support report…</button>
+        <button class="btn" onClick="{{askReport}}">{{reportLabel}}</button>
         <sc-if value="{{canRestart}}" hint-placeholder-val="{{ true }}"><a class="btn" href="Shutdown.dc.html" style="display:flex;align-items:center;justify-content:center;text-decoration:none;box-sizing:border-box">Restart the app ›</a></sc-if>
         <sc-if value="{{reportAsk}}" hint-placeholder-val="{{ false }}">
           <div class="card" role="dialog" aria-label="Send a support report?" style="border-color:#F5C518;display:flex;flex-direction:column;gap:8px">
             <div style="font-size:15px;font-weight:600">Send a support report?</div>
-            <div style="font-size:13px;color:#C9CFD7">It saves today’s log and settings (never PINs or passwords) on the C3 Life server, and emails them to the Admin when there’s internet.</div>
+            <div style="font-size:13px;color:#C9CFD7">It saves the system check, the last 200 lines of the log and the settings (never PINs, passwords or keys) on the C3 Life server, and sends them like Report an issue (email or monday.com) when there’s internet.</div>
             <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px"><button class="btn" onClick="{{reportNo}}">Cancel</button><button class="btn pri" onClick="{{reportYes}}">Yes, send it</button></div>
           </div>
         </sc-if>
         <sc-if value="{{reportDone}}" hint-placeholder-val="{{ false }}"><div role="status" style="font-size:14px;color:#4FD18B">✓ Support report saved on the C3 Life server.</div></sc-if>
+        <sc-if value="{{hasReportErr}}" hint-placeholder-val="{{ false }}"><div role="alert" style="font-size:14px;color:#FF7A45">{{reportErr}}</div></sc-if>
       </section>
     </sc-if>
 
@@ -1219,8 +1221,27 @@ class Component extends DCLogic {
     return ip;
   }
   componentWillUnmount() { clearTimeout(this.t); clearInterval(this.poll); }
+  tok() { try { const x = JSON.parse(localStorage.getItem('booth.session') || 'null'); return x ? x.token : ''; } catch (e) { return ''; } }
   runCheck() {
-    this.setState({ checking: true, step: 0 });
+    this.setState({ checking: true, step: 0, checkErr: '' });
+    fetch('/api/check', { headers: { Authorization: 'Bearer ' + this.tok() } })
+      .then((r) => (r.status === 404 ? null : r.json()))
+      .then((j) => {
+        if (!j) { this.demoCheck(); return; }  // no C3 Life server: the demo
+        if (!j.ok) { this.setState({ checking: false, step: -1, checkErr: j.error || 'Sign in again to run the check.' }); return; }
+        const live = j.results.map((r) => [r.name, r.state, r.ok === false ? (r.fix || 'Not answering.') : '', r.ok]);
+        this.setState({ live: live, checking: false, step: live.length });
+      })
+      .catch(() => this.setState({ checking: false, step: -1, checkErr: 'The C3 Life server didn’t answer. Is it on? (Check-C3LifeServer.ps1 on the server checks it from there.)' }));
+  }
+  sendReport() {
+    this.setState({ reportAsk: false, reportBusy: true, reportErr: '' });
+    fetch('/api/support', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + this.tok() }, body: JSON.stringify({ note: '' }) })
+      .then((r) => (r.status === 404 ? null : r.json()))
+      .then((j) => this.setState(!j ? { reportBusy: false, reportDone: true } : (j.ok ? { reportBusy: false, reportDone: true } : { reportBusy: false, reportErr: j.error || 'The report wasn’t saved.' })))
+      .catch(() => this.setState({ reportBusy: false, reportErr: 'The C3 Life server didn’t answer, so the report wasn’t saved.' }));
+  }
+  demoCheck() {
     const next = (k) => {
       if (k >= this.checks().length) { this.setState({ checking: false }); return; }
       this.setState({ step: k + 1 });
@@ -1229,6 +1250,7 @@ class Component extends DCLogic {
     this.t = setTimeout(() => next(0), 450);
   }
   checks() {
+    if (this.state.live) return this.state.live;
     return [
       ['C3 Life app on the C3 Life server', 'OK', ''],
       ['Dante Virtual Soundcard', 'Running · licence OK · 3 channels in', ''],
@@ -1320,17 +1342,20 @@ class Component extends DCLogic {
       showTech: !volunteer, canRestart: role === 'Admin' || role === 'FOH sound',
       common: [['No sound in my ears', 'I can\u2019t hear anything in my ears'], ['Listen and subtitles', 'Listen plays nothing'], ['Hearing aids', 'Listen with hearing aids'], ['Bible verse on screen', 'Put a Bible passage into ProPresenter (Bible Scripture)'], ['Report a problem', 'Report an issue'], ['Forgot my PIN', 'I forgot my PIN']].map(([n, t]) => ({ name: n, open: () => openTopic(t) })),
       askReport: () => this.setState({ reportAsk: true, reportDone: false }), reportAsk: !!s.reportAsk, reportDone: !!s.reportDone,
-      reportNo: () => this.setState({ reportAsk: false }), reportYes: () => this.setState({ reportAsk: false, reportDone: true }),
+      reportNo: () => this.setState({ reportAsk: false }), reportYes: () => this.sendReport(),
       views: (volunteer ? ['Troubleshoot', 'How it works'] : ['Troubleshoot', 'How it works', 'IP & ports']).map((n, i) => ({ name: n, on: s.view === i, cls: s.view === i ? 'on' : '', pick: () => this.setState({ view: i }) })),
       isFix: s.view === 0, isHow: s.view === 1,
       runCheck: () => this.runCheck(),
       checking: s.checking,
       checkLabel: s.checking ? 'Checking…' : (s.step > 0 ? 'Run the check again' : 'Run system check'),
       hasResults: s.step > 0,
-      results: checks.slice(0, Math.max(0, s.step)).map(([name, state, fix]) => ({
+      results: checks.slice(0, Math.max(0, s.step)).map(([name, state, fix, ok]) => ({
         name, state, fix, hasFix: !!fix,
-        dot: fix ? '#FF7A45' : (state === 'Off' ? '#A3ACB8' : '#6CB4F5')
+        dot: fix ? '#FF7A45' : ((state === 'Off' || ok === null) ? '#A3ACB8' : '#6CB4F5')
       })),
+      hasCheckErr: !!s.checkErr, checkErr: s.checkErr || '',
+      hasReportErr: !!s.reportErr, reportErr: s.reportErr || '',
+      reportLabel: s.reportBusy ? 'Sending…' : 'Send support report…',
       query: s.query,
       setQuery: (e) => this.setState({ query: e.target.value, open: -1 }),
       noMatch: list.length === 0,

@@ -103,6 +103,29 @@ class Lightkey(unittest.TestCase):
         self.assertEqual(h.devices(), [])
 
 
+class LeftOut(unittest.TestCase):
+    def test_left_out_and_events_mode(self):
+        tmp = tempfile.mkdtemp()
+        try:
+            clock = {"t": 1000.0}
+            h = hm.Health({"data_dir": tmp}, Dev("no answer"), None, None, now=lambda: clock["t"])
+            h.devices()
+            clock["t"] += 60
+            self.assertTrue(h.devices()[0]["warn"])
+            self.assertIsNone(h.set_prefs(left=["desk"]))
+            d = h.devices()[0]
+            self.assertEqual((d["left"], d["warn"]), (True, False))  # left out: no warning
+            self.assertIsNone(h.set_prefs(left=[], events=["desk"]))
+            self.assertTrue(h.devices()[0]["left"])  # events only, and events mode is off
+            self.assertIsNone(h.set_prefs(events_mode=True))
+            self.assertEqual(h.left_out(), set())
+            self.assertEqual(h.set_prefs(left="desk"), "Bad request")
+            h2 = hm.Health({"data_dir": tmp}, Dev(), None, None)  # kept
+            self.assertEqual((h2.prefs["events"], h2.prefs["events_mode"]), (["desk"], True))
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+
 class Api(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp()
