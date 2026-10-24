@@ -7,7 +7,7 @@
                    errors in a list at the top, then warnings, then everything
 
 Logging the RTA keeps the room mic's ffmpeg running all day ("always", from when C3 Life starts) or only between the
-times set. Both reports are sent when someone shuts the booth down (Shutdown › Shut down the C3 Life server), or with
+times set. Both reports are sent when someone shuts the booth down (Shutdown › Shut down), or with
 Send now; a day that wasn't sent goes the next morning by itself, as an email (that only sends, it changes nothing).
 With no internet they wait on the server like any report. Kept 60 days.
 """

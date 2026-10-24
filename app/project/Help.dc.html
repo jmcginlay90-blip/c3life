@@ -653,6 +653,16 @@ class Component extends DCLogic {
         'Signal says No meters? The Wing isn\u2019t sending meters: check the Wing is connected on Mixer.',
         'Tap Test: every screen should go green for 5 seconds. If one phone doesn\u2019t, on that phone pick Green screen and box (it may be set to Off).',
         'No words in the log? Send the MD mic to a Dante Virtual Soundcard channel, add it as a Listen source with subtitles on, and pick it under The words come from.'] },
+      { q: 'The daily reports didn\u2019t arrive', c: '#6CB4F5', href: 'Connect.dc.html', go: 'Internet & reports', steps: [
+        'Open Internet & reports. Days logged says which days were sent; Outbox says whether each email has gone or is waiting for the internet.',
+        'They go when the booth is shut down from Shutdown, or with Send today\u2019s reports now. A day that wasn\u2019t shut down goes the next morning.',
+        'Check Reports go to is the right address. Waiting means no internet: they send by themselves once it\u2019s back.',
+        'No RTA report? The RTA log needs the room mic: check RTA \u203a Where the RTA listens, and that the RTA log is on.'] },
+      { q: 'Use the Wing\u2019s talkback button for MD talk', c: '#22A05A', href: 'Talkback.dc.html', go: 'MD talk', steps: [
+        'Once, at the booth: on a laptop on the booth network, run hwcheck.py --find-talkback (add --wing and the Wing\u2019s address if it isn\u2019t found).',
+        'When it asks, press and hold TB on the Wing for 2 seconds, let go, and press it again. It only listens; nothing on the desk changes.',
+        'It prints what changed. Type the one that went on and off on MD talk \u203a Wing talkback is pressed, and tap Save.',
+        'Press TB again: every screen should go green.'] },
       { q: 'A wireless mic shows no battery', c: '#6CB4F5', href: 'Mics.dc.html', go: 'Mics', steps: [
         'Open Mixer \u203a Mics. Not switched on means the receiver can\u2019t see the transmitter: switch the mic on.',
         'A red line under Receivers means that receiver didn\u2019t answer: check it\u2019s on and plugged into the booth switch, and its address (on the receiver\u2019s Network menu).',
@@ -1263,7 +1273,7 @@ class Component extends DCLogic {
   sendReport() {
     this.setState({ reportAsk: false, reportBusy: true, reportErr: '' });
     fetch('/api/support', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + this.tok() }, body: JSON.stringify({ note: '' }) })
-      .then((r) => (r.status === 404 ? null : r.json()))
+      .then((r) => ([404, 405, 501].indexOf(r.status) > -1 ? null : r.json()))  // the design preview's plain web server: the demo
       .then((j) => this.setState(!j ? { reportBusy: false, reportDone: true } : (j.ok ? { reportBusy: false, reportDone: true } : { reportBusy: false, reportErr: j.error || 'The report wasn’t saved.' })))
       .catch(() => this.setState({ reportBusy: false, reportErr: 'The C3 Life server didn’t answer, so the report wasn’t saved.' }));
   }

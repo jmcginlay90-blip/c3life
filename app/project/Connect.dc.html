@@ -249,9 +249,42 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
     <div style="font-size:12px;color:#A3ACB8;padding:0 4px;line-height:1.45">Internet is only used for Planning Center sync and sending reports. The desk, Dante and show control never depend on it.</div>
 
     <sc-if value="{{live}}" hint-placeholder-val="{{ false }}">
-      <section class="card" style="display:flex;flex-direction:column;gap:6px">
-        <div style="font-size:15px;font-weight:600">RTA log and activity report emails</div>
-        <div style="font-size:13px;color:#C9CFD7;line-height:1.45">Not in this build yet. Today the service log is on Plan › Log (with Export), problems go by Report an issue, and Help › Send support report sends the log and the system check.</div>
+      <section class="card" style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div><div style="font-size:15px;font-weight:600">RTA log</div><div style="font-size:12px;color:#A3ACB8">{{dRtaSub}}</div></div>
+          <input type="checkbox" checked="{{dRtaOn}}" onChange="{{dToggleRta}}" disabled="{{dLocked}}" aria-label="RTA log on">
+        </div>
+        <div style="display:flex;gap:4px;background:#0F1318;border:1px solid #262C36;border-radius:10px;padding:3px" role="group" aria-label="When the RTA logs">
+          <sc-for list="{{dModes}}" as="m" hint-placeholder-count="2">
+            <button onClick="{{m.pick}}" aria-pressed="{{m.on}}" style="flex:1;min-height:42px;border-radius:8px;border:0;cursor:pointer;font:500 13px 'IBM Plex Sans',system-ui,sans-serif;background:{{m.bg}};color:{{m.color}}">{{m.name}}</button>
+          </sc-for>
+        </div>
+        <sc-if value="{{dTimes}}" hint-placeholder-val="{{ false }}">
+          <div style="display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:8px">
+            <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#A3ACB8">Start<input type="time" value="{{dStart}}" onChange="{{dSetStart}}" disabled="{{dLocked}}"></label>
+            <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#A3ACB8">Finish<input type="time" value="{{dEnd}}" onChange="{{dSetEnd}}" disabled="{{dLocked}}"></label>
+          </div>
+        </sc-if>
+        <div style="display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:8px">
+          <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#A3ACB8">Service starts<input type="time" value="{{dSvcStart}}" onChange="{{dSetSvcStart}}" disabled="{{dLocked}}"></label>
+          <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#A3ACB8">Service ends<input type="time" value="{{dSvcEnd}}" onChange="{{dSetSvcEnd}}" disabled="{{dLocked}}"></label>
+        </div>
+        <label class="row" style="font-size:14px"><input type="checkbox" checked="{{dSpectrum}}" onChange="{{dToggleSpectrum}}" disabled="{{dLocked}}"> Spectrum snapshot every 5 min</label>
+        <div style="font-size:12px;color:#A3ACB8">The report gives the day’s LAeq, the loudest minute, time over 95 and 100 dB(A), the same for the service times, and every 15 minutes, with the readings attached (CSV).</div>
+      </section>
+      <section class="card" style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div><div style="font-size:15px;font-weight:600">Activity report</div><div style="font-size:12px;color:#A3ACB8">Everything C3 Life did, and who · errors listed first</div></div>
+          <input type="checkbox" checked="{{dActOn}}" onChange="{{dToggleAct}}" disabled="{{dLocked}}" aria-label="Activity report on">
+        </div>
+        <div style="font-size:13px;color:#C9CFD7;line-height:1.45">Both reports are emailed to the address below when you shut down the booth (Shutdown › Shut down), as two emails. A day that wasn’t shut down goes the next morning by itself. No PINs or passwords are in them.</div>
+        <button class="btn pri" onClick="{{dSendNow}}" disabled="{{dLocked}}">Send today’s reports now</button>
+        <sc-if value="{{dHasMsg}}" hint-placeholder-val="{{ false }}"><div role="status" style="font-size:13px;color:{{dMsgColor}}">{{dMsg}}</div></sc-if>
+        <div class="lbl" style="padding-top:4px">Days logged</div>
+        <sc-for list="{{dDays}}" as="d" hint-placeholder-count="3">
+          <div class="row"><div style="flex:1"><div style="font-size:14px">{{d.day}}</div><div style="font-size:12px;color:#A3ACB8">{{d.what}}</div></div>
+            <sc-if value="{{d.canSend}}" hint-placeholder-val="{{ false }}"><button class="btn" style="min-height:40px;font-size:13px" onClick="{{d.send}}" disabled="{{dLocked}}">Send</button></sc-if></div>
+        </sc-for>
       </section>
     </sc-if>
     <sc-if value="{{demoOnly}}" hint-placeholder-val="{{ true }}">
@@ -373,6 +406,7 @@ class Component extends DCLogic {
       if (!j) { clearInterval(this.srvT); return; }
       if (!j.ok) return;
       this.setState({ srv: j });
+      fetch('/api/daily', h).then((r) => r.json()).then((k) => k.ok && this.setState({ daily: k })).catch(() => {});
       if (j.admin) fetch('/api/reports', h).then((r) => r.json()).then((k) => k.ok && this.setState({ reps: k, mail: this.state.mail == null ? k.settings.to : this.state.mail })).catch(() => {});
     }).catch(() => {});
   }
@@ -512,10 +546,44 @@ class Component extends DCLogic {
         .then((r) => r.json()).then((j) => this.setState({ mailMsg: j.ok ? 'Saved.' : j.error, mailColor: j.ok ? '#6CB4F5' : '#FF8A80' })).catch(() => {}),
       hasMailMsg: !!s.mailMsg, mailMsg: s.mailMsg || '', mailColor: s.mailColor || '#A3ACB8',
       mailNote: v.admin ? 'Report an issue and support reports go here. With no internet they wait on the C3 Life server and send by themselves once it’s back.' : 'Only an Admin can change this.',
+      ...this.dailyVals(v),
       outbox: ((s.reps && s.reps.reports) || []).slice(0, 8).map((r) => ({ name: r.subject, detail: r.at + ' · ' + r.who + (r.email === 'sent' ? ' · emailed ' + r.email_at : (r.email_error ? ' · ' + r.email_error : ' · sends when online')),
         queued: r.email !== 'sent', sent: r.email === 'sent' }))
     } : null;
     return live ? Object.assign(this.demoVals(svcC, nets, outbox, s), live) : this.demoVals(svcC, nets, outbox, s);
+  }
+  dPut(b, done) {
+    fetch('/api/daily', { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + this.tok() }, body: JSON.stringify(b) })
+      .then((r) => r.json()).then((j) => this.setState(j.ok ? { daily: Object.assign({}, this.state.daily, j), dMsg: done || 'Saved.', dMsgColor: '#6CB4F5' } : { dMsg: j.error, dMsgColor: '#FF8A80' }))
+      .catch(() => this.setState({ dMsg: 'The C3 Life server didn’t answer.', dMsgColor: '#FF8A80' }));
+  }
+  dSend(day) {
+    this.setState({ dMsg: 'Sending…', dMsgColor: '#A3ACB8' });
+    fetch('/api/daily/send', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + this.tok() }, body: JSON.stringify({ day: day }) })
+      .then((r) => r.json()).then((j) => { this.setState(j.ok ? { daily: Object.assign({}, this.state.daily, j), dMsg: '✓ ' + j.sent.join(' and ') + ' for ' + day + ' saved and sent (or waiting for the internet).', dMsgColor: '#6CB4F5' } : { dMsg: j.error, dMsgColor: '#FF8A80' }); this.load(); })
+      .catch(() => this.setState({ dMsg: 'The C3 Life server didn’t answer.', dMsgColor: '#FF8A80' }));
+  }
+  dailyVals(v) {
+    const s = this.state, d = s.daily, st = d ? d.settings : null;
+    if (!d) return { dRtaSub: 'Loading…', dRtaOn: false, dToggleRta: () => {}, dLocked: true, dModes: [], dTimes: false, dStart: '', dEnd: '', dSetStart: () => {}, dSetEnd: () => {},
+      dSvcStart: '', dSvcEnd: '', dSetSvcStart: () => {}, dSetSvcEnd: () => {}, dSpectrum: false, dToggleSpectrum: () => {}, dActOn: false, dToggleAct: () => {}, dSendNow: () => {},
+      dHasMsg: false, dMsg: '', dMsgColor: '#A3ACB8', dDays: [] };
+    const last = d.last;
+    return {
+      dRtaSub: !st.rta ? 'Off' : (d.logging ? 'Logging now' + (last ? ' · ' + last[1] + ' dB(A) at ' + last[0] : ' · waiting for the room mic') : 'Logs ' + st.start + '–' + st.end),
+      dRtaOn: st.rta, dToggleRta: () => this.dPut({ rta: !st.rta }), dLocked: !d.admin,
+      dModes: [['always', 'From start-up to shut down'], ['times', 'Set times']].map(([k, n]) => ({ name: n, on: st.rta_mode === k, bg: st.rta_mode === k ? '#262C36' : 'transparent', color: st.rta_mode === k ? '#ECEEF1' : '#A3ACB8', pick: () => d.admin && this.dPut({ rta_mode: k }) })),
+      dTimes: st.rta_mode === 'times', dStart: st.start, dEnd: st.end,
+      dSetStart: (e) => this.dPut({ start: e.target.value }), dSetEnd: (e) => this.dPut({ end: e.target.value }),
+      dSvcStart: st.service_start, dSvcEnd: st.service_end,
+      dSetSvcStart: (e) => this.dPut({ service_start: e.target.value }), dSetSvcEnd: (e) => this.dPut({ service_end: e.target.value }),
+      dSpectrum: st.spectrum, dToggleSpectrum: () => this.dPut({ spectrum: !st.spectrum }),
+      dActOn: st.activity, dToggleAct: () => this.dPut({ activity: !st.activity }),
+      dSendNow: () => this.dSend(d.today),
+      dHasMsg: !!s.dMsg, dMsg: s.dMsg || '', dMsgColor: s.dMsgColor || '#A3ACB8',
+      dDays: (d.days || []).map((x) => ({ day: x.day, what: [x.rta ? 'RTA log' : '', x.activity ? 'activity' : ''].filter(Boolean).join(' + ') + (x.sent ? ' · sent ' + x.sent : ' · not sent yet'),
+        canSend: true, send: () => this.dSend(x.day) }))
+    };
   }
   demoVals(svcC, nets, outbox, s) {
     return {
