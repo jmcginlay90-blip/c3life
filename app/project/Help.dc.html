@@ -647,6 +647,32 @@ class Component extends DCLogic {
         'That is normal. Nothing on the Sunday run sheet runs by itself. (Only recording can start by itself, if it\u2019s set to.)',
         'Tap Run on the item in Plan, the macro button on Home, or run it from Macros.',
         'Ran it too early? Tap Undo on Home or Macros within 10 minutes. It asks first, then puts back the Wing\u2019s mutes, faders and sends, the foyer, and the lights master and blackout. Music, cues, ProPresenter and Playback can\u2019t be put back, and Undo says so.'] },
+      { q: 'MD talk doesn\u2019t go green', c: '#22A05A', href: 'Talkback.dc.html', go: 'MD talk', steps: [
+        'Open MD talk. Check the MD mic channel is the right Wing channel (names come from the Wing).',
+        'If it goes green when the MD is speaking: watch Signal while they talk and set Threshold a little below it. If it\u2019s unmuted: the MD\u2019s channel mute has to be lifted on the Wing.',
+        'Signal says No meters? The Wing isn\u2019t sending meters: check the Wing is connected on Mixer.',
+        'Tap Test: every screen should go green for 5 seconds. If one phone doesn\u2019t, on that phone pick Green screen and box (it may be set to Off).',
+        'No words in the log? Send the MD mic to a Dante Virtual Soundcard channel, add it as a Listen source with subtitles on, and pick it under The words come from.'] },
+      { q: 'A wireless mic shows no battery', c: '#6CB4F5', href: 'Mics.dc.html', go: 'Mics', steps: [
+        'Open Mixer \u203a Mics. Not switched on means the receiver can\u2019t see the transmitter: switch the mic on.',
+        'A red line under Receivers means that receiver didn\u2019t answer: check it\u2019s on and plugged into the booth switch, and its address (on the receiver\u2019s Network menu).',
+        'Mics with AA batteries show bars only, not time left. Only Shure rechargeables (SB900 and similar) give minutes.',
+        'The name comes from the Wing channel set for that receiver channel. Wrong name? Remove the receiver and add it again with the right channels, in order.'] },
+      { q: 'A MIDI button does nothing', c: '#F5C518', href: 'Midi.dc.html', go: 'MIDI buttons', steps: [
+        'Open MIDI buttons. Is MIDI buttons are on ticked? Until it is, a press is only shown under Last message.',
+        'Press the button and look at Last message. Nothing there: the controller\u2019s Mac or iPad isn\u2019t connected to the C3 Life network MIDI session (Audio MIDI Setup \u203a Network \u203a connect to C3 Life).',
+        'It shows, but says (not sent: ...): that says why, for example a macro still running, or Playback not connected.',
+        'A note that isn\u2019t a button is left for Lights (Follow Playback). Learn it as a button to use it here instead.'] },
+      { q: 'Put back a saved setup (restore a backup)', c: '#6CB4F5', href: 'Setup.dc.html', go: 'Saved setup', steps: [
+        'Admin: open Saved setup. Backups lists those on the C3 Life server and on a plugged-in drive, newest first.',
+        'Tap Restore on the one you want, type your Admin password and tap Yes, restore it.',
+        'What was there is backed up first (\u201cbefore restore\u201d), so you can go back. Then C3 Life restarts, about 10 seconds. The desk keeps running.',
+        'A backup holds everything C3 Life keeps (people, access levels, macros, cues, mixes, settings). Not recordings or report photos.'] },
+      { q: 'The C3 Life server has no internet', c: '#6CB4F5', href: 'Network.dc.html', go: 'Network connections', steps: [
+        'Nothing in the booth needs the internet. Reports wait on the server and send by themselves later.',
+        'Open Network connections. A wired connection is used first whenever one is plugged in; check its cable.',
+        'Admin: Scan for Wi-Fi, tap the network, type its password and Join and save. Windows joins it again by itself next time.',
+        'Several saved? Move the one you want first to the top; Windows tries them in that order.'] },
       { q: 'Recording: Dante Virtual Soundcard isn\u2019t connected', c: '#E5484D', href: 'Recording.dc.html', go: 'Record', steps: [
         'C3 Life opens Dante Virtual Soundcard itself, in ASIO mode, 64 x 64. Listen, the RTA, the MD log and recording all come through it.',
         'On the C3 Life server, open Dante Virtual Soundcard. Press Stop, then Settings \u203a Audio Interface = ASIO, and the channel count 64 x 64. Press Start.',
