@@ -18,6 +18,11 @@ class Desk:
     def input_level(self, n):
         return self.lv if n == 12 else -90
 
+    tb = None
+
+    def watch(self, path):
+        return self.tb if path == "/cfg/talk/B/on" else None
+
     def state(self):
         return {"strips": {"ch": {"12": {"name": "MD Talkback", "mute": self.mute}}}}
 
@@ -89,7 +94,17 @@ class MD(unittest.TestCase):
         self.assertEqual((self.m.live()["talking"], self.m.live()["test"]), (True, True))
         self.m.clear("FOH")
         self.assertEqual(self.m.view()["lines"], [])
-        for bad in ({"ch": 99}, {"mode": 2}, {"thresh": 5}, {"keep": "forever"}, {"nope": 1}):
+        self.assertIsNone(self.m.set({"mode": 2, "tb_path": "/cfg/talk/B/on"}, "FOH"))  # the Wing's TB button
+        self.m.test_until = 0
+        self.step(0.2, 10)
+        self.assertFalse(self.m.live()["talking"])
+        self.desk.tb = 1
+        self.step(0.2)
+        self.assertTrue(self.m.live()["talking"])
+        self.desk.tb = 0
+        self.step(0.2, 10)
+        self.assertEqual(self.m.view()["lines"][0]["ch"], "Wing talkback")
+        for bad in ({"ch": 99}, {"mode": 3}, {"tb_path": "no spaces allowed"}, {"thresh": 5}, {"keep": "forever"}, {"nope": 1}):
             self.assertEqual(self.m.set(bad, "FOH"), "Bad request")
 
 

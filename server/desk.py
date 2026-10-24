@@ -99,6 +99,9 @@ class Desk:
     def input_level(self, n):
         return None
 
+    def watch(self, path):
+        return None
+
     def bus_sends(self, b):
         return {}
 

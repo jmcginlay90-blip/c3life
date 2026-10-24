@@ -3,6 +3,7 @@ Run: python3 -m unittest -v test_hwcheck.py"""
 
 import shutil
 import tempfile
+import time
 import unittest
 
 import hwcheck as hw
@@ -67,6 +68,28 @@ class HardwareCheck(unittest.TestCase):
         hw.check_tio(r, "127.0.0.1", 9, self.tmp)
         self.assertEqual(r.problems, 1)
         self.assertIn("No answer on TCP 9", r.lines[-1])
+
+
+class FindTalkback(unittest.TestCase):
+    def test_prints_what_changed_while_tb_was_pressed(self):
+        import threading
+        from test_wing import FakeWing
+        f = FakeWing()
+        try:
+            f.vals["/cfg/talk/A/$on"] = 0
+            def press():
+                def go():
+                    for v in (1, 0, 1, 0):
+                        time.sleep(0.3)
+                        f.change("/cfg/talk/A/$on", v)
+                threading.Thread(target=go, daemon=True).start()
+            r = hw.Report()
+            got = hw.find_talkback(r, "127.0.0.1", secs=2, port=f.osc_port, say_press=press)
+            self.assertEqual(got, ["/cfg/talk/A/$on"])
+            self.assertTrue(any("/cfg/talk/A/$on" in x and "1 → 0 → 1 → 0" in x for x in r.lines))
+            self.assertFalse(f.sets)  # nothing was set on the Wing
+        finally:
+            f.close()
 
 
 if __name__ == "__main__":

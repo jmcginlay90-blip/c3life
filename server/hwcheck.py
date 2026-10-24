@@ -9,6 +9,7 @@ Run it from any Mac or Windows laptop plugged into the booth network (no C3 Life
 It runs the network scan (it only asks), then watches the Wing and the Tio for about 20 seconds with the same code
 the C3 Life server uses, in Watch only, and reads ProPresenter's version. It refuses to send anything that would
 change a device: every Wing message must be a question (no value) and every Tio line must be a "get".
+    python3 hwcheck.py --find-talkback --wing 192.168.10.20      (press TB when asked: finds its address for MD talk)
 It writes hwcheck-report-<date>.txt next to where you ran it. Send that file back; it has addresses and names,
 no passwords.
 """
@@ -190,6 +191,50 @@ def check_pp(r, url):
     r.good("Answers: %s" % json.dumps(j)[:200])
 
 
+def find_talkback(r, ip, secs=15, port=None, now=time.time, say_press=None):
+    """MD talk can follow the Wing's own TB button, but the Wing's address for it isn't documented. This subscribes
+    (a question: no value is sent), waits a moment, then asks you to press and hold TB: what changes is printed."""
+    port = port or 2223
+    u = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    u.bind(("0.0.0.0", 0))
+    u.settimeout(0.3)
+    sub = wing_mod.osc("/*s")
+    assert not wing_mod.parse(sub)[1]  # only a question
+    seen, changed = {}, {}
+
+    def listen(until, record):
+        last = 0.0
+        while now() < until:
+            if now() - last > 5:
+                u.sendto(sub, (ip, port))
+                last = now()
+            try:
+                data, frm = u.recvfrom(65536)
+            except socket.timeout:
+                continue
+            p = wing_mod.parse(data)
+            if not p or frm[0] != ip:
+                continue
+            addr, args = p
+            if record and seen.get(addr) != args:
+                changed.setdefault(addr, []).append(args)
+            seen[addr] = args
+    r.say()
+    r.say("Find the Wing's talkback button (for MD talk). Don't touch the desk for 3 seconds…")
+    listen(now() + 3, False)
+    (say_press or (lambda: r.say("Now press and hold TB (talkback A) for 2 seconds, let go, and do it again. %d seconds…" % secs)))()
+    listen(now() + secs, True)
+    u.close()
+    if not changed:
+        r.bad("Nothing changed on the Wing. Was TB pressed? Is this the Wing's address (%s)?" % ip)
+        return []
+    r.good("These changed while TB was pressed (the one that went on and off is the talkback):")
+    for a, vals in sorted(changed.items(), key=lambda kv: -len(kv[1]))[:20]:
+        r.say("    %-40s %s" % (a, " → ".join(str(v[-1] if len(v) == 3 else (v[0] if v else "")) for v in vals[:6])))
+    r.say("Type the talkback one on MD talk › Go green when… › Wing talkback is pressed.")
+    return list(changed)
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="C3 Life hardware check (Watch only; changes nothing)")
     ap.add_argument("--network", help="the booth network to scan, e.g. 192.168.10.0/24 (default: this laptop's)")
@@ -197,7 +242,15 @@ def main(argv=None):
     ap.add_argument("--tio", help="the Tio's address, if the scan doesn't find it")
     ap.add_argument("--propresenter", help="ProPresenter's address, e.g. http://192.168.10.30:50001")
     ap.add_argument("--no-scan", action="store_true", help="skip the network scan")
+    ap.add_argument("--find-talkback", action="store_true", help="only find the Wing's talkback button for MD talk (press TB when asked)")
     a = ap.parse_args(argv)
+    if a.find_talkback:
+        r = Report()
+        ip = a.wing or next((w["ip"] for w in wing_mod.find()), None)
+        if not ip:
+            print("The Wing wasn't found: use --wing 192.168.10.x")
+            return 1
+        return 0 if find_talkback(r, ip) else 1
     logging.basicConfig(level=logging.WARNING)
     r = Report()
     r.say("C3 Life hardware check · %s · Watch only: nothing on any device is changed" % time.strftime("%Y-%m-%d %H:%M"))

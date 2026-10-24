@@ -18,6 +18,7 @@ Settings live in data/wing.json: {"ip": "192.168.10.20", "mode": "off" | "watch"
 import collections
 import json
 import os
+import re
 import socket
 import struct
 import threading
@@ -199,6 +200,7 @@ class Wing(desk_mod.Desk):
         self.console = {}
         self.seen = 0.0
         self.meters = {}
+        self.watched = {}  # path -> last value (watch())
         self.meters_at = 0.0
 
     # ---- settings -------------------------------------------------------------------------------
@@ -244,6 +246,18 @@ class Wing(desk_mod.Desk):
             out["strips"] = {k: {str(n): dict(v) for n, v in s.items()} for k, s in self.strips.items()}
             out["inputs"] = {k: dict(v) for k, v in self.inputs.items()}
         return out
+
+    def watch(self, path):
+        """Follow any one value on the Wing (asked every round, and the Wing's own updates): -> its last value or None."""
+        if not isinstance(path, str) or not re.match(r"^(/[A-Za-z0-9$_.-]+){1,6}$", path):
+            return None
+        with self.lock:
+            if path not in self.watched:
+                if len(self.watched) >= 16:
+                    return None
+                self.watched[path] = None
+                self.send(osc(path))
+            return self.watched[path]
 
     def input_level(self, n):
         """Channel n's input level in dB (before the fader), or None when the meters aren't coming in."""
@@ -336,6 +350,8 @@ class Wing(desk_mod.Desk):
                 for n in [k for k, t in list(self.focus.items()) if t > now]:
                     for a in PROC:  # the open channels: every second, not every 2
                         self.send(osc("/ch/%d/%s" % (n, a)))
+                for a in list(self.watched):
+                    self.send(osc(a))
                 for i, a in enumerate(self.queries(slow)):
                     self.send(osc(a))
                     if i % 10 == 9:
@@ -424,6 +440,8 @@ class Wing(desk_mod.Desk):
                 t = args[0].split(",")
                 self.console = {"name": t[2] if len(t) > 2 else "", "model": t[3] if len(t) > 3 else "", "firmware": t[5] if len(t) > 5 else ""}
                 return
+            if addr in self.watched and args:
+                self.watched[addr] = args[2] if len(args) == 3 else args[0]  # (text, position, value): the value. MD talk: the TB button
             changed = False
             if len(parts) == 3 and parts[0] in KINDS and parts[1].isdigit() and parts[2] in FIELDS:
                 s = self.strips[parts[0]].get(int(parts[1]))

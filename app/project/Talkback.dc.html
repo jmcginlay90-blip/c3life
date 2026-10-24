@@ -194,6 +194,13 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
         </div>
         <div style="font-size:12px;color:#A3ACB8;padding-bottom:6px">Stays green 1.5 s after they stop, so it doesn't flicker between words.</div>
       </sc-if>
+      <sc-if value="{{showTb}}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:6px;padding:8px 0 6px;border-top:1px solid #222831">
+          <label for="tbp" style="font-size:13px;color:#A3ACB8">The Wing’s address for its TB button</label>
+          <div style="display:flex;gap:8px"><input id="tbp" class="mono" type="text" value="{{tbPath}}" onChange="{{setTbPath}}" autocapitalize="none" spellcheck="false" style="flex:1"><button class="btn" onClick="{{saveTbPath}}">Save</button></div>
+          <div style="font-size:12px;color:#A3ACB8;line-height:1.45">{{tbNote}}</div>
+        </div>
+      </sc-if>
     </section>
 
     <section class="card" style="display:flex;flex-direction:column;gap:10px">
@@ -313,9 +320,12 @@ class Component extends DCLogic {
       pickCh: (e) => no ? no() : this.put({ ch: Number((e.target.value.match(/Ch (\d+)/) || [0, st.ch])[1]) }, 'MD mic is now ' + e.target.value + '.'),
       meter: lv == null ? 0 : Math.max(0, Math.min(100, Math.round((lv + 60) / 0.6))),
       meterDb: lv == null ? 'No meters' : Math.round(lv) + ' dB',
-      modes: [['Channel is unmuted', 'MD presses their mic button or the channel mute is lifted'], ['MD is actually speaking', 'Signal on the channel goes over the threshold']]
+      modes: [['Channel is unmuted', 'MD presses their mic button or the channel mute is lifted'], ['MD is actually speaking', 'Signal on the channel goes over the threshold'], ['Wing talkback is pressed', 'Uses the Wing’s talkback (TB) button instead of a channel']]
         .map(([name, hint], i) => ({ name, hint, on: st.mode === i, off: st.mode !== i, pick: () => no ? no() : this.put({ mode: i }) })),
       showThresh: st.mode === 1, thresh: st.thresh,
+      showTb: st.mode === 2, tbPath: s.tbDraft != null ? s.tbDraft : st.tb_path, setTbPath: (e) => this.setState({ tbDraft: e.target.value.trim() }),
+      saveTbPath: () => no ? no() : this.put({ tb_path: s.tbDraft != null ? s.tbDraft : st.tb_path }, 'Saved. Press TB on the Wing to check it goes green.'),
+      tbNote: 'Behringer doesn’t publish this address, so it’s a guess until it’s found: on a laptop at the booth run hwcheck.py --find-talkback (add --wing and its address if it isn’t found) and press TB when it asks. It prints the address to type here. Then press TB: every screen should go green.',
       setThresh: (e) => no ? no() : this.put({ thresh: Number(e.target.value) }),
       stageOn: st.stage, toggleStage: () => no ? no() : this.put({ stage: !st.stage }, st.stage ? 'The stage display won’t show it.' : 'The stage display shows “MD is talking” too.'),
       sources: [{ id: '', name: 'None · just when and how long' }].concat((v.sources || []).filter((x) => x.captions).map((x) => ({ id: x.id, name: x.name }))),
@@ -375,6 +385,7 @@ class Component extends DCLogic {
       { v: 'off', name: 'Off', text: 'Nothing shows on this device.' }
     ].map((o) => ({ ...o, on: bm === o.v, pick: () => { try { localStorage.setItem('booth.mdbanner', o.v); } catch (e) {} this.setState({ bmTick: Date.now() }); } }));
     const base = {
+      showTb: false, tbPath: '', setTbPath: () => {}, saveTbPath: () => {}, tbNote: '',
       demoOnly: true, live: false, hasMsg: false, msg: '', msgColor: '#A3ACB8', sources: [], source: '',
       stageOn: !!s.stage, toggleStage: () => this.setState({ stage: !s.stage }),
       keepOpts: [{ v: 'service', t: 'For this service only · cleared at shut down' }, { v: 'report', t: 'Add the text to the activity report' }, { v: 'report-audio', t: 'Add text to the report and keep recordings on the C3 Life server for 7 days' }],

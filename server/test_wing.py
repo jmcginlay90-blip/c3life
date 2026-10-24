@@ -244,6 +244,15 @@ class Link(unittest.TestCase):
         self.assertEqual(self.w.src(10), "A/2")
         self.assertIsNone(self.w.src(20))  # USB: no gain or phantom
 
+    def test_following_any_one_value(self):
+        self.f.vals["/cfg/talk/A/on"] = 0
+        self.assertTrue(wait(lambda: self.w.status()["status"] == "connected"))
+        self.assertIsNone(self.w.watch("/cfg/talk/A/on"))  # asked now, answered in a moment
+        self.assertTrue(wait(lambda: self.w.watch("/cfg/talk/A/on") == 0))
+        self.f.vals["/cfg/talk/A/on"] = 1  # TB pressed: read again within a round
+        self.assertTrue(wait(lambda: self.w.watch("/cfg/talk/A/on") == 1, 6))
+        self.assertIsNone(self.w.watch("not a path"))
+
     def test_watch_only_sends_nothing(self):
         wait(lambda: self.w.status()["status"] == "connected")
         self.assertIn("watch the Wing only", self.w.set("ch", 1, "fdr", -5.0))

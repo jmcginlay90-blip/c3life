@@ -3,6 +3,9 @@
 It watches the MD's channel on the Wing, a few times a second:
   mode 0  the channel is unmuted (the MD's mic button, or the mute lifted)
   mode 1  the MD is actually speaking: the channel's input level is over the threshold
+  mode 2  the Wing's own talkback (TB) button is pressed: the Wing value at "tb_path" is on. The address the Wing uses
+          for it isn't in Behringer's documents, so find it once with the hardware check kit
+          (hwcheck.py --find-talkback: press TB and it prints what changed) and type it on MD talk.
 It stays green HOLD seconds after they stop, so it doesn't flicker between words.
 
 The words come from Listen's subtitles: pick the Listen source that carries the MD mic (one DVS channel, with
@@ -10,17 +13,18 @@ subtitles on) and the lines spoken while the MD was talking go in the log. With 
 and for how long. "Also show on the stage display" sends "MD is talking" as ProPresenter's stage message, and clears it.
 The log is kept for this service (cleared when C3 Life starts) unless "keep" is "report" (kept in data/mdlog.json).
 
-The Wing's own talkback (TB) button isn't one of the modes yet: the Wing's network messages for it aren't known here.
 """
 
 import json
+import re
 import os
 import threading
 import time
 
 HOLD = 1.5
 KEEP = 200
-MODES = (0, 1)
+MODES = (0, 1, 2)
+TB_DEFAULT = "/cfg/talk/A/on"  # a guess until hwcheck.py --find-talkback has been run at the Wing
 KEEPS = ("service", "report")
 
 
@@ -29,7 +33,7 @@ class MDTalk:
         self.cfg, self.log, self.desk, self.listen, self.pp, self.now = cfg, log, desk, listen, pp, now
         self.path = os.path.join(data_dir, "mdtalk.json")
         self.lock = threading.Lock()
-        self.settings = {"ch": 12, "mode": 1, "thresh": -35, "source": "", "write": True, "stage": False, "keep": "service"}
+        self.settings = {"ch": 12, "mode": 1, "thresh": -35, "source": "", "write": True, "stage": False, "keep": "service", "tb_path": TB_DEFAULT}
         self.lines = []
         try:
             with open(self.path, encoding="utf-8") as fh:
@@ -67,12 +71,15 @@ class MDTalk:
                 new[k] = v
             elif k == "keep" and v in KEEPS:
                 new[k] = v
+            elif k == "tb_path" and isinstance(v, str) and re.match(r"^(/[A-Za-z0-9$_.-]+){1,6}$", v):
+                new[k] = v
             else:
                 return "Bad request"
         with self.lock:
             self.settings = new
         self._save()
-        self.log.info("mdtalk: %s changed MD talk (channel %d, %s)", who, new["ch"], "unmuted" if new["mode"] == 0 else "speaking over %s dB" % new["thresh"])
+        self.log.info("mdtalk: %s changed MD talk (%s)", who, "Wing talkback at " + new["tb_path"] if new["mode"] == 2 else
+                      "channel %d, %s" % (new["ch"], "unmuted" if new["mode"] == 0 else "speaking over %s dB" % new["thresh"]))
         return None
 
     def _save(self):
@@ -102,6 +109,9 @@ class MDTalk:
     def raw(self):
         """Is the MD talking this instant (before the hold)?"""
         st = self.settings
+        if st["mode"] == 2:
+            v = self.desk.watch(st["tb_path"]) if hasattr(self.desk, "watch") else None
+            return v not in (None, 0, 0.0, False, "", "0", "OFF", "off")
         if st["mode"] == 0:
             strip = (self.desk.state().get("strips", {}).get("ch", {}) or {}).get(str(st["ch"]), {})
             return strip.get("mute") in (0, False)
@@ -148,7 +158,7 @@ class MDTalk:
         name = (names.get(str(ch)) or {}).get("name") or ""
         line = {"id": self.next_id, "at": time.strftime("%H:%M", time.localtime(self.since)), "t": self.since,
                 "dur": round(t - self.since - HOLD, 1) if t - self.since > HOLD else round(t - self.since, 1),
-                "ch": "Ch %02d%s" % (ch, " · " + name if name else ""), "text": " ".join(self.words).strip(),
+                "ch": "Wing talkback" if self.settings["mode"] == 2 else "Ch %02d%s" % (ch, " · " + name if name else ""), "text": " ".join(self.words).strip(),
                 "words": bool(self.settings["source"])}
         self.next_id += 1
         with self.lock:
