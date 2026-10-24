@@ -58,6 +58,8 @@ API (JSON):
                                            control) "choices": the steps C3 Life can run, named from what's set up
   PUT  /api/macros {"macros","playback"}   (Macros control) the macros, and the notes Playback steps send
   POST /api/macros/run {"id"} | /stop | /undo   (Macros control) nothing runs unless someone presses Run
+  POST /api/power {"do": "app|restart|off|abort|cycle"}   (Settings or Mixer control; cycle: Admin) restart C3 Life,
+                                           restart or shut down this computer (15 s, abort stops it), smart-plug reset
   GET  /api/home                          (signed in) Home: the slide, Playback, the band DCA, the room level, devices,
                                            recording; each part only for a role that can see that area
   POST /api/home/do {"do": "play|stop|band|mark", "on", "name"}   Play/Stop to Playback (Show control), mute the band
@@ -189,6 +191,7 @@ import midi_in as midi_mod
 import audio_engine as audio_engine_mod
 import recorder as recorder_mod
 import propresenter as propresenter_mod
+import power as power_mod
 
 VERSION = "0.3.0"
 START = time.time()
@@ -250,6 +253,10 @@ DEFAULTS = {
     # The audio engine: "asio" = C3 Life opens Dante Virtual Soundcard in ASIO mode (64 x 64) and shares it out to
     # Listen, the RTA, the MD log, recording and playback; "" = Listen and the RTA read DVS in WDM mode (16 channels).
     "audio_engine": "",
+    # The smart plug the C3 Life server's power goes through (a Shelly), for the hard reset on the server power screen.
+    "smart_plug": "",
+    # The Wing DCA Home's "Mute band" button mutes.
+    "band_dca": 1,
     "listen_kbps": 128,
     # Subtitles are saved to data\transcripts, one file per day and source, and deleted after this many days.
     # 0 = never saved to disk (kept in memory only, and lost on a restart).
@@ -476,7 +483,7 @@ def _ip_ok(x):
         return False
 
 
-def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bible=None, cues=None, reports=None, plan=None, desk=None, tio=None, monitors=None, scanner=None, foyer=None, rta_inputs=None, dante_names=None, lights=None, rta_live=None, midi=None, music=None, helpers=None, health=None, macros=None, recorder=None, pp=None, midi_peers=None):
+def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bible=None, cues=None, reports=None, plan=None, desk=None, tio=None, monitors=None, scanner=None, foyer=None, rta_inputs=None, dante_names=None, lights=None, rta_live=None, midi=None, music=None, helpers=None, health=None, macros=None, recorder=None, pp=None, midi_peers=None, power=None):
     nets = cfg["_nets"]
     remote_nets = cfg.get("_remote", [])
 
@@ -1227,6 +1234,18 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 ok, msg = rta_live.calibrate(float(spl), weight)
                 log.info("rta: %s calibrating: %s", s["name"], msg)
                 self.send_json(200 if ok else 409, dict(rta_live.state(), ok=ok, message=msg, **({} if ok else {"error": msg})))
+                return
+            if path == "/api/power":
+                body = self.read_json() or {}
+                what = body.get("do") if isinstance(body, dict) else None
+                if what == "cycle":
+                    s = self.admin() if self.session()[0] else None
+                else:
+                    s = self.level("Settings", "Mixer", need=2)
+                if not s:
+                    return
+                err = power.do(what, s["name"])
+                self.send_json(200 if not err else 409, {"ok": not err, "pending": power.pending, **({"error": err} if err else {})})
                 return
             if path == "/api/home/do":
                 body = self.read_json() or {}
@@ -2166,6 +2185,7 @@ def serve(cfg):
     macros = macros_mod.Macros(cfg["data_dir"], cfg, log, desk=desk, music=music, foyer=foyer, lights=lights, midi=midi)
     recorder = recorder_mod.Recorder(cfg["data_dir"], cfg, log, engine, desk=desk, dante=dante)
     pp = propresenter_mod.ProPresenter(cfg, log)
+    power = power_mod.Power(cfg, log, before=lambda: recorder.rec and recorder.stop("the server power screen"))
     if engine.on:
         recorder.start_loop()  # watches for the recording drive, and ProPresenter's slides when they start or stop it
     cfg.setdefault("_my_ips", _my_ips())
@@ -2178,13 +2198,13 @@ def serve(cfg):
         gone = lambda d, name: [name] if d and d.status()["status"] == "no answer" else []
         threading.Thread(target=scanner.watch, args=([lambda: gone(desk, desk.NAME), lambda: gone(tio, "the Tio"), health.check],), daemon=True).start()
     httpd = ThreadingHTTPServer((cfg["bind"], int(cfg["port"])), make_handler(cfg, store, sessions, listen, access, dante, tags, bible, cues, reports, plan, desk, tio, monitors, scanner, foyer, rta_inputs, dante_names, lights, rta_live, midi, music, helpers, health, macros, recorder, pp,
-                                                                              lambda: [p for p in midi.peers.values() if p.get("data") and time.time() - p["seen"] < 60]))
+                                                                              lambda: [p for p in midi.peers.values() if p.get("data") and time.time() - p["seen"] < 60], power))
     httpd.daemon_threads = True
     close = httpd.server_close
     httpd.server_close = lambda: (scanner.stop.set(), lights.close(), rta_live.stop(), midi.close(), recorder.close(), engine.stop(), close())
     httpd.store, httpd.sessions, httpd.listen, httpd.access, httpd.tags, httpd.bible, httpd.reports, httpd.plan, httpd.desk, httpd.tio, httpd.monitors, httpd.scanner, httpd.foyer, httpd.rta_inputs, httpd.lights, httpd.rta_live, httpd.midi, httpd.music, httpd.helpers, httpd.health, httpd.macros = store, sessions, listen, access, tags, bible, reports, plan, desk, tio, monitors, scanner, foyer, rta_inputs, lights, rta_live, midi, music, helpers, health, macros
     httpd.wing = desk  # the tests, and older code, call it this
-    httpd.engine, httpd.recorder, httpd.pp = engine, recorder, pp
+    httpd.engine, httpd.recorder, httpd.pp, httpd.power = engine, recorder, pp, power
     return httpd
 
 
