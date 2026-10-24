@@ -1032,6 +1032,7 @@ class Component extends DCLogic {
     const md = this.readMd();
     const move = (i, d) => { const sec = L.sections.slice(); const j = i + d; [sec[i], sec[j]] = [sec[j], sec[i]]; this.saveLayout({ ...L, sections: sec }); };
     let ml = []; try { ml = JSON.parse(localStorage.getItem('booth.miclow') || '[]'); } catch (e) {}
+    if (s.hm && s.hm.mics_low) ml = s.hm.mics_low;  // from the C3 Life server (Mixer › Mics)
     return {
       ...this.bsFormVals(),
       svcLabel: this.svcCur().name,

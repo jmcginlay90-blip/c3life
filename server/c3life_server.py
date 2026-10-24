@@ -91,6 +91,8 @@ API (JSON):
                      {"do": "balance", "mix": "a"|"b", "db"}  (Foyer setup control: each mix's send level to the matrix)
                                            which mix the foyer hears, its volume (never above the maximum) and mute,
                                            on the Wing (Control); GET /api/foyer has "live", what the desk is doing now
+  GET  /api/mics | PUT /api/mics {"receivers","warn"}  (Mixer view / control) wireless mics from networked Shure
+                                           receivers: battery, signal, names from the Wing (watch only: it only asks)
   GET  /api/md/live                        (signed in) is the MD talking now? Every screen asks, for the green box
   GET  /api/md | PUT /api/md {...}          (Mixer or Show view / Mixer control) MD talk: the channel, when it goes green,
                                            the Listen source for the words, the stage display, and the log
@@ -220,6 +222,7 @@ import power as power_mod
 import syscheck as syscheck_mod
 import setup as setup_mod
 import mdtalk as mdtalk_mod
+import shure as shure_mod
 import chat as chat_mod
 
 VERSION = "0.3.0"
@@ -559,7 +562,7 @@ def _ip_ok(x):
         return False
 
 
-def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bible=None, cues=None, reports=None, plan=None, desk=None, tio=None, monitors=None, scanner=None, foyer=None, rta_inputs=None, dante_names=None, lights=None, rta_live=None, midi=None, music=None, helpers=None, health=None, macros=None, recorder=None, pp=None, midi_peers=None, power=None, chat=None, setup=None, md=None):
+def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bible=None, cues=None, reports=None, plan=None, desk=None, tio=None, monitors=None, scanner=None, foyer=None, rta_inputs=None, dante_names=None, lights=None, rta_live=None, midi=None, music=None, helpers=None, health=None, macros=None, recorder=None, pp=None, midi_peers=None, power=None, chat=None, setup=None, md=None, mics=None):
     nets = cfg["_nets"]
     remote_nets = cfg.get("_remote", [])
 
@@ -936,6 +939,13 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                                      "aux_names": {n: v.get("name", "") for n, v in st["strips"]["aux"].items()}, "eq": desk.bus_eq(b),
                                      "can_change": desk.settings["mode"] == "control" and not monitors.may_change(s["name"], mixer, b) if b in d["buses"] else mixer >= 2 and desk.settings["mode"] == "control"})
                 return
+            if path == "/api/mics":
+                s = self.level("Mixer", "Own monitor mix")
+                if s:
+                    st = desk.state()
+                    self.send_json(200, dict(mics.view({n: v.get("name", "") for n, v in st["strips"]["ch"].items()}), ok=True,
+                                             can=access.level(s["role"], "Mixer") >= 2))
+                return
             if path == "/api/md/live":
                 s, _ = self.session()
                 if s:
@@ -1082,6 +1092,7 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                     out["rec"] = {"on": bool(rv["recording"]), "secs": (rv["recording"] or {}).get("secs", 0)}
                 out["devices"] = devs
                 out["app_name"] = setup.name() if setup else "C3 Life"
+                out["mics_low"] = mics.view()["low"] if mics else []
                 self.send_json(200, out)
                 return
             if path == "/api/plan/order":
@@ -1993,6 +2004,13 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
         def do_PUT(self):
             if not self.client_ok():
                 return
+            if self.route() == "/api/mics":
+                s = self.level("Mixer", need=2)
+                if not s:
+                    return
+                err = mics.set(self.read_json() or {}, s["name"])
+                self.send_json(400 if err else 200, {"ok": not err, "error": err or ""})
+                return
             if self.route() == "/api/md":
                 s = self.level("Mixer", need=2)
                 if not s:
@@ -2485,6 +2503,8 @@ def serve(cfg):
     power = power_mod.Power(cfg, log, before=lambda: recorder.rec and recorder.stop("the server power screen"))
     md = mdtalk_mod.MDTalk(cfg["data_dir"], cfg, log, desk, listen=listen, pp=pp)
     md.start()
+    mics = shure_mod.Mics(cfg["data_dir"], cfg, log)
+    mics.start()
     setup = setup_mod.Setup(cfg["data_dir"], cfg, log, drives=lambda: list(recorder.drives) if recorder else [], version=VERSION)
     if engine.on:
         recorder.start_loop()  # watches for the recording drive, and ProPresenter's slides when they start or stop it
@@ -2498,12 +2518,12 @@ def serve(cfg):
         gone = lambda d, name: [name] if d and d.status()["status"] == "no answer" else []
         threading.Thread(target=scanner.watch, args=([lambda: gone(desk, desk.NAME), lambda: gone(tio, "the Tio"), health.check],), daemon=True).start()
     httpd = ThreadingHTTPServer((cfg["bind"], int(cfg["port"])), make_handler(cfg, store, sessions, listen, access, dante, tags, bible, cues, reports, plan, desk, tio, monitors, scanner, foyer, rta_inputs, dante_names, lights, rta_live, midi, music, helpers, health, macros, recorder, pp,
-                                                                              lambda: [p for p in midi.peers.values() if p.get("data") and time.time() - p["seen"] < 60], power, chat, setup, md))
+                                                                              lambda: [p for p in midi.peers.values() if p.get("data") and time.time() - p["seen"] < 60], power, chat, setup, md, mics))
     httpd.daemon_threads = True
     close = httpd.server_close
-    httpd.server_close = lambda: (scanner.stop.set(), md.stop_ev.set(), lights.close(), rta_live.stop(), midi.close(), recorder.close(), engine.stop(), close())
+    httpd.server_close = lambda: (scanner.stop.set(), md.stop_ev.set(), mics.stop_ev.set(), lights.close(), rta_live.stop(), midi.close(), recorder.close(), engine.stop(), close())
     httpd.store, httpd.sessions, httpd.listen, httpd.access, httpd.tags, httpd.bible, httpd.reports, httpd.plan, httpd.desk, httpd.tio, httpd.monitors, httpd.scanner, httpd.foyer, httpd.rta_inputs, httpd.lights, httpd.rta_live, httpd.midi, httpd.music, httpd.helpers, httpd.health, httpd.macros = store, sessions, listen, access, tags, bible, reports, plan, desk, tio, monitors, scanner, foyer, rta_inputs, lights, rta_live, midi, music, helpers, health, macros
-    httpd.md, httpd.setup = md, setup
+    httpd.md, httpd.setup, httpd.mics = md, setup, mics
     httpd.wing = desk  # the tests, and older code, call it this
     httpd.engine, httpd.recorder, httpd.pp, httpd.power = engine, recorder, pp, power
     return httpd
