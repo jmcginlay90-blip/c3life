@@ -91,6 +91,11 @@ API (JSON):
                      {"do": "balance", "mix": "a"|"b", "db"}  (Foyer setup control: each mix's send level to the matrix)
                                            which mix the foyer hears, its volume (never above the maximum) and mute,
                                            on the Wing (Control); GET /api/foyer has "live", what the desk is doing now
+  GET  /api/setup                          (signed in) the app's name and version; for an Admin, the backups too
+  POST /api/setup/name {"name"}             (Admin) rename the app (Home, the laptop dashboard, reports)
+  POST /api/setup/backup {"drive"}          (Admin) back up data/ on the server (and to the plugged-in drive)
+  GET  /api/setup/download?t=&id=           (Admin) download a backup (no id: one made now)
+  POST /api/setup/restore {"id","password"} (Admin, with the password again) put a backup back and restart C3 Life
   GET  /api/check                          (the sound, Show, Lights or Settings teams) Help's system check, from what the server
                                            knows now: the server, DVS, each device, Dante, the scan, the drive, storage, internet
   POST /api/support {"note"}                (the same) a support report: the check, the last 200 log lines and the settings
@@ -209,6 +214,7 @@ import recorder as recorder_mod
 import propresenter as propresenter_mod
 import power as power_mod
 import syscheck as syscheck_mod
+import setup as setup_mod
 import chat as chat_mod
 
 VERSION = "0.3.0"
@@ -548,7 +554,7 @@ def _ip_ok(x):
         return False
 
 
-def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bible=None, cues=None, reports=None, plan=None, desk=None, tio=None, monitors=None, scanner=None, foyer=None, rta_inputs=None, dante_names=None, lights=None, rta_live=None, midi=None, music=None, helpers=None, health=None, macros=None, recorder=None, pp=None, midi_peers=None, power=None, chat=None):
+def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bible=None, cues=None, reports=None, plan=None, desk=None, tio=None, monitors=None, scanner=None, foyer=None, rta_inputs=None, dante_names=None, lights=None, rta_live=None, midi=None, music=None, helpers=None, health=None, macros=None, recorder=None, pp=None, midi_peers=None, power=None, chat=None, setup=None):
     nets = cfg["_nets"]
     remote_nets = cfg.get("_remote", [])
 
@@ -925,6 +931,39 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                                      "aux_names": {n: v.get("name", "") for n, v in st["strips"]["aux"].items()}, "eq": desk.bus_eq(b),
                                      "can_change": desk.settings["mode"] == "control" and not monitors.may_change(s["name"], mixer, b) if b in d["buses"] else mixer >= 2 and desk.settings["mode"] == "control"})
                 return
+            if path == "/api/setup":
+                s, _ = self.session()
+                if s:
+                    adm = s["role"] == "Admin"
+                    self.send_json(200, {"ok": True, "name": setup.name(), "version": VERSION, "up_since": START, "admin": adm,
+                                         "backups": setup.list() if adm else [], "drive": (recorder.drives[0]["label"] if recorder and recorder.drives else "")})
+                else:
+                    self.send_json(401, {"ok": False, "error": "Sign in again."})
+                return
+            if path == "/api/setup/download":
+                # a link, so the token comes in the address (like Listen's streams)
+                q = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
+                ss = sessions.get((q.get("t") or [""])[0])
+                if not ss or ss["role"] != "Admin":
+                    self.send_json(403, {"ok": False, "error": "Only an Admin can download the setup."})
+                    return
+                f = setup.file((q.get("id") or [""])[0]) if q.get("id") else None
+                if q.get("id") and not f:
+                    self.send_json(404, {"ok": False, "error": "That backup isn't there any more."})
+                    return
+                if f:
+                    with open(f, "rb") as fh:
+                        data, fname = fh.read(), os.path.basename(f)
+                else:
+                    data, fname = setup.make(ss["name"], "download")
+                log.info("setup: %s downloaded %s", ss["name"], fname)
+                self.send_response(200)
+                self.send_header("Content-Type", "application/zip")
+                self.send_header("Content-Disposition", 'attachment; filename="%s"' % fname)
+                self.send_header("Content-Length", str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+                return
             if path == "/api/check":
                 if self.level("Mixer", "Settings", "Show", "Lights", "RTA"):
                     self.send_json(200, {"ok": True, "results": syscheck_mod.check(self.check_parts())})
@@ -1022,6 +1061,7 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                                  "why": "Not plugged in.", "info": True, "detail": (rv["drive"] or {}).get("label", "")})
                     out["rec"] = {"on": bool(rv["recording"]), "secs": (rv["recording"] or {}).get("secs", 0)}
                 out["devices"] = devs
+                out["app_name"] = setup.name() if setup else "C3 Life"
                 self.send_json(200, out)
                 return
             if path == "/api/plan/order":
@@ -1743,6 +1783,32 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                     return
                 self.send_json(200, dict(plan.timer_list(), ok=True, signed_in=True))
                 return
+            if path in ("/api/setup/name", "/api/setup/backup", "/api/setup/restore"):
+                s = self.admin()
+                if not s:
+                    return
+                body = self.read_json() or {}
+                if path.endswith("/name"):
+                    err = setup.set_name(body.get("name"), s["name"])
+                    self.send_json(400 if err else 200, {"ok": not err, "error": err or "", "name": setup.name()})
+                    return
+                if path.endswith("/backup"):
+                    err, where = setup.backup(s["name"], to_drive=bool(body.get("drive")), label=str(body.get("label") or "")[:30])
+                    self.send_json(200, {"ok": not err, "error": err or "", "where": where, "backups": setup.list()})
+                    return
+                # restoring needs the Admin's password again, like changing Users
+                me = store.find_user(s["name"])
+                if not me or not isinstance(body.get("password"), str) or not check_pin(body["password"], me.get("pin", "")):
+                    sessions.failed(s["name"])
+                    self.send_json(401, {"ok": False, "error": "That password isn't right."})
+                    return
+                err = setup.restore(body.get("id"), s["name"])
+                if err:
+                    self.send_json(409, {"ok": False, "error": err})
+                    return
+                again = power.do("app", s["name"]) if power else "Restart C3 Life to load it."
+                self.send_json(200, {"ok": True, "restarting": not again, "note": "" if not again else "Restored. " + again + " C3 Life loads the restored setup when it starts again."})
+                return
             if path == "/api/support":
                 s = self.level("Mixer", "Settings", "Show", "Lights", "RTA")
                 if not s:
@@ -2383,6 +2449,7 @@ def serve(cfg):
     pp = propresenter_mod.ProPresenter(cfg, log)
     chat = chat_mod.Chat(cfg["data_dir"], log, pp)
     power = power_mod.Power(cfg, log, before=lambda: recorder.rec and recorder.stop("the server power screen"))
+    setup = setup_mod.Setup(cfg["data_dir"], cfg, log, drives=lambda: list(recorder.drives) if recorder else [], version=VERSION)
     if engine.on:
         recorder.start_loop()  # watches for the recording drive, and ProPresenter's slides when they start or stop it
     cfg.setdefault("_my_ips", _my_ips())
@@ -2395,7 +2462,7 @@ def serve(cfg):
         gone = lambda d, name: [name] if d and d.status()["status"] == "no answer" else []
         threading.Thread(target=scanner.watch, args=([lambda: gone(desk, desk.NAME), lambda: gone(tio, "the Tio"), health.check],), daemon=True).start()
     httpd = ThreadingHTTPServer((cfg["bind"], int(cfg["port"])), make_handler(cfg, store, sessions, listen, access, dante, tags, bible, cues, reports, plan, desk, tio, monitors, scanner, foyer, rta_inputs, dante_names, lights, rta_live, midi, music, helpers, health, macros, recorder, pp,
-                                                                              lambda: [p for p in midi.peers.values() if p.get("data") and time.time() - p["seen"] < 60], power, chat))
+                                                                              lambda: [p for p in midi.peers.values() if p.get("data") and time.time() - p["seen"] < 60], power, chat, setup))
     httpd.daemon_threads = True
     close = httpd.server_close
     httpd.server_close = lambda: (scanner.stop.set(), lights.close(), rta_live.stop(), midi.close(), recorder.close(), engine.stop(), close())

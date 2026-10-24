@@ -162,7 +162,7 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
       <div class="lbl">Running now</div>
       <div style="font-size:18px;font-weight:600">{{curName}}</div>
       <div style="font-size:13px;color:#A3ACB8">{{curMeta}}</div>
-      <div style="display:flex;align-items:center;gap:8px;font-size:13px;margin-top:4px"><span style="width:8px;height:8px;border-radius:50%;background:#6CB4F5"></span>Loaded at start-up today 08:31</div>
+      <div style="display:flex;align-items:center;gap:8px;font-size:13px;margin-top:4px"><span style="width:8px;height:8px;border-radius:50%;background:#6CB4F5"></span>{{loadedLine}}</div>
     </section>
 
     <section class="card" style="display:flex;flex-direction:column;gap:8px">
@@ -188,7 +188,8 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
         <button class="btn pri" onClick="{{backupUsb}}" disabled="{{cantUsb}}">{{backupLabel}}</button>
         <button class="btn" onClick="{{download}}" disabled="{{locked}}">Download to this device</button>
       </div>
-      <label style="display:flex;align-items:center;gap:8px;font-size:14px"><input type="checkbox" checked="{{autoBackup}}" onChange="{{toggleAutoBackup}}" disabled="{{locked}}"> Back up to the USB stick every time the setup is saved</label>
+      <sc-if value="{{demoOnly}}" hint-placeholder-val="{{ true }}"><label style="display:flex;align-items:center;gap:8px;font-size:14px"><input type="checkbox" checked="{{autoBackup}}" onChange="{{toggleAutoBackup}}" disabled="{{locked}}"> Back up to the USB stick every time the setup is saved</label></sc-if>
+      <sc-if value="{{noBackups}}" hint-placeholder-val="{{ false }}"><div style="font-size:13px;color:#A3ACB8">No backups yet.</div></sc-if>
       <div class="lbl" style="padding-top:4px">Backups</div>
       <sc-for list="{{backups}}" as="b" hint-placeholder-count="3">
         <div style="display:flex;align-items:center;gap:10px;min-height:52px;border-top:1px solid #222831">
@@ -199,18 +200,23 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
       <sc-if value="{{restoring}}" hint-placeholder-val="{{ false }}">
         <div style="display:flex;flex-direction:column;gap:8px;background:#0F1318;border:1px solid #F5C518;border-radius:12px;padding:12px">
           <div style="font-size:15px;font-weight:600">Restore {{restoreName}}?</div>
-          <div style="font-size:13px;color:#C9CFD7;line-height:1.45">The setup running now is backed up first, so you can go back. The C3 Life server loads the restored setup straight away. The desk keeps running.</div>
+          <div style="font-size:13px;color:#C9CFD7;line-height:1.45">{{restoreText}}</div>
+          <sc-if value="{{live}}" hint-placeholder-val="{{ false }}">
+            <label for="rpw" style="font-size:12px;color:#A3ACB8">Your Admin password, to confirm</label>
+            <input id="rpw" type="password" value="{{pw}}" onChange="{{setPw}}" autocomplete="current-password">
+          </sc-if>
           <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px">
             <button class="btn" onClick="{{cancelRestore}}">Cancel</button>
             <button class="btn pri" onClick="{{doRestore}}">Yes, restore it</button>
           </div>
         </div>
       </sc-if>
-      <button class="btn" style="min-height:40px;border-style:dashed;color:#A3ACB8;font-size:13px" onClick="{{demoUsb}}">{{demoUsbLabel}}</button>
+      <sc-if value="{{demoOnly}}" hint-placeholder-val="{{ true }}"><button class="btn" style="min-height:40px;border-style:dashed;color:#A3ACB8;font-size:13px" onClick="{{demoUsb}}">{{demoUsbLabel}}</button></sc-if>
       <sc-if value="{{hasBkToast}}" hint-placeholder-val="{{ false }}"><div role="status" style="font-size:13px;color:#6CB4F5;line-height:1.45">{{bkToast}}</div></sc-if>
     </section>
 
-    <section class="card" style="display:flex;flex-direction:column;gap:8px">
+<sc-if value="{{demoOnly}}" hint-placeholder-val="{{ true }}">
+        <section class="card" style="display:flex;flex-direction:column;gap:8px">
       <div style="font-size:16px;font-weight:600">App updates</div>
       <div style="font-size:13px">{{verLine}}</div>
       <div style="font-size:12px;color:#A3ACB8;line-height:1.45">The C3 Life server is often offline, so updates come on a USB stick. Put the update file on the stick, plug it into the C3 Life server, then check here. With internet it can also check online.</div>
@@ -241,8 +247,10 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
         <button class="btn" onClick="{{rollback}}">Go back to 1.4.2</button>
       </sc-if>
     </section>
+    </sc-if>
 
-    <section class="card" style="display:flex;flex-direction:column;gap:4px;padding:10px 14px;border-color:{{changesBorder}}">
+<sc-if value="{{demoOnly}}" hint-placeholder-val="{{ true }}">
+        <section class="card" style="display:flex;flex-direction:column;gap:4px;padding:10px 14px;border-color:{{changesBorder}}">
       <div style="display:flex;justify-content:space-between;align-items:baseline;padding:2px 0 6px">
         <div class="lbl">Changes since start-up</div>
         <span style="font-size:12px;color:{{changesColor}}">{{changesCount}}</span>
@@ -256,8 +264,10 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
       </sc-for>
       <div style="font-size:12px;color:#A3ACB8;padding-top:6px;line-height:1.45">Changes made during a service last until C3 Life restarts. To keep them, an Admin saves them into the setup.</div>
     </section>
+    </sc-if>
 
-    <section class="card" style="display:flex;flex-direction:column;gap:10px">
+<sc-if value="{{demoOnly}}" hint-placeholder-val="{{ true }}">
+        <section class="card" style="display:flex;flex-direction:column;gap:10px">
       <div style="display:flex;align-items:center;gap:8px">
         <span style="color:{{lockColor}};display:flex"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span>
         <span style="flex:1;font-size:15px;font-weight:600">Save</span>
@@ -286,8 +296,10 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
       </sc-if>
       <button class="btn" style="font-size:12px;color:#A3ACB8;border-style:dashed" onClick="{{demoAdmin}}">{{demoAdminLabel}}</button>
     </section>
+    </sc-if>
 
-    <section class="card" style="display:flex;flex-direction:column;padding:6px 14px">
+<sc-if value="{{demoOnly}}" hint-placeholder-val="{{ true }}">
+        <section class="card" style="display:flex;flex-direction:column;padding:6px 14px">
       <div class="lbl" style="padding:6px 0">Versions</div>
       <sc-for list="{{versions}}" as="v" hint-placeholder-count="3">
         <div class="row">
@@ -300,21 +312,24 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
         </div>
       </sc-for>
     </section>
+    </sc-if>
 
     <section class="card" style="display:flex;flex-direction:column;gap:10px">
       <div class="lbl">What the save file holds</div>
       <div style="display:flex;flex-wrap:wrap;gap:6px">
         <sc-for list="{{holds}}" as="h" hint-placeholder-count="10"><span class="chip">{{h}}</span></sc-for>
       </div>
-      <div style="font-size:12px;color:#A3ACB8;line-height:1.45">Not in the file: the Wing's own scenes (the file remembers which scene to recall), ProPresenter slides and Spotify downloads. PINs are stored encrypted.</div>
+      <div style="font-size:12px;color:#A3ACB8;line-height:1.45">{{holdsNote}}</div>
     </section>
 
-    <section class="card" style="display:flex;flex-direction:column;gap:8px">
+<sc-if value="{{demoOnly}}" hint-placeholder-val="{{ true }}">
+        <section class="card" style="display:flex;flex-direction:column;gap:8px">
       <div class="lbl">Other backup copies</div>
       <div style="font-size:13px;color:#A3ACB8">For the USB stick, use Backup and restore at the top.</div>
       <button class="btn" disabled="{{locked}}">Email a backup to the reports address</button>
       <div style="font-size:12px;color:#A3ACB8">A copy is also kept on the C3 Life server's SSD every time you save.</div>
     </section>
+    </sc-if>
   </main>
 
   <div class="rtabar" style="flex:none">
@@ -328,6 +343,7 @@ class Component extends DCLogic {
     super(props);
     this.state = {
       usb: true, autoBackup: true, bkBusy: false, bkToast: '', restoring: null, upd: 'idle', updStep: 0, ver: '1.4.2', serviceOn: false, backups: [{ name: 'v12 Sunday standard', where: 'USB stick \u00b7 today 08:31 (start-up)' }, { name: 'v11 Before the Dante change', where: 'USB stick \u00b7 11 Oct 12:20' }, { name: 'v10 Christmas 2025', where: 'USB stick \u00b7 24 Dec 2025' }],
+      srv: null, pw: '',  // srv: from the C3 Life server; null = the demo
       admin: false, appSaved: (() => { try { const n = (localStorage.getItem('booth.appname') || '').trim(); return n || 'C3 Life'; } catch (e) { return 'C3 Life'; } })(), appDraft: (() => { try { const n = (localStorage.getItem('booth.appname') || '').trim(); return n || 'C3 Life'; } catch (e) { return 'C3 Life'; } })(), nameToast: '', cur: 0, startup: 'v12 · Sunday standard', newName: '', toast: '',
       versions: [
         { v: 12, name: 'Sunday standard', meta: 'Saved Sat 21:05 by Admin' },
@@ -352,15 +368,70 @@ class Component extends DCLogic {
     try { window.addEventListener('storage', this.onStore); } catch (e) {}
   }
   unwatchUser() { clearInterval(this.userPoll); try { window.removeEventListener('storage', this.onStore); } catch (e) {} }
-  componentWillUnmount() { clearTimeout(this.bkT); clearTimeout(this.updT); if (this.unwatchUser) this.unwatchUser(); }
-  componentDidMount() { this.watchUser((u) => this.setState({ admin: !!u && (u.role || u.name) === 'Admin' })); }
+  componentWillUnmount() { clearTimeout(this.bkT); clearTimeout(this.updT); clearInterval(this.poll); if (this.unwatchUser) this.unwatchUser(); }
+  componentDidMount() { this.watchUser((u) => this.setState({ admin: !!u && (u.role || u.name) === 'Admin' })); this.load(); this.poll = setInterval(() => this.load(), 5000); }
+  tok() { try { const x = JSON.parse(localStorage.getItem('booth.session') || 'null'); return x ? x.token : ''; } catch (e) { return ''; } }
+  load() {
+    fetch('/api/setup', { headers: { Authorization: 'Bearer ' + this.tok() } })
+      .then((r) => (r.status === 404 ? null : r.json()))
+      .then((j) => {
+        if (!j || !j.ok) return;  // no C3 Life server: the demo
+        try { localStorage.setItem('booth.appname', j.name); } catch (e) {}
+        const first = !this.state.srv;
+        this.setState(Object.assign({ srv: j, admin: j.admin, appSaved: j.name }, first || this.state.appDraft === this.state.appSaved ? { appDraft: j.name } : {}));
+      })
+      .catch(() => {});
+  }
+  post(path, body) {
+    return fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + this.tok() }, body: JSON.stringify(body) })
+      .then((r) => r.json()).catch(() => ({ ok: false, error: 'The C3 Life server didn’t answer, so nothing changed.' }));
+  }
+  srvVals(base) {
+    const s = this.state, v = s.srv, bks = v.backups || [];
+    const r = s.restoring !== null ? bks[s.restoring] : null;
+    const up = new Date(v.up_since * 1000);
+    return Object.assign(base, {
+      demoOnly: false, live: true,
+      curName: v.name + ' ' + v.version,
+      curMeta: 'Everything you change is saved on the C3 Life server straight away.',
+      loadedLine: 'Running since ' + up.toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' }),
+      usbText: v.drive ? 'Drive: ' + v.drive : 'No drive plugged in · backs up on the server',
+      usbColor: v.drive ? '#6CB4F5' : '#A3ACB8',
+      cantUsb: !s.admin || s.bkBusy,
+      backupLabel: s.bkBusy ? 'Backing up…' : (v.drive ? 'Back up to ' + v.drive + ' now' : 'Back up now'),
+      backupUsb: () => {
+        this.setState({ bkBusy: true, bkToast: '' });
+        this.post('/api/setup/backup', { drive: !!v.drive }).then((j) => { this.setState({ bkBusy: false, bkToast: j.ok ? '✓ Backed up ' + j.where + '.' : j.error }); this.load(); });
+      },
+      download: () => { window.location.href = '/api/setup/download?t=' + encodeURIComponent(this.tok()); this.setState({ bkToast: 'Downloading a backup of the setup to this device. Keep it somewhere safe.' }); },
+      noBackups: s.admin && !bks.length,
+      backups: bks.map((b, i) => ({ name: b.name.replace(/^c3life-setup-/, '').replace(/\.c3backup$/, ''), where: b.where + ' · ' + b.at, restore: () => this.setState({ restoring: i, bkToast: '', pw: '' }) })),
+      restoring: !!r, restoreName: r ? r.at + ' (' + r.where + ')' : '',
+      restoreText: 'What’s on the C3 Life server now is backed up first, so you can go back. Then C3 Life restarts (about 10 seconds) to load it. The desk keeps running.',
+      pw: s.pw || '', setPw: (e) => this.setState({ pw: e.target.value }),
+      doRestore: () => {
+        this.setState({ restoring: null, bkToast: 'Restoring…' });
+        this.post('/api/setup/restore', { id: r.id, password: s.pw || '' }).then((j) => this.setState({ pw: '', bkToast: j.ok ? (j.restarting ? '✓ Restored. C3 Life is restarting to load it; this screen comes back in a few seconds.' : '✓ ' + j.note) : j.error }));
+      },
+      saveAppName: () => {
+        const n = s.appDraft.trim().slice(0, 30);
+        this.post('/api/setup/name', { name: n }).then((j) => {
+          if (j.ok) { try { localStorage.setItem('booth.appname', j.name); } catch (e) {} this.setState({ appSaved: j.name, appDraft: j.name, nameToast: 'Saved. Every screen and report now says “' + j.name + '”.' }); } else this.setState({ nameToast: j.error });
+        });
+      },
+      holdsNote: 'Not in a backup: recordings, report photos and saved subtitles (they’re big, and copied their own ways), the Wing’s own scenes, ProPresenter slides and Spotify downloads. PINs and passwords stay hashed.'
+    });
+  }
   stamp() { return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
   renderVals() {
     const s = this.state;
     const cur = s.versions[s.cur];
     const n = s.changes.length;
     const label = (v) => 'v' + v.v + ' · ' + v.name;
-    return {
+    const base = {
+      demoOnly: true, live: false, loadedLine: 'Loaded at start-up today 08:31', noBackups: false, pw: '', setPw: () => {},
+      restoreText: 'The setup running now is backed up first, so you can go back. The C3 Life server loads the restored setup straight away. The desk keeps running.',
+      holdsNote: 'Not in the file: the Wing\'s own scenes (the file remembers which scene to recall), ProPresenter slides and Spotify downloads. PINs are stored encrypted.',
       curName: label(cur),
       curShort: cur.name,
       curMeta: cur.meta,
@@ -441,6 +512,7 @@ class Component extends DCLogic {
       demoAdminLabel: s.admin ? 'Demo: lock again' : 'Demo: unlock as Admin',
       demoAdmin: () => this.setState({ admin: !s.admin })
     };
+    return s.srv ? this.srvVals(base) : base;
   }
 }
 </script>

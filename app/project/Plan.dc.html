@@ -362,7 +362,7 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
       </section>
 
       <div style="display:flex;align-items:center;gap:8px;padding:2px 4px">
-        <label style="flex:1;display:flex;align-items:center;gap:8px;font-size:13px"><input type="checkbox" checked="{{autoRun}}" onChange="{{toggleAuto}}" disabled="{{notAdmin}}"><span>Run macros by themselves<br><span style="font-size:12px;color:#A3ACB8">{{autoHint}}</span></span></label>
+        <div style="flex:1;font-size:13px;color:#A3ACB8">Nothing runs by itself. Tap Run on an item when you’re ready; a macro still asks first.</div>
         <button class="btn" onClick="{{toggleEdit}}">{{editLabel}}</button>
       </div>
 
@@ -463,7 +463,7 @@ class Component extends DCLogic {
     const mk = (time, title, detail, macro, opts) => ({ id: 'it' + (id++), time, title, detail, macro, inPP: true, inPCO: true, pending: false, ...(opts || {}) });
     this.nextId = 100;
     this.state = {
-      view: 'plan', online: false, editing: false, loadedFrom: '', loadedAt: '', choosing: false, autoRun: (() => { try { return localStorage.getItem('booth.auto') === 'on'; } catch (e) { return false; } })(), ran: {}, admin: false, svcEdit: null, svcAsk: false, svcToast: '', svcTick: 0, queued: 0, nowId: 'it3',
+      view: 'plan', online: false, editing: false, loadedFrom: '', loadedAt: '', choosing: false, ran: {}, admin: false, svcEdit: null, svcAsk: false, svcToast: '', svcTick: 0, queued: 0, nowId: 'it3',
       items: [
         mk('9:45', 'Pre-service', 'Walk-in slides', 'Walk-in'),
         mk('10:00', 'Welcome', 'Host', 'None'),
@@ -909,10 +909,7 @@ class Component extends DCLogic {
         queued: 0,
         items: !s.online ? items.map((x) => ({ ...x, pending: false })) : items
       }),
-      autoRun: s.autoRun,
       notAdmin: !s.admin,
-      autoHint: s.autoRun ? 'On: macros run when their item goes live (they still ask first).' : 'Off: nothing runs by itself. Tap Run on the item when you are ready.' + (s.admin ? '' : ' Only an Admin can change this.'),
-      toggleAuto: () => { const v = !s.autoRun; try { localStorage.setItem('booth.auto', v ? 'on' : 'off'); } catch (e) {} this.setState({ autoRun: v }); },
       editing: s.editing,
       editLabel: s.editing ? 'Done' : 'Edit order',
       toggleEdit: () => this.setState({ editing: !s.editing }),
