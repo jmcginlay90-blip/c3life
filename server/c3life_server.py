@@ -1142,6 +1142,13 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                     rv = recorder.view()
                     devs.append({"id": "drive", "name": "Recording drive", "ok": bool(rv["drive"]), "area": "Recording", "where": "Recording.dc.html",
                                  "why": "Not plugged in.", "info": True, "detail": (rv["drive"] or {}).get("label", "")})
+                    new = [d for d in recorder.drives if not d.get("ok")]
+                    if new and not rv["drive"]:
+                        devs.append({"id": "drive_new", "name": "%s was plugged in" % new[0]["label"], "ok": False, "info": True, "area": "Recording",
+                                     "where": "Recording.dc.html", "why": "Choose it on Record to use it for recordings.", "detail": ""})
+                    if rv.get("short"):
+                        devs.append({"id": "local_full", "name": "This computer is nearly full", "ok": False, "info": True, "alert": True, "area": "Recording", "where": "Recording.dc.html",
+                                     "why": "Plug in the recording drive so the recordings on this computer copy across.", "detail": ""})
                     out["rec"] = {"on": bool(rv["recording"]), "secs": (rv["recording"] or {}).get("secs", 0)}
                 out["devices"] = devs
                 out["app_name"] = setup.name() if setup else "C3 Life"
@@ -2628,13 +2635,15 @@ def serve(cfg):
     midi.buttons = buttons
     buttons.send = lambda m: midi.send(m)  # light an A/B switch's button on the controller
 
+    follow_stop = threading.Event()
+
     def _follow():
-        while not scanner.stop.wait(1.0):
+        while not follow_stop.wait(1.0):
             try:
                 buttons.follow(desk.state().get("strips", {}).get("ch", {}))
             except Exception:  # noqa: BLE001
                 pass
-    threading.Thread(target=_follow, daemon=True).start()
+    threading.Thread(target=_follow, daemon=True, name="midi-follow").start()
     network = netwin_mod.Network(log)
     for h in [h for h in log.handlers if isinstance(h, daily_mod.ActivityLog)]:
         log.removeHandler(h)  # one per server (the tests start several)
@@ -2658,7 +2667,7 @@ def serve(cfg):
                                                                               lambda: [p for p in midi.peers.values() if p.get("data") and time.time() - p["seen"] < 60], power, chat, setup, md, mics, buttons, network, daily))
     httpd.daemon_threads = True
     close = httpd.server_close
-    httpd.server_close = lambda: (scanner.stop.set(), md.stop_ev.set(), daily.stop_ev.set(), mics.stop_ev.set(), lights.close(), rta_live.stop(), midi.close(), recorder.close(), engine.stop(), close())
+    httpd.server_close = lambda: (scanner.stop.set(), follow_stop.set(), md.stop_ev.set(), daily.stop_ev.set(), mics.stop_ev.set(), lights.close(), rta_live.stop(), midi.close(), recorder.close(), engine.stop(), close())
     httpd.store, httpd.sessions, httpd.listen, httpd.access, httpd.tags, httpd.bible, httpd.reports, httpd.plan, httpd.desk, httpd.tio, httpd.monitors, httpd.scanner, httpd.foyer, httpd.rta_inputs, httpd.lights, httpd.rta_live, httpd.midi, httpd.music, httpd.helpers, httpd.health, httpd.macros = store, sessions, listen, access, tags, bible, reports, plan, desk, tio, monitors, scanner, foyer, rta_inputs, lights, rta_live, midi, music, helpers, health, macros
     httpd.md, httpd.setup, httpd.mics, httpd.buttons, httpd.network, httpd.daily = md, setup, mics, buttons, network, daily
     httpd.wing = desk  # the tests, and older code, call it this

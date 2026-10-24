@@ -691,9 +691,14 @@ class Component extends DCLogic {
         'Help \u203a Run system check (or Check-C3LifeServer.ps1) says "Sound (DVS in ASIO)": OK when it\u2019s right.'] },
       { q: 'Recording: the drive isn\u2019t found', c: '#E5484D', href: 'Recording.dc.html', go: 'Record', steps: [
         'Plug the USB drive into the C3 Life server. Record checks for it every few seconds.',
-        'A new drive is never written to until someone chooses it once: Record \u203a By itself, and other settings \u203a Drives plugged in \u203a Use for recordings. A drive with a "C3 Life Recordings" folder on it is used straight away.',
+        'A new drive shows at the top of Record (and on Home) as soon as it\u2019s plugged in. It\u2019s never written to until someone taps Use it for recordings, once. A drive with a "C3 Life Recordings" folder on it is used straight away.',
+        'Copy to puts a recording on any other drive in a "C3 Life Recordings (copies)" folder, so a drive you take home never turns into the recording drive.',
         'With no drive, it records onto this computer instead (if that\u2019s ticked), and copies it to the drive when it\u2019s plugged in.',
         'Use exFAT or NTFS for a big drive. FAT32 works but is slower.'] },
+      { q: 'Recording: this computer is nearly full', c: '#E5484D', href: 'Recording.dc.html', go: 'Record', steps: [
+        'Plug in the recording drive: what was recorded onto this computer copies across by itself, is checked, then cleared from this computer.',
+        'If you keep a copy on this computer too, the oldest ones already on the recording drive are deleted when it runs low (Record \u203a By itself, and other settings). One that\u2019s only on this computer is never deleted.',
+        'Every deletion is in the service log and the activity report. A recording onto this computer stops with 1 GB left, keeping what it has.'] },
       { q: 'Recording didn\u2019t start (or stop) by itself', c: '#E5484D', href: 'Recording.dc.html', go: 'Record', steps: [
         'Record \u203a By itself, and other settings: "Start recording by itself" must say "On the start slide" (or "As soon as the drive is plugged in").',
         'The start slide must match exactly what ProPresenter calls it: a presentation\u2019s name, a slide group (such as Welcome) or a slide label.',
