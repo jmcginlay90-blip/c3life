@@ -91,6 +91,10 @@ API (JSON):
                      {"do": "balance", "mix": "a"|"b", "db"}  (Foyer setup control: each mix's send level to the matrix)
                                            which mix the foyer hears, its volume (never above the maximum) and mute,
                                            on the Wing (Control); GET /api/foyer has "live", what the desk is doing now
+  GET  /api/md/live                        (signed in) is the MD talking now? Every screen asks, for the green box
+  GET  /api/md | PUT /api/md {...}          (Mixer or Show view / Mixer control) MD talk: the channel, when it goes green,
+                                           the Listen source for the words, the stage display, and the log
+  POST /api/md/test | /api/md/clear         (Mixer control) every screen green for 5 seconds / clear the log
   GET  /api/setup                          (signed in) the app's name and version; for an Admin, the backups too
   POST /api/setup/name {"name"}             (Admin) rename the app (Home, the laptop dashboard, reports)
   POST /api/setup/backup {"drive"}          (Admin) back up data/ on the server (and to the plugged-in drive)
@@ -215,6 +219,7 @@ import propresenter as propresenter_mod
 import power as power_mod
 import syscheck as syscheck_mod
 import setup as setup_mod
+import mdtalk as mdtalk_mod
 import chat as chat_mod
 
 VERSION = "0.3.0"
@@ -554,7 +559,7 @@ def _ip_ok(x):
         return False
 
 
-def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bible=None, cues=None, reports=None, plan=None, desk=None, tio=None, monitors=None, scanner=None, foyer=None, rta_inputs=None, dante_names=None, lights=None, rta_live=None, midi=None, music=None, helpers=None, health=None, macros=None, recorder=None, pp=None, midi_peers=None, power=None, chat=None, setup=None):
+def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bible=None, cues=None, reports=None, plan=None, desk=None, tio=None, monitors=None, scanner=None, foyer=None, rta_inputs=None, dante_names=None, lights=None, rta_live=None, midi=None, music=None, helpers=None, health=None, macros=None, recorder=None, pp=None, midi_peers=None, power=None, chat=None, setup=None, md=None):
     nets = cfg["_nets"]
     remote_nets = cfg.get("_remote", [])
 
@@ -930,6 +935,21 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                                      "names": {n: v.get("name", "") for n, v in st["strips"]["ch"].items()}, "locked": d["locked"],
                                      "aux_names": {n: v.get("name", "") for n, v in st["strips"]["aux"].items()}, "eq": desk.bus_eq(b),
                                      "can_change": desk.settings["mode"] == "control" and not monitors.may_change(s["name"], mixer, b) if b in d["buses"] else mixer >= 2 and desk.settings["mode"] == "control"})
+                return
+            if path == "/api/md/live":
+                s, _ = self.session()
+                if s:
+                    self.send_json(200, dict(md.live(), ok=True))
+                else:
+                    self.send_json(401, {"ok": False})
+                return
+            if path == "/api/md":
+                s = self.level("Mixer", "Show")
+                if s:
+                    st = desk.state()
+                    self.send_json(200, dict(md.view(), ok=True, can=access.level(s["role"], "Mixer") >= 2,
+                                             names={n: v.get("name", "") for n, v in st["strips"]["ch"].items()}, chs=getattr(desk, "KINDS", {}).get("ch", 40),
+                                             sources=[{"id": x["id"], "name": x["name"], "captions": bool(x.get("captions"))} for x in listen.config()["sources"]]))
                 return
             if path == "/api/setup":
                 s, _ = self.session()
@@ -1809,6 +1829,13 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 again = power.do("app", s["name"]) if power else "Restart C3 Life to load it."
                 self.send_json(200, {"ok": True, "restarting": not again, "note": "" if not again else "Restored. " + again + " C3 Life loads the restored setup when it starts again."})
                 return
+            if path in ("/api/md/test", "/api/md/clear"):
+                s = self.level("Mixer", need=2)
+                if not s:
+                    return
+                (md.test if path.endswith("/test") else md.clear)(s["name"])
+                self.send_json(200, dict(md.view(), ok=True))
+                return
             if path == "/api/support":
                 s = self.level("Mixer", "Settings", "Show", "Lights", "RTA")
                 if not s:
@@ -1965,6 +1992,13 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
 
         def do_PUT(self):
             if not self.client_ok():
+                return
+            if self.route() == "/api/md":
+                s = self.level("Mixer", need=2)
+                if not s:
+                    return
+                err = md.set(self.read_json() or {}, s["name"])
+                self.send_json(400 if err else 200, dict(md.view(), ok=not err, error=err or ""))
                 return
             if self.route() == "/api/devices":
                 s = self.level("Settings", need=2)
@@ -2449,6 +2483,8 @@ def serve(cfg):
     pp = propresenter_mod.ProPresenter(cfg, log)
     chat = chat_mod.Chat(cfg["data_dir"], log, pp)
     power = power_mod.Power(cfg, log, before=lambda: recorder.rec and recorder.stop("the server power screen"))
+    md = mdtalk_mod.MDTalk(cfg["data_dir"], cfg, log, desk, listen=listen, pp=pp)
+    md.start()
     setup = setup_mod.Setup(cfg["data_dir"], cfg, log, drives=lambda: list(recorder.drives) if recorder else [], version=VERSION)
     if engine.on:
         recorder.start_loop()  # watches for the recording drive, and ProPresenter's slides when they start or stop it
@@ -2462,11 +2498,12 @@ def serve(cfg):
         gone = lambda d, name: [name] if d and d.status()["status"] == "no answer" else []
         threading.Thread(target=scanner.watch, args=([lambda: gone(desk, desk.NAME), lambda: gone(tio, "the Tio"), health.check],), daemon=True).start()
     httpd = ThreadingHTTPServer((cfg["bind"], int(cfg["port"])), make_handler(cfg, store, sessions, listen, access, dante, tags, bible, cues, reports, plan, desk, tio, monitors, scanner, foyer, rta_inputs, dante_names, lights, rta_live, midi, music, helpers, health, macros, recorder, pp,
-                                                                              lambda: [p for p in midi.peers.values() if p.get("data") and time.time() - p["seen"] < 60], power, chat, setup))
+                                                                              lambda: [p for p in midi.peers.values() if p.get("data") and time.time() - p["seen"] < 60], power, chat, setup, md))
     httpd.daemon_threads = True
     close = httpd.server_close
-    httpd.server_close = lambda: (scanner.stop.set(), lights.close(), rta_live.stop(), midi.close(), recorder.close(), engine.stop(), close())
+    httpd.server_close = lambda: (scanner.stop.set(), md.stop_ev.set(), lights.close(), rta_live.stop(), midi.close(), recorder.close(), engine.stop(), close())
     httpd.store, httpd.sessions, httpd.listen, httpd.access, httpd.tags, httpd.bible, httpd.reports, httpd.plan, httpd.desk, httpd.tio, httpd.monitors, httpd.scanner, httpd.foyer, httpd.rta_inputs, httpd.lights, httpd.rta_live, httpd.midi, httpd.music, httpd.helpers, httpd.health, httpd.macros = store, sessions, listen, access, tags, bible, reports, plan, desk, tio, monitors, scanner, foyer, rta_inputs, lights, rta_live, midi, music, helpers, health, macros
+    httpd.md, httpd.setup = md, setup
     httpd.wing = desk  # the tests, and older code, call it this
     httpd.engine, httpd.recorder, httpd.pp, httpd.power = engine, recorder, pp, power
     return httpd

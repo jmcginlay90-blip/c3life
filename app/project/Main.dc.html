@@ -574,7 +574,8 @@ class Component extends DCLogic {
       lights: { name: 'Lights Go', label: 'Lights Go', sub: 'Lightkey', off: !can.lights, run: () => this.hmDo('/api/lights/do', { do: 'go' }, 'Lights: Go') },
       foyer: { name: 'Foyer source', label: fy ? fy.name + ': ' + (fyLive ? fy.b : fy.a) : 'Foyer', sub: 'Tap to switch', off: !can.foyer || !fy,
         run: () => this.setState({ ask: { title: 'Switch the ' + fy.name + ' to ' + (fyLive ? fy.a : fy.b) + '?', text: 'The speakers change straight away.', btn: 'Switch', act: () => this.hmDo('/api/foyer/do', { do: 'source', to: fyLive ? 'a' : 'b' }, fy.name + ' switched') } }) },
-      mdtest: qDefs.mdtest
+      mdtest: { name: 'MD talk test', label: 'MD talk test', sub: 'Every screen goes green for 5 s', off: !can.mixer,
+        run: () => this.hmDo('/api/md/test', {}, 'MD talk test: every screen is green for 5 seconds') }
     };
     const devices = (H.devices || []).map((d) => {
       const k = d.ok ? 'ok' : (d.info ? 'off' : 'lost');

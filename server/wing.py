@@ -245,6 +245,13 @@ class Wing(desk_mod.Desk):
             out["inputs"] = {k: dict(v) for k, v in self.inputs.items()}
         return out
 
+    def input_level(self, n):
+        """Channel n's input level in dB (before the fader), or None when the meters aren't coming in."""
+        if time.time() - self.meters_at > 3:
+            return None
+        with self.lock:
+            return getattr(self, "inputs_db", {}).get(n)
+
     def meter_state(self):
         if time.time() - self.meters_at > 3:
             return {"meters": False}
@@ -893,6 +900,7 @@ class Wing(desk_mod.Desk):
                 m[n + 1] = [round(vals[n * 8 + 2] / 256.0, 1), round(vals[n * 8 + 3] / 256.0, 1)]
         with self.lock:
             self.meters, self.meters_at = m, now
+            self.inputs_db = {n: v[0] for n, v in d.items()}  # each channel's input level, before the fader (MD talk)
             for n in [k for k, t in self.focus.items() if t > now and k in d]:
                 h = self.hist.setdefault(n, collections.deque(maxlen=200))
                 if not h or now - h[-1][0] >= 0.04:  # up to 25 a second, the last 8 seconds

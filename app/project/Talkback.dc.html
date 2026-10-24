@@ -204,7 +204,7 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
         </sc-for>
       </div>
       <div style="font-size:12px;color:#A3ACB8;line-height:1.45">Only changes this phone or iPad. Tap Hide on the box to hide it until the MD stops talking. What the MD says is still written to the log below.</div>
-      <label style="display:flex;align-items:center;gap:8px;font-size:14px"><input type="checkbox" checked> Also show on ProPresenter stage display</label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:14px"><input type="checkbox" checked="{{stageOn}}" onChange="{{toggleStage}}"> Also show on ProPresenter stage display</label>
     </section>
 
     <section id="mdlog" class="card" style="display:flex;flex-direction:column;gap:10px">
@@ -216,7 +216,14 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
         <span style="font-size:12px;color:#A3ACB8;white-space:nowrap">{{logCount}}</span>
       </div>
       <label style="display:flex;align-items:center;gap:8px;font-size:14px"><input type="checkbox" checked="{{writeOn}}" onChange="{{toggleWrite}}"> Write down what the MD says</label>
-      <label style="display:flex;align-items:center;gap:8px;font-size:14px"><input type="checkbox" checked="{{keepAudio}}" onChange="{{toggleAudio}}"> Keep the recording so you can listen again</label>
+      <sc-if value="{{demoOnly}}" hint-placeholder-val="{{ true }}"><label style="display:flex;align-items:center;gap:8px;font-size:14px"><input type="checkbox" checked="{{keepAudio}}" onChange="{{toggleAudio}}"> Keep the recording so you can listen again</label></sc-if>
+      <sc-if value="{{live}}" hint-placeholder-val="{{ false }}">
+        <label for="mdsrc" style="font-size:13px;color:#A3ACB8">The words come from (a Listen source with subtitles on)</label>
+        <select id="mdsrc" value="{{source}}" onChange="{{pickSource}}">
+          <sc-for list="{{sources}}" as="o" hint-placeholder-count="3"><option value="{{o.id}}">{{o.name}}</option></sc-for>
+        </select>
+      </sc-if>
+      <sc-if value="{{hasMsg}}" hint-placeholder-val="{{ false }}"><div role="status" style="font-size:13px;color:{{msgColor}}">{{msg}}</div></sc-if>
       <sc-if value="{{noLog}}" hint-placeholder-val="{{ false }}"><div style="font-size:13px;color:#A3ACB8;padding:6px 0">Nothing yet. Lines appear here a second or two after the MD stops talking.</div></sc-if>
       <div style="display:flex;flex-direction:column">
         <sc-for list="{{log}}" as="l" hint-placeholder-count="4">
@@ -234,12 +241,10 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
       <div style="display:flex;flex-direction:column;gap:4px;border-top:1px solid #222831;padding-top:10px">
         <label for="keep" style="font-size:13px;color:#A3ACB8">Keep the log</label>
         <select id="keep" value="{{keep}}" onChange="{{setKeep}}">
-          <option value="service">For this service only · cleared at shut down</option>
-          <option value="report">Add the text to the activity report</option>
-          <option value="report-audio">Add text to the report and keep recordings on the C3 Life server for 7 days</option>
+          <sc-for list="{{keepOpts}}" as="o" hint-placeholder-count="3"><option value="{{o.v}}">{{o.t}}</option></sc-for>
         </select>
       </div>
-      <div style="font-size:12px;color:#A3ACB8;line-height:1.45">Speech-to-text runs on the C3 Life server with no internet. It needs the MD mic sent to Dante Virtual Soundcard as one extra Dante channel. Music in the background can cause mistakes, so the recording is there to check.</div>
+      <div style="font-size:12px;color:#A3ACB8;line-height:1.45">Speech-to-text runs on the C3 Life server with no internet, using Listen’s subtitles. Send the MD mic to a Dante Virtual Soundcard channel, add it as a Listen source with subtitles on (Listen settings), and pick it above. Music in the background can cause mistakes.</div>
       <button class="btn" onClick="{{askClear}}" disabled="{{noLog}}">Clear the log…</button>
     </section>
 
@@ -265,7 +270,7 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { ch: this.chLabel(12), mode: 1, thresh: -35, testing: false, meter: 10, log: this.readLog(), writeOn: true, keepAudio: true, keep: 'service', playing: -1 };
+    this.state = { srv: null, ch: this.chLabel(12), mode: 1, thresh: -35, testing: false, meter: 10, log: this.readLog(), writeOn: true, keepAudio: true, keep: 'service', playing: -1 };
   }
   readLog() {
     try {
@@ -279,12 +284,63 @@ class Component extends DCLogic {
       { id: 1, at: '10:02', dur: 3, ch: this.chLabel(12), text: 'Starting Song 1 in two bars', sure: true }
     ];
   }
+  tok() { try { const x = JSON.parse(localStorage.getItem('booth.session') || 'null'); return x ? x.token : ''; } catch (e) { return ''; } }
+  load() {
+    fetch('/api/md', { headers: { Authorization: 'Bearer ' + this.tok() } })
+      .then((r) => (r.status === 404 ? null : r.json()))
+      .then((j) => { if (!j) { clearInterval(this.srvPoll); return; } if (j.ok) this.setState({ srv: j }); else this.setState({ msg: j.error || 'Sign in again.', msgColor: '#FF8A80' }); })
+      .catch(() => {});
+  }
+  put(b, done) {
+    fetch('/api/md', { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + this.tok() }, body: JSON.stringify(b) })
+      .then((r) => r.json())
+      .then((j) => this.setState(j.ok ? { srv: Object.assign({}, this.state.srv, j), msg: done || '', msgColor: '#6CB4F5' } : { msg: j.error || 'That wasn’t saved.', msgColor: '#FF8A80' }))
+      .catch(() => this.setState({ msg: 'The C3 Life server didn’t answer, so nothing changed.', msgColor: '#FF8A80' }));
+  }
+  post(path) {
+    fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + this.tok() }, body: '{}' })
+      .then((r) => r.json()).then((j) => this.setState(j.ok ? { srv: Object.assign({}, this.state.srv, j) } : { msg: j.error || 'That didn’t work.', msgColor: '#FF8A80' })).catch(() => {});
+  }
+  srvVals(base) {
+    const s = this.state, v = s.srv, st = v.settings, names = v.names || {};
+    const lab = (n) => 'Ch ' + String(n).padStart(2, '0') + (names[n] ? ' · ' + names[n] : '');
+    const chs = []; for (let n = 1; n <= (v.chs || 40); n++) chs.push(lab(n));
+    const lv = v.level;
+    const no = !v.can ? () => this.setState({ msg: 'Your role can’t change MD talk (Mixer control, Access levels).', msgColor: '#FF8A80' }) : null;
+    return Object.assign(base, {
+      demoOnly: false, live: true,
+      channels: chs, ch: lab(st.ch), chName: lab(st.ch),
+      pickCh: (e) => no ? no() : this.put({ ch: Number((e.target.value.match(/Ch (\d+)/) || [0, st.ch])[1]) }, 'MD mic is now ' + e.target.value + '.'),
+      meter: lv == null ? 0 : Math.max(0, Math.min(100, Math.round((lv + 60) / 0.6))),
+      meterDb: lv == null ? 'No meters' : Math.round(lv) + ' dB',
+      modes: [['Channel is unmuted', 'MD presses their mic button or the channel mute is lifted'], ['MD is actually speaking', 'Signal on the channel goes over the threshold']]
+        .map(([name, hint], i) => ({ name, hint, on: st.mode === i, off: st.mode !== i, pick: () => no ? no() : this.put({ mode: i }) })),
+      showThresh: st.mode === 1, thresh: st.thresh,
+      setThresh: (e) => no ? no() : this.put({ thresh: Number(e.target.value) }),
+      stageOn: st.stage, toggleStage: () => no ? no() : this.put({ stage: !st.stage }, st.stage ? 'The stage display won’t show it.' : 'The stage display shows “MD is talking” too.'),
+      sources: [{ id: '', name: 'None · just when and how long' }].concat((v.sources || []).filter((x) => x.captions).map((x) => ({ id: x.id, name: x.name }))),
+      source: st.source, pickSource: (e) => no ? no() : this.put({ source: e.target.value }, e.target.value ? 'The words come from that Listen source’s subtitles.' : 'The log just says when and for how long.'),
+      log: (v.lines || []).map((l) => ({ at: l.at, text: l.text || (l.words ? '(nothing understood)' : 'Talked for ' + l.dur + ' s'), unsure: false, meta: l.ch + ' · ' + l.dur + ' s', canPlay: false, playLabel: '', playAria: '', play: () => {} })),
+      logCount: (v.lines || []).length + ((v.lines || []).length === 1 ? ' line' : ' lines'),
+      noLog: !(v.lines || []).length,
+      writeOn: st.write, toggleWrite: () => no ? no() : this.put({ write: !st.write }),
+      keepOpts: [{ v: 'service', t: 'For this service only · cleared when C3 Life restarts' }, { v: 'report', t: 'Keep it on the C3 Life server (for the report)' }],
+      keep: st.keep, setKeep: (e) => no ? no() : this.put({ keep: e.target.value }),
+      testing: !!v.talking && !!v.test,
+      testLabel: v.test ? 'Testing… shows on all phones' : 'Test: make every screen go green',
+      askTest: () => no ? no() : this.setState({ ask: { title: 'Make every screen go green for 5 seconds?', text: 'Everyone using C3 Life will see the green \u201cMD is talking\u201d box. Nothing changes on the desk. Best before the service.', btn: 'Yes, test it', act: 'test' } }),
+      askClear: () => no ? no() : this.setState({ ask: { title: 'Clear the MD log?', text: (v.lines || []).length + ' lines will be deleted. This can\u2019t be undone.', btn: 'Yes, clear it', act: 'clear' } }),
+      askYes: () => { const a = s.ask; this.setState({ ask: null }); if (a) this.post(a.act === 'test' ? '/api/md/test' : '/api/md/clear'); },
+      hasMsg: !!s.msg, msg: s.msg || '', msgColor: s.msgColor || '#A3ACB8'
+    });
+  }
   componentDidMount() {
+    this.load(); this.srvPoll = setInterval(() => this.load(), 1000);
     this.raw = null;
     this.logPoll = setInterval(() => { let r = null; try { r = localStorage.getItem('booth.mdlog'); } catch (e) {} if (r && r !== this.raw) { this.raw = r; this.setState({ log: this.readLog() }); } }, 1000);
     this.timer = setInterval(() => this.setState({ meter: this.state.testing ? 55 + Math.random() * 25 : 4 + Math.random() * 8 }), 150);
   }
-  componentWillUnmount() { clearInterval(this.timer); clearInterval(this.logPoll); clearTimeout(this.t); clearTimeout(this.pt); }
+  componentWillUnmount() { clearInterval(this.srvPoll); clearInterval(this.timer); clearInterval(this.logPoll); clearTimeout(this.t); clearTimeout(this.pt); }
   // Channel, bus and DCA names come from the Wing. Every screen reads this one list, so they always match the desk.
   wnDefaults() {
     return {
@@ -318,7 +374,10 @@ class Component extends DCLogic {
       { v: 'banner', name: 'Box only', text: 'Just the box at the top, no green over the screen.' },
       { v: 'off', name: 'Off', text: 'Nothing shows on this device.' }
     ].map((o) => ({ ...o, on: bm === o.v, pick: () => { try { localStorage.setItem('booth.mdbanner', o.v); } catch (e) {} this.setState({ bmTick: Date.now() }); } }));
-    return {
+    const base = {
+      demoOnly: true, live: false, hasMsg: false, msg: '', msgColor: '#A3ACB8', sources: [], source: '',
+      stageOn: !!s.stage, toggleStage: () => this.setState({ stage: !s.stage }),
+      keepOpts: [{ v: 'service', t: 'For this service only · cleared at shut down' }, { v: 'report', t: 'Add the text to the activity report' }, { v: 'report-audio', t: 'Add text to the report and keep recordings on the C3 Life server for 7 days' }],
       bannerOpts,
       channels: [1, 5, 11, 12, 13].map((n) => this.chLabel(n)).concat(['Aux 3 \u00b7 ' + (this.wn().aux[3] || 'MD Wireless'), 'Wing TB A']),
       ch: s.ch, chName: s.ch,
@@ -352,6 +411,7 @@ class Component extends DCLogic {
       askNo: () => this.setState({ ask: null }),
       askYes: () => { const a = s.ask; this.setState({ ask: null }); if (!a) return; if (a.act === 'test') { this.setState({ testing: true }); this.t = setTimeout(() => this.setState({ testing: false }), 3000); } else { try { localStorage.setItem('booth.mdlog', '[]'); } catch (e) {} this.raw = '[]'; this.setState({ log: [] }); } }
     };
+    return s.srv ? this.srvVals(base) : base;
   }
 }
 </script>

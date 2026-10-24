@@ -96,6 +96,9 @@ class Desk:
     def meter_state(self):
         return {"meters": False, "ch": {}, "lr": {}}
 
+    def input_level(self, n):
+        return None
+
     def bus_sends(self, b):
         return {}
 
