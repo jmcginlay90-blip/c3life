@@ -593,21 +593,52 @@ class Recorder:
         return None
 
     def _write_info(self, r, tracks, length):
-        f = r["folder"]
-        with open(os.path.join(f, "session.json"), "w", encoding="utf-8") as h:
-            json.dump({"name": r["name"], "rate": r["rate"], "length": round(length, 3), "started": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(r["started"])),
-                       "by": r["by"], "tracks": tracks, "markers": r["markers"]}, h, indent=1)
-        with open(os.path.join(f, "markers.csv"), "w", encoding="utf-8") as h:
-            h.write("time,seconds,name,type,song\n")
-            for m in r["markers"]:
-                h.write('%s,%.2f,"%s",%s,"%s"\n' % (clock(m["t"]), m["t"], m["name"].replace('"', "'"), kind(m) or "marker",
-                                                     (m.get("song") or "").replace('"', "'")))
-        with open(os.path.join(f, "markers.txt"), "w", encoding="utf-8") as h:  # Audacity labels: a section is a region
-            for m in parts(r["markers"], length):
-                end = m["end"] if m["kind"] == "section" else m["t"]
-                h.write("%.3f\t%.3f\t%s\n" % (m["t"], end, ("%s: %s" % (m["song"], m["name"])) if m.get("song") else m["name"]))
-        with open(os.path.join(f, r["name"] + ".RPP"), "w", encoding="utf-8") as h:
-            h.write(rpp(r["name"], r["rate"], tracks, r["markers"], length))
+        write_session(r["folder"], {"name": r["name"], "rate": r["rate"], "length": round(length, 3),
+                                    "started": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(r["started"])),
+                                    "by": r["by"], "tracks": tracks, "markers": r["markers"]})
+
+    # ---- moving a marker afterwards (the lyrics were a little early or late) ----
+    def nudge(self, name, where, i, by, who):
+        """Move marker i (as listed, without Start and End) by `by` seconds, and write the marker files again."""
+        if not isinstance(by, (int, float)) or isinstance(by, bool) or not -60 <= by <= 60 or by == 0:
+            return "Move it by up to a minute.", None
+        folder, s = self._session(name, where)
+        if not s:
+            return "That recording isn't on the drive.", None
+        if self.player and self.player.name == s.get("name"):
+            return "Not while it's playing. Press Back to stage first.", None
+        ms = s.get("markers") or []
+        real = [k for k, m in enumerate(ms) if m.get("name") not in ("Start", "End")]
+        if not isinstance(i, int) or isinstance(i, bool) or not 0 <= i < len(real):
+            return "That marker isn't there.", None
+        m = ms[real[i]]
+        t0 = m["t"]
+        m["t"] = round(min(max(0.0, t0 + by), float(s.get("length") or t0 + by)), 2)
+        if kind(m) == "song":  # a song's first part starts with it
+            for x in ms:
+                if kind(x) == "section" and x.get("song") == m["name"] and abs(x["t"] - t0) < 0.05:
+                    x["t"] = m["t"]
+        start = [x for x in ms if x.get("name") == "Start"]
+        end = [x for x in ms if x.get("name") == "End"]
+        rest = sorted([x for x in ms if x.get("name") not in ("Start", "End")], key=lambda x: x["t"])
+        s["markers"] = start + rest + end
+        s["nudged"] = time.strftime("%Y-%m-%d %H:%M")
+        try:
+            write_session(folder, s)
+        except OSError as e:
+            return "The marker files couldn't be written (%s)." % e, None
+        self.log.info("recording: %s moved the marker %s in %s from %s to %s", who, m["name"], name, clock(t0), clock(m["t"]))
+        return None, [x for x in parts(s["markers"], s.get("length", 0)) if x.get("name") not in ("Start", "End")]
+
+    def jump(self, step, who):
+        p = self.player
+        if not p:
+            return "Nothing is playing.", ""
+        err, label = p.jump(step)
+        if not err:
+            self.log.info("recording: %s jumped %s to %s", who, "on" if step > 0 else "back", label)
+        return err, label
+
 
     # ---- ProPresenter: start, stop and markers ----
     def _on_slide(self, slide):
@@ -895,8 +926,14 @@ class Recorder:
                 "tracks": [{"dvs": t["dvs"], "pair": t.get("pair"), "name": t["name"], "from": t.get("from", "")} for t in s.get("tracks") or []],
                 "markers": [m for m in parts(s.get("markers") or [], s.get("length", 0)) if m.get("name") not in ("Start", "End")]}, None
 
-    def play(self, name, start_at, who, where="drive", end_at=None, loop=False, part="", send=None):
-        """Play to the desk from start_at; with end_at, only up to there (a song or one section), over and over with loop."""
+    def play(self, name, start_at, who, where="drive", end_at=None, loop=False, part="", send=None, segs=None):
+        """Play to the desk from start_at; with end_at, only up to there (a song or one section), over and over with loop.
+        segs [(from, to, label)]: several parts one after the other instead (all of them looped with loop)."""
+        if segs:
+            if len(segs) > 50 or any(b is None or b <= a for a, b, _ in segs):
+                return "Each part needs a start and an end."
+            segs = sorted(segs, key=lambda x: x[0])
+            start_at, end_at = segs[0][0], segs[-1][1]
         if end_at is not None and end_at <= start_at:
             return "That part has no length."
         if loop and end_at is None:
@@ -945,11 +982,14 @@ class Recorder:
         self.stage, self.stage_routes = saved, done
         folder, s = self._session(name, where)
         try:
-            self.player = Player(folder, s, plan["play"], self.engine, start_at, end_at, loop)
+            marks = [m for m in parts(s.get("markers") or [], s.get("length", 0)) if m.get("end") is not None]
+            self.player = Player(folder, s, plan["play"], self.engine, start_at, end_at, loop, segs=segs, marks=marks)
         except OSError as e:
             self.back_to_stage(who)
             return "The recording couldn't be opened (%s)." % e
-        self.player.who, self.player.part = who, (part or "")[:120]
+        self.player.who = who
+        if not segs:
+            self.player.part = (part or "")[:120]
         self.engine.play(self.player.block)
         self.log.info("recording: %s is playing %s to the desk from %s%s%s (%d tracks, %d Dante routes, %d Wing inputs switched)", who, name,
                       clock(start_at), " to %s" % clock(end_at) if end_at is not None else "", ", looped" if loop else "",
@@ -1180,7 +1220,8 @@ class Recorder:
         if p:
             out["playing"] = {"name": p.name, "secs": round(p.pos / p.rate, 1), "length": p.length, "by": getattr(p, "who", ""),
                               "channels": len(p.steps), "ended": p.ended, "from": round(p.start / p.rate, 2),
-                              "to": round(p.end / p.rate, 2) if p.end is not None else None, "loop": p.loop, "part": getattr(p, "part", "")}
+                              "to": round(p.end / p.rate, 2) if p.end is not None else None, "loop": p.loop, "part": getattr(p, "part", ""),
+                              "parts": len(p.segs), "can_jump": bool(p.marks) or len(p.segs) > 1}
         if full:
             out["drives"] = [self._drive_view(d) for d in self.drives]
             ch = self.engine.ch if self.engine else 64
@@ -1209,53 +1250,170 @@ def gb(n):
     return "%.0f GB" % (n / 1e9) if n >= 10e9 else "%.1f GB" % (n / 1e9)
 
 
-class Player:
-    """Reads a recording's tracks ahead, a block at a time, for the engine to send out (each on its DVS out number)."""
+def write_session(f, s):
+    """A recording's session.json, markers.csv, Audacity labels (markers.txt) and REAPER project."""
+    tracks, length, rate = s.get("tracks") or [], s.get("length", 0), s.get("rate", 48000)
+    with open(os.path.join(f, "markers.csv"), "w", encoding="utf-8") as h:
+        h.write("time,seconds,name,type,song\n")
+        for m in s["markers"]:
+            h.write('%s,%.2f,"%s",%s,"%s"\n' % (clock(m["t"]), m["t"], m["name"].replace('"', "'"), kind(m) or "marker",
+                                                 (m.get("song") or "").replace('"', "'")))
+    with open(os.path.join(f, "markers.txt"), "w", encoding="utf-8") as h:  # Audacity labels: a section is a region
+        for m in parts(s["markers"], length):
+            end = m["end"] if m["kind"] == "section" else m["t"]
+            h.write("%.3f\t%.3f\t%s\n" % (m["t"], end, ("%s: %s" % (m["song"], m["name"])) if m.get("song") else m["name"]))
+    with open(os.path.join(f, s["name"] + ".RPP"), "w", encoding="utf-8") as h:
+        h.write(rpp(s["name"], rate, tracks, s["markers"], length))
+    tmp = os.path.join(f, "session.json.tmp")  # last, and all at once: never half a file, even if it stops halfway
+    with open(tmp, "w", encoding="utf-8") as h:
+        json.dump(s, h, indent=1)
+    os.replace(tmp, os.path.join(f, "session.json"))
 
-    def __init__(self, folder, s, steps, engine, start_at, end_at=None, loop=False):
+
+class Player:
+    """Reads a recording's tracks ahead, a block at a time, for the engine to send out (each on its DVS out number).
+    It plays a list of parts one after the other (`segs`: [(from s, to s or None, label)]), over and over with loop,
+    and can jump to the next or previous part while it plays."""
+
+    def __init__(self, folder, s, steps, engine, start_at, end_at=None, loop=False, segs=None, marks=None):
         self.name, self.rate, self.steps = s.get("name", ""), int(s.get("rate", 48000)), steps
         self.length = s.get("length", 0)
         self.out_ch = getattr(engine, "out_ch", engine.ch)
+        segs = segs or [(start_at, end_at, "")]
+        fr = lambda x: max(0, int(float(x or 0) * self.rate))
+        self.segs = [(fr(a), max(fr(a) + 1, fr(b)) if b is not None else None, lab or "") for a, b, lab in segs]
+        self.loop = bool(loop) and all(e is not None for _, e, _ in self.segs)
+        self.marks = marks or []  # the recording's songs and sections: [{"t", "end", "name", "kind", "song"}], to jump between
         self.files = []
         by_dvs = {t["dvs"]: t for t in s.get("tracks") or []}
-        start = max(0, int(float(start_at or 0) * self.rate))
         for st in {x["dvs"]: x for x in steps}.values():  # each track once (a step per Wing input it goes to)
             t = by_dvs[st["dvs"]]
             f = open(os.path.join(folder, t["file"]), "rb")
             outs = [t["dvs"] - 1] + ([t["pair"] - 1] if t.get("pair") else [])
-            f.seek(44 + 3 * len(outs) * start)
             self.files.append((outs, f))
-        self.start, self.loop = start, bool(loop) and end_at is not None
-        self.end = max(start + 1, int(float(end_at) * self.rate)) if end_at is not None else None
-        self.pos, self.ended, self.rpos = start, False, start
+        self.si = 0
+        self.lock = threading.Lock()
+        self._seek(self.segs[0][0])
+        self.pos, self.ended = self.rpos, False
         self.q = queue.Queue(50)
         self.alive = True
         threading.Thread(target=self._read, daemon=True).start()
 
+    # what the screen shows: the part being heard now (the reader is a little ahead of it)
+    @property
+    def heard(self):
+        return next((i for i, (a, e, _) in enumerate(self.segs) if a <= self.pos <= (e if e is not None else float("inf"))), self.si)
+
+    @property
+    def start(self):
+        return self.segs[self.heard][0]
+
+    @property
+    def end(self):
+        return self.segs[self.heard][1]
+
+    @property
+    def part(self):
+        i = self.heard
+        lab = self.segs[i][2]
+        return "%s (%d of %d)" % (lab, i + 1, len(self.segs)) if len(self.segs) > 1 and lab else lab
+
+    @part.setter
+    def part(self, v):  # play() names a single part
+        if len(self.segs) == 1:
+            a, b, _ = self.segs[0]
+            self.segs[0] = (a, b, v or "")
+
+    def _seek(self, frame):
+        self.rpos = frame
+        for cs, f in self.files:
+            f.seek(44 + 3 * len(cs) * frame)
+
     def _read(self):
         from audio_engine import BLOCK
         while self.alive:
-            out = bytearray(BLOCK * 4 * self.out_ch)
-            n = BLOCK if self.end is None else max(0, min(BLOCK, self.end - self.rpos))
-            wrap = self.loop and n < BLOCK  # the end of the loop: the rest of this block comes from its start
-            got = 0
-            for cs, f in self.files:
-                w = 3 * len(cs)  # bytes a frame: 3 mono, 6 stereo
-                data = f.read(n * w) if n else b""
-                if wrap:
-                    f.seek(44 + w * self.start)
-                    data += f.read((BLOCK - n) * w)
-                got = max(got, len(data))
-                if data:
-                    for side, c in enumerate(cs):
-                        if c < self.out_ch:
-                            put24(out, part24(data, side) if len(cs) == 2 else data, c, self.out_ch)
-            self.rpos = self.start + (BLOCK - n) if wrap else self.rpos + n
-            if not got:
+            with self.lock:
+                if not self.alive:
+                    return
+                bufs = [bytearray() for _ in self.files]
+                need, done, turns = BLOCK, False, 0
+                while need > 0 and not done:
+                    a, e, _ = self.segs[self.si]
+                    n = need if e is None else max(0, min(need, e - self.rpos))
+                    got = n
+                    for i, (cs, f) in enumerate(self.files):
+                        d = f.read(n * 3 * len(cs)) if n else b""
+                        bufs[i] += d
+                        got = min(got, len(d) // (3 * len(cs)))
+                    if not self.files:
+                        got = n
+                    self.rpos += got
+                    need -= got
+                    if need > 0:  # this part is over (or the file is): the next part, round again, or the end
+                        turns += 1
+                        if self.si + 1 < len(self.segs):
+                            self.si += 1
+                        elif self.loop and turns <= len(self.segs) + 1:
+                            self.si = 0
+                        else:
+                            done = True
+                            continue
+                        self._seek(self.segs[self.si][0])
+                rpos = self.rpos
+            if need == BLOCK:  # nothing at all
                 self.ended = True
                 self.q.put(None)
                 return
-            self.q.put((bytes(out), self.rpos))
+            out = bytearray(BLOCK * 4 * self.out_ch)
+            for (cs, _), data in zip(self.files, bufs):
+                for side, c in enumerate(cs):
+                    if c < self.out_ch and data:
+                        put24(out, part24(data, side) if len(cs) == 2 else data, c, self.out_ch)
+            self.q.put((bytes(out), rpos))
+
+    def jump(self, step):
+        """Next (+1) or previous (-1) part while it plays -> (error or None, the part's name)."""
+        now, name = self.pos / self.rate, ""
+        with self.lock:
+            if len(self.segs) > 1:  # several parts ticked: move between them
+                h = self.heard
+                i = h + step if step > 0 or now - self.segs[h][0] / self.rate < 2 else h
+                if not 0 <= i < len(self.segs):
+                    if not self.loop:
+                        return ("That's the last part." if step > 0 else "That's the first part."), ""
+                    i %= len(self.segs)
+                self.si = i
+                self._seek(self.segs[i][0])
+            else:
+                a, e, lab = self.segs[0]
+                one = e is not None
+                cur = next((m for m in self.marks if m.get("end") is not None and m["t"] <= now < m["end"] and m.get("kind") == "section"), None) or \
+                    next((m for m in self.marks if m.get("end") is not None and m["t"] <= now < m["end"]), None)
+                kind = (cur or {}).get("kind") or "section"
+                pool = sorted([m for m in self.marks if m.get("end") is not None and m.get("kind") == kind] or
+                              [m for m in self.marks if m.get("end") is not None], key=lambda m: m["t"])
+                if not pool:
+                    return "This recording has no songs or parts to jump between.", ""
+                if step > 0:
+                    nxt = next((m for m in pool if m["t"] > now + 0.05), None)
+                else:
+                    here = next((m for m in reversed(pool) if m["t"] <= now + 0.01), None)
+                    nxt = here if here and now - here["t"] >= 2 else next((m for m in reversed(pool) if m["t"] < (here or {"t": now})["t"] - 0.01), here)
+                if not nxt:
+                    return ("That's the last part." if step > 0 else "That's the first part."), ""
+                name = ("%s: %s" % (nxt["song"], nxt["name"])) if nxt.get("song") else nxt["name"]
+                if one:  # playing just one part (or looping it): play this one instead, the same way
+                    self.segs[0] = (int(nxt["t"] * self.rate), int(nxt["end"] * self.rate), name)
+                self._seek(int(nxt["t"] * self.rate))
+            self.pos = self.rpos
+            label = self.part
+        try:  # throw away what was read ahead, so the jump is heard straight away
+            while True:
+                self.q.get_nowait()
+        except queue.Empty:
+            pass
+        self.pos = self.rpos
+        return None, label or name
 
     def block(self, frames):
         try:
@@ -1274,5 +1432,6 @@ class Player:
                 self.q.get_nowait()
         except queue.Empty:
             pass
-        for _, f in self.files:
-            f.close()
+        with self.lock:  # not while the reader is in the middle of a read
+            for _, f in self.files:
+                f.close()
