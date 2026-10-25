@@ -49,6 +49,7 @@ DEFAULTS = {"auto": "off",                 # "off" | "slide" (the start slide) |
             "stop": {"kind": "presentation", "text": ""},
             "max_hours": 4,                # stops by itself after this long, if nothing else has
             "markers": "presentation",     # "presentation" | "item" (the playlist item's name) | "off"
+            "sections": True,              # a marker for each part of a song too: its slide group (Verse 1, Chorus, Bridge...)
             "channels": "routed",          # "routed" (every DVS channel Dante feeds) or [1, 2, ...]
             "local": True,                 # no recording drive plugged in: record onto this computer instead
             "copy_auto": True,             # copy what's on this computer to the recording drive when it's plugged in
@@ -162,12 +163,34 @@ def clock(secs):
     return "%d:%02d:%02d" % (secs // 3600, secs // 60 % 60, secs % 60)
 
 
+def kind(m):
+    """"song", "section" or "" (Start, End, one added by hand). Recordings from before sections: ProPresenter's are songs."""
+    return m.get("kind") or ("song" if m.get("by") == "ProPresenter" else "")
+
+
+def parts(markers, length):
+    """The markers with where each song and section ends: a section at the next section or song, a song at the next
+    song (or the end). One added by hand is only somewhere to play from."""
+    out = []
+    for i, m in enumerate(markers):
+        k = kind(m)
+        m = dict(m, kind=k)
+        if k:
+            stops = ("song",) if k == "song" else ("song", "section")
+            m["end"] = next((x["t"] for x in markers[i + 1:] if kind(x) in stops or x.get("name") == "End"), length)
+        out.append(m)
+    return out
+
+
 def rpp(name, rate, tracks, markers, length):
-    """A REAPER project: each track with its file, each marker."""
+    """A REAPER project: each track with its file, each marker; each section of a song is a region."""
     q = lambda s: '"%s"' % s.replace('"', "'")
     lines = ["<REAPER_PROJECT 0.1 \"6.0\" 0", "  SAMPLERATE %d 0 0" % rate]
-    for i, m in enumerate(markers, 1):
-        lines.append("  MARKER %d %.3f %s 0" % (i, m["t"], q(m["name"])))
+    for i, m in enumerate(parts(markers, length), 1):
+        if m["kind"] == "section":
+            lines += ["  MARKER %d %.3f %s 1" % (i, m["t"], q(m["name"])), "  MARKER %d %.3f \"\" 1" % (i, m["end"])]
+        else:
+            lines.append("  MARKER %d %.3f %s 0" % (i, m["t"], q(m["name"])))
     for t in tracks:
         lines += ["  <TRACK", "    NAME %s" % q(t["name"]), "    <ITEM", "      POSITION 0", "      LENGTH %.3f" % length,
                   "      NAME %s" % q(t["name"]), "      <SOURCE WAVE", "        FILE %s" % q(t["file"]), "      >", "    >", "  >"]
@@ -245,7 +268,7 @@ def valid_settings(s):
         return "Say which slide starts the recording."
     if not isinstance(s.get("max_hours"), (int, float)) or isinstance(s.get("max_hours"), bool) or not 0.5 <= s["max_hours"] <= 12:
         return "Stop after 0.5 to 12 hours."
-    if not all(isinstance(s.get(k), bool) for k in ("local", "copy_auto", "free_local", "make_room")):
+    if not all(isinstance(s.get(k), bool) for k in ("local", "copy_auto", "free_local", "make_room", "sections")):
         return "Settings not understood."
     if s.get("markers") not in ("presentation", "item", "off"):
         return "Markers: presentation, playlist item or off."
@@ -511,7 +534,7 @@ class Recorder:
             return 0.0
         return max(0.0, (self.engine.frames - r["first"]) / r["rate"])
 
-    def marker(self, name, who, quiet=False):
+    def marker(self, name, who, quiet=False, kind="", song=""):
         name = (name or "").strip()[:80]
         if not name:
             return "A marker needs a name."
@@ -519,7 +542,12 @@ class Recorder:
             r = self.rec
             if not r:
                 return "It isn't recording."
-            r["markers"].append({"t": round(self.now(), 2), "name": name, "by": who})
+            m = {"t": round(self.now(), 2), "name": name, "by": who}
+            if kind:
+                m["kind"] = kind
+            if song:
+                m["song"] = song
+            r["markers"].append(m)
         if not quiet:
             self.log.info("recording: marker %s (%s)", name, who)
         return None
@@ -556,12 +584,14 @@ class Recorder:
             json.dump({"name": r["name"], "rate": r["rate"], "length": round(length, 3), "started": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(r["started"])),
                        "by": r["by"], "tracks": tracks, "markers": r["markers"]}, h, indent=1)
         with open(os.path.join(f, "markers.csv"), "w", encoding="utf-8") as h:
-            h.write("time,seconds,name\n")
+            h.write("time,seconds,name,type,song\n")
             for m in r["markers"]:
-                h.write('%s,%.2f,"%s"\n' % (clock(m["t"]), m["t"], m["name"].replace('"', "'")))
-        with open(os.path.join(f, "markers.txt"), "w", encoding="utf-8") as h:  # Audacity labels
-            for m in r["markers"]:
-                h.write("%.3f\t%.3f\t%s\n" % (m["t"], m["t"], m["name"]))
+                h.write('%s,%.2f,"%s",%s,"%s"\n' % (clock(m["t"]), m["t"], m["name"].replace('"', "'"), kind(m) or "marker",
+                                                     (m.get("song") or "").replace('"', "'")))
+        with open(os.path.join(f, "markers.txt"), "w", encoding="utf-8") as h:  # Audacity labels: a section is a region
+            for m in parts(r["markers"], length):
+                end = m["end"] if m["kind"] == "section" else m["t"]
+                h.write("%.3f\t%.3f\t%s\n" % (m["t"], end, ("%s: %s" % (m["song"], m["name"])) if m.get("song") else m["name"]))
         with open(os.path.join(f, r["name"] + ".RPP"), "w", encoding="utf-8") as h:
             h.write(rpp(r["name"], r["rate"], tracks, r["markers"], length))
 
@@ -573,23 +603,34 @@ class Recorder:
             if matches(st["stop"], slide):
                 self.stop("auto: the end slide (%s)" % (slide.get(st["stop"]["kind"]) or ""))
                 return
-            if st["markers"] != "off":  # a new song (or the Message): a marker; more slides of the same one: none
-                name = slide.get("item" if st["markers"] == "item" else "presentation") or slide.get("presentation") or ""
-                if name and not self._last_marker_is(name):
-                    self.marker(name, "ProPresenter")
+            self._mark(slide)
         elif st["auto"] == "slide" and matches(st["start"], slide) and not self.player:
             err = self.start("auto: the start slide (%s)" % (slide.get(st["start"]["kind"]) or ""))
             if err:
                 self.log.warning("recording: the start slide came up but it couldn't start: %s", err)
-            elif st["markers"] != "off":
-                name = slide.get("item" if st["markers"] == "item" else "presentation") or slide.get("presentation") or ""
-                if name:
-                    self.marker(name, "ProPresenter")
+            else:
+                self._mark(slide)
 
-    def _last_marker_is(self, name):
+    def _mark(self, slide):
+        """A new song (or the Message): a marker. A new slide group in it (Verse 1, Chorus...): a section marker.
+        More slides of the same group: none."""
+        st = self.settings
+        if st["markers"] == "off":
+            return
+        song = slide.get("item" if st["markers"] == "item" else "presentation") or slide.get("presentation") or ""
+        if not song:
+            return
         r = self.rec
-        ms = [m for m in (r["markers"] if r else []) if m["name"] not in ("Start", "End")]
-        return bool(ms) and ms[-1]["name"] == name
+        ms = [m for m in (r["markers"] if r else []) if kind(m)]
+        last_song = next((m for m in reversed(ms) if m["kind"] == "song"), None)
+        if not last_song or last_song["name"] != song:
+            self.marker(song, "ProPresenter", kind="song")
+            ms = []
+        group = (slide.get("group") or "").strip()
+        if st.get("sections", True) and group:
+            last = ms[-1] if ms else None
+            if not (last and last["kind"] == "section" and last["name"] == group):
+                self.marker(group, "ProPresenter", quiet=True, kind="section", song=song)
 
     # ---- the loop: drives every 3 s, ProPresenter every second, the time limit ----
     def start_loop(self):
@@ -698,7 +739,7 @@ class Recorder:
                 with open(os.path.join(base, nm, "session.json"), encoding="utf-8") as f:
                     s = json.load(f)
                 out.append({"name": nm, "length": s.get("length", 0), "tracks": len(s.get("tracks") or []),
-                            "markers": [m for m in s.get("markers") or [] if m.get("name") not in ("Start", "End")]})
+                            "markers": [m for m in parts(s.get("markers") or [], s.get("length", 0)) if m.get("name") not in ("Start", "End")]})
             except (OSError, ValueError):
                 continue
         return out
@@ -763,9 +804,14 @@ class Recorder:
             steps.append({"track": t["name"], "dvs": t["dvs"], "wing_ch": n, "card_in": m,
                           "now": "%s/%s" % (cur.get("src_grp", "?"), cur.get("src_in", "?")), "to": "CRD/%d" % m})
         return {"name": name, "steps": steps, "notes": notes, "length": s.get("length", 0),
-                "markers": [m for m in s.get("markers") or [] if m.get("name") not in ("Start", "End")]}, None
+                "markers": [m for m in parts(s.get("markers") or [], s.get("length", 0)) if m.get("name") not in ("Start", "End")]}, None
 
-    def play(self, name, start_at, who, where="drive"):
+    def play(self, name, start_at, who, where="drive", end_at=None, loop=False, part=""):
+        """Play to the desk from start_at; with end_at, only up to there (a song or one section), over and over with loop."""
+        if end_at is not None and end_at <= start_at:
+            return "That part has no length."
+        if loop and end_at is None:
+            return "Choose a song or a section to loop."
         if self.rec:
             return "Not while recording."
         if self.player:
@@ -793,13 +839,14 @@ class Recorder:
         self.stage = saved
         folder, s = self._session(name, where)
         try:
-            self.player = Player(folder, s, plan["steps"], self.engine, start_at)
+            self.player = Player(folder, s, plan["steps"], self.engine, start_at, end_at, loop)
         except OSError as e:
             self.back_to_stage(who)
             return "The recording couldn't be opened (%s)." % e
-        self.player.who = who
+        self.player.who, self.player.part = who, (part or "")[:120]
         self.engine.play(self.player.block)
-        self.log.info("recording: %s is playing %s to the desk from %s (%d channels)", who, name, clock(start_at), len(plan["steps"]))
+        self.log.info("recording: %s is playing %s to the desk from %s%s%s (%d channels)", who, name, clock(start_at),
+                      " to %s" % clock(end_at) if end_at is not None else "", ", looped" if loop else "", len(plan["steps"]))
         return None
 
     def back_to_stage(self, who):
@@ -901,7 +948,8 @@ class Recorder:
                                 "markers": [m for m in r["markers"] if m["name"] != "Start"], "dropped": r["dropped"], "error": r["error"]}
         if p:
             out["playing"] = {"name": p.name, "secs": round(p.pos / p.rate, 1), "length": p.length, "by": getattr(p, "who", ""),
-                              "channels": len(p.steps), "ended": p.ended}
+                              "channels": len(p.steps), "ended": p.ended, "from": round(p.start / p.rate, 2),
+                              "to": round(p.end / p.rate, 2) if p.end is not None else None, "loop": p.loop, "part": getattr(p, "part", "")}
         if full:
             out["drives"] = [self._drive_view(d) for d in self.drives]
             ch = self.engine.ch if self.engine else 64
@@ -932,7 +980,7 @@ def gb(n):
 class Player:
     """Reads a recording's tracks ahead, a block at a time, for the engine to send out (each on its DVS out number)."""
 
-    def __init__(self, folder, s, steps, engine, start_at):
+    def __init__(self, folder, s, steps, engine, start_at, end_at=None, loop=False):
         self.name, self.rate, self.steps = s.get("name", ""), int(s.get("rate", 48000)), steps
         self.length = s.get("length", 0)
         self.out_ch = getattr(engine, "out_ch", engine.ch)
@@ -944,7 +992,9 @@ class Player:
             f = open(os.path.join(folder, t["file"]), "rb")
             f.seek(44 + 3 * start)
             self.files.append((st["dvs"] - 1, f))
-        self.pos, self.ended = start, False
+        self.start, self.loop = start, bool(loop) and end_at is not None
+        self.end = max(start + 1, int(float(end_at) * self.rate)) if end_at is not None else None
+        self.pos, self.ended, self.rpos = start, False, start
         self.q = queue.Queue(50)
         self.alive = True
         threading.Thread(target=self._read, daemon=True).start()
@@ -953,19 +1003,25 @@ class Player:
         from audio_engine import BLOCK
         while self.alive:
             out = bytearray(BLOCK * 4 * self.out_ch)
+            n = BLOCK if self.end is None else max(0, min(BLOCK, self.end - self.rpos))
+            wrap = self.loop and n < BLOCK  # the end of the loop: the rest of this block comes from its start
             got = 0
             for c, f in self.files:
                 if c >= self.out_ch:
                     continue
-                mono = f.read(BLOCK * 3)
+                mono = f.read(n * 3) if n else b""
+                if wrap:
+                    f.seek(44 + 3 * self.start)
+                    mono += f.read((BLOCK - n) * 3)
                 got = max(got, len(mono))
                 if mono:
                     put24(out, mono, c, self.out_ch)
+            self.rpos = self.start + (BLOCK - n) if wrap else self.rpos + n
             if not got:
                 self.ended = True
                 self.q.put(None)
                 return
-            self.q.put(bytes(out))
+            self.q.put((bytes(out), self.rpos))
 
     def block(self, frames):
         try:
@@ -974,8 +1030,8 @@ class Player:
             return None  # the drive is behind: a moment of silence
         if b is None:
             return None
-        self.pos += frames
-        return b
+        self.pos = b[1]
+        return b[0]
 
     def close(self):
         self.alive = False
