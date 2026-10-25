@@ -311,7 +311,7 @@ class Playback(Ready):
         plan, err = self.r.play_plan(name)
         self.assertIsNone(err)
         self.assertEqual([(s["wing_ch"], s["now"], s["to"]) for s in plan["steps"]], [(3, "LCL/3", "CRD/11"), (5, "A/5", "CRD/12")])
-        self.assertIn("isn't from a Wing channel", " ".join(plan["notes"]))  # the Tio track
+        self.assertIn("nothing on the Wing hears where it was recorded from", " ".join(plan["notes"]))  # the Tio track: no Wing input takes it
         self.r.start("FOH")
         self.assertIn("Not while recording", self.r.play(name, 0, "FOH"))
         self.r.stop("FOH")

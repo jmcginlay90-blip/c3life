@@ -82,7 +82,11 @@ API (JSON):
                                            slides, the most hours, markers from presentations or playlist items, channels
   POST /api/recording/start | /stop | /marker {"name"} | /drive {"id","use"} | /plan {"name"}   (Recording control)
   POST /api/recording/copy {"name","where","to"}   (Recording control) copy a recording onto a plugged-in drive
-  POST /api/recording/play {"name","from","to","loop","part","where"} | /stage   (Recording + Mixer control) play back to the desk; put it back
+  GET  /api/patch | POST /api/patch/route {"dvs","dev","ch","pair"} | /clear {"dvs"} | /mono {"dvs","mono"} |
+       /layout {"do": "save|plan|apply|delete", "name"}   (Recording view / control) where each C3 Life channel comes from
+  GET  /api/patchlist | /api/patchlist/file?t=  (Mixer or Recording view) the patch list, and as a spreadsheet
+  POST /api/patchlist/send | /api/patchlist/sheet {"csv"} | PUT /api/patchlist/note {"ch","name","mic","stand"}   (Mixer control)
+  POST /api/recording/play {"name","from","to","loop","part","where","send"} | /stage   (Recording + Mixer control) play back to the desk; put it back
   PUT  /api/rta/ringout {"on","sens"}      (RTA settings control) the feedback watch; GET /api/rta/live has "ringout"
   POST /api/rta/ringout/cut {"f"}          (RTA settings + Mixer control, the Wing in Control) a narrow cut on a flat band
                                            of Main 1's EQ; again on the same note goes deeper
@@ -227,6 +231,7 @@ import rta_live as rta_live_mod
 import midi_in as midi_mod
 import audio_engine as audio_engine_mod
 import recorder as recorder_mod
+import patchlist as patchlist_mod
 import propresenter as propresenter_mod
 import power as power_mod
 import syscheck as syscheck_mod
@@ -1217,6 +1222,33 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 self.end_headers()
                 self.wfile.write(img)
                 return
+            if path == "/api/patch":
+                s = self.level("Recording")
+                if s:
+                    self.send_json(200, dict(recorder.patch_view(), ok=True, can=access.level(s["role"], "Recording") >= 2))
+                return
+            if path == "/api/patchlist":
+                s = self.level("Mixer", "Recording")
+                if s and getattr(recorder, "patchlist", None):
+                    self.send_json(200, dict(recorder.patchlist.view(), ok=True, can=access.level(s["role"], "Mixer") >= 2 or s["role"] == "Admin"))
+                elif s:
+                    self.send_json(501, {"ok": False, "error": "The patch list isn't available."})
+                return
+            if path == "/api/patchlist/file":
+                q = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
+                ss = sessions.get((q.get("t") or [""])[0])
+                if not ss or (access.level(ss["role"], "Mixer") < 1 and access.level(ss["role"], "Recording") < 1):
+                    self.send_json(403, {"ok": False, "error": "Sign in with Mixer or Recording access to download the patch list."})
+                    return
+                data, _, _, _ = recorder.patchlist.report(keep=False)
+                fname = "C3 Life patch list %s.csv" % time.strftime("%Y-%m-%d %H%M")
+                self.send_response(200)
+                self.send_header("Content-Type", "text/csv; charset=utf-8")
+                self.send_header("Content-Disposition", 'attachment; filename="%s"' % fname)
+                self.send_header("Content-Length", str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+                return
             if path == "/api/recording":
                 s = self.level("Recording")
                 if s:
@@ -1569,6 +1601,56 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                     out["error"] = err
                 self.send_json(200 if not err else 409, out)
                 return
+            if path in ("/api/patch/route", "/api/patch/clear", "/api/patch/mono", "/api/patch/layout"):
+                s = self.level("Recording", need=2)
+                if not s:
+                    return
+                body = self.read_json() or {}
+                if not isinstance(body, dict):
+                    self.send_json(400, {"ok": False, "error": "Bad request"})
+                    return
+                extra = {}
+                k = body.get("dvs")
+                if path == "/api/patch/route":
+                    pair = body.get("pair") if isinstance(body.get("pair"), dict) else None
+                    err = recorder.patch_route(k, body.get("dev"), body.get("ch"), s["name"], pair)
+                elif path == "/api/patch/clear":
+                    err = recorder.patch_clear(k, s["name"])
+                elif path == "/api/patch/mono":
+                    err = recorder.patch_mono(k, bool(body.get("mono")), s["name"]) if isinstance(k, int) and not isinstance(k, bool) and 1 <= k <= 64 else "Choose a channel."
+                else:
+                    do, name = body.get("do"), body.get("name") if isinstance(body.get("name"), str) else ""
+                    if do == "save":
+                        err = recorder.layout_save(name, s["name"])
+                    elif do == "plan":
+                        extra["changes"], err = recorder.layout_plan(name)
+                    elif do == "apply":
+                        err = recorder.layout_apply(name, s["name"])
+                    elif do == "delete":
+                        err = recorder.layouts.delete(name)
+                    else:
+                        err = "Bad request"
+                out = dict(recorder.patch_view(), ok=not err, can=True, **extra)
+                if err:
+                    out["error"] = err
+                self.send_json(200 if not err else 409, out)
+                return
+            if path in ("/api/patchlist/send", "/api/patchlist/sheet"):
+                s = self.level("Mixer", need=2)
+                if not s:
+                    return
+                pl = recorder.patchlist
+                body = self.read_json(limit=1024 * 1024) or {}
+                if path == "/api/patchlist/send":
+                    data, text, changes, since = pl.report(keep=True)
+                    reports.add({"subject": "Patch list %s" % time.strftime("%Y-%m-%d"), "text": text, "who": s["name"]}, s["name"],
+                                files=[("C3 Life patch list %s.csv" % time.strftime("%Y-%m-%d %H%M"), data)], kind="daily")
+                    log.info("patch list: %s sent the patch list (%d changes)", s["name"], len(changes))
+                    self.send_json(200, dict(pl.view(), ok=True, sent=True))
+                    return
+                err, n = pl.load_sheet(body.get("csv") if isinstance(body, dict) else None, s["name"])
+                self.send_json(200 if not err else 400, dict(pl.view(), ok=not err, loaded=n, **({"error": err} if err else {})))
+                return
             if path.startswith("/api/recording/") and path.split("/")[-1] in ("start", "stop", "marker", "drive", "plan", "play", "stage", "copy"):
                 what = path.split("/")[-1]
                 s = self.level("Recording", need=2)
@@ -1591,13 +1673,14 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 elif what == "drive":
                     err = recorder.use_drive(body.get("id"), bool(body.get("use")), s["name"])
                 elif what == "plan":
-                    extra["plan"], err = recorder.play_plan(body.get("name"), body.get("where", "drive"))
+                    extra["plan"], err = recorder.play_plan(body.get("name"), body.get("where", "drive"), body.get("send") if isinstance(body.get("send"), dict) else None)
                 elif what == "play":
                     at, to = body.get("from", 0), body.get("to")
                     num = lambda x: isinstance(x, (int, float)) and not isinstance(x, bool) and x >= 0
                     err = "Bad request" if not num(at) or not (to is None or num(to)) or not isinstance(body.get("loop", False), bool) else \
                         recorder.play(body.get("name"), at, s["name"], body.get("where", "drive"), to, body.get("loop", False),
-                                      body.get("part") if isinstance(body.get("part"), str) else "")
+                                      body.get("part") if isinstance(body.get("part"), str) else "",
+                                      body.get("send") if isinstance(body.get("send"), dict) else None)
                 elif what == "copy":
                     err = recorder.copy([(body.get("name"), body.get("where", "drive"))], body.get("to"), s["name"])
                 else:
@@ -2205,6 +2288,15 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                          d["mic"]["from"], d["mic"]["via"], d["mic"]["ch"], d["ref"]["from"], d["ref"]["via"], d["ref"]["ch"])
                 self.send_json(200, dict(rta_inputs.view(dante, desk), ok=True))
                 return
+            if self.route() == "/api/patchlist/note":
+                s = self.level("Mixer", need=2)
+                if not s:
+                    return
+                b = self.read_json()
+                err = recorder.patchlist.set_note(b.get("ch"), str(b.get("name") or "")[:40], b.get("mic", ""), b.get("stand", ""), s["name"]) \
+                    if isinstance(b, dict) else "Bad request"
+                self.send_json(200 if not err else 400, dict(recorder.patchlist.view(), ok=not err, **({"error": err} if err else {})))
+                return
             if self.route() == "/api/recording/settings":
                 s = self.level("Recording", need=2)
                 if not s:
@@ -2605,6 +2697,19 @@ def serve(cfg):
     macros = macros_mod.Macros(cfg["data_dir"], cfg, log, desk=desk, music=music, foyer=foyer, lights=lights, midi=midi)
     macros.left_out = health.left_out
     recorder = recorder_mod.Recorder(cfg["data_dir"], cfg, log, engine, desk=desk, dante=dante)
+
+    def patch_read():
+        routes, chans, me, wing = recorder._dante_now()
+        st, outs = {}, {}
+        if desk:
+            try:
+                st = desk.state()
+                outs = desk.outputs() if hasattr(desk, "outputs") else {}
+            except Exception:
+                pass
+        return routes, chans, me, wing, st.get("strips") or {}, st.get("inputs") or {}, outs
+    recorder.patchlist = patchlist_mod.PatchList(cfg["data_dir"], log, patch_read,
+                                                 seed=os.path.join(os.path.dirname(os.path.abspath(__file__)), "seed", "patch_sheet.csv"))
     pp = propresenter_mod.ProPresenter(cfg, log)
     chat = chat_mod.Chat(cfg["data_dir"], log, pp)
     power = power_mod.Power(cfg, log, before=lambda: recorder.rec and recorder.stop("the server power screen"))
@@ -2651,6 +2756,14 @@ def serve(cfg):
         log.removeHandler(h)  # one per server (the tests start several)
     log.addHandler(daily_mod.ActivityLog(os.path.join(cfg["data_dir"], "activity")))
     daily = daily_mod.Daily(cfg["data_dir"], cfg, log, rta=rta_live, reports=reports)
+
+    def daily_patch(day):
+        """With the daily reports: the patch list, but only when something changed (or it's the first one)."""
+        data, text, changes, since = recorder.patchlist.report(keep=True)
+        if since is not None and not changes:
+            return []
+        return [("Patch list %s" % day, text, [("C3 Life patch list %s.csv" % day, data)])]
+    daily.extra = daily_patch
     daily.start()
     mics.start()
     setup = setup_mod.Setup(cfg["data_dir"], cfg, log, drives=lambda: list(recorder.drives) if recorder else [], version=VERSION)

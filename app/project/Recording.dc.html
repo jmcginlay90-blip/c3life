@@ -244,12 +244,45 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
     </sc-if>
 
     <section class="card" style="display:flex;flex-direction:column;gap:4px" aria-label="Tracks">
-      <div style="display:flex;justify-content:space-between;align-items:baseline"><div class="lbl">Tracks</div><span style="font-size:12px;color:#A3ACB8">{{trackCount}}</span></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div class="lbl">Tracks</div><span style="font-size:12px;color:#A3ACB8;flex:1;text-align:right">{{trackCount}}</span><button class="btn" style="min-height:38px;padding:0 12px" onClick="{{togglePatch}}" aria-expanded="{{patchOpen}}">{{patchBtn}}</button></div>
       <sc-for list="{{tracks}}" as="t" hint-placeholder-count="6">
-        <div class="trk"><span class="mono" style="width:26px;color:#A3ACB8;font-size:12px">{{t.n}}</span><span class="nm">{{t.name}}</span><span class="mtr" aria-hidden="true"><b style="width:{{t.w}};background:{{t.c}}"></b></span></div>
+        <div class="trk"><span class="mono" style="width:40px;color:#A3ACB8;font-size:12px">{{t.n}}</span><span class="nm" style="display:flex;flex-direction:column;min-width:0;line-height:1.25"><span>{{t.name}} <span class="mono" style="display:{{t.stD}};font-size:10px;color:#6CB4F5;border:1px solid #2B3A4E;border-radius:3px;padding:0 3px">ST</span></span><span style="font-size:11px;color:#7E8794;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{t.from}}</span></span><span class="mtr" aria-hidden="true"><b style="width:{{t.w}};background:{{t.c}}"></b></span></div>
       </sc-for>
-      <div style="font-size:12px;color:#A3ACB8;line-height:1.45;padding-top:4px">Names come from the Wing: Dante's route into each DVS channel, the Wing card output it comes from, and the Wing channel with that input.</div>
+      <div style="font-size:12px;color:#A3ACB8;line-height:1.45;padding-top:4px">Names come from the Wing: each track's Dante source, the Wing card input that takes the same source, and the Wing channel on it. A stereo channel on the Wing is one stereo track (ST).</div>
     </section>
+
+    <sc-if value="{{patchOpen}}" hint-placeholder-val="{{ false }}">
+      <section class="card" style="display:flex;flex-direction:column;gap:8px;border-color:#6CB4F5" aria-label="Patch">
+        <div class="lbl">Patch · where each track comes from</div>
+        <div style="font-size:12px;color:#A3ACB8;line-height:1.45">{{patchSub}}</div>
+        <sc-for list="{{prow}}" as="r" hint-placeholder-count="3">
+          <div style="display:flex;align-items:center;gap:8px;border-top:1px solid #222831;padding-top:6px">
+            <span class="mono" style="width:40px;color:#A3ACB8;font-size:12px">{{r.n}}</span>
+            <div style="flex:1;min-width:0"><div style="font-size:14px">{{r.name}}</div><div style="font-size:11px;color:#7E8794;overflow-wrap:anywhere">{{r.from}}</div></div>
+            <sc-if value="{{r.canMono}}" hint-placeholder-val="{{ false }}"><button class="btn" style="min-height:38px;padding:0 10px" onClick="{{r.mono}}" disabled="{{cantPatch}}">{{r.monoBtn}}</button></sc-if>
+            <button class="btn" style="min-height:38px;padding:0 10px" onClick="{{r.clear}}" disabled="{{cantPatch}}" aria-label="Clear channel {{r.n}}">Clear…</button>
+          </div>
+        </sc-for>
+        <div class="lbl" style="padding-top:8px">Add a track</div>
+        <div class="row2">
+          <label class="fld">C3 Life channel<select value="{{addK}}" onChange="{{pickAddK}}" disabled="{{cantPatch}}"><sc-for list="{{freeKs}}" as="f" hint-placeholder-count="2"><option value="{{f.v}}">{{f.label}}</option></sc-for></select></label>
+          <label class="fld">From<select value="{{addSrc}}" onChange="{{pickAddSrc}}" disabled="{{cantPatch}}" aria-label="From"><sc-for list="{{srcOpts}}" as="o" hint-placeholder-count="2"><option value="{{o.v}}">{{o.label}}</option></sc-for></select></label>
+        </div>
+        <label style="display:flex;align-items:center;gap:10px;font-size:13px"><input type="checkbox" checked="{{addSt}}" onChange="{{toggleAddSt}}" disabled="{{cantPatch}}"><span>Stereo: the next channel takes the right side</span></label>
+        <sc-if value="{{addSt}}" hint-placeholder-val="{{ false }}"><label class="fld">Right side from<select value="{{addSrcR}}" onChange="{{pickAddSrcR}}" disabled="{{cantPatch}}" aria-label="Right side from"><sc-for list="{{srcOpts}}" as="o" hint-placeholder-count="2"><option value="{{o.v}}">{{o.label}}</option></sc-for></select></label></sc-if>
+        <button class="btn pri" onClick="{{addTrack}}" disabled="{{cantAdd}}">Connect…</button>
+        <div class="lbl" style="padding-top:8px">Layouts</div>
+        <div style="display:flex;gap:6px;align-items:flex-end"><label class="fld" style="flex:1">Save this patch as<input type="text" maxlength="40" value="{{layName}}" onInput="{{typeLay}}" placeholder="e.g. Sunday" aria-label="Layout name"></label><button class="btn" onClick="{{saveLay}}" disabled="{{cantPatch}}">Save</button></div>
+        <sc-for list="{{lays}}" as="l" hint-placeholder-count="1">
+          <div style="display:flex;align-items:center;gap:8px;border-top:1px solid #222831;padding-top:6px">
+            <div style="flex:1;min-width:0"><div style="font-size:14px">{{l.name}}</div><div style="font-size:11px;color:#7E8794">{{l.sub}}</div></div>
+            <button class="btn" style="min-height:38px;padding:0 10px" onClick="{{l.apply}}" disabled="{{cantPatch}}">Put back…</button>
+            <button class="btn" style="min-height:38px;padding:0 10px" onClick="{{l.del}}" disabled="{{cantPatch}}" aria-label="Delete {{l.name}}">Delete…</button>
+          </div>
+        </sc-for>
+        <div style="font-size:12px;color:#A3ACB8;line-height:1.45">Connecting changes a route in Dante into the C3 Life server only: nothing on the desk or the stage changes, and it asks first. Layouts are kept by name, so they still work if a device gets a new address.</div>
+      </section>
+    </sc-if>
 
     <section class="card" style="display:flex;flex-direction:column;gap:6px" aria-label="Recordings on the drive">
       <div class="lbl">Recordings</div>
@@ -278,6 +311,16 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
                   </select>
                 </label>
               </sc-if>
+              <details style="border:1px solid #222831;border-radius:8px;padding:0 10px">
+                <summary style="cursor:pointer;font-size:13px;min-height:40px;display:flex;align-items:center">Where each track goes ›</summary>
+                <div style="display:flex;flex-direction:column;gap:6px;padding-bottom:10px">
+                  <div style="font-size:12px;color:#A3ACB8;line-height:1.45">Back where it came from: every Wing input that took the same source hears the recording instead, the Mon- copies too.</div>
+                  <sc-for list="{{x.dests}}" as="t" hint-placeholder-count="2">
+                    <label class="fld">{{t.label}}<select value="{{t.v}}" onChange="{{t.pick}}" aria-label="Where {{t.name}} goes"><option value="source">Back where it came from (the Wing)</option><option value="off">Don’t play it</option><option value="else">Somewhere else…</option></select></label>
+                    <sc-if value="{{t.isElse}}" hint-placeholder-val="{{ false }}"><label class="fld">{{t.elseLabel}}<select value="{{t.rx}}" onChange="{{t.pickRx}}" aria-label="Where {{t.name}} goes on Dante"><sc-for list="{{rxOpts}}" as="o" hint-placeholder-count="2"><option value="{{o.v}}">{{o.label}}</option></sc-for></select></label></sc-if>
+                  </sc-for>
+                </div>
+              </details>
               <button class="btn pri" onClick="{{x.play}}" disabled="{{cantPlay}}">▶ Play to the desk…</button>
               <sc-if value="{{playHint}}" hint-placeholder-val="{{ false }}"><div style="font-size:12px;color:#A3ACB8">{{playHint}}</div></sc-if>
             </div>
@@ -357,7 +400,7 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { v: null, msg: '', bad: false, ask: null, markName: '', open: '', from: {}, how: {} };
+    this.state = { v: null, msg: '', bad: false, ask: null, markName: '', open: '', from: {}, how: {}, patchOpen: false, pv: null, addK: 0, addSrc: '', addSrcR: '', addSt: false, layName: '', send: {} };
   }
   tok() { try { const x = JSON.parse(localStorage.getItem('booth.session') || 'null'); return x ? x.token : ''; } catch (e) { return ''; } }
   api(path, method, body) {
@@ -397,6 +440,95 @@ class Component extends DCLogic {
       this.setState({ msg: (j && j.error) || 'Saved.', bad: !!(j && j.error) });
     }).catch(() => this.setState({ msg: 'Not saved: the C3 Life server didn’t answer.', bad: true }));
   }
+  patchVals() {
+    const s = this.state, pv = s.pv, can = !!(pv && pv.can) && !(s.v && (s.v.recording || s.v.playing));
+    const out = { patchOpen: s.patchOpen, patchBtn: s.patchOpen ? 'Close patch' : 'Patch…', togglePatch: () => { this.setState({ patchOpen: !s.patchOpen }); if (!s.patchOpen) this.loadPatch(); },
+      rxOpts: ((pv && pv.receivers) || []).map((r, i) => ({ v: String(i), label: r.dev + ' · ' + r.ch })) };
+    if (!pv) return Object.assign(out, { patchSub: 'Reading Dante…', prow: [], freeKs: [], srcOpts: [], lays: [], cantPatch: true, cantAdd: true, addK: '0', addSrc: '', addSrcR: '', addSt: false, layName: s.layName,
+      pickAddK: () => {}, pickAddSrc: () => {}, pickAddSrcR: () => {}, toggleAddSt: () => {}, addTrack: () => {}, typeLay: () => {}, saveLay: () => {} });
+    const rows = (pv.rows || []), used = rows.filter((r) => r.dev);
+    const free = rows.filter((r) => !r.dev).map((r) => r.dvs);
+    const srcOpts = [{ v: '', label: 'Choose a source…' }].concat((pv.sources || []).map((x) => ({ v: this.srcKey(x), label: x.dev + ' · ' + x.ch })));
+    const addK = s.addK && free.indexOf(s.addK) > -1 ? s.addK : (free[0] || 0);
+    const skip = {};
+    const prow = used.filter((r) => !skip[r.dvs]).map((r) => {
+      const pr = r.pair && r.pair > r.dvs ? r.pair : null; if (pr) skip[pr] = true;
+      const other = pr ? rows[pr - 1] : null;
+      return { n: pr ? r.dvs + '–' + pr : String(r.dvs), name: (r.name || r.ch) + (pr ? ' (stereo)' : r.mono ? ' (kept mono)' : ''),
+        from: r.dev + ' · ' + r.ch + (other ? '  +  ' + other.ch : ''), canMono: !!(pr || r.mono), monoBtn: pr ? 'Make mono' : 'Make stereo',
+        mono: () => this.patchAct('mono', { dvs: r.dvs, mono: !!pr }, pr ? 'Recorded as two mono tracks now.' : 'Recorded as one stereo track again.'),
+        clear: () => this.setState({ ask: { title: 'Clear C3 Life channel ' + r.dvs + (pr ? ' and ' + pr : '') + '?', text: 'It stops taking ' + r.dev + ' · ' + r.ch + ' in Dante, so it isn’t recorded. Nothing on the desk or the stage changes.', list: [], btn: 'Clear it',
+          act: () => this.patchAct('clear', { dvs: r.dvs }, 'Cleared.').then(() => pr && this.patchAct('clear', { dvs: pr }, 'Cleared.')) } }) };
+    });
+    const a = s.addSrc ? this.srcOf(s.addSrc) : null;
+    const nextOf = (x) => { if (!x) return ''; const i = (pv.sources || []).findIndex((y) => y.dev === x.dev && y.ch === x.ch); const n = (pv.sources || [])[i + 1]; return n && n.dev === x.dev ? this.srcKey(n) : ''; };
+    const addSrcR = s.addSrcR || nextOf(a);
+    return Object.assign(out, {
+      patchSub: 'Using ' + pv.used + ' of ' + pv.of + ' channels on the C3 Life server (' + (pv.device || 'Dante Virtual Soundcard') + ').' + (pv.recording ? ' Not while recording.' : pv.playing ? ' Not while playing back.' : '') + (pv.can ? '' : ' Your role can look but not change it.'),
+      prow: prow, cantPatch: !can,
+      freeKs: free.map((k) => ({ v: String(k), label: 'Channel ' + k + (s.addSt && free.indexOf(k + 1) < 0 ? ' (the next one is taken)' : '') })), addK: String(addK),
+      pickAddK: (e) => this.setState({ addK: +e.target.value }),
+      srcOpts: srcOpts, addSrc: s.addSrc, pickAddSrc: (e) => this.setState({ addSrc: e.target.value, addSrcR: '' }),
+      addSt: s.addSt, toggleAddSt: () => this.setState({ addSt: !s.addSt }), addSrcR: addSrcR, pickAddSrcR: (e) => this.setState({ addSrcR: e.target.value }),
+      cantAdd: !can || !addK || !a || (s.addSt && (!addSrcR || free.indexOf(addK + 1) < 0)),
+      addTrack: () => this.askConnect(addK, a, s.addSt ? this.srcOf(addSrcR) : null),
+      layName: s.layName, typeLay: (e) => this.setState({ layName: e.target.value }),
+      saveLay: () => { const n = (s.layName || '').trim(); if (!n) { this.setState({ msg: 'Type a name for the layout first.', bad: true }); return; } this.patchAct('layout', { do: 'save', name: n }, 'Saved as ' + n + '.'); },
+      lays: (pv.layouts || []).map((l) => ({ name: l.name, sub: l.count + ' channels · saved ' + l.saved + (l.by ? ' by ' + l.by : ''), apply: () => this.askLayout(l.name),
+        del: () => this.setState({ ask: { title: 'Delete the "' + l.name + '" layout?', text: 'Only the saved layout goes. The patch as it is now stays.', list: [], btn: 'Delete it', act: () => this.patchAct('layout', { do: 'delete', name: l.name }, 'Deleted.') } }) }))
+    });
+  }
+  // ---- the patch: where each of the C3 Life server's channels comes from ----
+  loadPatch() {
+    if (this.demo) { this.patchDemo = true; this.pdv = this.pdv || this.demoPatch(); this.setState({ pv: this.pdv }); return; }
+    this.api('/api/patch').then(({ code, j }) => {
+      if ([404, 405, 501].indexOf(code) > -1) { this.patchDemo = true; this.pdv = this.pdv || this.demoPatch(); this.setState({ pv: this.pdv }); return; }
+      if (code === 200 && j.ok) this.setState({ pv: j });
+    }).catch(() => {});
+  }
+  patchAct(what, body, done) {
+    if (this.patchDemo) { this.demoPatchAct(what, body); this.setState({ msg: done || '', bad: false, ask: null }); return Promise.resolve({}); }
+    return this.api('/api/patch/' + what, 'POST', body).then(({ j }) => {
+      if (j && j.rows) this.setState({ pv: j });
+      this.setState({ msg: (j && j.error) || done || '', bad: !!(j && j.error) });
+      this.load();
+      return j;
+    }).catch(() => this.setState({ msg: 'The C3 Life server didn’t answer. Try again.', bad: true }));
+  }
+  srcKey(x) { return x.dev + '\u0001' + x.ch; }
+  srcOf(k) { const p = k.split('\u0001'); return { dev: p[0], ch: p[1] }; }
+  askConnect(k, a, b) {
+    const pv = this.state.pv, row = (n) => (pv.rows || []).find((r) => r.dvs === n) || {};
+    const now = (n) => row(n).dev ? row(n).dev + ' · ' + row(n).ch : 'nothing';
+    const list = [{ t: 'C3 Life ' + k + ': ' + now(k) + ' → ' + a.dev + ' · ' + a.ch, c: '#ECEEF1' }];
+    if (b) list.push({ t: 'C3 Life ' + (k + 1) + ': ' + now(k + 1) + ' → ' + b.dev + ' · ' + b.ch, c: '#ECEEF1' });
+    this.setState({ ask: { title: 'Connect to C3 Life channel ' + k + (b ? ' and ' + (k + 1) : '') + '?', text: 'This changes the route into the C3 Life server in Dante. Nothing on the desk or the stage changes.', list: list, btn: 'Connect',
+      act: () => this.patchAct('route', b ? { dvs: k, dev: a.dev, ch: a.ch, pair: b } : { dvs: k, dev: a.dev, ch: a.ch }, 'Connected. The track takes its name from the Wing.') } });
+  }
+  askLayout(name) {
+    const go = (ch) => this.setState({ ask: { title: 'Put the "' + name + '" patch back?', text: ch.length ? 'These C3 Life channels change in Dante. Nothing on the desk or the stage changes.' : 'It’s already like that: nothing changes.',
+      list: ch.map((c) => ({ t: 'C3 Life ' + c.dvs + ': ' + c.now + ' → ' + (c.to || 'nothing'), c: '#ECEEF1' })), btn: 'Put it back', act: () => this.patchAct('layout', { do: 'apply', name: name }, 'The ' + name + ' patch is back.') } });
+    if (this.patchDemo) { go([]); return; }
+    this.api('/api/patch/layout', 'POST', { do: 'plan', name: name }).then(({ j }) => { if (j && j.changes) go(j.changes); else this.setState({ msg: (j && j.error) || 'Not understood.', bad: true }); });
+  }
+  demoPatch() {
+    const v = this.dv || this.demoView(), tio = 'Y001-box-1-Yamaha-Tio1608';
+    const rows = []; for (let k = 1; k <= 64; k++) { const t = (v.tracks || []).find((x) => x.dvs === k || x.pair === k); rows.push(t ? { dvs: k, dev: tio, ch: 'CH' + k + ' ' + t.name + (t.pair ? (t.pair === k ? ' R' : ' L') : ''), name: t.name, pair: t.pair ? (t.pair === k ? t.dvs : t.pair) : null, side: t.pair ? (t.pair === k ? 'R' : 'L') : '' } : { dvs: k, dev: '', ch: '', name: '' }); }
+    const sources = []; for (let n = 1; n <= 16; n++) sources.push({ dev: tio, ch: 'CH' + n + ' ' + ((v.tracks[n - 1] || {}).name || ''), num: n });
+    ['01 - Click', '02 - Guide', '07 - Keys & Piano', '08 - Keys & Piano'].forEach((c, i) => sources.push({ dev: 'C3-LIfe-Multitracks', ch: c, num: i + 1 }));
+    return { device: 'C3LIFE', wing: 'wing-d-2627f4', rows: rows, sources: sources, receivers: [{ dev: 'Y002-box-2-Yamaha-Tio1608', ch: '01 Wireless 2' }, { dev: 'Y002-box-2-Yamaha-Tio1608', ch: '02 Wireless 3' }, { dev: 'C3-Life-Foyer-AVIO', ch: 'CH1' }, { dev: 'C3-Life-Foyer-AVIO', ch: 'CH2' }],
+      used: (v.tracks || []).length, of: 64, layouts: [{ name: 'Sunday', saved: '2026-10-18 09:40', by: 'FOH sound', count: 16 }], can: true };
+  }
+  demoPatchAct(what, b) {
+    const p = this.pdv;
+    if (what === 'route') [[b.dvs, b], [b.dvs + 1, b.pair]].forEach(([k, x]) => { if (!x) return; const r = p.rows[k - 1]; Object.assign(r, { dev: x.dev, ch: x.ch, name: x.ch.replace(/^\S+\s+(-\s+)?/, '') }); });
+    if (what === 'clear') Object.assign(p.rows[b.dvs - 1], { dev: '', ch: '', name: '' });
+    if (what === 'layout' && b.do === 'save') p.layouts = p.layouts.filter((l) => l.name !== b.name).concat([{ name: b.name, saved: 'now', by: 'you', count: p.rows.filter((r) => r.dev).length }]);
+    if (what === 'layout' && b.do === 'delete') p.layouts = p.layouts.filter((l) => l.name !== b.name);
+    if (what === 'mono') p.rows[b.dvs - 1].mono = b.mono;
+    p.used = p.rows.filter((r) => r.dev).length;
+    this.setState({ pv: { ...p } });
+  }
   // ---- the preview: a pretend drive and Wing, nothing leaves this screen ----
   demoView() {
     const names = ['Kick In', 'Snare', 'Hi-hat', 'Tom 1', 'Overheads', 'Bass DI', 'Keys L', 'Keys R', 'Acoustic', 'E-Gtr', 'Lead Vox', 'BV 1', 'BV 2', 'Pastor HH', 'Playback L', 'Playback R'];
@@ -404,8 +536,10 @@ class Component extends DCLogic {
       drives: [{ id: 'D1', label: 'Sunday SSD', free_text: '612 GB', ok: true }], recording: null, playing: null, last: null,
       settings: { auto: 'slide', start: { kind: 'presentation', text: 'Welcome' }, stop: { kind: 'presentation', text: 'Benediction' }, max_hours: 4, markers: 'presentation', channels: 'routed', local: true, copy_auto: true, free_local: true, make_room: true, sections: true },
       local: { free_text: '180 GB', hours_left: 120 }, copy: null,
-      tracks: names.map((n, i) => ({ dvs: i + 1, name: n, level: 0 })),
-      sessions: [{ name: '2026-10-18 0958', where: 'drive', length: 7342, tracks: 16, markers: [
+      tracks: names.map((n, i) => ({ dvs: i + 1, name: n, level: 0, from: (i > 13 ? 'C3-LIfe-Multitracks · ' : 'Y001-box-1-Yamaha-Tio1608 · CH') + (i + 1) + ' ' + n }))
+        .filter((t) => t.dvs !== 8 && t.dvs !== 16).map((t) => (t.dvs === 7 ? { ...t, name: 'Keys', pair: 8 } : t.dvs === 15 ? { ...t, name: 'Playback', pair: 16 } : t)),
+      sessions: [{ name: '2026-10-18 0958', where: 'drive', length: 7342, tracks: 14, track_list: [{ dvs: 1, name: 'Kick In', from: 'Y001-box-1-Yamaha-Tio1608 · CH1 Kick' }, { dvs: 6, name: 'Bass DI', from: 'Y001-box-1-Yamaha-Tio1608 · CH9 Bass' },
+        { dvs: 7, pair: 8, name: 'Keys', from: 'Y001-box-1-Yamaha-Tio1608 · CH10 Keys L + CH11 Keys R' }, { dvs: 11, name: 'Lead Vox', from: 'Y002-box-2-Yamaha-Tio1608 · 09 W1' }], markers: [
         { t: 312, name: 'Way Maker', kind: 'song', end: 640 }, { t: 312, name: 'Verse 1', kind: 'section', song: 'Way Maker', end: 371 },
         { t: 371, name: 'Chorus', kind: 'section', song: 'Way Maker', end: 430 }, { t: 430, name: 'Verse 2', kind: 'section', song: 'Way Maker', end: 489 },
         { t: 489, name: 'Chorus', kind: 'section', song: 'Way Maker', end: 548 }, { t: 548, name: 'Bridge', kind: 'section', song: 'Way Maker', end: 640 },
@@ -448,16 +582,28 @@ class Component extends DCLogic {
     }
     return out.length ? out : null;
   }
+  sendFor(x) {
+    const ch = this.state.send[x.name] || {}, rx = (this.state.pv || {}).receivers || [], out = {};
+    (x.track_list || []).forEach((t) => {
+      const d = ch[t.dvs];
+      if (!d || d.v === 'source') return;
+      if (d.v === 'off') { out[t.dvs] = 'off'; return; }
+      const i = +d.rx, a = rx[i]; if (!a) return;
+      const b = rx[i + 1] && rx[i + 1].dev === a.dev ? rx[i + 1] : null;
+      out[t.dvs] = t.pair && b ? [a, b] : [a];
+    });
+    return Object.keys(out).length ? out : undefined;
+  }
   playAsk(x, pick, where) {
-    const from = pick.from, part = pick.part;
+    const from = pick.from, part = pick.part, send = this.sendFor(x);
     const go = (plan) => {
-      const list = plan.steps.map((st) => ({ t: 'Ch ' + st.wing_ch + ' · ' + st.track + ': ' + st.now + ' → ' + st.to + ' (the recording)', c: '#ECEEF1' }))
+      const list = plan.steps.map((st) => ({ t: st.text || ('Ch ' + st.wing_ch + ' · ' + st.track + ': ' + st.now + ' → ' + st.to + ' (the recording)'), c: '#ECEEF1' }))
         .concat(plan.notes.map((n) => ({ t: n, c: '#A3ACB8' })));
       this.setState({ ask: { title: 'Play ' + (part ? part + ' from "' + x.name + '"' : '"' + x.name + '"') + ' to the desk' + (pick.loop ? ', over and over' : '') + '?', text: 'These Wing channels switch from the stage to the recording, straight away, until you press Back to stage. Don’t do this during a service.', list: list, btn: 'Switch and play',
-        act: () => this.act('play', { name: x.name, from: from, to: pick.to, loop: pick.loop, part: part, where: where }, 'Playing. Back to stage puts every channel back.') } });
+        act: () => this.act('play', { name: x.name, from: from, to: pick.to, loop: pick.loop, part: part, where: where, send: send }, 'Playing. Back to stage puts every channel and Dante route back.') } });
     };
     if (this.demo) { go({ steps: [{ wing_ch: 1, track: 'Kick In', now: 'LCL/1', to: 'CRD/1' }, { wing_ch: 11, track: 'Lead Vox', now: 'A/3', to: 'CRD/11' }], notes: ['Playback L and R aren’t from Wing channels, so they aren’t sent to the desk.'] }); return; }
-    this.act('plan', { name: x.name, where: where }).then((j) => { if (j && j.plan) go(j.plan); });
+    this.act('plan', { name: x.name, where: where, send: send }).then((j) => { if (j && j.plan) go(j.plan); });
   }
   renderVals() {
     const s = this.state, v = s.v || { settings: { start: {}, stop: {} }, tracks: [], sessions: [], drives: [], engine: {} };
@@ -494,11 +640,12 @@ class Component extends DCLogic {
       lastColor: last && last.error ? '#FF7A45' : '#A3ACB8',
       msg: s.msg, msgColor: s.bad ? '#FF7A45' : '#A3ACB8',
       playing: !!p, playTitle: p ? (p.part ? p.part + ' · ' : '') + p.name + ' · ' + this.clock(p.secs) + (p.to != null ? ' (' + this.clock(p.from) + '–' + this.clock(p.to) + ')' : (p.length ? ' of ' + this.clock(p.length) : '')) : '',
-      playSub: p ? (p.ended ? 'Finished. ' : p.loop ? 'Looping, over and over. ' : '') + p.channels + ' Wing channels are hearing the recording' : '',
+      playSub: p ? (p.ended ? 'Finished. ' : p.loop ? 'Looping, over and over. ' : '') + p.channels + (p.channels === 1 ? ' track is' : ' tracks are') + ' going to the desk' : '',
       offStage: !p && v.on_stage === false,
       stage: () => this.act('stage', {}, 'Every channel is back on the stage.'),
-      trackCount: (v.tracks || []).length + ' · ' + (eng.channels || 64) + ' channels from DVS',
-      tracks: (v.tracks || []).map((t) => ({ n: t.dvs, name: t.name, w: Math.round(Math.min(1, t.level || 0) * 100) + '%', c: dbc(t.level || 0) })),
+      trackCount: (() => { const tr = v.tracks || [], used = tr.reduce((a, t) => a + (t.pair ? 2 : 1), 0); return 'Recording ' + used + ' of ' + Math.min(64, eng.channels || 64) + ' DVS channels · ' + tr.length + (tr.length === 1 ? ' track' : ' tracks'); })(),
+      tracks: (v.tracks || []).map((t) => ({ n: t.pair ? t.dvs + '–' + t.pair : t.dvs, name: t.name, from: t.from || '', stD: t.pair ? 'inline' : 'none', w: Math.round(Math.min(1, t.level || 0) * 100) + '%', c: dbc(t.level || 0) })),
+      ...this.patchVals(),
       noSessions: (v.sessions || []).length ? '' : (d ? 'Nothing recorded yet.' : 'Nothing on this computer. Plug in the recording drive to see what’s on it.'),
       copyLine: !job ? '' : job.error ? job.error : job.finished ? 'Copied to ' + job.to + '.' : 'Copying to ' + job.to + '… ' + Math.round(100 * job.done / Math.max(1, job.total)) + '%. Leave the drive plugged in.',
       copyColor: job && job.error ? '#FF7A45' : '#A3ACB8',
@@ -519,7 +666,13 @@ class Component extends DCLogic {
           copies: (v.drives || []).filter((dd) => !(x.where === 'drive' && d && dd.id === d.id)).map((dd) => ({
             label: dd.label, off: !can || copying,
             go: () => this.act('copy', { name: x.name, where: x.where, to: dd.id }, 'Copying to ' + dd.label + '…') })),
-          open: open, btn: open ? 'Close' : 'Play…', toggle: () => this.setState({ open: open ? '' : x.name }),
+          open: open, btn: open ? 'Close' : 'Play…', toggle: () => { this.setState({ open: open ? '' : x.name }); if (!open && !s.pv) this.loadPatch(); },
+          dests: (x.track_list || []).map((t) => {
+            const d = (s.send[x.name] || {})[t.dvs] || { v: 'source', rx: '0' };
+            const setD = (nd) => this.setState({ send: { ...s.send, [x.name]: { ...(s.send[x.name] || {}), [t.dvs]: { ...d, ...nd } } } });
+            return { name: t.name, label: (t.pair ? t.dvs + '–' + t.pair : t.dvs) + ' · ' + t.name + (t.from ? '  (from ' + t.from + ')' : ''), v: d.v, isElse: d.v === 'else', rx: d.rx,
+              elseLabel: t.pair ? 'Goes to (the right side goes to the next one on that device)' : 'Goes to', pick: (e) => setD({ v: e.target.value }), pickRx: (e) => setD({ rx: e.target.value }) };
+          }),
           from: String(pi), froms: [{ v: '-1', label: 'The beginning' }].concat(ms.map((mm, i) => ({ v: String(i), label: this.clock(mm.t) + ' · ' + (mm.kind === 'section' ? '\u00a0\u00a0\u00a0↳ ' : '') + mm.name }))),
           pickFrom: (e) => this.setState({ from: { ...s.from, [x.name]: +e.target.value } }),
           isPart: isPart, how: how, partName: partName, pickHow: (e) => this.setState({ how: { ...s.how, [x.name]: e.target.value } }),

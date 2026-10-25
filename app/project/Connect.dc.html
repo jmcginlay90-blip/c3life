@@ -287,6 +287,20 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
         </sc-for>
       </section>
     </sc-if>
+    <section class="card" style="display:flex;flex-direction:column;gap:10px" aria-label="Patch list">
+      <div><div style="font-size:15px;font-weight:600">Patch list</div><div style="font-size:12px;color:#A3ACB8">What’s plugged in where: the Wing, the C3 Life server and every Dante route · it only reads, it changes nothing</div></div>
+      <div style="font-size:13px;color:#C9CFD7;line-height:1.45">{{plCounts}}</div>
+      <div style="font-size:13px;line-height:1.45;color:{{plChColor}}">{{plChanged}}</div>
+      <sc-for list="{{plChanges}}" as="c" hint-placeholder-count="0"><div style="font-size:12px;color:#FFB224;line-height:1.4">{{c}}</div></sc-for>
+      <div style="font-size:12px;color:#A3ACB8;line-height:1.45">{{plNotes}}</div>
+      <div class="row2" style="display:flex;gap:8px">
+        <a class="btn" href="{{plHref}}" download style="flex:1;display:flex;align-items:center;justify-content:center;text-decoration:none;pointer-events:{{plHrefOn}};opacity:{{plHrefOp}}">⇣ Download</a>
+        <button class="btn pri" style="flex:1" onClick="{{plSend}}" disabled="{{plLocked}}">Send it now</button>
+      </div>
+      <label class="btn" style="display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:{{plHrefOp}}">Load a patch sheet (CSV)<input type="file" accept=".csv,text/csv" onChange="{{plLoad}}" disabled="{{plLocked}}" style="display:none" aria-label="Load a patch sheet"></label>
+      <sc-if value="{{plHasMsg}}" hint-placeholder-val="{{ false }}"><div role="status" style="font-size:13px;color:{{plMsgColor}}">{{plMsg}}</div></sc-if>
+      <div style="font-size:12px;color:#A3ACB8;line-height:1.45">It’s a spreadsheet laid out like your patch sheet: inputs (FOH, Preamp, Dante, Input Name, Mic / DI / Tracks, Stand), the Wing’s outputs and where they go, the C3 Life server’s channels, and every Dante route. It goes with the daily reports whenever something changed. The mic and stand come from your patch sheet: load a new one any time.</div>
+    </section>
     <sc-if value="{{demoOnly}}" hint-placeholder-val="{{ true }}">
     <section class="card" style="display:flex;flex-direction:column;gap:10px">
       <div style="display:flex;justify-content:space-between;align-items:center">
@@ -402,6 +416,7 @@ class Component extends DCLogic {
   componentDidMount() { this.load(); this.srvT = setInterval(() => this.load(), 10000); }
   load() {
     const h = { headers: { Authorization: 'Bearer ' + this.tok() } };
+    fetch('/api/patchlist', h).then((r) => (r.status === 200 ? r.json() : null)).then((k) => k && k.ok && this.setState({ pl: k })).catch(() => {});
     fetch('/api/network', h).then((r) => (r.status === 404 ? null : r.json())).then((j) => {
       if (!j) { clearInterval(this.srvT); return; }
       if (!j.ok) return;
@@ -550,7 +565,7 @@ class Component extends DCLogic {
       outbox: ((s.reps && s.reps.reports) || []).slice(0, 8).map((r) => ({ name: r.subject, detail: r.at + ' · ' + r.who + (r.email === 'sent' ? ' · emailed ' + r.email_at : (r.email_error ? ' · ' + r.email_error : ' · sends when online')),
         queued: r.email !== 'sent', sent: r.email === 'sent' }))
     } : null;
-    return live ? Object.assign(this.demoVals(svcC, nets, outbox, s), live) : this.demoVals(svcC, nets, outbox, s);
+    return Object.assign(live ? Object.assign(this.demoVals(svcC, nets, outbox, s), live) : this.demoVals(svcC, nets, outbox, s), this.plVals());
   }
   dPut(b, done) {
     fetch('/api/daily', { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + this.tok() }, body: JSON.stringify(b) })
@@ -560,8 +575,32 @@ class Component extends DCLogic {
   dSend(day) {
     this.setState({ dMsg: 'Sending…', dMsgColor: '#A3ACB8' });
     fetch('/api/daily/send', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + this.tok() }, body: JSON.stringify({ day: day }) })
-      .then((r) => r.json()).then((j) => { this.setState(j.ok ? { daily: Object.assign({}, this.state.daily, j), dMsg: '✓ ' + j.sent.join(' and ') + ' for ' + day + ' saved and sent (or waiting for the internet).', dMsgColor: '#6CB4F5' } : { dMsg: j.error, dMsgColor: '#FF8A80' }); this.load(); })
+      .then((r) => r.json()).then((j) => { this.setState(j.ok ? { daily: Object.assign({}, this.state.daily, j), dMsg: '✓ ' + (j.sent.length > 1 ? j.sent.slice(0, -1).join(', ') + ' and ' + j.sent[j.sent.length - 1] : j.sent.join('')) + ' for ' + day + ' saved and sent (or waiting for the internet).', dMsgColor: '#6CB4F5' } : { dMsg: j.error, dMsgColor: '#FF8A80' }); this.load(); })
       .catch(() => this.setState({ dMsg: 'The C3 Life server didn’t answer.', dMsgColor: '#FF8A80' }));
+  }
+  plVals() {
+    const s = this.state, pl = s.pl;
+    const demo = !pl;
+    const p = pl || { inputs: new Array(45), outputs: new Array(26), hp: new Array(52), dante: new Array(118), since: '2026-10-18 13:05', notes: 43,
+      changes: [{ What: 'wing-d-2627f4 43 - SR W1', Was: 'Y001-box-1-Yamaha-Tio1608 · CH9 Bass', Now: 'Y001-box-1-Yamaha-Tio1608 · CH12 A Guitar' }], can: false };
+    const n = (a) => (a || []).length;
+    const ch = p.changes || [];
+    const post = (path, body, ok) => fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + this.tok() }, body: JSON.stringify(body) })
+      .then((r) => r.json()).then((k) => { if (k.inputs) this.setState({ pl: k }); this.setState({ plMsg: k.ok ? ok(k) : (k.error || 'Not done.'), plBad: !k.ok }); })
+      .catch(() => this.setState({ plMsg: 'The C3 Life server didn’t answer.', plBad: true }));
+    return {
+      plCounts: n(p.inputs) + ' input rows · ' + n(p.outputs) + ' Wing card outputs · ' + n(p.hp) + ' C3 Life server channels · ' + n(p.dante) + ' Dante routes' + (demo ? ' (example)' : ''),
+      plChanged: p.since == null ? 'No patch list has been sent yet.' : ch.length ? ch.length + (ch.length === 1 ? ' change' : ' changes') + ' since ' + p.since + ':' : 'Nothing changed since ' + p.since + '.',
+      plChColor: ch.length ? '#FFB224' : '#A3ACB8',
+      plChanges: ch.slice(0, 6).map((c) => c.What + ': ' + c.Was + ' → ' + c.Now).concat(ch.length > 6 ? ['…and ' + (ch.length - 6) + ' more in the spreadsheet'] : []),
+      plNotes: 'Mic / DI / Tracks and Stand are known for ' + (p.notes || 0) + ' channels' + (p.notes ? ' (from your patch sheet).' : '. Load your patch sheet to fill them in.'),
+      plHref: demo ? '#' : '/api/patchlist/file?t=' + encodeURIComponent(this.tok()), plHrefOn: demo ? 'none' : 'auto', plHrefOp: demo || !p.can ? '0.5' : '1',
+      plLocked: demo || !p.can,
+      plSend: () => post('/api/patchlist/send', {}, () => 'Sent. It’s in the outbox and goes by email as soon as there’s internet.'),
+      plLoad: (e) => { const f = e.target.files && e.target.files[0]; if (!f) return; const rd = new FileReader();
+        rd.onload = () => post('/api/patchlist/sheet', { csv: String(rd.result || '') }, (k) => 'Loaded: the mic and stand for ' + k.loaded + ' channels.'); rd.readAsText(f); e.target.value = ''; },
+      plHasMsg: !!s.plMsg, plMsg: s.plMsg || '', plMsgColor: s.plBad ? '#FF7A45' : '#A3ACB8'
+    };
   }
   dailyVals(v) {
     const s = this.state, d = s.daily, st = d ? d.settings : null;

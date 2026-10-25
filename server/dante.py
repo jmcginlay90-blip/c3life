@@ -121,6 +121,16 @@ class DanteReader:
             return "Dante didn't take it: %s" % ((out.stderr or out.stdout or "no reason given").strip().splitlines() or ["no reason given"])[-1][:200]
         return None
 
+    def unroute_any(self, rx_device, rx_channel):
+        """Take the route off any receiver's channel (to put back one that had nothing). -> error or None"""
+        try:
+            out = self.run_netaudio("subscription", "remove", "--rx-device-name", rx_device, "--rx-channel-name", rx_channel)
+        except (OSError, subprocess.TimeoutExpired) as e:
+            return "netaudio isn't installed or didn't answer (%s)." % e.__class__.__name__
+        if out.returncode != 0:
+            return "Dante didn't take it: %s" % ((out.stderr or out.stdout or "no reason given").strip().splitlines() or ["no reason given"])[-1][:200]
+        return None
+
     def route(self, tx_device, tx_channel, rx_channel_number):
         """Route tx_device's tx_channel into this server's DVS channel. -> error or None, then reads the routes again."""
         rx = self.data.get("channels", {}).get(str(rx_channel_number), {}).get("rx_channel") or "%02d" % int(rx_channel_number)

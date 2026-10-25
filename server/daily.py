@@ -240,6 +240,13 @@ class Daily:
                 self.reports.add({"subject": "Activity report %s" % day, "text": t, "who": who}, who,
                                  files=[("activity-%s.log" % day, "\n".join(self.activity_lines(day)).encode("utf-8"))], kind="daily")
                 sent.append("Activity report")
+        if sent and getattr(self, "extra", None):  # the patch list, when it changed
+            try:
+                for subj, text, files in self.extra(day):
+                    self.reports.add({"subject": subj, "text": text, "who": who}, who, files=files, kind="daily")
+                    sent.append(subj.rsplit(" ", 1)[0])
+            except Exception as e:
+                self.log.warning("reports: the patch list couldn't be made (%s)", e)
         if not sent:
             return "Nothing was logged on %s." % day, []
         with self.lock:
