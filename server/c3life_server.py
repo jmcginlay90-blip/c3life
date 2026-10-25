@@ -86,7 +86,8 @@ API (JSON):
        /layout {"do": "save|plan|apply|delete", "name"}   (Recording view / control) where each C3 Life channel comes from
   GET  /api/patchlist | /api/patchlist/file?t=  (Mixer or Recording view) the patch list, and as a spreadsheet
   POST /api/patchlist/send | /api/patchlist/sheet {"csv"} | PUT /api/patchlist/note {"ch","name","mic","stand"}   (Mixer control)
-  POST /api/recording/play {"name","from","to","loop","part","where","send"} | /stage   (Recording + Mixer control) play back to the desk; put it back
+  POST /api/recording/play {"name","from","to","loop","part","where","send","parts": [[from, to, name], ...]} | /stage |
+       /jump {"dir": 1 | -1} (the next or previous part while it plays) | /nudge {"name","where","i","by"} (move a marker)   (Recording + Mixer control) play back to the desk; put it back
   PUT  /api/rta/ringout {"on","sens"}      (RTA settings control) the feedback watch; GET /api/rta/live has "ringout"
   POST /api/rta/ringout/cut {"f"}          (RTA settings + Mixer control, the Wing in Control) a narrow cut on a flat band
                                            of Main 1's EQ; again on the same note goes deeper
@@ -1651,12 +1652,12 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 err, n = pl.load_sheet(body.get("csv") if isinstance(body, dict) else None, s["name"])
                 self.send_json(200 if not err else 400, dict(pl.view(), ok=not err, loaded=n, **({"error": err} if err else {})))
                 return
-            if path.startswith("/api/recording/") and path.split("/")[-1] in ("start", "stop", "marker", "drive", "plan", "play", "stage", "copy"):
+            if path.startswith("/api/recording/") and path.split("/")[-1] in ("start", "stop", "marker", "drive", "plan", "play", "stage", "copy", "jump", "nudge"):
                 what = path.split("/")[-1]
                 s = self.level("Recording", need=2)
                 if not s:
                     return
-                if what in ("play", "stage") and access.level(s["role"], "Mixer") < 2:
+                if what in ("play", "stage", "jump") and access.level(s["role"], "Mixer") < 2:
                     self.send_json(403, {"ok": False, "error": "Playing back to the desk needs Mixer control too (Access levels)."})
                     return
                 body = self.read_json() or {}
@@ -1677,10 +1678,18 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 elif what == "play":
                     at, to = body.get("from", 0), body.get("to")
                     num = lambda x: isinstance(x, (int, float)) and not isinstance(x, bool) and x >= 0
-                    err = "Bad request" if not num(at) or not (to is None or num(to)) or not isinstance(body.get("loop", False), bool) else \
+                    segs = body.get("parts")
+                    ok_segs = segs is None or (isinstance(segs, list) and 0 < len(segs) <= 50 and all(
+                        isinstance(x, list) and len(x) == 3 and num(x[0]) and num(x[1]) and isinstance(x[2], str) for x in segs))
+                    err = "Bad request" if not num(at) or not (to is None or num(to)) or not isinstance(body.get("loop", False), bool) or not ok_segs else \
                         recorder.play(body.get("name"), at, s["name"], body.get("where", "drive"), to, body.get("loop", False),
                                       body.get("part") if isinstance(body.get("part"), str) else "",
-                                      body.get("send") if isinstance(body.get("send"), dict) else None)
+                                      body.get("send") if isinstance(body.get("send"), dict) else None,
+                                      [(float(a), float(b), lab[:120]) for a, b, lab in segs] if segs else None)
+                elif what == "jump":
+                    err, extra["now"] = recorder.jump(1 if body.get("dir", 1) == 1 else -1, s["name"])
+                elif what == "nudge":
+                    err, extra["markers"] = recorder.nudge(body.get("name"), body.get("where", "drive"), body.get("i"), body.get("by"), s["name"])
                 elif what == "copy":
                     err = recorder.copy([(body.get("name"), body.get("where", "drive"))], body.get("to"), s["name"])
                 else:

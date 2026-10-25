@@ -355,6 +355,71 @@ class Playback(Ready):
         self.assertLessEqual(self.r.view()["playing"]["secs"], ch["end"] + 0.05)
         self.r.back_to_stage("FOH")
 
+    def _three_parts(self):
+        self.r.start("FOH")
+        for g, secs in (("Verse", 0.5), ("Chorus", 0.6), ("Bridge", 0.6)):
+            self.r._on_slide({"presentation": "Song A", "group": g})
+            time.sleep(secs)
+        self.r.stop("FOH")
+        name = self.r.last["name"]
+        return name, {m["name"]: m for m in self.r.sessions()[0]["markers"]}
+
+    def test_several_parts_one_after_the_other(self):
+        name, m = self._three_parts()
+        segs = [(m["Bridge"]["t"], m["Bridge"]["end"], "Bridge"), (m["Verse"]["t"], m["Verse"]["end"], "Verse")]  # sorted by time
+        self.assertIn("start and an end", self.r.play(name, 0, "FOH", segs=[(1.0, None, "x")]))
+        self.assertIsNone(self.r.play(name, 0, "FOH", segs=segs))
+        self.assertEqual(self.r.view()["playing"]["part"], "Verse (1 of 2)")
+        self.assertTrue(wait(lambda: self.r.view()["playing"]["part"] == "Bridge (2 of 2)", 3))
+        self.assertTrue(m["Bridge"]["t"] - 0.05 <= self.r.view()["playing"]["secs"] <= m["Bridge"]["end"] + 0.05)  # the Chorus was skipped
+        self.assertTrue(wait(lambda: self.r.view()["playing"]["ended"], 4))
+        self.r.back_to_stage("FOH")
+        self.assertIsNone(self.r.play(name, 0, "FOH", segs=segs, loop=True))  # looped: round again from the Verse
+        self.assertTrue(wait(lambda: self.r.view()["playing"]["part"] == "Bridge (2 of 2)", 3))
+        self.assertTrue(wait(lambda: self.r.view()["playing"]["part"] == "Verse (1 of 2)", 3))
+        self.assertFalse(self.r.view()["playing"]["ended"])
+        err, label = self.r.jump(1, "FOH")
+        self.assertEqual((err, label), (None, "Bridge (2 of 2)"))
+        self.r.back_to_stage("FOH")
+
+    def test_next_and_previous_while_it_plays(self):
+        name, m = self._three_parts()
+        self.assertIn("Nothing is playing", self.r.jump(1, "FOH")[0])
+        self.assertIsNone(self.r.play(name, m["Verse"]["t"], "FOH"))  # from there to the end
+        err, label = self.r.jump(1, "FOH")
+        self.assertEqual((err, label), (None, "Song A: Chorus"))
+        self.assertTrue(abs(self.r.view()["playing"]["secs"] - m["Chorus"]["t"]) < 0.1)
+        err, label = self.r.jump(-1, "FOH")  # just started the Chorus: back to the Verse
+        self.assertEqual(label, "Song A: Verse")
+        self.r.back_to_stage("FOH")
+        self.assertIsNone(self.r.play(name, m["Chorus"]["t"], "FOH", end_at=m["Chorus"]["end"], loop=True, part="Song A: Chorus"))
+        err, label = self.r.jump(1, "FOH")  # looping one part: loop the next one instead
+        v = self.r.view()["playing"]
+        self.assertEqual((label, v["part"], v["from"], v["to"], v["loop"]), ("Song A: Bridge", "Song A: Bridge", m["Bridge"]["t"], m["Bridge"]["end"], True))
+        self.assertIn("last part", self.r.jump(1, "FOH")[0])
+        self.r.back_to_stage("FOH")
+
+    def test_nudge_a_marker(self):
+        name, m = self._three_parts()
+        ms = self.r.sessions()[0]["markers"]
+        i = next(k for k, x in enumerate(ms) if x["name"] == "Chorus")
+        self.assertIn("up to a minute", self.r.nudge(name, "drive", i, 99, "FOH")[0])
+        err, out = self.r.nudge(name, "drive", i, -0.25, "FOH")
+        self.assertIsNone(err)
+        ch = next(x for x in out if x["name"] == "Chorus")
+        self.assertAlmostEqual(ch["t"], m["Chorus"]["t"] - 0.25, places=2)
+        self.assertAlmostEqual(next(x for x in out if x["name"] == "Verse")["end"], ch["t"], places=2)  # the Verse ends there now
+        folder = self.r.last["folder"]
+        self.assertIn("%.3f\t" % ch["t"], read(os.path.join(folder, "markers.txt")))
+        self.assertIn('"Chorus" 1', read(os.path.join(folder, name + ".RPP")))
+        self.assertAlmostEqual(json.loads(read(os.path.join(folder, "session.json")))["markers"][i + 1]["t"], ch["t"], places=2)
+        song = next(k for k, x in enumerate(out) if x["name"] == "Song A")
+        err, out = self.r.nudge(name, "drive", song, 0.1, "FOH")  # a song moves its first part with it
+        self.assertAlmostEqual(next(x for x in out if x["name"] == "Verse")["t"], next(x for x in out if x["name"] == "Song A")["t"], places=2)
+        self.assertIsNone(self.r.play(name, 0, "FOH"))
+        self.assertIn("Not while it's playing", self.r.nudge(name, "drive", i, 0.1, "FOH")[0])
+        self.r.back_to_stage("FOH")
+
     def test_watch_only_changes_nothing(self):
         self.r.start("FOH")
         time.sleep(0.3)

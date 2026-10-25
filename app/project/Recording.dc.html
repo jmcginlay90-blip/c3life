@@ -233,6 +233,9 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
         <div class="lbl">Playing back to the desk</div>
         <div style="font-size:15px;font-weight:600">{{playTitle}}</div>
         <div style="font-size:12px;color:#A3ACB8">{{playSub}}</div>
+        <sc-if value="{{canJump}}" hint-placeholder-val="{{ false }}">
+          <div class="row2" style="display:flex;gap:8px"><button class="btn" style="flex:1" onClick="{{jumpBack}}" aria-label="Previous part">⏮ Previous</button><button class="btn" style="flex:1" onClick="{{jumpOn}}" aria-label="Next part">Next ⏭</button></div>
+        </sc-if>
         <button class="btn undo" onClick="{{stage}}">↶ Back to stage</button>
       </section>
     </sc-if>
@@ -304,12 +307,29 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
                   <sc-for list="{{x.froms}}" as="f" hint-placeholder-count="3"><option value="{{f.v}}">{{f.label}}</option></sc-for>
                 </select>
               </label>
-              <sc-if value="{{x.isPart}}" hint-placeholder-val="{{ false }}">
+              <sc-if value="{{x.canNudge}}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                  <span style="font-size:12px;color:#A3ACB8;flex:1;min-width:120px">{{x.nudgeLabel}}</span>
+                  <button class="btn" style="min-height:38px;padding:0 10px" onClick="{{x.nudgeA}}" aria-label="Move the marker 1 second earlier">−1 s</button>
+                  <button class="btn" style="min-height:38px;padding:0 10px" onClick="{{x.nudgeB}}" aria-label="Move the marker a quarter of a second earlier">−¼ s</button>
+                  <button class="btn" style="min-height:38px;padding:0 10px" onClick="{{x.nudgeC}}" aria-label="Move the marker a quarter of a second later">+¼ s</button>
+                  <button class="btn" style="min-height:38px;padding:0 10px" onClick="{{x.nudgeD}}" aria-label="Move the marker 1 second later">+1 s</button>
+                </div>
+              </sc-if>
+              <sc-if value="{{x.hasParts}}" hint-placeholder-val="{{ false }}">
                 <label class="fld">How
                   <select value="{{x.how}}" onChange="{{x.pickHow}}" aria-label="How to play it">
-                    <option value="on">From there to the end</option><option value="once">Just {{x.partName}}</option><option value="loop">Loop {{x.partName}}</option>
+                    <sc-for list="{{x.hows}}" as="h" hint-placeholder-count="2"><option value="{{h.v}}">{{h.label}}</option></sc-for>
                   </select>
                 </label>
+              </sc-if>
+              <sc-if value="{{x.isSeveral}}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;flex-direction:column;gap:2px;border:1px solid #222831;border-radius:8px;padding:6px 10px;max-height:260px;overflow-y:auto">
+                  <sc-for list="{{x.ticks}}" as="k" hint-placeholder-count="3">
+                    <label style="display:flex;align-items:center;gap:10px;font-size:13px;min-height:36px;padding-left:{{k.pad}}"><input type="checkbox" checked="{{k.on}}" onChange="{{k.flip}}"><span>{{k.label}}</span></label>
+                  </sc-for>
+                </div>
+                <label style="display:flex;align-items:center;gap:10px;font-size:13px"><input type="checkbox" checked="{{x.tickLoop}}" onChange="{{x.flipTickLoop}}"><span>Loop them, over and over</span></label>
               </sc-if>
               <details style="border:1px solid #222831;border-radius:8px;padding:0 10px">
                 <summary style="cursor:pointer;font-size:13px;min-height:40px;display:flex;align-items:center">Where each track goes ›</summary>
@@ -400,7 +420,7 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { v: null, msg: '', bad: false, ask: null, markName: '', open: '', from: {}, how: {}, patchOpen: false, pv: null, addK: 0, addSrc: '', addSrcR: '', addSt: false, layName: '', send: {} };
+    this.state = { v: null, msg: '', bad: false, ask: null, markName: '', open: '', from: {}, how: {}, ticks: {}, tickLoop: {}, patchOpen: false, pv: null, addK: 0, addSrc: '', addSrcR: '', addSt: false, layName: '', send: {} };
   }
   tok() { try { const x = JSON.parse(localStorage.getItem('booth.session') || 'null'); return x ? x.token : ''; } catch (e) { return ''; } }
   api(path, method, body) {
@@ -558,7 +578,13 @@ class Component extends DCLogic {
     if (what === 'start') v.recording = { name: 'today', secs: 0, tracks: v.tracks.length, markers: [], by: 'you' };
     if (what === 'marker' && v.recording) v.recording.markers.push({ t: v.recording.secs, name: body.name });
     if (what === 'stop' && v.recording) { v.last = { name: 'today', length: v.recording.secs, tracks: v.tracks.length, markers: v.recording.markers, error: '' }; v.recording = null; }
-    if (what === 'play') { v.playing = { name: body.name, secs: body.from || 0, length: 7342, channels: 14, from: body.from || 0, to: body.to == null ? null : body.to, loop: !!body.loop, part: body.part || '' }; v.on_stage = false; }
+    if (what === 'play') { v.playing = { name: body.name, secs: body.from || 0, length: 7342, channels: 14, from: body.from || 0, to: body.to == null ? null : body.to, loop: !!body.loop, part: body.parts ? body.parts[0][2] + ' (1 of ' + body.parts.length + ')' : body.part || '', can_jump: true, segs: body.parts || null }; v.on_stage = false; }
+    if (what === 'jump' && v.playing) {
+      const p = v.playing, ses = (v.sessions || []).find((y) => y.name === p.name) || { markers: [] };
+      const pool = ses.markers.filter((mm) => mm.kind === 'section').sort((a, b) => a.t - b.t);
+      const nx = body.dir > 0 ? pool.find((mm) => mm.t > p.secs + 0.05) : pool.slice().reverse().find((mm) => mm.t < p.secs - 2);
+      if (nx) { p.secs = nx.t; p.part = (nx.song ? nx.song + ': ' : '') + nx.name; if (p.to != null && !p.segs) { p.from = nx.t; p.to = nx.end; } }
+    }
     if (what === 'stage') { v.playing = null; v.on_stage = true; }
     if (what === 'copy') v.copy = { to: (v.drives.find((x) => x.id === body.to) || {}).label, done: 1, total: 1, finished: true, error: '' };
     if (what === 'drive') v.drives = v.drives.map((d) => (d.id === body.id ? { ...d, ok: body.use } : d));
@@ -582,6 +608,14 @@ class Component extends DCLogic {
     }
     return out.length ? out : null;
   }
+  nudge(x, i, by) {
+    if (this.demo) {
+      const ses = (this.dv.sessions || []).find((y) => y.name === x.name), mm = ses && ses.markers[i];
+      if (mm) { mm.t = Math.max(0, Math.round((mm.t + by) * 100) / 100); ses.markers.sort((a, b) => a.t - b.t); this.setState({ v: { ...this.dv }, msg: 'Moved. The marker files are saved again.', bad: false }); }
+      return;
+    }
+    this.act('nudge', { name: x.name, where: x.where, i: i, by: by }, 'Moved ' + (by > 0 ? 'later' : 'earlier') + ' by ' + Math.abs(by) + ' s. The REAPER project and the labels are saved again.').then(() => this.load());
+  }
   sendFor(x) {
     const ch = this.state.send[x.name] || {}, rx = (this.state.pv || {}).receivers || [], out = {};
     (x.track_list || []).forEach((t) => {
@@ -600,7 +634,7 @@ class Component extends DCLogic {
       const list = plan.steps.map((st) => ({ t: st.text || ('Ch ' + st.wing_ch + ' · ' + st.track + ': ' + st.now + ' → ' + st.to + ' (the recording)'), c: '#ECEEF1' }))
         .concat(plan.notes.map((n) => ({ t: n, c: '#A3ACB8' })));
       this.setState({ ask: { title: 'Play ' + (part ? part + ' from "' + x.name + '"' : '"' + x.name + '"') + ' to the desk' + (pick.loop ? ', over and over' : '') + '?', text: 'These Wing channels switch from the stage to the recording, straight away, until you press Back to stage. Don’t do this during a service.', list: list, btn: 'Switch and play',
-        act: () => this.act('play', { name: x.name, from: from, to: pick.to, loop: pick.loop, part: part, where: where, send: send }, 'Playing. Back to stage puts every channel and Dante route back.') } });
+        act: () => this.act('play', Object.assign({ name: x.name, from: from, to: pick.to, loop: pick.loop, part: part, where: where, send: send }, pick.segs ? { parts: pick.segs } : {}), 'Playing. Back to stage puts every channel and Dante route back.') } });
     };
     if (this.demo) { go({ steps: [{ wing_ch: 1, track: 'Kick In', now: 'LCL/1', to: 'CRD/1' }, { wing_ch: 11, track: 'Lead Vox', now: 'A/3', to: 'CRD/11' }], notes: ['Playback L and R aren’t from Wing channels, so they aren’t sent to the desk.'] }); return; }
     this.act('plan', { name: x.name, where: where, send: send }).then((j) => { if (j && j.plan) go(j.plan); });
@@ -641,6 +675,9 @@ class Component extends DCLogic {
       msg: s.msg, msgColor: s.bad ? '#FF7A45' : '#A3ACB8',
       playing: !!p, playTitle: p ? (p.part ? p.part + ' · ' : '') + p.name + ' · ' + this.clock(p.secs) + (p.to != null ? ' (' + this.clock(p.from) + '–' + this.clock(p.to) + ')' : (p.length ? ' of ' + this.clock(p.length) : '')) : '',
       playSub: p ? (p.ended ? 'Finished. ' : p.loop ? 'Looping, over and over. ' : '') + p.channels + (p.channels === 1 ? ' track is' : ' tracks are') + ' going to the desk' : '',
+      canJump: !!(p && p.can_jump && !p.ended),
+      jumpOn: () => this.act('jump', { dir: 1 }).then((j) => j && j.now && this.setState({ msg: 'Now: ' + j.now, bad: false })),
+      jumpBack: () => this.act('jump', { dir: -1 }).then((j) => j && j.now && this.setState({ msg: 'Now: ' + j.now, bad: false })),
       offStage: !p && v.on_stage === false,
       stage: () => this.act('stage', {}, 'Every channel is back on the stage.'),
       trackCount: (() => { const tr = v.tracks || [], used = tr.reduce((a, t) => a + (t.pair ? 2 : 1), 0); return 'Recording ' + used + ' of ' + Math.min(64, eng.channels || 64) + ' DVS channels · ' + tr.length + (tr.length === 1 ? ' track' : ' tracks'); })(),
@@ -659,7 +696,11 @@ class Component extends DCLogic {
       sessions: (v.sessions || []).map((x) => {
         const open = s.open === x.name;
         const ms = x.markers || [], pi = s.from[x.name] == null ? -1 : s.from[x.name], m = ms[pi];
-        const isPart = !!(m && m.end != null), how = isPart ? (s.how[x.name] || 'on') : 'on';
+        const isPart = !!(m && m.end != null), hasParts = ms.some((mm) => mm.end != null);
+        const how0 = s.how[x.name] || 'on', how = how0 === 'several' && hasParts ? 'several' : isPart ? how0 : 'on';
+        const tk = s.ticks[x.name] || {};
+        const lab = (mm) => mm.kind === 'section' ? (mm.song ? mm.song + ': ' : '') + mm.name : mm.name;
+        const picked = ms.map((mm, i) => ({ mm: mm, i: i })).filter((o) => o.mm.end != null && tk[o.i]).sort((a, b) => a.mm.t - b.mm.t);
         const partName = m ? (m.kind === 'section' ? (m.song ? m.song + ': ' : '') + m.name : m.name) : '';
         return {
           name: x.name, sub: this.clock(x.length) + ' · ' + x.tracks + ' tracks · ' + (x.markers || []).length + ' markers · ' + (x.where === 'local' ? 'on this computer' : 'on the drive'),
@@ -675,8 +716,23 @@ class Component extends DCLogic {
           }),
           from: String(pi), froms: [{ v: '-1', label: 'The beginning' }].concat(ms.map((mm, i) => ({ v: String(i), label: this.clock(mm.t) + ' · ' + (mm.kind === 'section' ? '\u00a0\u00a0\u00a0↳ ' : '') + mm.name }))),
           pickFrom: (e) => this.setState({ from: { ...s.from, [x.name]: +e.target.value } }),
-          isPart: isPart, how: how, partName: partName, pickHow: (e) => this.setState({ how: { ...s.how, [x.name]: e.target.value } }),
-          play: () => this.playAsk(x, { from: m ? m.t : 0, to: how === 'on' ? null : m.end, loop: how === 'loop', part: how === 'on' ? '' : partName }, x.where)
+          isPart: isPart, hasParts: hasParts, how: how, partName: partName, pickHow: (e) => this.setState({ how: { ...s.how, [x.name]: e.target.value } }),
+          hows: [{ v: 'on', label: 'From there to the end' }].concat(isPart ? [{ v: 'once', label: 'Just ' + partName }, { v: 'loop', label: 'Loop ' + partName }] : [], [{ v: 'several', label: 'Several parts…' }]),
+          isSeveral: how === 'several', tickLoop: !!(s.tickLoop || {})[x.name], flipTickLoop: () => { const all = this.loopStore = this.loopStore || {}; all[x.name] = !all[x.name]; this.setState({ tickLoop: { ...all } }); },
+          ticks: ms.map((mm, i) => ({ mm: mm, i: i })).filter((o) => o.mm.end != null).map((o) => ({ label: this.clock(o.mm.t) + ' · ' + lab(o.mm), pad: o.mm.kind === 'section' ? '18px' : '0', on: !!tk[o.i],
+            flip: () => { const all = this.tickStore = this.tickStore || {}; const cur = all[x.name] = { ...(all[x.name] || {}) }; cur[o.i] = !cur[o.i]; this.setState({ ticks: { ...all } }); } })),
+          canNudge: !!m && s.v && !(s.v.playing && s.v.playing.name === x.name), nudgeLabel: m ? 'Marker ' + lab(m) + ' at ' + this.clock(m.t) + '. Move it:' : '',
+          nudgeA: () => this.nudge(x, pi, -1), nudgeB: () => this.nudge(x, pi, -0.25), nudgeC: () => this.nudge(x, pi, 0.25), nudgeD: () => this.nudge(x, pi, 1),
+          play: () => {
+            if (how === 'several') {
+              if (!picked.length) { this.setState({ msg: 'Tick the parts to play first.', bad: true }); return; }
+              const loop = !!(s.tickLoop || {})[x.name];
+              this.playAsk(x, { from: picked[0].mm.t, to: picked[picked.length - 1].mm.end, loop: loop, part: picked.length + (picked.length === 1 ? ' part' : ' parts'),
+                segs: picked.map((o) => [o.mm.t, o.mm.end, lab(o.mm)]) }, x.where);
+              return;
+            }
+            this.playAsk(x, { from: m ? m.t : 0, to: how === 'on' ? null : m.end, loop: how === 'loop', part: how === 'on' ? '' : partName }, x.where);
+          }
         };
       }),
       auto: st.auto, setAuto: (e) => this.saveSettings({ auto: e.target.value }),
