@@ -42,6 +42,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+import patching
+
 FOLDER = "C3 Life Recordings"
 KINDS = ("presentation", "group", "label")
 DEFAULTS = {"auto": "off",                 # "off" | "slide" (the start slide) | "plug" (as soon as the drive is plugged in)
@@ -50,6 +52,7 @@ DEFAULTS = {"auto": "off",                 # "off" | "slide" (the start slide) |
             "max_hours": 4,                # stops by itself after this long, if nothing else has
             "markers": "presentation",     # "presentation" | "item" (the playlist item's name) | "off"
             "sections": True,              # a marker for each part of a song too: its slide group (Verse 1, Chorus, Bridge...)
+            "split": [],                   # DVS channels kept as mono tracks, though they're one side of a stereo Wing channel
             "channels": "routed",          # "routed" (every DVS channel Dante feeds) or [1, 2, ...]
             "local": True,                 # no recording drive plugged in: record onto this computer instead
             "copy_auto": True,             # copy what's on this computer to the recording drive when it's plugged in
@@ -106,17 +109,17 @@ def folder_drives(roots):
 
 # ---- WAV ----
 class Wav:
-    """A 24-bit mono WAV that's always playable: the header's sizes are brought up to date every few seconds."""
+    """A 24-bit WAV (mono, or stereo for a pair) that's always playable: the header's sizes are brought up to date every few seconds."""
 
-    def __init__(self, path, rate):
-        self.path, self.rate, self.bytes = path, rate, 0
+    def __init__(self, path, rate, channels=1):
+        self.path, self.rate, self.bytes, self.channels = path, rate, 0, channels
         self.f = open(path, "wb")
         self.f.write(self._header())
         self.last = time.time()
 
     def _header(self):
         n = self.bytes
-        return b"RIFF" + struct.pack("<I", 36 + n) + b"WAVEfmt " + struct.pack("<IHHIIHH", 16, 1, 1, self.rate, self.rate * 3, 3, 24) + \
+        return b"RIFF" + struct.pack("<I", 36 + n) + b"WAVEfmt " + struct.pack("<IHHIIHH", 16, 1, self.channels, self.rate, self.rate * 3 * self.channels, 3 * self.channels, 24) + \
             b"data" + struct.pack("<I", n)
 
     def write(self, b):
@@ -146,6 +149,24 @@ def split24(data, c, ch):
     out[0::3] = data[4 * c + 1::step]
     out[1::3] = data[4 * c + 2::step]
     out[2::3] = data[4 * c + 3::step]
+    return out
+
+
+def join24(a, b):
+    """Two 24-bit mono byte strings -> one interleaved stereo one (left, right)."""
+    out = bytearray(len(a) + len(b))
+    for i in range(3):
+        out[i::6] = a[i::3]
+        out[3 + i::6] = b[i::3]
+    return out
+
+
+def part24(st, side):
+    """One side (0 left, 1 right) of 24-bit stereo bytes -> mono bytes."""
+    n = len(st) // 6
+    out = bytearray(3 * n)
+    for i in range(3):
+        out[i::3] = st[3 * side + i:6 * n:6]
     return out
 
 
@@ -276,6 +297,9 @@ def valid_settings(s):
     if c != "routed" and not (isinstance(c, list) and 0 < len(c) <= 64 and len(set(c)) == len(c) and
                               all(isinstance(n, int) and not isinstance(n, bool) and 1 <= n <= 64 for n in c)):
         return "Channels: the routed ones, or a list of DVS channels 1-64."
+    sp = s.get("split", [])
+    if not (isinstance(sp, list) and len(sp) <= 64 and all(isinstance(n, int) and not isinstance(n, bool) and 1 <= n <= 64 for n in sp)):
+        return "Mono tracks: a list of DVS channels 1-64."
     return None
 
 
@@ -301,6 +325,8 @@ class Recorder:
         self.q = queue.Queue(WRITE_Q)
         self.player = None                   # playback going on
         self.stage = []                      # Wing channel inputs to put back: [(n, grp, idx)]
+        self.stage_routes = []               # Dante routes to put back: the play plan's "dante" steps
+        self.layouts = patching.Layouts(data_dir)
         self.names_cache = (0.0, {})
         self.slide = None
         self.watch = SlideWatch(cfg, self._on_slide)
@@ -386,58 +412,33 @@ class Recorder:
 
     # ---- names, from Dante and the Wing ----
     def names(self, fresh=False):
-        """{dvs channel: {"name", "wing_ch", "src", "from"}} for every DVS channel with a Dante route."""
+        """{dvs channel: {"name", "wing_ch", "wing_chs", "side", "src", "from", "from_dev", "from_ch"}} for every DVS channel with a
+        Dante route, named as on the Wing (see patching.trace)."""
         t, cached = self.names_cache
         if not fresh and time.time() - t < 30:
             return cached
-        out = {}
-        routes = {}
+        dvs = {}
         if self.dante:
             try:
-                routes = (self.dante.get() or {}).get("channels") or {}
+                dvs = (self.dante.get() or {}).get("channels") or {}
             except Exception:
-                routes = {}
-        tx = {}
-        if routes and self.dante and any("wing" in (r.get("tx_device") or "").lower() for r in routes.values()):
-            try:
-                tx = self.dante.tx_channels()
-            except Exception:
-                tx = {}
-        strips, outs = {}, {}
+                dvs = {}
+        routes, chans, wing = [], {}, ""
+        if dvs and self.dante:
+            routes, chans, _, wing = self._dante_now()
+            if not wing:
+                wing = next((r["tx_device"] for r in dvs.values() if "wing" in (r.get("tx_device") or "").lower()), "")
+        strips, inputs, outs = {}, {}, {}
         if self.desk:
             try:
-                strips = (self.desk.state().get("strips") or {}).get("ch") or {}
-                outs = self.desk.outputs() if hasattr(self.desk, "outputs") else {}
+                st = self.desk.state()
+                strips, inputs = (st.get("strips") or {}).get("ch") or {}, st.get("inputs") or {}
+                if wing and any((r.get("tx_device") or "").lower() == wing.lower() for r in dvs.values()) and hasattr(self.desk, "outputs"):
+                    outs = self.desk.outputs()
             except Exception:
                 pass
-        wing_name = (self.cfg.get("dante_wing_name") or "").lower()
-        waiting = False
-        for k, r in routes.items():
-            if not str(k).isdigit():
-                continue
-            dev, chn = r.get("tx_device") or "", str(r.get("tx_channel") or "")
-            item = {"name": "%s %s" % (dev, chn), "wing_ch": None, "src": "", "from": "%s · %s" % (dev, chn)}
-            if (wing_name and dev.lower() == wing_name) or (not wing_name and "wing" in dev.lower()):
-                num = next((n for n, nm in (tx.get(dev) or {}).items() if str(nm) == chn), None)
-                if num is None and chn.isdigit():
-                    num = int(chn)
-                o = outs.get("CRD/%d" % num) if num else None
-                if o and o.get("grp") == "OFF":
-                    item["name"] = "Wing card out %d (off)" % num
-                elif o and o.get("grp"):
-                    grp, idx = o["grp"], o.get("in")
-                    item["src"] = "%s/%s" % (grp, idx)
-                    for n, s in strips.items():
-                        if s.get("src_grp") == grp and s.get("src_in") == idx:
-                            item.update(name=s.get("name") or "Ch %s" % n, wing_ch=int(n))
-                            break
-                    else:
-                        from rta_patch import _src_text
-                        item["name"] = _src_text(grp, int(idx or 0))
-                elif num:
-                    item["name"] = "Wing card out %d" % num
-                    waiting = True  # the Wing hasn't said what this output sends yet
-            out[int(k)] = item
+        out = patching.trace(dvs, routes, chans, strips, inputs, outs, wing)
+        waiting = any(v.pop("waiting", False) for v in out.values())
         # kept 30 s, but only 2 s while any name is still waiting on the Wing (just after start-up), so a recording
         # started then isn't named "Wing card out 33" for half a minute
         self.names_cache = (time.time() - (28 if waiting else 0), out)
@@ -450,11 +451,22 @@ class Recorder:
         if want == "routed" and not chans:
             chans = list(range(1, min(ch_count, 64) + 1))  # Dante can't say: every channel
         chans = [c for c in chans if c <= ch_count]
+        pr = patching.pairs({c: names[c] for c in chans if c in names}, set(self.settings.get("split") or []))
+        right = set(pr.values())
         out = []
         for c in chans:
-            nm = (names.get(c) or {}).get("name") or "DVS %d" % c
-            out.append({"dvs": c, "name": nm, "wing_ch": (names.get(c) or {}).get("wing_ch"), "src": (names.get(c) or {}).get("src", ""),
-                        "file": "%02d %s.wav" % (c, safe_name(nm))})
+            if c in right:
+                continue
+            n = names.get(c) or {}
+            nm = n.get("name") or "DVS %d" % c
+            t = {"dvs": c, "name": nm, "wing_ch": n.get("wing_ch"), "wing_chs": n.get("wing_chs") or [], "src": n.get("src", ""),
+                 "from": n.get("from", ""), "from_dev": n.get("from_dev", ""), "from_ch": n.get("from_ch", ""), "pair": None,
+                 "file": "%02d %s.wav" % (c, safe_name(nm))}
+            if c in pr:
+                r = names.get(pr[c]) or {}
+                t.update(pair=pr[c], from_dev_r=r.get("from_dev", ""), from_ch_r=r.get("from_ch", ""),
+                         **{"from": "%s + %s" % (n.get("from", ""), (r.get("from") or "").split(" · ")[-1])})
+            out.append(t)
         return out
 
     # ---- recording ----
@@ -480,7 +492,7 @@ class Recorder:
                 n += 1
             try:
                 os.makedirs(folder)
-                files = [Wav(os.path.join(folder, t["file"]), self.engine.rate) for t in tracks]
+                files = [Wav(os.path.join(folder, t["file"]), self.engine.rate, 2 if t.get("pair") else 1) for t in tracks]
             except OSError as e:
                 return "C3 Life couldn't write to %s (%s)." % (d["label"], e)
             self.rec = {"name": os.path.basename(folder), "folder": folder, "drive": d["id"], "drive_label": d["label"], "by": who,
@@ -512,7 +524,8 @@ class Recorder:
                 r["first"] = first
             try:
                 for t, w in zip(r["tracks"], r["files"]):
-                    w.write(split24(data, t["dvs"] - 1, ch))
+                    m = split24(data, t["dvs"] - 1, ch)
+                    w.write(join24(m, split24(data, t["pair"] - 1, ch)) if t.get("pair") else m)
             except OSError as e:
                 r["error"] = "Writing stopped: %s" % e
                 self.log.error("recording: %s", r["error"])
@@ -565,7 +578,8 @@ class Recorder:
         while any(not w.f.closed for w in r["files"]) and time.time() - t0 < 10:
             time.sleep(0.05)
         length = r["frames"] / r["rate"]
-        tracks = [{k: t[k] for k in ("dvs", "name", "wing_ch", "src", "file")} for t in r["tracks"]]
+        tracks = [{k: t.get(k) for k in ("dvs", "pair", "name", "wing_ch", "wing_chs", "src", "file", "from", "from_dev", "from_ch", "from_dev_r", "from_ch_r")
+                   if t.get(k) not in (None, "", [])} for t in r["tracks"]]
         try:
             self._write_info(r, tracks, length)
         except OSError as e:
@@ -739,6 +753,8 @@ class Recorder:
                 with open(os.path.join(base, nm, "session.json"), encoding="utf-8") as f:
                     s = json.load(f)
                 out.append({"name": nm, "length": s.get("length", 0), "tracks": len(s.get("tracks") or []),
+                            "track_list": [{"dvs": t.get("dvs"), "pair": t.get("pair"), "name": t.get("name", ""), "from": t.get("from", "")}
+                                           for t in s.get("tracks") or []],
                             "markers": [m for m in parts(s.get("markers") or [], s.get("length", 0)) if m.get("name") not in ("Start", "End")]})
             except (OSError, ValueError):
                 continue
@@ -778,35 +794,108 @@ class Recorder:
                     pass
         return out
 
-    def play_plan(self, name, where="drive"):
-        """What Play would do, to ask first: [{"track", "wing_ch", "now", "to"}], and anything that stops it."""
+    def _dante_now(self):
+        """(every route, every device's channels, this server's Dante name, the Wing's Dante name), read now."""
+        routes, chans = [], {}
+        if self.dante:
+            try:
+                routes = self.dante.all_routes()
+            except Exception:
+                routes = []
+            try:
+                chans = self.dante.channels() if hasattr(self.dante, "channels") else \
+                    {d: {"tx": t, "rx": {}} for d, t in (self.dante.tx_channels() or {}).items()}
+            except Exception:
+                chans = {}
+        me = ""
+        if self.dante:
+            try:
+                me = (self.dante.get() or {}).get("device_name") or ""
+            except Exception:
+                me = ""
+            me = me or next((d for d in chans if d.lower() == self.dante.dvs_name()), "") or self.dante.dvs_name().upper()
+        return routes, chans, me, patching.wing_device(routes, chans, self.cfg)
+
+    def play_plan(self, name, where="drive", send=None):
+        """What Play would do, to ask first, and anything that stops it.
+        Each track goes back where it was recorded from: every Wing card input that hears that source is pointed at
+        this server's output with the track's number instead (steps of kind "dante"). A track recorded from a Wing
+        output can't go back that way, so its Wing channel is switched to the card input this server's output is
+        routed to (kind "wing", as before). `send` {dvs: "off" | [{"dev", "ch"}, ...]} sends a track somewhere else."""
         folder, s = self._session(name, where)
         if not s:
             return None, "That recording isn't on the drive."
-        ins = self.card_ins()
-        strips = {}
+        to = send or {}
+        routes, chans, me, wing = self._dante_now()
+        wl = wing.lower()
+        my_tx = (chans.get(me) or {}).get("tx") or {}
+        wing_rx = (chans.get(wing) or {}).get("rx") or {}
+        strips, inputs = {}, {}
         if self.desk:
             try:
-                strips = (self.desk.state().get("strips") or {}).get("ch") or {}
+                st = self.desk.state()
+                strips, inputs = (st.get("strips") or {}).get("ch") or {}, st.get("inputs") or {}
             except Exception:
                 pass
-        steps, notes = [], []
+        into = {(r["rx_device"].lower(), r["rx_channel"]): r for r in routes}
+        ins = None
+        steps, notes, play = [], [], []
         for t in s.get("tracks") or []:
-            n = t.get("wing_ch")
-            if not n:
-                notes.append("%s isn't from a Wing channel, so it isn't sent to the desk." % t["name"])
+            dest = to.get(str(t["dvs"]), "source")
+            if dest == "off":
+                notes.append("%s isn't played (you chose so)." % t["name"])
                 continue
-            m = ins.get(t["dvs"])
-            if not m:
-                notes.append("%s: DVS out %d isn't routed to the Wing card in Dante Controller, so it's skipped." % (t["name"], t["dvs"]))
+            sides = [(t["dvs"], t.get("from_dev") or "", t.get("from_ch") or "")]
+            if t.get("pair"):
+                sides.append((t["pair"], t.get("from_dev_r") or "", t.get("from_ch_r") or ""))
+            mine = []
+            for i, (k, fdev, fch) in enumerate(sides):
+                if isinstance(dest, list):
+                    d = dest[i] if i < len(dest) and isinstance(dest[i], dict) else None
+                    targets = [(str(d.get("dev") or ""), str(d.get("ch") or ""))] if d and d.get("dev") and d.get("ch") else []
+                elif fdev and wl and fdev.lower() != wl:
+                    targets = [(r["rx_device"], r["rx_channel"]) for r in routes
+                               if r["tx_device"].lower() == fdev.lower() and r["tx_channel"] == fch and r["rx_device"].lower() == wl]
+                else:
+                    targets = []
+                for rx_dev, rx_ch in targets:
+                    cur = into.get((rx_dev.lower(), rx_ch))
+                    hears = []
+                    if rx_dev.lower() == wl:
+                        n = patching._num(rx_ch, wing_rx)
+                        hears = ["%d %s" % (c, (strips.get(str(c)) or {}).get("name") or "") for c, _ in patching.channels_on(strips, inputs, "CRD", n or 0)]
+                    tx = my_tx.get(k) or "%02d" % k
+                    mine.append({"kind": "dante", "track": t["name"], "dvs": k, "rx_dev": rx_dev, "rx_ch": rx_ch, "tx_ch": tx,
+                                 "prev_dev": cur["tx_device"] if cur else "", "prev_ch": cur["tx_channel"] if cur else "",
+                                 "now": "%s · %s" % (cur["tx_device"], cur["tx_channel"]) if cur else "nothing", "to": "%s · %s" % (me, tx),
+                                 "wing": hears, "wing_ch": None,
+                                 "text": "%s: %s %s, now %s → C3 Life track %d%s" % (
+                                     t["name"], "Wing card in" if rx_dev.lower() == wl else rx_dev, rx_ch,
+                                     "%s · %s" % (cur["tx_device"], cur["tx_channel"]) if cur else "nothing", k,
+                                     " (Wing ch %s)" % ", ".join(hears) if hears else "")})
+            if not mine and not isinstance(dest, list) and t.get("wing_ch"):  # recorded from a Wing output
+                if ins is None:
+                    ins = self.card_ins()
+                n, m = t["wing_ch"], ins.get(t["dvs"])
+                if m:
+                    cur = strips.get(str(n)) or {}
+                    now = "%s/%s" % (cur.get("src_grp", "?"), cur.get("src_in", "?"))
+                    mine.append({"kind": "wing", "track": t["name"], "dvs": t["dvs"], "wing_ch": n, "card_in": m, "now": now, "to": "CRD/%d" % m,
+                                 "text": "Ch %d · %s: %s → CRD/%d (the recording)" % (n, t["name"], now, m)})
+                else:
+                    notes.append("%s: DVS out %d isn't routed to the Wing card in Dante Controller, so it's skipped." % (t["name"], t["dvs"]))
+                    continue
+            if not mine:
+                notes.append("%s: nothing on the Wing hears where it was recorded from (%s), so it isn't sent anywhere. Choose where it goes." %
+                             (t["name"], t.get("from") or "unknown"))
                 continue
-            cur = strips.get(str(n)) or {}
-            steps.append({"track": t["name"], "dvs": t["dvs"], "wing_ch": n, "card_in": m,
-                          "now": "%s/%s" % (cur.get("src_grp", "?"), cur.get("src_in", "?")), "to": "CRD/%d" % m})
-        return {"name": name, "steps": steps, "notes": notes, "length": s.get("length", 0),
+            steps += mine
+            play.append(t)
+        return {"name": name, "steps": steps, "notes": notes, "length": s.get("length", 0), "play": play, "device": me,
+                "tracks": [{"dvs": t["dvs"], "pair": t.get("pair"), "name": t["name"], "from": t.get("from", "")} for t in s.get("tracks") or []],
                 "markers": [m for m in parts(s.get("markers") or [], s.get("length", 0)) if m.get("name") not in ("Start", "End")]}, None
 
-    def play(self, name, start_at, who, where="drive", end_at=None, loop=False, part=""):
+    def play(self, name, start_at, who, where="drive", end_at=None, loop=False, part="", send=None):
         """Play to the desk from start_at; with end_at, only up to there (a song or one section), over and over with loop."""
         if end_at is not None and end_at <= start_at:
             return "That part has no length."
@@ -816,38 +905,67 @@ class Recorder:
             return "Not while recording."
         if self.player:
             return "It's already playing. Press Back to stage first."
-        plan, err = self.play_plan(name, where)
+        plan, err = self.play_plan(name, where, send)
         if err:
             return err
         if not plan["steps"]:
             return "Nothing in that recording can go to the desk. " + " ".join(plan["notes"])
         if not self.engine or self.engine.status != "running":
             return "C3 Life isn't connected to Dante Virtual Soundcard."
-        strips = (self.desk.state().get("strips") or {}).get("ch") or {}
+        wsteps = [x for x in plan["steps"] if x["kind"] == "wing"]
+        dsteps = [x for x in plan["steps"] if x["kind"] == "dante"]
+        if dsteps and self.desk and isinstance(getattr(self.desk, "settings", None), dict) and self.desk.settings.get("mode") != "control":
+            return "The Wing is in Watch only. Switch it to Control on the Mixer first."
+        strips = (self.desk.state().get("strips") or {}).get("ch") or {} if wsteps else {}
         saved = []
-        for st in plan["steps"]:  # remember every input first, then switch: Back to stage puts these back
+        for st in wsteps:  # remember every input first, then switch: Back to stage puts these back
             cur = strips.get(str(st["wing_ch"])) or {}
             if not cur.get("src_grp"):
                 return "The Wing hasn't said what channel %d's input is yet. Try again in a few seconds." % st["wing_ch"]
             saved.append((st["wing_ch"], cur["src_grp"], int(cur.get("src_in") or 0)))
-        for i, st in enumerate(plan["steps"]):
+        done = []
+
+        def undo():
+            for n, g, x in saved[:len(switched)]:
+                self.desk.set_src(n, g, x)
+            self._put_routes_back(done)
+        switched = []
+        for st in wsteps:
             e = self.desk.set_src(st["wing_ch"], "CRD", st["card_in"])
             if e:
-                for n, g, x in saved[:i]:
-                    self.desk.set_src(n, g, x)
+                undo()
                 return e
-        self.stage = saved
+            switched.append(st)
+        for st in dsteps:
+            e = self.dante.route_any(st["rx_dev"], st["rx_ch"], plan["device"], st["tx_ch"])
+            if e:
+                undo()
+                return "%s (%s). Nothing was left changed." % (e, st["text"])
+            done.append(st)
+        self.stage, self.stage_routes = saved, done
         folder, s = self._session(name, where)
         try:
-            self.player = Player(folder, s, plan["steps"], self.engine, start_at, end_at, loop)
+            self.player = Player(folder, s, plan["play"], self.engine, start_at, end_at, loop)
         except OSError as e:
             self.back_to_stage(who)
             return "The recording couldn't be opened (%s)." % e
         self.player.who, self.player.part = who, (part or "")[:120]
         self.engine.play(self.player.block)
-        self.log.info("recording: %s is playing %s to the desk from %s%s%s (%d channels)", who, name, clock(start_at),
-                      " to %s" % clock(end_at) if end_at is not None else "", ", looped" if loop else "", len(plan["steps"]))
+        self.log.info("recording: %s is playing %s to the desk from %s%s%s (%d tracks, %d Dante routes, %d Wing inputs switched)", who, name,
+                      clock(start_at), " to %s" % clock(end_at) if end_at is not None else "", ", looped" if loop else "",
+                      len(plan["play"]), len(done), len(saved))
         return None
+
+    def _put_routes_back(self, steps):
+        errs = []
+        for st in reversed(steps):
+            if st["prev_dev"]:
+                e = self.dante.route_any(st["rx_dev"], st["rx_ch"], st["prev_dev"], st["prev_ch"])
+            else:
+                e = self.dante.unroute_any(st["rx_dev"], st["rx_ch"])
+            if e:
+                errs.append((st, "%s %s back to %s: %s" % (st["rx_dev"], st["rx_ch"], st["now"], e)))
+        return errs
 
     def back_to_stage(self, who):
         p, self.player = self.player, None
@@ -860,11 +978,124 @@ class Recorder:
             e = self.desk.set_src(n, g, x) if self.desk else None
             if e:
                 errs.append("channel %d: %s" % (n, e))
-        if self.stage:
-            self.log.info("recording: %s put %d channels back to the stage", who, len(self.stage))
+        bad = self._put_routes_back(self.stage_routes) if self.stage_routes else []
+        errs += [m for _, m in bad]
+        if self.stage or self.stage_routes:
+            self.log.info("recording: %s put %d channels and %d Dante routes back to the stage", who, len(self.stage), len(self.stage_routes))
         if not errs:
             self.stage = []
+        self.stage_routes = [st for st, _ in bad]  # only the ones that didn't go back: pressing it again tries those
         return ("Some channels couldn't be put back: " + "; ".join(errs)) if errs else None
+
+    # ---- the patch: where each of this server's 64 Dante channels comes from ----
+    def patch_view(self):
+        """Each DVS channel (1-64): where it comes from and what it's called; every Dante source to choose from; the layouts."""
+        routes, chans, me, wing = self._dante_now()
+        dvs = {}
+        if self.dante:
+            try:
+                dvs = (self.dante.get() or {}).get("channels") or {}
+            except Exception:
+                dvs = {}
+        names = self.names(fresh=True)
+        pr = patching.pairs(names, set(self.settings.get("split") or []))
+        right = {v: k for k, v in pr.items()}
+        ch_count = self.engine.ch if self.engine else 64
+        rows = []
+        for k in range(1, min(ch_count, 64) + 1):
+            r, n = dvs.get(str(k)), names.get(k) or {}
+            rows.append({"dvs": k, "dev": r["tx_device"] if r else "", "ch": r["tx_channel"] if r else "", "name": n.get("name", ""),
+                         "wing_chs": n.get("wing_chs") or [], "side": n.get("side", ""), "pair": pr.get(k) or right.get(k),
+                         "mono": k in (self.settings.get("split") or []), "status": (r or {}).get("status", "")})
+        sources = []
+        for dev in sorted(chans, key=str.lower):
+            if dev == me:
+                continue
+            for num, nm in sorted(((chans[dev].get("tx") or {}).items())):
+                sources.append({"dev": dev, "ch": nm, "num": num})
+        receivers = [{"dev": dev, "ch": nm} for dev in sorted(chans, key=str.lower) if dev != me
+                     for _, nm in sorted(((chans[dev].get("rx") or {}).items()))]
+        return {"device": me, "wing": wing, "rows": rows, "sources": sources, "receivers": receivers, "used": len(dvs), "of": min(ch_count, 64),
+                "layouts": self.layouts.list(), "recording": bool(self.rec), "playing": bool(self.player)}
+
+    def patch_route(self, k, dev, ch, who, pair=None):
+        """Route a Dante source into DVS channel k (and the right side of a pair into k + 1). -> error or None"""
+        if self.rec:
+            return "Not while recording: the tracks would change halfway through."
+        if self.player:
+            return "Not while playing back. Press Back to stage first."
+        if not self.dante:
+            return "Dante isn't available on this computer."
+        if not isinstance(k, int) or isinstance(k, bool) or not 1 <= k <= (64 if pair is None else 63):
+            return "Choose a channel from 1 to 64."
+        for d, c in [(dev, ch)] + ([(pair.get("dev"), pair.get("ch"))] if pair else []):
+            if not isinstance(d, str) or not isinstance(c, str) or not d or not c:
+                return "Choose a source."
+        e = self.dante.route(dev, ch, k)
+        if not e and pair:
+            e = self.dante.route(pair["dev"], pair["ch"], k + 1)
+        if not e:  # a new source pairs again by itself, if it's stereo on the Wing
+            gone = {k, k + 1} if pair else {k}
+            sp = [x for x in (self.settings.get("split") or []) if x not in gone]
+            if sp != (self.settings.get("split") or []):
+                with self.lock:
+                    self.settings["split"] = sp
+                    self._save()
+        self.names_cache = (0.0, {})
+        if not e:
+            self.log.info("recording: %s patched %s · %s%s into C3 Life channel %d%s", who, dev, ch,
+                          " and %s · %s" % (pair["dev"], pair["ch"]) if pair else "", k, " and %d" % (k + 1) if pair else "")
+        return e
+
+    def patch_clear(self, k, who):
+        if self.rec or self.player:
+            return "Not while recording or playing back."
+        if not self.dante:
+            return "Dante isn't available on this computer."
+        if not isinstance(k, int) or isinstance(k, bool) or not 1 <= k <= 64:
+            return "Choose a channel from 1 to 64."
+        e = self.dante.unroute(k)
+        self.names_cache = (0.0, {})
+        if not e:
+            self.log.info("recording: %s cleared C3 Life channel %d", who, k)
+        return e
+
+    def patch_mono(self, k, mono, who):
+        """Keep DVS channel k (one side of a stereo Wing channel) as a mono track, or let it pair again."""
+        sp = [x for x in (self.settings.get("split") or []) if x != k]
+        if mono:
+            sp.append(k)
+        return self.save_settings({"split": sorted(sp)}, who)
+
+    def layout_plan(self, name):
+        lay = self.layouts.get(name)
+        if lay is None:
+            return None, "That layout isn't there."
+        now = (self.dante.get() or {}).get("channels") or {} if self.dante else {}
+        return patching.layout_changes(lay, now), None
+
+    def layout_apply(self, name, who):
+        """Put this server's channels back as the layout had them. Stops at the first route Dante refuses. -> error or None"""
+        if self.rec or self.player:
+            return "Not while recording or playing back."
+        ch, err = self.layout_plan(name)
+        if err:
+            return err
+        for c in ch:
+            e = self.dante.route(c["dev"], c["ch"], c["dvs"]) if c["dev"] else self.dante.unroute(c["dvs"])
+            if e:
+                self.names_cache = (0.0, {})
+                return "Channel %d: %s. The ones before it were changed." % (c["dvs"], e)
+        self.names_cache = (0.0, {})
+        self.log.info("recording: %s put the %s layout back (%d changes)", who, name, len(ch))
+        return None
+
+    def layout_save(self, name, who):
+        now = (self.dante.get() or {}).get("channels") or {} if self.dante else {}
+        e = self.layouts.save(name, now, who)
+        if not e:
+            self.log.info("recording: %s saved the patch as %s", who, name)
+        return e
 
     # ---- copying recordings to a drive ----
     def copy(self, items, to, who):
@@ -941,7 +1172,7 @@ class Recorder:
     def view(self, full=False):
         r, p = self.rec, self.player
         out = {"settings": self.settings, "drive": self._drive_view(self.drive), "recording": None, "last": self.last,
-               "playing": None, "on_stage": not self.stage, "engine": self.engine.view() if self.engine else {"status": "off"},
+               "playing": None, "on_stage": not self.stage and not self.stage_routes, "engine": self.engine.view() if self.engine else {"status": "off"},
                "slide": self.slide, "propresenter": self.watch.error, "copy": self.job, "short": self.short}
         if r:
             out["recording"] = {"name": r["name"], "by": r["by"], "where": r["drive_label"], "secs": round(self.now(), 1), "tracks": len(r["tracks"]),
@@ -955,10 +1186,11 @@ class Recorder:
             ch = self.engine.ch if self.engine else 64
             tracks = (r["tracks"] if r else self.tracks_for(ch))
             lv = self.engine.peaks() if self.engine else []
-            out["tracks"] = [{"dvs": t["dvs"], "name": t["name"], "wing_ch": t["wing_ch"],
-                              "level": round(lv[t["dvs"] - 1], 3) if t["dvs"] - 1 < len(lv) else 0} for t in tracks]
+            lvl = lambda k: round(lv[k - 1], 3) if k and k - 1 < len(lv) else 0
+            out["tracks"] = [{"dvs": t["dvs"], "pair": t.get("pair"), "name": t["name"], "wing_ch": t["wing_ch"], "from": t.get("from", ""),
+                              "level": max(lvl(t["dvs"]), lvl(t.get("pair")))} for t in tracks]
             out["sessions"] = self.sessions()
-            rate = (self.engine.rate if self.engine else 48000) * 3 * max(len(tracks), 1)
+            rate = (self.engine.rate if self.engine else 48000) * 3 * max(sum(2 if t.get("pair") else 1 for t in tracks), 1)
             if self.drive:
                 out["drive"]["hours_left"] = round(self.drive["free"] / rate / 3600, 1)
             loc = self._local_drive() if self.settings["local"] else None
@@ -987,11 +1219,12 @@ class Player:
         self.files = []
         by_dvs = {t["dvs"]: t for t in s.get("tracks") or []}
         start = max(0, int(float(start_at or 0) * self.rate))
-        for st in steps:
+        for st in {x["dvs"]: x for x in steps}.values():  # each track once (a step per Wing input it goes to)
             t = by_dvs[st["dvs"]]
             f = open(os.path.join(folder, t["file"]), "rb")
-            f.seek(44 + 3 * start)
-            self.files.append((st["dvs"] - 1, f))
+            outs = [t["dvs"] - 1] + ([t["pair"] - 1] if t.get("pair") else [])
+            f.seek(44 + 3 * len(outs) * start)
+            self.files.append((outs, f))
         self.start, self.loop = start, bool(loop) and end_at is not None
         self.end = max(start + 1, int(float(end_at) * self.rate)) if end_at is not None else None
         self.pos, self.ended, self.rpos = start, False, start
@@ -1006,16 +1239,17 @@ class Player:
             n = BLOCK if self.end is None else max(0, min(BLOCK, self.end - self.rpos))
             wrap = self.loop and n < BLOCK  # the end of the loop: the rest of this block comes from its start
             got = 0
-            for c, f in self.files:
-                if c >= self.out_ch:
-                    continue
-                mono = f.read(n * 3) if n else b""
+            for cs, f in self.files:
+                w = 3 * len(cs)  # bytes a frame: 3 mono, 6 stereo
+                data = f.read(n * w) if n else b""
                 if wrap:
-                    f.seek(44 + 3 * self.start)
-                    mono += f.read((BLOCK - n) * 3)
-                got = max(got, len(mono))
-                if mono:
-                    put24(out, mono, c, self.out_ch)
+                    f.seek(44 + w * self.start)
+                    data += f.read((BLOCK - n) * w)
+                got = max(got, len(data))
+                if data:
+                    for side, c in enumerate(cs):
+                        if c < self.out_ch:
+                            put24(out, part24(data, side) if len(cs) == 2 else data, c, self.out_ch)
             self.rpos = self.start + (BLOCK - n) if wrap else self.rpos + n
             if not got:
                 self.ended = True
