@@ -704,6 +704,15 @@ class Component extends DCLogic {
         'The start slide must match exactly what ProPresenter calls it: a presentation\u2019s name, a slide group (such as Welcome) or a slide label.',
         'ProPresenter must be open with its network API on (ProPresenter \u203a Settings \u203a Network).',
         'You can always press Record yourself. It stops on the end slide, or after the most hours set, or when someone presses Stop (it asks first).'] },
+      { q: 'Recording: no song parts (Verse, Chorus) in the markers', c: '#6CB4F5', href: 'Recording.dc.html', go: 'Record', steps: [
+        'Record \u203a By itself, and other settings: "A marker for each part of a song too" must be ticked, and "Markers named from" mustn\u2019t be "No markers".',
+        'The parts come from the song\u2019s slide groups in ProPresenter. A song whose slides aren\u2019t in groups (Verse 1, Chorus, Bridge) only gets the song marker.',
+        'A part is marked when ProPresenter moves to a slide in a different group, so a part that\u2019s skipped on the day isn\u2019t marked.',
+        'Recordings made before this update only have the songs: you can still play or loop a whole song.'] },
+      { q: 'Recording: a loop doesn\u2019t start or end in the right place', c: '#6CB4F5', href: 'Recording.dc.html', go: 'Record', steps: [
+        'A part runs from when ProPresenter showed its first slide to when it showed the next part (or the next song).',
+        'If the lyrics operator was early or late, the loop starts or ends a little early or late too. Pick the part before or after, or use "From there to the end" and press Back to stage when you\u2019re done.',
+        'Nothing plays? The same checks as "Playing a recording back to the desk doesn\u2019t work" below.'] },
       { q: 'Playing a recording back to the desk doesn\u2019t work', c: '#6CB4F5', href: 'Recording.dc.html', go: 'Record', steps: [
         'Each track goes out on the DVS output with the same number it was recorded from. In Dante Controller, route those DVS outputs (C3LIFE Tx) to the Wing card\u2019s inputs.',
         'Play asks first and lists each Wing channel it will switch to the card. A track that isn\u2019t routed is listed as skipped.',
