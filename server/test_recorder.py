@@ -227,6 +227,42 @@ class Recording(Ready):
         self.assertEqual(s["tracks"][0]["wing_ch"], 3)
         self.assertEqual(self.r.sessions()[0]["name"], last["name"])
 
+    def test_song_sections_from_slide_groups(self):
+        self.assertIsNone(self.r.start("FOH"))
+        for slide in ({"presentation": "Way Maker", "group": "Verse 1"}, {"presentation": "Way Maker", "group": "Verse 1"},
+                      {"presentation": "Way Maker", "group": "Chorus"}, {"presentation": "Way Maker", "group": "Verse 1"},
+                      {"presentation": "Goodness of God", "group": "Verse 1"}, {"presentation": "Message", "group": ""}):
+            self.r._on_slide(slide)
+            time.sleep(0.25)
+        self.assertIsNone(self.r.marker("Altar call", "FOH"))
+        time.sleep(0.25)
+        self.r.stop("FOH")
+        ms = self.r.last["markers"]
+        self.assertEqual([(m["name"], rec.kind(m)) for m in ms],
+                         [("Way Maker", "song"), ("Verse 1", "section"), ("Chorus", "section"), ("Verse 1", "section"),
+                          ("Goodness of God", "song"), ("Verse 1", "section"), ("Message", "song"), ("Altar call", "")])
+        self.assertEqual(ms[2]["song"], "Way Maker")
+        p = {m["name"] + str(i): m for i, m in enumerate(self.r.sessions()[0]["markers"])}
+        self.assertEqual(p["Chorus2"]["end"], ms[3]["t"])          # a section ends at the next section
+        self.assertEqual(p["Verse 13"]["end"], ms[4]["t"])         # ...or the next song
+        self.assertEqual(p["Way Maker0"]["end"], ms[4]["t"])       # a song ends at the next song
+        self.assertNotIn("end", p["Altar call7"])                  # one added by hand is only somewhere to play from
+        folder = self.r.last["folder"]
+        proj = read(os.path.join(folder, self.r.last["name"] + ".RPP"))
+        self.assertIn('MARKER 4 %.3f "Chorus" 1' % ms[2]["t"], proj)   # a REAPER region: its start...
+        self.assertIn('MARKER 4 %.3f "" 1' % ms[3]["t"], proj)         # ...and its end
+        self.assertIn('"Way Maker" 0', proj)
+        labels = read(os.path.join(folder, "markers.txt"))
+        self.assertIn("%.3f\t%.3f\tWay Maker: Chorus" % (ms[2]["t"], ms[3]["t"]), labels)  # an Audacity region
+        self.assertIn(',section,"Way Maker"', read(os.path.join(folder, "markers.csv")))
+        self.assertIsNone(self.r.save_settings({"sections": False}, "FOH"))
+        self.r.start("FOH")
+        self.r._on_slide({"presentation": "Way Maker", "group": "Verse 1"})
+        self.r._on_slide({"presentation": "Way Maker", "group": "Chorus"})
+        time.sleep(0.2)
+        self.r.stop("FOH")
+        self.assertEqual([m["name"] for m in self.r.last["markers"]], ["Way Maker"])
+
     def test_by_itself_on_the_start_and_end_slides(self):
         self.assertIn("which slide", self.r.save_settings({"auto": "slide"}, "FOH"))
         self.assertIsNone(self.r.save_settings({"auto": "slide", "start": {"kind": "presentation", "text": "Welcome"},
@@ -294,6 +330,30 @@ class Playback(Ready):
         self.assertIsNone(self.r.back_to_stage("FOH"))
         self.assertEqual(self.desk.sets[-2:], [(3, "LCL", 3), (5, "A", 5)])  # every input back as it was
         self.assertTrue(self.r.view()["on_stage"])
+
+    def test_one_section_and_looping_it(self):
+        self.r.start("FOH")
+        self.r._on_slide({"presentation": "Song A", "group": "Verse"})
+        time.sleep(0.4)
+        self.r._on_slide({"presentation": "Song A", "group": "Chorus"})
+        time.sleep(0.6)
+        self.r._on_slide({"presentation": "Song A", "group": "Bridge"})
+        time.sleep(0.4)
+        self.r.stop("FOH")
+        name = self.r.last["name"]
+        ch = next(m for m in self.r.sessions()[0]["markers"] if m["name"] == "Chorus")
+        self.assertIn("Choose a song", self.r.play(name, ch["t"], "FOH", loop=True))
+        self.assertIn("no length", self.r.play(name, ch["t"], "FOH", end_at=ch["t"]))
+        self.assertIsNone(self.r.play(name, ch["t"], "FOH", end_at=ch["end"], loop=True, part="Song A: Chorus"))
+        time.sleep((ch["end"] - ch["t"]) * 2 + 0.3)  # round it more than once
+        v = self.r.view()["playing"]
+        self.assertEqual((v["from"], v["to"], v["loop"], v["part"], v["ended"]), (ch["t"], ch["end"], True, "Song A: Chorus", False))
+        self.assertTrue(ch["t"] - 0.05 <= v["secs"] <= ch["end"] + 0.05, v)
+        self.assertIsNone(self.r.back_to_stage("FOH"))
+        self.assertIsNone(self.r.play(name, ch["t"], "FOH", end_at=ch["end"]))  # just once: it stops at the end of the chorus
+        self.assertTrue(wait(lambda: self.r.view()["playing"]["ended"], 4))
+        self.assertLessEqual(self.r.view()["playing"]["secs"], ch["end"] + 0.05)
+        self.r.back_to_stage("FOH")
 
     def test_watch_only_changes_nothing(self):
         self.r.start("FOH")
@@ -432,6 +492,11 @@ class Api(unittest.TestCase):
         code, j = self.call("/api/recording/play", "POST", {"name": name}, who="FOH sound")
         self.assertEqual(code, 409); self.assertIn("Watch only", j["error"])  # nothing changes on the desk in Watch only
         self.httpd.wing.configure(mode="control")
+        self.assertEqual(self.call("/api/recording/play", "POST", {"name": name, "loop": "yes"}, who="FOH sound")[1]["error"], "Bad request")
+        self.assertIn("Choose a song", self.call("/api/recording/play", "POST", {"name": name, "loop": True}, who="FOH sound")[1]["error"])
+        code, j = self.call("/api/recording/play", "POST", {"name": name, "from": 0, "to": 0.5, "loop": True, "part": "Start"}, who="FOH sound")
+        self.assertEqual((code, j["playing"]["loop"], j["playing"]["to"]), (200, True, 0.5), j)
+        self.call("/api/recording/stage", "POST", {}, who="FOH sound")
         code, j = self.call("/api/recording/play", "POST", {"name": name}, who="FOH sound")
         self.assertEqual(code, 200, j)
         self.assertFalse(j["on_stage"])

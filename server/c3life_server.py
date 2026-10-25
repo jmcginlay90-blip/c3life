@@ -82,7 +82,7 @@ API (JSON):
                                            slides, the most hours, markers from presentations or playlist items, channels
   POST /api/recording/start | /stop | /marker {"name"} | /drive {"id","use"} | /plan {"name"}   (Recording control)
   POST /api/recording/copy {"name","where","to"}   (Recording control) copy a recording onto a plugged-in drive
-  POST /api/recording/play {"name","from","where"} | /stage   (Recording + Mixer control) play back to the desk; put it back
+  POST /api/recording/play {"name","from","to","loop","part","where"} | /stage   (Recording + Mixer control) play back to the desk; put it back
   PUT  /api/rta/ringout {"on","sens"}      (RTA settings control) the feedback watch; GET /api/rta/live has "ringout"
   POST /api/rta/ringout/cut {"f"}          (RTA settings + Mixer control, the Wing in Control) a narrow cut on a flat band
                                            of Main 1's EQ; again on the same note goes deeper
@@ -1593,9 +1593,11 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 elif what == "plan":
                     extra["plan"], err = recorder.play_plan(body.get("name"), body.get("where", "drive"))
                 elif what == "play":
-                    at = body.get("from", 0)
-                    err = "Bad request" if not isinstance(at, (int, float)) or isinstance(at, bool) or at < 0 else \
-                        recorder.play(body.get("name"), at, s["name"], body.get("where", "drive"))
+                    at, to = body.get("from", 0), body.get("to")
+                    num = lambda x: isinstance(x, (int, float)) and not isinstance(x, bool) and x >= 0
+                    err = "Bad request" if not num(at) or not (to is None or num(to)) or not isinstance(body.get("loop", False), bool) else \
+                        recorder.play(body.get("name"), at, s["name"], body.get("where", "drive"), to, body.get("loop", False),
+                                      body.get("part") if isinstance(body.get("part"), str) else "")
                 elif what == "copy":
                     err = recorder.copy([(body.get("name"), body.get("where", "drive"))], body.get("to"), s["name"])
                 else:

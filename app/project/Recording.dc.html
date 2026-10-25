@@ -213,7 +213,7 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
         <div style="display:flex;flex-direction:column;border-top:1px solid #222831">
           <sc-for list="{{markers}}" as="m" hint-placeholder-count="3">
             <div style="display:flex;gap:10px;min-height:32px;align-items:center;font-size:13px;border-bottom:1px solid #222831">
-              <span class="mono" style="color:#A3ACB8;width:64px">{{m.t}}</span><span style="flex:1">{{m.name}}</span>
+              <span class="mono" style="color:#A3ACB8;width:64px">{{m.t}}</span><span style="flex:1;padding-left:{{m.pad}};color:{{m.color}}">{{m.name}}</span>
             </div>
           </sc-for>
         </div>
@@ -271,6 +271,13 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
                   <sc-for list="{{x.froms}}" as="f" hint-placeholder-count="3"><option value="{{f.v}}">{{f.label}}</option></sc-for>
                 </select>
               </label>
+              <sc-if value="{{x.isPart}}" hint-placeholder-val="{{ false }}">
+                <label class="fld">How
+                  <select value="{{x.how}}" onChange="{{x.pickHow}}" aria-label="How to play it">
+                    <option value="on">From there to the end</option><option value="once">Just {{x.partName}}</option><option value="loop">Loop {{x.partName}}</option>
+                  </select>
+                </label>
+              </sc-if>
               <button class="btn pri" onClick="{{x.play}}" disabled="{{cantPlay}}">▶ Play to the desk…</button>
               <sc-if value="{{playHint}}" hint-placeholder-val="{{ false }}"><div style="font-size:12px;color:#A3ACB8">{{playHint}}</div></sc-if>
             </div>
@@ -307,13 +314,14 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
             <select value="{{markFrom}}" onChange="{{setMarkFrom}}" disabled="{{cantEdit}}"><option value="presentation">Each presentation</option><option value="item">Each playlist item</option><option value="off">No markers</option></select>
           </label>
         </div>
+        <label style="display:flex;align-items:center;gap:10px;font-size:13px"><input type="checkbox" checked="{{sections}}" onChange="{{setSections}}" disabled="{{cantEdit}}"><span>A marker for each part of a song too: its slide group in ProPresenter (Verse 1, Chorus, Bridge, Tag)</span></label>
         <label style="display:flex;align-items:center;gap:10px;font-size:13px"><input type="checkbox" checked="{{local}}" onChange="{{setLocal}}" disabled="{{cantEdit}}"><span>No recording drive plugged in: record onto this computer instead</span></label>
         <label style="display:flex;align-items:center;gap:10px;font-size:13px"><input type="checkbox" checked="{{copyAuto}}" onChange="{{setCopyAuto}}" disabled="{{cantEdit}}"><span>Copy what’s on this computer to the recording drive by itself when it’s plugged in</span></label>
         <label style="display:flex;align-items:center;gap:10px;font-size:13px"><input type="checkbox" checked="{{freeLocal}}" onChange="{{setFreeLocal}}" disabled="{{cantEdit}}"><span>Once a copy is checked, clear it from this computer (it only has room for a few services)</span></label>
         <label style="display:flex;align-items:center;gap:10px;font-size:13px"><input type="checkbox" checked="{{makeRoom}}" onChange="{{setMakeRoom}}" disabled="{{cantEdit}}"><span>This computer nearly full: delete its oldest recordings that are already on the recording drive (never one that’s only here)</span></label>
         <sc-if value="{{short}}" hint-placeholder-val="{{ false }}"><div role="alert" style="font-size:13px;color:#FF7A45;line-height:1.45">This computer is nearly full and every recording on it is only here. Plug in the recording drive so they copy across; until then a recording here stops with 1 GB left.</div></sc-if>
         <label class="fld">Channels to record (blank = every channel Dante sends to C3 Life)<input type="text" maxlength="200" value="{{chans}}" onChange="{{setChans}}" disabled="{{cantEdit}}" placeholder="e.g. 1-32, 40" aria-label="Channels to record"></label>
-        <div style="font-size:12px;color:#A3ACB8;line-height:1.45">Recording only listens: it changes nothing on the desk, so it may start and stop by itself. A marker is added each time ProPresenter moves to a different presentation (each song, the Message), named after it.</div>
+        <div style="font-size:12px;color:#A3ACB8;line-height:1.45">Recording only listens: it changes nothing on the desk, so it may start and stop by itself. A marker is added each time ProPresenter moves to a different presentation (each song, the Message), named after it, and one for each part of a song as its slide group changes (Verse 1, Chorus, Bridge). Play back one song or one part, once or over and over.</div>
         <sc-if value="{{drivesSeen}}" hint-placeholder-val="{{ false }}">
           <div class="lbl" style="padding-top:6px">Drives plugged in</div>
           <sc-for list="{{drives}}" as="d" hint-placeholder-count="2">
@@ -349,7 +357,7 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { v: null, msg: '', bad: false, ask: null, markName: '', open: '', from: {} };
+    this.state = { v: null, msg: '', bad: false, ask: null, markName: '', open: '', from: {}, how: {} };
   }
   tok() { try { const x = JSON.parse(localStorage.getItem('booth.session') || 'null'); return x ? x.token : ''; } catch (e) { return ''; } }
   api(path, method, body) {
@@ -394,16 +402,21 @@ class Component extends DCLogic {
     const names = ['Kick In', 'Snare', 'Hi-hat', 'Tom 1', 'Overheads', 'Bass DI', 'Keys L', 'Keys R', 'Acoustic', 'E-Gtr', 'Lead Vox', 'BV 1', 'BV 2', 'Pastor HH', 'Playback L', 'Playback R'];
     return { demo: true, can: true, can_play: true, on_stage: true, engine: { status: 'running', channels: 64 }, drive: { id: 'D1', label: 'Sunday SSD', free_text: '612 GB', hours_left: 412, ok: true },
       drives: [{ id: 'D1', label: 'Sunday SSD', free_text: '612 GB', ok: true }], recording: null, playing: null, last: null,
-      settings: { auto: 'slide', start: { kind: 'presentation', text: 'Welcome' }, stop: { kind: 'presentation', text: 'Benediction' }, max_hours: 4, markers: 'presentation', channels: 'routed', local: true, copy_auto: true, free_local: true, make_room: true },
+      settings: { auto: 'slide', start: { kind: 'presentation', text: 'Welcome' }, stop: { kind: 'presentation', text: 'Benediction' }, max_hours: 4, markers: 'presentation', channels: 'routed', local: true, copy_auto: true, free_local: true, make_room: true, sections: true },
       local: { free_text: '180 GB', hours_left: 120 }, copy: null,
       tracks: names.map((n, i) => ({ dvs: i + 1, name: n, level: 0 })),
-      sessions: [{ name: '2026-10-18 0958', where: 'drive', length: 7342, tracks: 16, markers: [{ t: 312, name: 'Way Maker' }, { t: 640, name: 'Goodness of God' }, { t: 1980, name: 'Message' }] }] };
+      sessions: [{ name: '2026-10-18 0958', where: 'drive', length: 7342, tracks: 16, markers: [
+        { t: 312, name: 'Way Maker', kind: 'song', end: 640 }, { t: 312, name: 'Verse 1', kind: 'section', song: 'Way Maker', end: 371 },
+        { t: 371, name: 'Chorus', kind: 'section', song: 'Way Maker', end: 430 }, { t: 430, name: 'Verse 2', kind: 'section', song: 'Way Maker', end: 489 },
+        { t: 489, name: 'Chorus', kind: 'section', song: 'Way Maker', end: 548 }, { t: 548, name: 'Bridge', kind: 'section', song: 'Way Maker', end: 640 },
+        { t: 640, name: 'Goodness of God', kind: 'song', end: 1980 }, { t: 640, name: 'Verse 1', kind: 'section', song: 'Goodness of God', end: 702 },
+        { t: 702, name: 'Chorus', kind: 'section', song: 'Goodness of God', end: 1980 }, { t: 1980, name: 'Message', kind: 'song', end: 7342 }] }] };
   }
   demoTick() {
     const v = this.dv; if (!v) return;
     v.tracks = v.tracks.map((t) => ({ ...t, level: v.recording || v.playing ? 0.05 + Math.random() * 0.5 : Math.random() * 0.3 }));
     if (v.recording) v.recording.secs += 1;
-    if (v.playing) v.playing.secs += 1;
+    if (v.playing) { const p = v.playing; p.secs += 1; if (p.to != null && p.secs >= p.to) { if (p.loop) p.secs = p.from; else { p.secs = p.to; p.ended = true; } } }
     this.setState({ v: { ...v } });
   }
   demoAct(what, body) {
@@ -411,7 +424,7 @@ class Component extends DCLogic {
     if (what === 'start') v.recording = { name: 'today', secs: 0, tracks: v.tracks.length, markers: [], by: 'you' };
     if (what === 'marker' && v.recording) v.recording.markers.push({ t: v.recording.secs, name: body.name });
     if (what === 'stop' && v.recording) { v.last = { name: 'today', length: v.recording.secs, tracks: v.tracks.length, markers: v.recording.markers, error: '' }; v.recording = null; }
-    if (what === 'play') { v.playing = { name: body.name, secs: body.from || 0, length: 7342, channels: 14 }; v.on_stage = false; }
+    if (what === 'play') { v.playing = { name: body.name, secs: body.from || 0, length: 7342, channels: 14, from: body.from || 0, to: body.to == null ? null : body.to, loop: !!body.loop, part: body.part || '' }; v.on_stage = false; }
     if (what === 'stage') { v.playing = null; v.on_stage = true; }
     if (what === 'copy') v.copy = { to: (v.drives.find((x) => x.id === body.to) || {}).label, done: 1, total: 1, finished: true, error: '' };
     if (what === 'drive') v.drives = v.drives.map((d) => (d.id === body.id ? { ...d, ok: body.use } : d));
@@ -435,12 +448,13 @@ class Component extends DCLogic {
     }
     return out.length ? out : null;
   }
-  playAsk(x, from, where) {
+  playAsk(x, pick, where) {
+    const from = pick.from, part = pick.part;
     const go = (plan) => {
       const list = plan.steps.map((st) => ({ t: 'Ch ' + st.wing_ch + ' · ' + st.track + ': ' + st.now + ' → ' + st.to + ' (the recording)', c: '#ECEEF1' }))
         .concat(plan.notes.map((n) => ({ t: n, c: '#A3ACB8' })));
-      this.setState({ ask: { title: 'Play "' + x.name + '" to the desk?', text: 'These Wing channels switch from the stage to the recording, straight away, until you press Back to stage. Don’t do this during a service.', list: list, btn: 'Switch and play',
-        act: () => this.act('play', { name: x.name, from: from, where: where }, 'Playing. Back to stage puts every channel back.') } });
+      this.setState({ ask: { title: 'Play ' + (part ? part + ' from "' + x.name + '"' : '"' + x.name + '"') + ' to the desk' + (pick.loop ? ', over and over' : '') + '?', text: 'These Wing channels switch from the stage to the recording, straight away, until you press Back to stage. Don’t do this during a service.', list: list, btn: 'Switch and play',
+        act: () => this.act('play', { name: x.name, from: from, to: pick.to, loop: pick.loop, part: part, where: where }, 'Playing. Back to stage puts every channel back.') } });
     };
     if (this.demo) { go({ steps: [{ wing_ch: 1, track: 'Kick In', now: 'LCL/1', to: 'CRD/1' }, { wing_ch: 11, track: 'Lead Vox', now: 'A/3', to: 'CRD/11' }], notes: ['Playback L and R aren’t from Wing channels, so they aren’t sent to the desk.'] }); return; }
     this.act('plan', { name: x.name, where: where }).then((j) => { if (j && j.plan) go(j.plan); });
@@ -474,13 +488,13 @@ class Component extends DCLogic {
       addMark: () => { const n = (s.markName || '').trim(); if (!n) return; this.setState({ markName: '' }); this.act('marker', { name: n }, 'Marker added.'); },
       cantEdit: !can,
       hasMarkers: !!(r && r.markers && r.markers.length),
-      markers: r ? r.markers.filter((m) => m.name !== 'End').map((m) => ({ t: this.clock(m.t), name: m.name })) : [],
+      markers: r ? r.markers.filter((m) => m.name !== 'End').map((m) => ({ t: this.clock(m.t), name: m.name, pad: m.kind === 'section' ? '16px' : '0', color: m.kind === 'section' ? '#A3ACB8' : '#ECEEF1' })) : [],
       autoLine: autoLine,
       lastLine: !r && last ? 'Last: ' + last.name + ', ' + this.clock(last.length) + ', ' + last.tracks + ' tracks, ' + (last.markers || []).length + ' markers' + (last.error ? '. ' + last.error : '.') : '',
       lastColor: last && last.error ? '#FF7A45' : '#A3ACB8',
       msg: s.msg, msgColor: s.bad ? '#FF7A45' : '#A3ACB8',
-      playing: !!p, playTitle: p ? p.name + ' · ' + this.clock(p.secs) + (p.length ? ' of ' + this.clock(p.length) : '') : '',
-      playSub: p ? (p.ended ? 'Finished. ' : '') + p.channels + ' Wing channels are hearing the recording' : '',
+      playing: !!p, playTitle: p ? (p.part ? p.part + ' · ' : '') + p.name + ' · ' + this.clock(p.secs) + (p.to != null ? ' (' + this.clock(p.from) + '–' + this.clock(p.to) + ')' : (p.length ? ' of ' + this.clock(p.length) : '')) : '',
+      playSub: p ? (p.ended ? 'Finished. ' : p.loop ? 'Looping, over and over. ' : '') + p.channels + ' Wing channels are hearing the recording' : '',
       offStage: !p && v.on_stage === false,
       stage: () => this.act('stage', {}, 'Every channel is back on the stage.'),
       trackCount: (v.tracks || []).length + ' · ' + (eng.channels || 64) + ' channels from DVS',
@@ -497,16 +511,19 @@ class Component extends DCLogic {
       playHint: !v.can_play ? 'Playing back to the desk needs Recording and Mixer control.' : (r ? 'Not while recording.' : ''),
       sessions: (v.sessions || []).map((x) => {
         const open = s.open === x.name;
-        const from = s.from[x.name] || 0;
+        const ms = x.markers || [], pi = s.from[x.name] == null ? -1 : s.from[x.name], m = ms[pi];
+        const isPart = !!(m && m.end != null), how = isPart ? (s.how[x.name] || 'on') : 'on';
+        const partName = m ? (m.kind === 'section' ? (m.song ? m.song + ': ' : '') + m.name : m.name) : '';
         return {
           name: x.name, sub: this.clock(x.length) + ' · ' + x.tracks + ' tracks · ' + (x.markers || []).length + ' markers · ' + (x.where === 'local' ? 'on this computer' : 'on the drive'),
           copies: (v.drives || []).filter((dd) => !(x.where === 'drive' && d && dd.id === d.id)).map((dd) => ({
             label: dd.label, off: !can || copying,
             go: () => this.act('copy', { name: x.name, where: x.where, to: dd.id }, 'Copying to ' + dd.label + '…') })),
           open: open, btn: open ? 'Close' : 'Play…', toggle: () => this.setState({ open: open ? '' : x.name }),
-          from: String(from), froms: [{ v: '0', label: 'The beginning' }].concat((x.markers || []).map((m) => ({ v: String(m.t), label: this.clock(m.t) + ' · ' + m.name }))),
+          from: String(pi), froms: [{ v: '-1', label: 'The beginning' }].concat(ms.map((mm, i) => ({ v: String(i), label: this.clock(mm.t) + ' · ' + (mm.kind === 'section' ? '\u00a0\u00a0\u00a0↳ ' : '') + mm.name }))),
           pickFrom: (e) => this.setState({ from: { ...s.from, [x.name]: +e.target.value } }),
-          play: () => this.playAsk(x, from, x.where)
+          isPart: isPart, how: how, partName: partName, pickHow: (e) => this.setState({ how: { ...s.how, [x.name]: e.target.value } }),
+          play: () => this.playAsk(x, { from: m ? m.t : 0, to: how === 'on' ? null : m.end, loop: how === 'loop', part: how === 'on' ? '' : partName }, x.where)
         };
       }),
       auto: st.auto, setAuto: (e) => this.saveSettings({ auto: e.target.value }),
@@ -518,6 +535,7 @@ class Component extends DCLogic {
       setStopText: (e) => this.saveSettings({ stop: { ...st.stop, text: e.target.value } }),
       maxHours: st.max_hours, setMaxHours: (e) => this.saveSettings({ max_hours: +e.target.value }),
       markFrom: st.markers, setMarkFrom: (e) => this.saveSettings({ markers: e.target.value }),
+      sections: st.sections !== false, setSections: (e) => this.saveSettings({ sections: e.target.checked }),
       chans: this.chansText(st.channels),
       setChans: (e) => { const c = this.parseChans(e.target.value); if (c === null) this.setState({ msg: 'Channels look like 1-32, 40 (1 to 64).', bad: true }); else this.saveSettings({ channels: c }); },
       drivesSeen: (v.drives || []).length > 0,
