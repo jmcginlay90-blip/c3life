@@ -5,7 +5,7 @@ the server itself, its sound (DVS), each device that's set up (the same list as 
 Dante, the last network scan, the recording drive, storage, the internet and Listen.
 
   check(parts)      -> [{"name", "ok": True/False/None, "state", "fix"}]   None = nothing to check (not set up)
-  report_text(...)  -> the support report: the check, the last 200 lines of the service log, and the settings
+  report_text(...)  -> the support report: the check, the last 200 lines of the service log, the update log, and the settings
                        with every password, PIN, key and token taken out
 """
 
@@ -126,5 +126,12 @@ def report_text(who, note, results, log_lines, cfg):
         lines.append("  %s%s: %s%s" % (mark, r["name"], r["state"], (" (%s)" % r["fix"]) if r["fix"] else ""))
     lines += ["", "Service log (last %d):" % len(log_lines)]
     lines += ["  %s %s %s" % (x["at"], x["level"].upper()[:4], x["text"]) for x in log_lines]
+    up = os.path.join(os.path.dirname(os.path.abspath(cfg.get("data_dir") or ".")), "logs", "update.log")
+    try:  # what Update-C3Life.ps1 did (it never writes the GitHub key)
+        with open(up, encoding="utf-8-sig", errors="replace") as f:
+            last = f.read().splitlines()[-40:]
+        lines += ["", "Update log (last %d):" % len(last)] + ["  " + x for x in last]
+    except OSError:
+        pass
     lines += ["", "Settings (no passwords, PINs or keys):", json.dumps(clean(cfg), indent=1, sort_keys=True)]
     return "\n".join(lines)

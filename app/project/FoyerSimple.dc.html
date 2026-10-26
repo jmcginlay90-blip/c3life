@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>C3 Life – Foyer</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+/* The simple Foyer page (/foyer): two big buttons, a big volume, no numbers, no menu. The phone's own fonts. */
+html{-webkit-text-size-adjust:100%;touch-action:manipulation}
+body{margin:0;background:#0A0B0D}
+.fs{position:relative;min-height:100vh;min-height:100dvh;box-sizing:border-box;max-width:620px;margin:0 auto;padding:22px 18px 18px;display:flex;flex-direction:column;gap:16px;color:#fff;font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif}
+.fs-top{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.fs-top h1{margin:0;font-size:30px;line-height:1.15;font-weight:700}
+.fs-help{flex:none;min-height:48px;padding:0 18px;border-radius:999px;border:2px solid #5aa0ff;background:none;color:#9cc4ff;font:600 18px system-ui,-apple-system,sans-serif;cursor:pointer}
+.fs-q{font-size:20px;color:#ccc;font-weight:600;margin:0}
+.fs-two{display:flex;gap:12px}
+.fs-src{flex:1;min-width:0;min-height:170px;border-radius:22px;border:3px solid #3a3d45;background:#1b1d23;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:12px 10px;cursor:pointer;font-family:inherit;text-align:center}
+.fs-src .ic{font-size:40px;line-height:1}.fs-src .nm{font-size:25px;font-weight:700;line-height:1.15;overflow-wrap:anywhere}
+.fs-src .fr{font-size:15px;font-weight:600;opacity:.8;line-height:1.3}.fs-src .now{font-size:14px;font-weight:700;opacity:.85}
+.fs-src.on{background:#F5C518;border-color:#F5C518;color:#000}
+.fs-src:disabled{opacity:.5;cursor:default}
+.fs-card{background:#1b1d23;border-radius:22px;padding:18px 20px}
+.fs-row{display:flex;justify-content:space-between;align-items:baseline;font-size:21px;font-weight:600;margin-bottom:12px;gap:10px}
+.fs-row span:last-child{color:#F5C518}
+.fs input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:60px;margin:0;background:transparent;cursor:pointer}
+.fs input[type=range]::-webkit-slider-runnable-track{height:22px;border-radius:11px;background:linear-gradient(90deg,#F5C518 var(--v,50%),#2a2d35 var(--v,50%))}
+.fs input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:52px;height:52px;margin-top:-15px;border-radius:50%;background:#fff;border:3px solid #F5C518;box-shadow:0 2px 8px rgba(0,0,0,.5)}
+.fs input[type=range]::-moz-range-track{height:22px;border-radius:11px;background:#2a2d35}
+.fs input[type=range]::-moz-range-progress{height:22px;border-radius:11px;background:#F5C518}
+.fs input[type=range]::-moz-range-thumb{width:46px;height:46px;border-radius:50%;background:#fff;border:3px solid #F5C518}
+.fs input[type=range]:disabled{opacity:.4}
+.fs-btn{flex:1;min-height:74px;border-radius:20px;border:2px solid #444;background:#1b1d23;color:#fff;font:700 23px system-ui,-apple-system,sans-serif;cursor:pointer}
+.fs-btn:disabled{opacity:.35;cursor:default}
+.fs-btn.hot{background:#FF7A45;border-color:#FF7A45;color:#1A0A03}
+.fs-chips{display:flex;flex-wrap:wrap;gap:10px}
+.fs-chip{min-height:58px;padding:0 18px;border-radius:29px;border:2px solid #444;background:#1b1d23;color:#fff;font:600 19px system-ui,-apple-system,sans-serif;cursor:pointer}
+.fs-note{font-size:18px;line-height:1.45;color:#aaa;text-align:center;margin:0}
+.fs-warn{background:#2A1208;border:2px solid #FF7A45;border-radius:18px;padding:14px 16px;font-size:19px;line-height:1.4;color:#FFE3D6}
+.fs-ok{background:#173a26;border:2px solid #2e9c57;border-radius:18px;padding:12px 14px;font-size:19px;text-align:center;font-weight:600}
+.fs-who{margin-top:auto;display:flex;justify-content:space-between;align-items:center;gap:10px;border-top:1px solid #2a2d35;padding-top:14px;font-size:17px;color:#aaa;flex-wrap:wrap}
+.fs-who a,.fs-link{color:#9cc4ff;font-weight:700;font-size:18px;min-height:44px;display:inline-flex;align-items:center;background:none;border:0;padding:0;text-decoration:underline;cursor:pointer;font-family:inherit}
+.fs-ov{position:fixed;inset:0;z-index:20;background:rgba(10,11,13,.95);display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto}
+.fs-ov .fs-card{max-width:520px;width:100%;display:flex;flex-direction:column;gap:14px;text-align:center}
+.fs-ov h2{margin:0;font-size:28px;line-height:1.2}.fs-ov p{margin:0;font-size:19px;line-height:1.45;color:#ccc}
+.fs-ov ol{margin:0;padding-left:24px;font-size:19px;line-height:1.55;color:#ddd;text-align:left}
+.fs-yes{min-height:84px;border-radius:22px;border:none;background:#F5C518;color:#000;font:700 25px system-ui,-apple-system,sans-serif;cursor:pointer}
+.fs-no{min-height:72px;border-radius:22px;border:2px solid #555;background:none;color:#fff;font:700 21px system-ui,-apple-system,sans-serif;cursor:pointer}
+.fs-set,.fs-ov .fs-set{display:flex;flex-direction:column;gap:12px;text-align:left}
+.fs-set label{font-size:16px;color:#aaa;font-weight:600}
+.fs-set input[type=text],.fs-set select{width:100%;box-sizing:border-box;min-height:56px;border-radius:14px;border:2px solid #444;background:#111216;color:#fff;font:600 18px system-ui,-apple-system,sans-serif;padding:0 14px}
+.fs-set .bx{background:#111216;border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:8px}
+.fs-set .tick{display:flex;align-items:center;gap:12px;font-size:18px;font-weight:600;color:#fff;min-height:48px}
+.fs-set .tick input{width:28px;height:28px;accent-color:#F5C518}
+</style>
+</helmet>
+<div class="fs">
+  <div class="fs-top"><h1>{{title}}</h1><button class="fs-help" onClick="{{openHelp}}">Help</button></div>
+  <p class="fs-q">What's playing?</p>
+  <div class="fs-two">
+    <sc-for list="{{sources}}" as="sr" hint-placeholder-count="2">
+      <button class="{{sr.cls}}" onClick="{{sr.pick}}" aria-pressed="{{sr.on}}" disabled="{{noCtl}}" aria-label="{{sr.aria}}">
+        <span class="ic" aria-hidden="true">{{sr.icon}}</span><span class="nm">{{sr.name}}</span><span class="fr">{{sr.from}}</span><span class="now">{{sr.now}}</span>
+      </button>
+    </sc-for>
+  </div>
+  <sc-if value="{{note}}" hint-placeholder-val="{{ false }}"><div class="fs-warn" role="status">{{note}}</div></sc-if>
+  <div class="fs-card">
+    <div class="fs-row"><span>Volume</span><span>{{volWord}}</span></div>
+    <input type="range" min="0" max="100" value="{{lvl}}" style="--v:{{lvl}}%" onChange="{{setLvl}}" disabled="{{volOff}}" aria-label="{{title}} volume" aria-valuetext="{{volWord}}">
+  </div>
+  <div style="display:flex;gap:12px">
+    <button class="fs-btn" onClick="{{quieter}}" disabled="{{noQuieter}}">− Quieter</button>
+    <button class="fs-btn" onClick="{{louder}}" disabled="{{noLouder}}">Louder +</button>
+  </div>
+  <sc-if value="{{atMax}}" hint-placeholder-val="{{ false }}"><p class="fs-note">That's as loud as the sound team allows.</p></sc-if>
+  <sc-if value="{{muted}}" hint-placeholder-val="{{ false }}"><button class="fs-btn hot" onClick="{{toggleMute}}" disabled="{{noCtl}}">🔇 Silenced · tap to turn the sound back on</button></sc-if>
+  <sc-if value="{{live}}" hint-placeholder-val="{{ true }}"><button class="fs-btn" onClick="{{toggleMute}}" disabled="{{noCtl}}">🔇 Silence the {{lowName}}</button></sc-if>
+  <sc-if value="{{sent}}" hint-placeholder-val="{{ false }}"><div class="fs-ok" role="status">{{sent}}</div></sc-if>
+  <div class="fs-chips" role="group" aria-label="Tell the sound team">
+    <sc-for list="{{quick}}" as="q" hint-placeholder-count="3"><button class="fs-chip" onClick="{{q.send}}">{{q.text}}</button></sc-for>
+  </div>
+  <div class="fs-who">
+    <span>{{whoText}}</span>
+    <span style="display:flex;gap:16px;flex-wrap:wrap">
+      <sc-if value="{{canSetup}}" hint-placeholder-val="{{ false }}"><button class="fs-link" onClick="{{openSetup}}">Change this page</button></sc-if>
+      <a href="User.dc.html">Change user</a>
+    </span>
+  </div>
+
+  <sc-if value="{{ask}}" hint-placeholder-val="{{ false }}">
+    <div class="fs-ov" style="z-index:40" role="alertdialog" aria-label="{{askTitle}}">
+      <div class="fs-card">
+        <div style="font-size:52px" aria-hidden="true">{{askIcon}}</div>
+        <h2>{{askTitle}}</h2>
+        <p>{{askText}}</p>
+        <button class="fs-yes" onClick="{{askYes}}">{{askYesText}}</button>
+        <button class="fs-no" onClick="{{askNo}}">{{askNoText}}</button>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{help}}" hint-placeholder-val="{{ false }}">
+    <div class="fs-ov" role="dialog" aria-label="Help">
+      <div class="fs-card" style="text-align:left">
+        <h2>The {{lowName}} speakers</h2>
+        <ol>
+          <li>Tap the big button for what should play. It asks first.</li>
+          <li>Slide the volume, or tap Quieter and Louder. It can't go louder than the sound team allows.</li>
+          <li>Silence the {{lowName}} for an announcement, then tap again to bring the sound back.</li>
+          <li>Something wrong? Tap Too loud, Too quiet or Can't hear: the sound team gets a message.</li>
+        </ol>
+        <p>The screen locks after {{lockMins}} minutes so nobody passing can change it. The sound keeps playing.</p>
+        <button class="fs-no" onClick="{{closeHelp}}">Close</button>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{setup}}" hint-placeholder-val="{{ false }}">
+    <div class="fs-ov" role="dialog" aria-label="Change this page">
+      <div class="fs-card fs-set">
+        <h2>Change this page</h2>
+        <p style="font-size:16px">Admin only. Signed in as {{userName}}.</p>
+        <label for="fs-name">Page name (at the top of the page)</label>
+        <input type="text" id="fs-name" maxlength="30" value="{{dName}}" onChange="{{setDName}}">
+        <sc-for list="{{dButtons}}" as="b" hint-placeholder-count="2">
+          <div class="bx">
+            <div style="font-size:20px;font-weight:700;color:#fff">{{b.icon}} Button {{b.n}}</div>
+            <label>Plays the Wing bus</label>
+            <select onChange="{{b.setBus}}" value="{{b.bus}}" aria-label="Button {{b.n}} plays the Wing bus"><sc-for list="{{b.opts}}" as="o" hint-placeholder-count="16"><option value="{{o.v}}" selected="{{o.sel}}">{{o.t}}</option></sc-for></select>
+            <label class="tick"><input type="checkbox" checked="{{b.desk}}" onChange="{{b.toggleDesk}}"> Use the desk's name <span style="color:#5fd38a;font-size:15px">“{{b.deskName}}”</span></label>
+            <sc-if value="{{b.own}}" hint-placeholder-val="{{ false }}"><label>Its own name</label><input type="text" maxlength="30" value="{{b.label}}" onChange="{{b.setLabel}}" aria-label="Button {{b.n}}'s own name" placeholder="e.g. Music"></sc-if>
+            <label>Comes from (plain words)</label>
+            <input type="text" maxlength="60" value="{{b.from}}" onChange="{{b.setFrom}}" aria-label="Button {{b.n}} comes from" placeholder="{{b.fromHint}}">
+          </div>
+        </sc-for>
+        <label for="fs-max">Loudest the foyer team can go</label>
+        <select id="fs-max" onChange="{{setDMax}}" value="{{dMax}}"><sc-for list="{{dMaxOpts}}" as="o" hint-placeholder-count="4"><option value="{{o.v}}" selected="{{o.sel}}">{{o.t}}</option></sc-for></select>
+        <sc-if value="{{dErr}}" hint-placeholder-val="{{ false }}"><div class="fs-warn" role="alert">{{dErr}}</div></sc-if>
+        <button class="fs-yes" onClick="{{saveSetup}}">Save…</button>
+        <button class="fs-no" onClick="{{closeSetup}}">Cancel</button>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{signedOut}}" hint-placeholder-val="{{ false }}">
+    <div class="fs-ov" style="background:#0A0B0D">
+      <div class="fs-card" style="background:none">
+        <div style="font-size:52px" aria-hidden="true">👋</div>
+        <h2>Sign in to use the {{lowName}} speakers</h2>
+        <p>Tap Sign in, choose <b style="color:#fff">Foyer team</b> and type your team PIN.</p>
+        <a class="fs-yes" href="User.dc.html" style="display:flex;align-items:center;justify-content:center;text-decoration:none">Sign in</a>
+      </div>
+    </div>
+  </sc-if>
+  <sc-if value="{{locked}}" hint-placeholder-val="{{ false }}">
+    <div class="fs-ov" style="background:#0A0B0D">
+      <div class="fs-card" style="background:none">
+        <div style="font-size:52px" aria-hidden="true">🔒</div>
+        <h2>{{title}} screen locked</h2>
+        <p>The {{lowName}} keeps playing:<br><b style="color:#fff">{{nowName}}</b>, {{volLower}}.</p>
+        <a class="fs-yes" href="User.dc.html" style="display:flex;align-items:center;justify-content:center;text-decoration:none">Unlock</a>
+        <a class="fs-no" href="User.dc.html" style="display:flex;align-items:center;justify-content:center;text-decoration:none">Change user</a>
+        <p style="font-size:16px">It locks after {{lockMins}} minutes so nobody passing can change it. Your team PIN unlocks it.</p>
+        <button class="fs-no" style="min-height:52px;font-size:16px" onClick="{{unlockDemo}}">Demo: unlock</button>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"lockMinutes":{"editor":"int","default":5,"min":1,"max":60},"$preview":{"width":390,"height":844}}'>
+// The simple Foyer page (/foyer): what the foyer team uses. The same foyer as Show › Foyer and the Foyer team screen
+// (data/foyer.json on the C3 Life server): its two mixes on the Wing, its volume and mute. Switching asks first.
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { src: 0, lvl: 63, muted: false, left: this.full(), sent: '', ask: null, held: null, msg: '', help: false, draft: null };
+  }
+  full() { return (this.props.lockMinutes ?? 5) * 60; }
+  tok() { try { const x = JSON.parse(localStorage.getItem('booth.session') || 'null'); return x ? x.token : ''; } catch (e) { return ''; } }
+  user() { try { return JSON.parse(localStorage.getItem('booth.user') || 'null'); } catch (e) { return null; } }
+  api(path, method, body) {
+    const t = this.tok(), h = t ? { Authorization: 'Bearer ' + t } : {};
+    if (body) h['Content-Type'] = 'application/json';
+    return fetch(path, { method: method || 'GET', headers: h, body: body ? JSON.stringify(body) : undefined })
+      .then((r) => r.json().catch(() => ({})).then((j) => ({ code: r.status, j })));
+  }
+  // In the preview: what the demo desk calls its buses (or what the Mixer screen last read from the real one).
+  local() {
+    let c = {}, w = null;
+    try { c = JSON.parse(localStorage.getItem('booth.foyer') || '{}') || {}; } catch (e) {}
+    try { w = JSON.parse(localStorage.getItem('booth.wingnames') || 'null'); } catch (e) {}
+    const demo = { 1: 'Wedges', 2: 'Drums IEM', 3: 'Bass IEM', 4: 'IEM Keys', 5: 'Stream L/R', 7: 'Foyer Spotify', 8: 'Foyer Live', 9: 'Crèche' };
+    const bus = (w && w.bus && Object.keys(w.bus).length) ? w.bus : demo;
+    const d = Object.assign({ name: 'Foyer', mix_a: 7, mix_b: 8, mtx: 1, max_db: -5, a_label: '', b_label: '', a_from: 'Spotify on the Media Mac', b_from: 'The hall (the desk’s live mix)' }, c);
+    const an = bus[d.mix_a] || 'Spotify', bn = bus[d.mix_b] || 'Live service';
+    return Object.assign({}, d, { names: { bus }, mix_a_name: an, mix_b_name: bn, a_title: d.a_label || an, b_title: d.b_label || bn });
+  }
+  cache(j) { try { localStorage.setItem('booth.foyer', JSON.stringify({ name: j.name, mix_a: j.mix_a, mix_b: j.mix_b, mtx: j.mtx, max_db: j.max_db, a_label: j.a_label || '', b_label: j.b_label || '', a_from: j.a_from || '', b_from: j.b_from || '' })); } catch (e) {} }
+  load() {
+    if (this.demo) { this.setState({ fy: this.local() }); return; }
+    if (this.busy) return;
+    this.busy = true;
+    this.api('/api/foyer').then(({ code, j }) => {
+      this.busy = false;
+      if (code === 404) { this.demo = true; this.setState({ fy: this.local() }); return; }
+      if (code === 200 && j.ok) { this.setState({ fy: j, signedOut: false }); this.cache(j); }
+      else if (code === 401) this.setState({ signedOut: true });
+      else if (!this.state.fy) this.setState({ fy: this.local() });
+    }).catch(() => { this.busy = false; if (!this.state.fy) this.setState({ fy: this.local() }); });
+  }
+  act(body, done) {  // on the Wing, through the C3 Life server
+    return this.api('/api/foyer/do', 'POST', body).then(({ j }) => {
+      if (j && j.live) { this.setState({ fy: j }); this.cache(j); }
+      this.setState({ msg: (j && j.error) || '' });
+      if (done && !(j && j.error)) this.say(done);
+    }).catch(() => this.setState({ msg: 'The C3 Life server didn’t answer. Try again.' }));
+  }
+  say(t) { this.setState({ sent: t }); clearTimeout(this.sayT); this.sayT = setTimeout(() => this.setState({ sent: '' }), 4000); }
+  componentDidMount() {
+    this.load(); this.loadT = setInterval(() => this.load(), 2000);
+    this.timer = setInterval(() => { const s = this.state; if (s.left > 0 && !s.draft) this.setState({ left: s.left - 1 }); }, 1000);
+  }
+  componentWillUnmount() { clearInterval(this.loadT); clearInterval(this.timer); clearTimeout(this.volT); clearTimeout(this.sayT); }
+  touch(patch) { this.setState(Object.assign({}, patch, { left: this.full() })); }
+  db(l) { return l <= 0 ? -90 : (l >= 75 ? ((l - 75) / 25) * 10 : -((75 - l) * 1.2)); }
+  lvlFor(d) { return d >= 0 ? 75 + (d / 10) * 25 : 75 + d / 1.2; }
+  word(d, max) { return d <= -45 ? 'Very quiet' : d <= -25 ? 'Quiet' : d <= -14 ? 'Medium' : d < max - 0.5 ? 'Loud' : 'Loudest allowed'; }
+  canSetup(u) {
+    if (!u) return false;
+    if ((u.role || u.name) === 'Admin') return true;
+    try { const r = JSON.parse(localStorage.getItem('booth.access') || 'null'); const role = Array.isArray(r) && r.find((x) => x.name === (u.role || u.name)); if (role) return role.p[10] === 2; } catch (e) {}  // Access levels › Foyer setup
+    return false;
+  }
+  setVol(v, fy, L) {
+    const maxDb = fy.max_db, maxLvl = this.lvlFor(maxDb), lv = Math.max(0, Math.min(v, maxLvl));
+    this.touch({ lvl: lv, held: { lvl: lv, at: Date.now() } });
+    if (L) { clearTimeout(this.volT); this.volT = setTimeout(() => this.act({ do: 'volume', db: Math.round(Math.max(-144, Math.min(maxDb, this.db(lv))) * 10) / 10 }), 200); }
+  }
+  renderVals() {
+    const s = this.state, fy = s.fy || this.local(), u = this.user();
+    const L = !this.demo && fy.live ? fy.live : null;  // what the desk is doing now (on the C3 Life server)
+    const ctl = !L || (L.connected && L.mode === 'control');
+    const held = s.held && Date.now() - s.held.at < 1500 ? s.held.lvl : null;
+    const src = L ? (L.source === 'a' ? 0 : L.source === 'b' ? 1 : -1) : s.src;
+    const muted = L ? !!L.mute : s.muted;
+    const lvl = held != null ? held : (L && L.fdr != null ? Math.max(0, Math.min(100, this.lvlFor(Math.max(-90, L.fdr)))) : s.lvl);
+    const d = held != null || !L || L.fdr == null ? this.db(lvl) : L.fdr;
+    const maxDb = fy.max_db, low = fy.name === 'Foyer' ? 'foyer' : fy.name;  // “Silence the foyer”, “Silence the Welcome area”
+    const titles = [fy.a_title || fy.mix_a_name, fy.b_title || fy.mix_b_name];
+    const froms = [fy.a_from || 'From the desk', fy.b_from || 'From the desk'];
+    const vw = muted ? 'Silenced' : this.word(d, maxDb);
+    const note = !L ? '' : !L.connected ? 'The sound desk isn’t answering, so the ' + low + ' can’t be changed from here right now. Tell the sound team.'
+      : L.mode !== 'control' ? 'The sound desk is set to look only, so nothing here changes the sound. The sound team can switch it on.'
+      : L.source === 'both' ? 'Both are playing in the ' + low + ' at the moment. Tap the one it should play.'
+      : L.source === 'none' ? 'Nothing is playing in the ' + low + ' at the moment. Tap what it should play.' : '';
+    const dr = s.draft, bus = (fy.names && fy.names.bus) || {};
+    const step = (by) => { const nd = Math.min(maxDb, Math.max(-60, (d <= -89 ? -60 : d) + by)); this.setVol(this.lvlFor(nd), fy, L); };
+    const ask = s.ask;
+    return {
+      title: fy.name, lowName: low, lockMins: this.props.lockMinutes ?? 5,
+      sources: [0, 1].map((i) => ({
+        name: titles[i], from: froms[i], icon: i === 0 ? '🎵' : '⛪', now: src === i ? 'Playing now' : '', on: src === i, cls: src === i ? 'fs-src on' : 'fs-src',
+        aria: titles[i] + ', ' + froms[i] + (src === i ? ', playing now' : ''),
+        pick: () => { if (src === i && !(L && L.source === 'both')) return; this.touch({ ask: { kind: 'src', i } }); }  // switching asks first
+      })),
+      noCtl: !ctl, volOff: !ctl || muted,
+      note: note || s.msg,
+      lvl: Math.round(lvl), volWord: vw, volLower: muted ? 'silenced' : vw.toLowerCase() + ' volume',
+      setLvl: (e) => this.setVol(Number(e.target.value), fy, L),
+      quieter: () => step(-3), louder: () => step(3),
+      noQuieter: !ctl || muted || d <= -59, noLouder: !ctl || muted || d >= maxDb - 0.5, atMax: !muted && d >= maxDb - 0.5,
+      muted, live: !muted,
+      toggleMute: () => { if (L) this.act({ do: 'mute', on: !muted }, muted ? '✓ The sound is back on' : '✓ The ' + low + ' is silenced'); else this.touch({ muted: !s.muted }); },
+      sent: s.sent,
+      quick: ['Too loud', 'Too quiet', 'Can’t hear'].map((t) => ({
+        text: t,
+        send: () => {
+          this.touch({});
+          if (this.demo || !this.tok()) { this.say('✓ Sent to the sound team: “' + t + '”'); return; }
+          this.api('/api/chat', 'POST', { text: fy.name + ': ' + t, ch: 0 }).then(({ code }) => this.say(code === 200 ? '✓ Sent to the sound team: “' + t + '”' : 'Couldn’t send it. Please tell someone in the booth.')).catch(() => this.say('Couldn’t send it. Please tell someone in the booth.'));
+        }
+      })),
+      whoText: u ? u.name : 'Not signed in',
+      canSetup: this.canSetup(u), userName: u ? u.name : '',
+      // asks first
+      ask: !!ask,
+      askIcon: ask && ask.kind === 'src' ? (ask.i === 0 ? '🎵' : '⛪') : '💾',
+      askTitle: !ask ? '' : ask.kind === 'src' ? 'Play ' + titles[ask.i] + ' in the ' + low + '?' : 'Save the changes to this page?',
+      askText: !ask ? '' : ask.kind === 'src' ? (src >= 0 && src !== ask.i ? titles[src] + ' stops and the ' + low + ' speakers play ' + titles[ask.i] + ' straight away.' : 'The ' + low + ' speakers play ' + titles[ask.i] + ' straight away.') : 'The foyer team sees the new names on their screen straight away.',
+      askYesText: !ask ? '' : ask.kind === 'src' ? 'Yes, play ' + titles[ask.i] : 'Yes, save',
+      askNoText: !ask ? '' : ask.kind === 'src' ? (src >= 0 && src !== ask.i ? 'No, keep ' + titles[src] : 'No') : 'No, go back',
+      askNo: () => this.touch({ ask: null }),
+      askYes: () => {
+        const a = ask; this.touch({ ask: null });
+        if (a.kind === 'src') {
+          if (L) this.act({ do: 'source', to: a.i === 0 ? 'a' : 'b' }, '✓ The ' + low + ' now plays ' + titles[a.i]);
+          else { this.setState({ src: a.i }); this.say('✓ The ' + low + ' now plays ' + titles[a.i]); }
+          return;
+        }
+        const body = { name: dr.name.trim(), mix_a: dr.mix_a, mix_b: dr.mix_b, max_db: dr.max_db, a_label: dr.a_desk ? '' : dr.a_label.trim(), b_label: dr.b_desk ? '' : dr.b_label.trim(), a_from: dr.a_from.trim(), b_from: dr.b_from.trim() };
+        if (this.demo) { this.cache(Object.assign({}, fy, body)); this.setState({ fy: this.local(), draft: null }); this.say('✓ Saved'); return; }
+        this.api('/api/foyer', 'PUT', body).then(({ code, j }) => {
+          if (code === 200) { this.setState({ fy: j, draft: null }); this.cache(j); this.say('✓ Saved'); }
+          else this.setState({ draft: Object.assign({}, dr, { err: j.error || 'Not saved.' }) });
+        }).catch(() => this.setState({ draft: Object.assign({}, dr, { err: 'The C3 Life server didn’t answer. Not saved.' }) }));
+      },
+      help: s.help, openHelp: () => this.touch({ help: true }), closeHelp: () => this.touch({ help: false }),
+      // Change this page (Admin; Access levels › Foyer setup)
+      setup: !!dr,
+      openSetup: (e) => { if (e && e.preventDefault) e.preventDefault(); this.touch({ draft: { name: fy.name, mix_a: fy.mix_a, mix_b: fy.mix_b, max_db: fy.max_db, a_desk: !fy.a_label, b_desk: !fy.b_label, a_label: fy.a_label || '', b_label: fy.b_label || '', a_from: fy.a_from || '', b_from: fy.b_from || '', err: '' } }); },
+      closeSetup: () => this.touch({ draft: null }),
+      dName: dr ? dr.name : '', setDName: (e) => this.setState({ draft: Object.assign({}, dr, { name: e.target.value, err: '' }) }),
+      dButtons: !dr ? [] : ['a', 'b'].map((k, i) => {
+        const b = dr['mix_' + k], deskName = bus[b] || bus[String(b)] || 'Bus ' + b;
+        const ed = (patch) => this.setState({ draft: Object.assign({}, dr, patch, { err: '' }) });
+        return {
+          n: i + 1, icon: i === 0 ? '🎵' : '⛪', bus: String(b), deskName, desk: dr[k + '_desk'], own: !dr[k + '_desk'], label: dr[k + '_label'], from: dr[k + '_from'],
+          fromHint: i === 0 ? 'e.g. Spotify on the Media Mac' : 'e.g. The hall (the desk’s live mix)',
+          opts: Array.from({ length: 16 }, (_, n) => ({ v: String(n + 1), t: 'Bus ' + (n + 1) + (bus[n + 1] || bus[String(n + 1)] ? ' · ' + (bus[n + 1] || bus[String(n + 1)]) : ''), sel: n + 1 === b })),
+          setBus: (e) => ed({ ['mix_' + k]: parseInt(e.target.value, 10) }),
+          toggleDesk: () => ed({ [k + '_desk']: !dr[k + '_desk'] }),
+          setLabel: (e) => ed({ [k + '_label']: e.target.value }),
+          setFrom: (e) => ed({ [k + '_from']: e.target.value })
+        };
+      }),
+      dMax: dr ? String(dr.max_db) : '', dErr: dr ? dr.err : '',
+      dMaxOpts: [[0, 'As loud as it goes (0 dB)'], [-5, 'Loud (−5 dB)'], [-10, 'Medium (−10 dB)'], [-15, 'Quiet (−15 dB)']].map(([v, t]) => ({ v: String(v), t, sel: !!dr && dr.max_db === v })),
+      setDMax: (e) => this.setState({ draft: Object.assign({}, dr, { max_db: parseInt(e.target.value, 10), err: '' }) }),
+      saveSetup: () => {
+        const err = !dr.name.trim() ? 'Give the page a name.' : dr.mix_a === dr.mix_b ? 'The two buttons need different buses.' : (!dr.a_desk && !dr.a_label.trim()) || (!dr.b_desk && !dr.b_label.trim()) ? 'Type a name for the button, or tick “Use the desk’s name”.' : '';
+        if (err) { this.setState({ draft: Object.assign({}, dr, { err }) }); return; }
+        this.touch({ ask: { kind: 'save' } });
+      },
+      nowName: titles[src] || 'nothing', signedOut: !!s.signedOut && !this.demo, locked: s.left <= 0 && !s.signedOut, unlockDemo: () => this.touch({})
+    };
+  }
+}
+</script>
+</body>
+</html>

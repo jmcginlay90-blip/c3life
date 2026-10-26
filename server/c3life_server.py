@@ -25,7 +25,20 @@ API (JSON):
   GET  /listen/<source>.mp3?t=<token>      the audio
   GET  /api/listen/captions/<source>?since=<n>&t=<token>[&lang=es]   subtitles (sources with "captions" on),
                                            translated on this PC when lang is an installed language
-  GET  /api/dante/dvs                     (Admin) what Dante routes into each DVS channel, read with netaudio
+  GET  /listen, /listen/<page>, /foyer     the simple pages, each at its own address (they open Hear or FoyerSimple)
+  GET  /api/listen/page?page=<id>          no sign-in: a Listen page's name, whether it's on, and its feed. With
+                                           ?page=<id>, /listen/<source>.mp3 and the captions need no token: only that
+                                           page's feed, only while it's on, only in the building
+  GET  /api/listen/pages | PUT {"pages"}   (Admin) the Listen pages: [{"id" ("" = /listen),"name","source","words","on"}]
+  GET  /api/listen/qr.svg?text=<url>&t=<token>   (Admin) a QR code for a Listen page poster, made on this PC
+  GET  /api/update                         (Admin) what's installed, what's new on GitHub, and why updating can't happen now
+  POST /api/update/check | /api/update/apply {"sha"}   (Admin) ask the "C3 Life Update" task (Update-C3Life.ps1) to
+                                           look now, or to install the newest version (never on a Sunday or while
+                                           recording or playing back)
+  GET  /api/listen/feed/sources            (Admin) every Dante source a feed can come from
+  POST /api/listen/feed {"name","chans":[{"dev","ch"}],"words","page"?,"check"?}   (Admin) add a feed: the HP's channel is
+                                           picked (a source already coming in is shared); "check" only lists the changes
+  GET  /api/dante/dvs                    (Admin) what Dante routes into each DVS channel, read with netaudio
   GET  /api/dante/devices                 (Dante view) every Dante device with its transmit and receive channel names
   POST /api/dante/rename/check {"device","new"} or {"device","kind":"tx"|"rx","number","new"}   (Dante view)
                                            what renaming it would break: every route that uses the old name
@@ -164,7 +177,8 @@ API (JSON):
                                            {"clear": true}: not calibrated any more (a new mic, or the gain changed)
   GET  /api/foyer                          (Foyer, Show or Mixer view) the foyer's name, its two mixes and matrix,
                                            with the names the desk gives those buses (when the Wing is connected)
-  PUT  /api/foyer {"name","mix_a","mix_b","mtx","max_db"}   (Foyer setup control: Admin) rename the foyer, or choose its buses
+  PUT  /api/foyer {"name","mix_a","mix_b","mtx","max_db","a_label","b_label","a_from","b_from"}   (Foyer setup control:
+                                           Admin) rename the foyer, choose its buses, name its two buttons on /foyer
   GET  /api/scan                           (Mixer, Show or Settings view) the last network scan, and whether one is running
   POST /api/scan                           (Mixer or Settings control) scan the network now (read only; about 10 s)
   POST /api/scan/use {"kind","ip","port"}  (Mixer or Settings control) use this Wing, Tio or ProPresenter (Watch only)
@@ -237,6 +251,7 @@ import propresenter as propresenter_mod
 import power as power_mod
 import syscheck as syscheck_mod
 import setup as setup_mod
+import updater as updater_mod
 import mdtalk as mdtalk_mod
 import shure as shure_mod
 import midi_buttons as midi_buttons_mod
@@ -290,9 +305,9 @@ DEFAULTS = {
     # Also the network this PC is on now (each of its addresses' /24), added at every start, so phones still get in
     # after the church's router or network changes. false = only allowed_networks.
     "own_network": True,
-    # Where "/" goes: Listen, with Sign in at the top. Someone already signed in on that device goes to their own
-    # first screen instead (Home, My mix or Foyer), which player.html works out from "start=1".
-    "start_page": "/player.html?p=Listen.dc.html&start=1",
+    # Where "/" goes: Sign in (Listen has its own address, /listen, for the QR posters). Someone already signed in on
+    # that device goes to their own first screen instead (Home, My mix or Foyer), which player.html works out from "start=1".
+    "start_page": "/player.html?p=User.dc.html&start=1",
     "session_hours": 12,
     # Private networks allowed to LISTEN only (from home). Empty = off. Tailscale: ["100.64.0.0/10"]
     "remote_networks": [],
@@ -584,6 +599,7 @@ def _ip_ok(x):
 def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bible=None, cues=None, reports=None, plan=None, desk=None, tio=None, monitors=None, scanner=None, foyer=None, rta_inputs=None, dante_names=None, lights=None, rta_live=None, midi=None, music=None, helpers=None, health=None, macros=None, recorder=None, pp=None, midi_peers=None, power=None, chat=None, setup=None, md=None, mics=None, buttons=None, network=None, daily=None):
     nets = cfg["_nets"]
     remote_nets = cfg.get("_remote", [])
+    updater = updater_mod.Updater(cfg["data_dir"], cfg, log)
 
     class Handler(SimpleHTTPRequestHandler):
         server_version = "C3Life/" + VERSION
@@ -669,10 +685,22 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 return None
             return body if isinstance(body, dict) else None
 
+        def page_id(self):
+            """?page=kids: the Listen page this came from (the main page is ?page=), or None."""
+            q = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query, keep_blank_values=True)
+            p = (q.get("page") or [None])[0]
+            return p if p is not None and (p == "" or listen_mod.ID_RE.match(p)) else None
+
         def session(self, rooms=False, tok=None, guest=False):
             if tok is None:
                 auth = self.headers.get("Authorization", "")
                 tok = auth[7:] if auth.startswith("Bearer ") else ""
+            pid = self.page_id() if guest else None
+            if pid is not None:  # a Listen page: no sign-in, that page's feed only (in the building)
+                if self.remote or not listen.page_source(pid):
+                    self.send_json(403, {"ok": False, "error": "This page is off, or only works on the church Wi-Fi."})
+                    return None, tok
+                return {"name": "", "role": "Guest", "guest": True, "page": pid}, tok
             s = sessions.get(tok)
             if not s and rooms:
                 room = listen.room_for(tok)
@@ -765,6 +793,54 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 self.send_header("Content-Length", "0")
                 self.end_headers()
                 return
+            # The simple pages, each at its own address: /listen (the main Listen page), /listen/kids, /foyer
+            lp = path.rstrip("/")
+            if lp == "/listen" or (lp.startswith("/listen/") and "." not in lp and lp.count("/") == 2) or lp == "/foyer":
+                pid = lp[len("/listen/"):] if lp.startswith("/listen/") else ""
+                where = "/player.html?p=FoyerSimple.dc.html" if lp == "/foyer" else "/player.html?p=Hear.dc.html&page=" + urllib.parse.quote(pid.lower())
+                self.send_response(302)
+                self.send_header("Location", where)
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+                return
+            if path == "/api/listen/page":
+                pid = self.page_id()
+                p = listen.page(pid) if pid is not None else None
+                if not p:
+                    self.send_json(404, {"ok": False, "error": "There's no page here."})
+                    return
+                src = listen.page_source(pid)
+                self.send_json(200, {"ok": True, "page": {"id": p["id"], "name": p["name"], "words": bool(p.get("words")), "on": bool(src) and not self.remote},
+                                     "source": {"id": src["id"], "name": src["name"], "live": listen.live(src["id"])} if src and not self.remote else None,
+                                     "remote": self.remote})
+                return
+            if path == "/api/listen/pages":
+                if not self.admin():
+                    return
+                c = listen.config()
+                self.send_json(200, {"ok": True, "pages": listen.pages(), "sources": [{"id": x["id"], "name": x["name"]} for x in c["sources"]]})
+                return
+            if path == "/api/listen/qr.svg":
+                tok = (urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query).get("t") or [None])[0]
+                s, _ = self.session(tok=tok)
+                if not s:
+                    return
+                if s["role"] != "Admin":
+                    self.send_json(403, {"ok": False, "error": "Only an Admin can make Listen page posters."})
+                    return
+                text = (urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query).get("text") or [""])[0]
+                if not re.match(r"^https?://[^\s]{1,200}$", text):
+                    self.send_json(400, {"ok": False, "error": "That isn't a web address."})
+                    return
+                import qr as qr_mod
+                data = qr_mod.svg(text).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "image/svg+xml")
+                self.send_header("Cache-Control", "no-cache")
+                self.send_header("Content-Length", str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+                return
             if path == "/api/health":
                 self.send_json(200, {"ok": True, "service": "c3life", "version": VERSION, "sync": True, "listen": True, "desk": desk.NAME, "remote_support": bool(cfg.get("remote_support_roles")) and bool(remote_nets), "remote": self.remote,
                                      "uptime_s": int(time.time() - START), "app": os.path.basename(cfg["app_dir"]),
@@ -794,6 +870,9 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 src = next((x for x in listen.allowed(s, remote=self.remote) if x["id"] == sid), None)
                 if not src:
                     self.send_json(403, {"ok": False, "error": "You're not in a group that can hear this."})
+                    return
+                if s.get("page") is not None and not listen.page_words(s["page"]):
+                    self.send_json(404, {"ok": False, "error": "Words on screen are off for this page."})
                     return
                 cap = listen.caption_source(src)
                 if not cap:
@@ -846,9 +925,25 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 paired = {}
                 for v in listen.room_tokens().values():
                     paired[v["room"]] = paired.get(v["room"], 0) + 1
+                peaks = recorder.engine.peaks() if recorder and recorder.engine else []
                 self.send_json(200, dict(c, ok=True, remote_on=bool(remote_nets),
                                          live={x["id"]: {"live": listen.live(x["id"]), "listeners": listen.listeners(x["id"])} for x in c["sources"]},
+                                         # is sound coming in on each feed's channels now (None: the audio engine can't say)
+                                         sound={x["id"]: (max(peaks[n - 1] for n in x["ch"] if n <= len(peaks)) > 0.001 if any(n <= len(peaks) for n in x["ch"]) else None)
+                                                for x in c["sources"]} if peaks else {},
                                          paired=paired))
+                return
+            if path == "/api/listen/feed/sources":
+                if not self.admin():
+                    return
+                if recorder:
+                    v = recorder.patch_view()
+                    srcs = v["sources"]
+                else:
+                    chans = dante.channels() if dante else {}
+                    me = dante.dvs_name() if dante else ""
+                    srcs = [{"dev": d, "ch": nm, "num": n} for d in sorted(chans, key=str.lower) if d.lower() != me for n, nm in sorted((chans[d].get("tx") or {}).items())]
+                self.send_json(200, {"ok": True, "sources": srcs, "dante": bool(dante)})
                 return
             if path == "/api/dante/devices":
                 if self.level("Dante"):
@@ -1028,6 +1123,10 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                                          "backups": setup.list() if adm else [], "drive": (recorder.drives[0]["label"] if recorder and recorder.drives else "")})
                 else:
                     self.send_json(401, {"ok": False, "error": "Sign in again."})
+                return
+            if path == "/api/update":
+                if self.admin():
+                    self.send_json(200, dict(updater.view(recorder), ok=True))
                 return
             if path == "/api/setup/download":
                 # a link, so the token comes in the address (like Listen's streams)
@@ -1970,6 +2069,14 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                     return
                 self.send_json(200, dict(plan.timer_list(), ok=True, signed_in=True))
                 return
+            if path in ("/api/update/check", "/api/update/apply"):
+                s = self.admin()
+                if not s:
+                    return
+                body = self.read_json() or {}
+                err = updater.check(s["name"]) if path.endswith("/check") else updater.apply(body.get("sha"), s["name"], recorder)
+                self.send_json(409 if err else 200, dict(updater.view(recorder), ok=not err, error=err or ""))
+                return
             if path in ("/api/setup/name", "/api/setup/backup", "/api/setup/restore"):
                 s = self.admin()
                 if not s:
@@ -2121,6 +2228,62 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 if ok:
                     log.info("nametags: %s %s %s", s["name"], "showed" if path.endswith("/show") else "hid", msg or "the name tag")
                 self.send_json(200 if ok else 409, {"ok": ok, "error": "" if ok else msg, "showing": tags.get()["showing"]})
+                return
+            if path == "/api/listen/feed":
+                # Add a feed: name it, choose where it comes from on Dante; the HP's channel is picked for it (a source
+                # already coming in is shared, nothing changes on Dante). {"check": true} only says what would happen.
+                s = self.admin()
+                if not s:
+                    return
+                body = self.read_json() or {}
+                name = body.get("name").strip() if isinstance(body.get("name"), str) else ""
+                chans = body.get("chans")
+                if not 0 < len(name) <= 40:
+                    self.send_json(400, {"ok": False, "error": "Give the feed a name of up to 40 letters."})
+                    return
+                if not isinstance(chans, list) or len(chans) not in (1, 2) or not all(isinstance(c, dict) and isinstance(c.get("dev"), str) and isinstance(c.get("ch"), str) and c["dev"] and c["ch"] for c in chans):
+                    self.send_json(400, {"ok": False, "error": "Choose where it comes from (one channel, or left and right)."})
+                    return
+                page = body.get("page")
+                if page is not None and (not isinstance(page, str) or not listen_mod.ID_RE.match(page) or listen.page(page)):
+                    self.send_json(400, {"ok": False, "error": "Choose another word for the page's address: that one is taken or has letters it can't use."})
+                    return
+                c = listen.config()
+                used = {n for x in c["sources"] for n in x["ch"]}
+                dvs = (dante.get() or {}).get("channels") or {} if dante else {}
+                fplan, err = listen_mod.plan_feed(chans, dvs, used)
+                if not err and any(not p["share"] for p in fplan) and not dante:
+                    err = "Dante isn't available on this computer, so a new source can't be sent to the HP."
+                if not err and any(not p["share"] for p in fplan) and recorder and (recorder.rec or recorder.player):
+                    err = "Not while recording or playing back: the HP's channels would change halfway through. Try again after."
+                hp = (dante.data.get("device_name") if dante else "") or "the HP"
+                changes = [("Use %s · %s, which already comes in to %s on channel %d. Nothing changes on Dante." if p["share"] else
+                            "Send %s · %s to %s as well, on channel %d. The desk and the stage don't change.") % (p["dev"], p["ch"], hp, p["dvs"]) for p in fplan if p["dvs"]]
+                changes.append("Add \u201c%s\u201d to Listen." % name)
+                if page is not None:
+                    changes.append("Make /listen/%s, which anyone on the church Wi-Fi can hear with no sign-in." % page)
+                if err or body.get("check"):
+                    self.send_json(400 if err else 200, {"ok": not err, "error": err, "plan": fplan, "changes": changes})
+                    return
+                for p in fplan:
+                    if not p["share"]:
+                        e = dante.route(p["dev"], p["ch"], p["dvs"])
+                        if e:
+                            self.send_json(502, {"ok": False, "error": e, "plan": fplan})
+                            return
+                        log.info("listen: %s sent %s · %s to DVS channel %d for the feed %r", s["name"], p["dev"], p["ch"], p["dvs"], name)
+                sid = listen_mod.slug(name, {x["id"] for x in c["sources"]})
+                n = dict(c, sources=c["sources"] + [{"id": sid, "name": name, "ch": [p["dvs"] for p in fplan], "captions": bool(body.get("words"))}])
+                n = {k: n[k] for k in ("sources", "groups", "rooms")}
+                err = listen_mod.valid_config(n)
+                if err:
+                    self.send_json(400, {"ok": False, "error": err})
+                    return
+                listen.save(n)
+                if page is not None:
+                    err = listen.save_pages(listen.pages() + [{"id": page, "name": name, "source": sid, "words": bool(body.get("words")), "on": True}])
+                log.info("listen: %s added the feed %r (DVS %s)%s", s["name"], name, " and ".join(str(p["dvs"]) for p in fplan), " with /listen/" + page if page is not None else "")
+                self.send_json(200, {"ok": True, "id": sid, "plan": fplan, "error": err or ""})
                 return
             if path in ("/api/listen/pair", "/api/listen/unpair"):
                 if not self.admin():
@@ -2509,6 +2672,18 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                     return
                 listen.save({k: body[k] for k in ("sources", "groups", "rooms")})
                 self.send_json(200, {"ok": True})
+                return
+            if self.route() == "/api/listen/pages":
+                s = self.admin()
+                if not s:
+                    return
+                body = self.read_json() or {}
+                err = listen.save_pages(body.get("pages"))
+                if err:
+                    self.send_json(400, {"ok": False, "error": err})
+                    return
+                log.info("listen: %s saved the Listen pages (%s)", s["name"], ", ".join("/listen" + ("/" + p["id"] if p["id"] else "") + (" on" if p.get("on") else " off") for p in listen.pages()))
+                self.send_json(200, {"ok": True, "pages": listen.pages()})
                 return
             if self.route() == "/api/listen/transcripts":
                 s = self.admin()

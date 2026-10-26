@@ -60,7 +60,7 @@ class ServerTest(unittest.TestCase):
     def test_root_goes_to_the_app(self):
         code, _, h = self.get("/")
         self.assertEqual(code, 302)
-        self.assertEqual(h["Location"], "/player.html?p=Listen.dc.html&start=1")  # Listen first, with Sign in at the top
+        self.assertEqual(h["Location"], "/player.html?p=User.dc.html&start=1")  # Sign in (Listen has its own address, /listen)
 
     def test_serves_app_files(self):
         code, body, h = self.get("/player.html")

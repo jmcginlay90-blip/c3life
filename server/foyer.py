@@ -3,7 +3,10 @@
 Kept on the C3 Life server so every device shows the same: the Foyer team's iPad, Show › Foyer and the menus.
 The two mixes are called what they're called on the desk (the bus names come from the Wing, when it's connected).
 
-data/foyer.json: {"name": "Foyer", "mix_a": 7, "mix_b": 8, "mtx": 1, "max_db": -5}
+data/foyer.json: {"name": "Foyer", "mix_a": 7, "mix_b": 8, "mtx": 1, "max_db": -5,
+                   "a_label": "", "b_label": "", "a_from": "", "b_from": ""}
+The simple Foyer page (/foyer) shows each mix as a big button: called what the desk calls it, unless an Admin gave
+it its own name (a_label, b_label), with a line in plain words saying where it comes from (a_from, b_from).
 
 On the Wing (Control, from the Foyer screens):
   which mix the foyer hears  each bus's send to the foyer matrix (/bus/<b>/send/<mtx>/on): the one chosen on, the other
@@ -19,7 +22,7 @@ import json
 import os
 import threading
 
-DEFAULT = {"name": "Foyer", "mix_a": 7, "mix_b": 8, "mtx": 1, "max_db": -5}
+DEFAULT = {"name": "Foyer", "mix_a": 7, "mix_b": 8, "mtx": 1, "max_db": -5, "a_label": "", "b_label": "", "a_from": "", "b_from": ""}
 MAX_DBS = (0, -5, -10, -15)
 # What the two mixes are called when the desk isn't connected (and on a new Wing, whose buses have no names yet).
 FALLBACK = {"mix_a": "Spotify", "mix_b": "Live service"}
@@ -42,6 +45,10 @@ def valid(d):
         return "The foyer's matrix is 1 to 8."
     if d.get("max_db") not in MAX_DBS:
         return "Maximum volume is 0, −5, −10 or −15 dB."
+    for k, most in (("a_label", 30), ("b_label", 30), ("a_from", 60), ("b_from", 60)):
+        v = d.get(k, "")
+        if not isinstance(v, str) or len(v.strip()) > most or any(ord(c) < 32 for c in v):
+            return "A button's name is up to 30 characters, and where it comes from up to 60."
     return None
 
 
@@ -63,8 +70,9 @@ class Foyer:
             return dict(self.d)
 
     def save(self, d):
-        d = {k: d[k] for k in DEFAULT}
-        d["name"] = d["name"].strip()
+        d = {k: d.get(k, DEFAULT[k]) for k in DEFAULT}
+        for k in ("name", "a_label", "b_label", "a_from", "b_from"):
+            d[k] = d[k].strip()
         with self.lock:
             self.d = d
             tmp = self.path + ".tmp"
@@ -87,6 +95,7 @@ class Foyer:
         for k in ("mix_a", "mix_b"):
             out[k + "_name"] = names["bus"].get(str(out[k])) or FALLBACK[k]
         out["mtx_name"] = names["mtx"].get(str(out["mtx"])) or ""
+        out["a_title"], out["b_title"] = out["a_label"] or out["mix_a_name"], out["b_label"] or out["mix_b_name"]
         out["live"] = self.live(wing, st if wing is not None else None)
         return out
 

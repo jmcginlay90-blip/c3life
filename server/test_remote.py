@@ -95,8 +95,8 @@ class SupportOn(Remote):
 
     def test_home_page_goes_to_the_app_for_support(self):
         j, _ = self.login("Admin")
-        # remote support gets the app's start page: Listen, which takes someone signed in on to their own first screen
-        self.assertEqual(self.call("/", cookie=j["token"])[2]["Location"], "/player.html?p=Listen.dc.html&start=1")
+        # remote support gets the app's start page: Sign in, which takes someone signed in on to their own first screen
+        self.assertEqual(self.call("/", cookie=j["token"])[2]["Location"], "/player.html?p=User.dc.html&start=1")
         self.assertEqual(self.call("/")[2]["Location"], "/player.html?p=Listen.dc.html")  # everyone else from outside: Listen only
 
     def test_it_is_logged(self):
