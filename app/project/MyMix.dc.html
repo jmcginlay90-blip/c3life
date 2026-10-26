@@ -155,6 +155,17 @@ input[type=range]:disabled{opacity:.45}
 .ub{width:52px;height:52px;border-radius:6px;border:0;background:#26282C;color:#ECEEF1;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px}
 .ub:disabled{opacity:.35;cursor:not-allowed}
 .panel{position:absolute;right:12px;top:72px;z-index:12;width:min(360px, calc(100% - 24px));box-sizing:border-box;max-height:calc(100% - 84px);overflow-y:auto;background:#1A1C20;border:1px solid #3A3F47;border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;box-shadow:0 16px 40px rgba(0,0,0,.6)}
+.vsw{display:flex;gap:4px;flex:none}.vsw button{min-height:40px;padding:0 12px;border-radius:999px;border:1px solid #3A3F47;background:#1A1C20;color:#C9CFD7;font:600 13px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer}.vsw button.on{background:#F5C518;border-color:#F5C518;color:#1A1204}
+.simple{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:2px 4px 8px;max-width:640px;width:100%;margin:0 auto}
+.srow2{display:grid;grid-template-columns:64px minmax(0,1fr) 64px;gap:10px;align-items:center;background:#1A1C20;border:1px solid #2A2F38;border-radius:14px;padding:10px}
+.srow2.me{border-color:#E040E0}.srow2.vol{border-color:#F5C518}.srow2.off .snm{color:#6B7280}
+.sbig{width:64px;height:64px;border-radius:14px;border:1px solid #3A3F47;background:#26282C;color:#ECEEF1;font:600 34px/1 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer}
+.sbig.up{background:#F5C518;border-color:#F5C518;color:#1A1204}.sbig:disabled{opacity:.4;cursor:not-allowed}
+.snm{font-size:17px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ssub{font-size:13px;color:#A3ACB8;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sbar{height:10px;border-radius:5px;background:#2A2F38;margin-top:6px;overflow:hidden}.sbar>div{height:100%;background:#4FD18B;border-radius:5px}
+.sfoot{display:grid;grid-template-columns:1fr 1fr;gap:8px}.sfoot .pbtn{min-height:56px;font-size:16px}
+.vask{background:#1A1C20;border:1px solid #F5C518;border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px}
 .merow{display:flex;gap:8px;padding:0 12px 6px;flex:none}.merow .pbtn{flex:1;min-height:44px}
 @media (max-height:700px){.merow{display:none}}
 .pbtn{min-height:48px;border-radius:10px;border:1px solid #3A3F47;background:#26282C;color:#ECEEF1;font:500 15px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer}
@@ -319,11 +330,14 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
     </details>
   </nav>
   <header class="mxtop">
+    <div class="vsw" role="group" aria-label="Which view"><button class="{{simpleCls}}" onClick="{{toSimple}}" aria-pressed="{{isSimple}}">Simple</button><button class="{{fullCls}}" onClick="{{toFull}}" aria-pressed="{{isFull}}">Full mixer</button></div>
+    <sc-if value="{{isFull}}" hint-placeholder-val="{{ true }}">
     <div class="mtabs" role="tablist" aria-label="Monitor mix views">
       <sc-for list="{{tabs}}" as="t" hint-placeholder-count="3">
         <button class="{{t.cls}}" role="tab" aria-selected="{{t.on}}" onClick="{{t.pick}}">{{t.name}}</button>
       </sc-for>
     </div>
+    </sc-if>
     <sc-if value="{{isMix}}" hint-placeholder-val="{{ true }}">
       <div class="spill" role="group" aria-label="Show one group">
         <span class="spl">Show group</span>
@@ -346,6 +360,35 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
     <sc-if value="{{locked}}" hint-placeholder-val="{{ false }}"><div class="mbanner" role="status">The sound desk has locked monitor mixes. You can see your mix but not change it. Ask them in Chat if you need something.</div></sc-if>
     <sc-if value="{{onOther}}" hint-placeholder-val="{{ false }}"><div class="mbanner other" role="status"><span style="flex:1;min-width:0">{{otherLine}}</span><button class="pbtn" style="min-height:40px;flex:none;padding:0 12px" onClick="{{backToMine}}">Back to my mix</button></div></sc-if>
     <sc-if value="{{hasToast}}" hint-placeholder-val="{{ false }}"><div class="mtoast" role="status">{{toast}}</div></sc-if>
+    <sc-if value="{{askView}}" hint-placeholder-val="{{ false }}">
+      <div class="vask" role="group" aria-label="Which view would you like?">
+        <div style="font-size:16px;font-weight:600">Would you like the simple view?</div>
+        <div class="ptext">Big − and + buttons for you, each group and your volume. You can change back any time with the buttons at the top.</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button class="pbtn pri" onClick="{{toSimple}}">Simple view</button><button class="pbtn" onClick="{{toFull}}">Keep the full mixer</button></div>
+      </div>
+    </sc-if>
+    <sc-if value="{{isSimple}}" hint-placeholder-val="{{ false }}">
+      <div class="simple" aria-label="My mix, simple view">
+        <div class="ptext" style="margin:0 2px">{{simpleHead}}</div>
+        <sc-for list="{{srows}}" as="r" hint-placeholder-count="5">
+          <div class="{{r.cls}}" role="group" aria-label="{{r.name}}">
+            <button class="sbig" onClick="{{r.down}}" disabled="{{r.noDown}}" aria-label="{{r.downAria}}">−</button>
+            <div style="min-width:0">
+              <div class="snm">{{r.name}}</div>
+              <div class="ssub">{{r.sub}}</div>
+              <div class="sbar" aria-hidden="true"><div style="width:{{r.pos}}%;background:{{r.barCol}}"></div></div>
+            </div>
+            <button class="sbig up" onClick="{{r.up}}" disabled="{{r.noUp}}" aria-label="{{r.upAria}}">+</button>
+          </div>
+        </sc-for>
+        <div class="sfoot">
+          <button class="pbtn" onClick="{{undo}}" disabled="{{noUndo}}">↶ Undo</button>
+          <button class="pbtn" onClick="{{toFull}}">Full mixer</button>
+        </div>
+        <sc-if value="{{otherMixes}}" hint-placeholder-val="{{ false }}"><button class="pbtn" onClick="{{openMixes}}">Change to another mix…</button></sc-if>
+        <div class="ptext">Each tap moves it a little. Only your own mix changes: nothing reaches the main speakers, the stream or anyone else.</div>
+      </div>
+    </sc-if>
     <sc-if value="{{isMix}}" hint-placeholder-val="{{ true }}"><div class="turn">Turn your phone sideways to see more channels at once.</div></sc-if>
     <sc-if value="{{pagerShown}}" hint-placeholder-val="{{ false }}">
     <sc-if value="{{pg.many}}" hint-placeholder-val="{{ false }}">
@@ -571,7 +614,7 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
           <div class="ptext">You can only change your own mix ({{busName}}). Nothing here reaches the main speakers, the stream or anyone else's mix. A tap that jumps more than 6 dB only moves 6 dB, so nothing hurts your ears. Double-tap a pan to centre it.</div>
         </sc-if>
         <sc-if value="{{isInfo}}" hint-placeholder-val="{{ false }}">
-          <div class="ptext"><b>MIX</b>: one strip per channel, with names, colours and icons from the Wing. Drag a fader, tap ON to take a channel out of your mix, and drag the pan. Your own volume and MUTE are on the right.<br><br><b>MCA</b>: four group faders. Tap GROUP on a channel to put it in MCA 1 to 4, then move the whole group at once. MCA SPILL shows just that group.<br><br><b>USER</b>: choose which channels you see (the eye), put them in your order, and add blank spaces. RESET puts the layout back.<br><br>The lock shows if FOH has locked mixes. Green Wi-Fi means you are connected to the desk.</div>
+          <div class="ptext"><b>Simple</b>: big − and + buttons for you, each group and your volume. Tap Full mixer at the top for everything else.<br><br><b>Mix</b>: one fader per channel, with names and colours from the desk. Drag a fader, tap ON to take a channel out of your mix, and drag the pan. Your own volume and MUTE are on the right.<br><br><b>Groups</b>: four group faders. Tap + Group on a channel to put it in group 1 to 4, then move the whole group at once. “Show group” shows just that group.<br><br><b>Layout</b>: choose which channels you see (the eye), put them in your order, and add blank spaces. Reset puts the layout back.<br><br>The lock shows if the sound desk has paused changes. Green Wi-Fi means you are connected to the desk.</div>
         </sc-if>
         <sc-if value="{{isLock}}" hint-placeholder-val="{{ false }}">
           <div class="ptext">{{lockText}}</div>
@@ -654,6 +697,13 @@ class Component extends DCLogic {
     }).catch(() => {});
   }
   myBusNow() { return this.state.bus || this.ownBus(); }
+  // Simple view or the full mixer: each person chooses, kept on this device and on the C3 Life server (POST /api/me/view).
+  viewNow() { let u = null, v = ''; try { u = JSON.parse(localStorage.getItem('booth.user') || 'null'); v = u ? (localStorage.getItem('booth.view.' + u.name) || '') : ''; } catch (e) {} return v; }
+  setView(v) {
+    let u = null; try { u = JSON.parse(localStorage.getItem('booth.user') || 'null'); if (u) localStorage.setItem('booth.view.' + u.name, v); } catch (e) {}
+    if (this.wTok() && typeof fetch === 'function') this.wApi('/api/me/view', 'POST', { view: v }).catch(() => {});
+    this.setState({ viewTick: Date.now(), panel: '', ask: null, spill: 0 });
+  }
   wingPoll() {
     if (this.wBusy) return; this.wBusy = true;
     const b = this.myBusNow();
@@ -1051,6 +1101,7 @@ class Component extends DCLogic {
     const vis = order.filter((k) => m.hidden.indexOf(k) < 0 && (!s.spill || (byK[k] && m.ch[k].mca === s.spill)));
     const mf = this.fader(['master'], m.master.lv), mp = this.panner(['master'], m.master.pan);
     const meK = this.src.find((x) => x.me).k;
+    const view = this.viewNow(), simple = view === 'simple';
     const tab = (k, n) => ({ name: n, on: s.tab === k, cls: s.tab === k ? 'mt on' : 'mt', pick: () => this.setState({ tab: k, panel: '', sx: 0, ask: null }) });  // a confirm never follows you to another tab
     // How many strips fit across this screen. When they don't all fit, swipe across them, or use ‹ › to jump a screenful.
     const vw = s.vw || 1024, vh = s.vh || (typeof window !== 'undefined' ? window.innerHeight : 800);
@@ -1069,7 +1120,7 @@ class Component extends DCLogic {
       prev: jump(-1), next: jump(1) };
     return {
       tabs: [tab('mca', 'Groups'), tab('mix', 'Mix'), tab('user', 'Layout'), tab('eq', 'EQ'), tab('saved', 'Saved')],
-      isMix: s.tab === 'mix', isMca: s.tab === 'mca', isUser: s.tab === 'user', isEq: s.tab === 'eq', isSaved: s.tab === 'saved',
+      isMix: !simple && s.tab === 'mix', isMca: !simple && s.tab === 'mca', isUser: !simple && s.tab === 'user', isEq: !simple && s.tab === 'eq', isSaved: !simple && s.tab === 'saved',
       ...(() => {
         // Bus EQ on my own mix only.
         const eq = m.eq;
@@ -1167,7 +1218,24 @@ class Component extends DCLogic {
         };
       })(),
       spills: [1, 2, 3, 4].map((n) => ({ n, on: s.spill === n, cls: s.spill === n ? 'sp on' : 'sp', aria: (s.spill === n ? 'Show all channels' : 'Show only group ' + n), pick: () => this.setState({ spill: s.spill === n ? 0 : n, sx: 0 }) })),
-      pg, pagerShown: (s.tab === 'mix' || s.tab === 'user') && pg.many,
+      pg, pagerShown: !simple && (s.tab === 'mix' || s.tab === 'user') && pg.many,
+      isSimple: simple, isFull: !simple, askView: !view && !!u, simpleCls: simple ? 'on' : '', fullCls: simple ? '' : 'on',
+      toSimple: () => this.setView('simple'), toFull: () => this.setView('full'),
+      simpleHead: (onOwn ? 'Your mix: ' : 'Changing ') + bName(myBus) + '. Tap − or + to change what you hear.',
+      srows: (() => {
+        // Rows: you, each group that has channels in it, the channels in no group, then your own volume.
+        const step = (get, put, say) => (d) => () => { if (s.locked) return; const n = JSON.parse(JSON.stringify(m)); const v = Math.max(0, Math.min(100, get(n) + d * 3)); if (v === get(n)) return; put(n, v); this.save(n, say + (d > 0 ? ' up' : ' down')); };
+        const row = (name, sub, lv, get, put, extra) => { const f = step(get, put, name); return { name, sub, pos: lv, barCol: (extra && extra.bar) || '#4FD18B', cls: 'srow2' + ((extra && extra.cls) || ''),
+          up: f(1), down: f(-1), noUp: s.locked || lv >= 100, noDown: s.locked || lv <= 0, upAria: 'More ' + name, downAria: 'Less ' + name }; };
+        const chRow = (x, me) => { const c = m.ch[x.k], nm = (me ? 'Me: ' : '') + nameOf(x);
+          return row(nm, c.on ? db(c.lv) + ' dB' : 'Off in your mix (turn it on in the full mixer)', c.on ? c.lv : 0, (n) => n.ch[x.k].lv, (n, v) => { n.ch[x.k].lv = v; }, { cls: (me ? ' me' : '') + (c.on ? '' : ' off'), bar: colOf(x) }); };
+        const out = [chRow(byK[meK], true)];
+        [1, 2, 3, 4].forEach((g) => { const mem = this.src.filter((x) => m.ch[x.k].mca === g && x.k !== meK && m.hidden.indexOf(x.k) < 0); if (!mem.length) return;
+          out.push(row(mem.length === 1 ? nameOf(mem[0]) : 'Group ' + g, mem.map(nameOf).join(', '), m.mca[g], (n) => n.mca[g], (n, v) => { n.mca[g] = v; }, { bar: this.mcaCols[g] })); });
+        order.forEach((k) => { const x = byK[k]; if (x && k !== meK && !m.ch[k].mca && m.hidden.indexOf(k) < 0) out.push(chRow(x, false)); });
+        out.push(row('My volume', m.master.mute ? 'Muted (unmute it in the full mixer)' : 'Everything in my ears · ' + db(m.master.lv) + ' dB', m.master.lv, (n) => n.master.lv, (n, v) => { n.master.lv = v; }, { cls: ' vol', bar: '#F5C518' }));
+        return out;
+      })(),
       spillOn: s.spill, noStrips: s.tab === 'mix' && vis.length === 0,
       locked: s.locked,
       lockColor: s.locked ? '#F5C518' : '#3DDC5A', lockPath: s.locked ? 'M8 11V8a4 4 0 0 1 8 0v3' : 'M8 11V8a4 4 0 0 1 7.6-1.7',

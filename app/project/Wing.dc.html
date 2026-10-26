@@ -517,6 +517,30 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
       <label style="display:flex;align-items:center;gap:8px;font-size:13px"><input type="checkbox" checked="{{lockMutes}}" onChange="{{toggleLockMutes}}"> Lock mutes as well</label>
       <label style="display:flex;align-items:center;gap:8px;font-size:13px"><input type="checkbox" checked="{{mixesOpen}}" onChange="{{toggleMixes}}"> Musicians can change their own monitor mix</label>
     </section>
+    <section class="card" aria-label="Who's on which mix" style="display:flex;flex-direction:column;gap:8px">
+      <div style="font-size:15px;font-weight:600">Who’s on which mix</div>
+      <div style="font-size:12px;color:#A3ACB8;line-height:1.45">Each musician changes their own mix from My mix. Choose it here. “Can also change” lets them look after another mix too (for example the wedges). Nothing changes on the Wing.</div>
+      <sc-for list="{{who.rows}}" as="p" hint-placeholder-count="3">
+        <div style="display:flex;flex-direction:column;gap:6px;padding:8px 0;border-top:1px solid #222831">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <div style="flex:1;min-width:120px;font-size:14px;font-weight:600">{{p.name}}</div>
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px">Own mix <select class="btn" style="min-height:40px;padding:0 8px" value="{{p.own}}" onChange="{{p.setOwn}}" aria-label="{{p.name}}: own mix"><sc-for list="{{p.opts}}" as="o" hint-placeholder-count="3"><option value="{{o.v}}">{{o.t}}</option></sc-for></select></label>
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span style="font-size:12px;color:#A3ACB8">Can also change:</span>
+            <sc-for list="{{p.extras}}" as="x" hint-placeholder-count="2"><button class="btn" style="min-height:36px;padding:0 10px;font-size:13px;border-color:{{x.bd}};color:{{x.col}}" onClick="{{x.toggle}}" aria-pressed="{{x.on}}">{{x.mark}} {{x.name}}</button></sc-for>
+          </div>
+        </div>
+      </sc-for>
+      <sc-if value="{{who.none}}" hint-placeholder-val="{{ false }}"><div style="font-size:13px;color:#A3ACB8">No musicians yet. Add them in Users &amp; PINs with the role Musician.</div></sc-if>
+      <sc-if value="{{who.asking}}" hint-placeholder-val="{{ false }}">
+        <div role="dialog" aria-label="{{who.askTitle}}" style="display:flex;flex-direction:column;gap:8px;border:1px solid #F5C518;border-radius:12px;padding:12px">
+          <div style="font-size:15px;font-weight:600">{{who.askTitle}}</div>
+          <div style="font-size:13px;color:#C9CFD7;line-height:1.45">{{who.askText}}</div>
+          <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px"><button class="btn" onClick="{{who.no}}">Cancel</button><button class="btn pri" onClick="{{who.yes}}">Yes, save it</button></div>
+        </div>
+      </sc-if>
+      <sc-if value="{{who.hasMsg}}" hint-placeholder-val="{{ false }}"><div role="status" style="font-size:13px;color:{{who.msgCol}}">{{who.msg}}</div></sc-if>
+    </section>
     <sc-if value="{{mc.on}}" hint-placeholder-val="{{ false }}">
     <section class="card" aria-label="Musician mixes on the Wing" style="display:flex;flex-direction:column;gap:8px">
       <div style="font-size:15px;font-weight:600">Musician mixes on the Wing</div>
@@ -1379,6 +1403,38 @@ class Component extends DCLogic {
     if (this.mBusy) return; this.mBusy = true;
     this.wApi('/api/monitors/check').then(({ j }) => { this.mBusy = false; if (!j || !j.ok) return; const done = j.buses.every((c) => c.read >= 40); this.setState({ mcData: j.buses, mcState: done ? (j.buses.some((c) => c.post.length || c.linked.length) ? 'found' : 'clean') : 'reading' }); }).catch(() => { this.mBusy = false; });
   }
+  // Who's on which mix: each musician's own bus, and the other mixes they may change (data/monitors.json on the server).
+  whoVals() {
+    const s = this.state;
+    if (s.live && !s.mon && !this.monAsked) { this.monAsked = true; this.wApi('/api/monitors').then(({ j }) => { if (j && j.ok) this.setState({ mon: j }); }); }
+    const d = s.live ? (s.mon || { buses: [], people: {}, musicians: [] }) : (s.monDemo || { buses: [1, 2, 4], people: { 'Keys (musician)': { own: 4, extra: [1, 2] } }, musicians: ['Keys (musician)', 'Vox 1', 'Bass'], locked: false });
+    const names = (d.musicians || []).concat(Object.keys(d.people || {}).filter((n) => (d.musicians || []).indexOf(n) < 0));
+    const a = s.whoAsk;
+    const ask = (name, own, extra, text) => this.setState({ whoAsk: { name, own, extra, text }, whoMsg: '' });
+    return {
+      none: !names.length,
+      rows: names.map((n) => {
+        const p = (d.people || {})[n] || {}, own = p.own || 0, extra = p.extra || [];
+        return { name: n, own: String(own),
+          opts: [{ v: '0', t: 'None yet' }].concat(d.buses.map((b) => ({ v: String(b), t: this.busLabel(b) }))),
+          setOwn: (e) => { const b = parseInt(e.target.value, 10) || 0; if (b === own) return; ask(n, b || null, extra.filter((x) => x !== b), b ? 'Gives ' + n + ' ' + this.busLabel(b) + ' as their own mix. They change it from My mix, and hear it straight away.' + (own ? ' They stop changing ' + this.busLabel(own) + '.' : '') : n + ' won’t have their own mix in My mix any more.'); },
+          extras: d.buses.filter((b) => b !== own).map((b) => { const on = extra.indexOf(b) > -1;
+            return { name: this.busLabel(b), on, mark: on ? '✓' : '+', bd: on ? '#4FD18B' : '#333B47', col: on ? '#4FD18B' : '#ECEEF1',
+              toggle: () => ask(n, own || null, on ? extra.filter((x) => x !== b) : extra.concat([b]), on ? n + ' stops being able to change ' + this.busLabel(b) + '.' : n + ' can also change ' + this.busLabel(b) + ' from My mix. Everyone on that mix hears their changes.') }; }) };
+      }),
+      asking: !!a, askTitle: a ? 'Save this for ' + a.name + '?' : '', askText: a ? a.text : '',
+      no: () => this.setState({ whoAsk: null }),
+      yes: () => {
+        const people = JSON.parse(JSON.stringify(d.people || {})); people[a.name] = { own: a.own, extra: a.extra };
+        if (!s.live) { this.setState({ monDemo: { ...d, people }, whoAsk: null, whoMsg: '✓ Saved. ' + a.name + ' sees it next time they open My mix.' }); return; }
+        this.wApi('/api/monitors', 'PUT', { buses: d.buses, people, locked: d.locked }).then(({ j }) => {
+          if (j && j.ok) this.setState({ mon: { ...j, mine: d.mine }, whoAsk: null, whoMsg: '✓ Saved. ' + a.name + ' sees it next time they open My mix.' });
+          else this.setState({ whoAsk: null, whoMsg: (j && j.error) || 'Not saved.', whoBad: true });
+        }).catch(() => this.setState({ whoAsk: null, whoMsg: 'Couldn’t reach the C3 Life server. Not saved.', whoBad: true }));
+      },
+      hasMsg: !!s.whoMsg, msg: s.whoMsg || '', msgCol: s.whoMsg && s.whoMsg.charAt(0) === '✓' ? '#4FD18B' : '#F5C518'
+    };
+  }
   monCheckVals() {
     const s = this.state;
     if (!s.live) return { on: false };
@@ -1502,7 +1558,7 @@ class Component extends DCLogic {
     const draft = s.renDraft.trim();
     return {
       tio: this.tioConn(),
-      mc: this.monCheckVals(),
+      mc: this.monCheckVals(), who: this.whoVals(),
       w: { ...wc, showKinds: wc.showKinds && s.view !== 'strips' }, demoOnly: !s.live, sv: sv, ly: this.layerVals(sv), pt: this.procVals(sv.hasSel ? sv.sel : null, ctl),
       hdrTop: s.live ? (w && w.console && w.console.name ? w.console.name : 'Wing') : 'Scene Sunday AM',
       hdrSub: s.live ? (w && w.status === 'connected' ? (w.mode === 'control' ? 'Live · in control' : 'Live · watching') : 'Not connected') : 'Names synced from Wing',

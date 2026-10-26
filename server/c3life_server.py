@@ -15,6 +15,8 @@ API (JSON):
   GET  /api/health                         no sign-in
   POST /api/login   {"name","pin"} or {"name","password"} (Admins) -> {"token","name","role","expires"}
   POST /api/logout                         (token)
+  POST /api/me/view {"view": "simple"|"full"}   (token) this person's Simple or Full view, kept with them (the sign-in
+                                           reply has it as "view", "" = not chosen yet)
   GET  /api/mixes[?since=<version>]        (token) -> {"version","saves","mymix","updated"} or {"changed":false}
   PUT  /api/mixes   {"saves"?,"mymix"?}    (token) -> {"version","updated"}
   GET  /api/listen/mine                    (token or room token) -> what this person or room may hear
@@ -490,6 +492,19 @@ class Store:
             if not any(u["role"] == "Admin" and u["active"] for u in out):
                 return "Keep at least one Admin who can sign in."
             write_json(self.users_path, {"users": out})
+        return None
+
+    def set_view(self, name, view):
+        """Simple or Full view (Home and My mix), each person's own choice, on every device they sign in on."""
+        if view not in ("simple", "full"):
+            return "Choose simple or full."
+        with self.lock:
+            data = {"users": self.users()}
+            u = next((x for x in data["users"] if x["name"] == name), None)
+            if not u:
+                return "You're not on the list any more."
+            u["view"] = view
+            write_json(self.users_path, data)
         return None
 
     def mix_path(self, name):
@@ -1025,7 +1040,9 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 d = monitors.get()
                 if path == "/api/monitors":
                     if mixer >= 1:
-                        self.send_json(200, dict(d, ok=True, mine=monitors.mine(s["name"])))
+                        # the musicians, so FOH can choose whose mix is whose (Who's on which mix, on the Mixer)
+                        mus = [u["name"] for u in store.public() if u["role"] == "Musician" and u["active"]]
+                        self.send_json(200, dict(d, ok=True, mine=monitors.mine(s["name"]), musicians=mus))
                     elif own >= 1:
                         self.send_json(200, {"ok": True, "buses": monitors.mine(s["name"]), "mine": monitors.mine(s["name"]), "locked": d["locked"]})
                     else:
@@ -1532,8 +1549,16 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 tok, s = sessions.new(u)
                 support = self.remote and s["role"] in (cfg.get("remote_support_roles") or [])
                 log.info("%s signed in from %s%s", name, self.client_address[0], " (remote support)" if support else "")
-                self.send_json(200, {"ok": True, "token": tok, "name": s["name"], "role": s["role"], "expires": int(s["exp"]), "remote_support": support},
-                               cookie=tok if support else None)
+                self.send_json(200, {"ok": True, "token": tok, "name": s["name"], "role": s["role"], "expires": int(s["exp"]), "remote_support": support,
+                                     "view": u.get("view", "")}, cookie=tok if support else None)
+                return
+            if path == "/api/me/view":
+                s, _ = self.session()
+                if not s:
+                    return
+                body = self.read_json() or {}
+                err = store.set_view(s["name"], body.get("view"))
+                self.send_json(400 if err else 200, {"ok": not err, "error": err or "", "view": body.get("view") if not err else ""})
                 return
             if path in ("/api/wing/send", "/api/monitors/fix"):
                 s, _ = self.session()
@@ -2443,7 +2468,8 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                     return
                 monitors.save(d)
                 log.info("monitors: %s changed monitor mixes%s", s["name"], " (locked)" if d["locked"] else "")
-                self.send_json(200, dict(monitors.get(), ok=True))
+                mus = [u["name"] for u in store.public() if u["role"] == "Musician" and u["active"]]
+                self.send_json(200, dict(monitors.get(), ok=True, musicians=mus))
                 return
             if self.route() == "/api/rta/inputs":
                 s = self.level("RTA settings", need=2)

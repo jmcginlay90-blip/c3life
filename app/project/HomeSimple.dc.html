@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>C3 Life – Home (simple)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+/* Home, simple view: what's happening, the MD's last words, a few big buttons. The room bar stays along the bottom. */
+html{-webkit-text-size-adjust:100%;touch-action:manipulation}
+body{margin:0;background:#0A0B0D}
+.hs-app{position:relative;width:100%;height:100vh;height:100dvh;display:flex;flex-direction:column;background:#0A0B0D;color:#fff;font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;overflow:hidden}
+.hs{flex:1;overflow-y:auto;box-sizing:border-box;width:100%;max-width:620px;margin:0 auto;padding:20px 18px 18px;display:flex;flex-direction:column;gap:14px}
+.hs-top{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.hs-top h1{margin:0;font-size:28px;line-height:1.15;font-weight:700}
+.hs-help{flex:none;min-height:48px;padding:0 18px;border-radius:999px;border:2px solid #5aa0ff;background:none;color:#9cc4ff;font:600 18px system-ui,-apple-system,sans-serif;cursor:pointer}
+.hs-view{display:flex;gap:8px;align-items:center;font-size:15px;color:#aaa}
+.hs-view button{min-height:44px;padding:0 16px;border-radius:999px;border:2px solid #444;background:#1b1d23;color:#fff;font:600 16px system-ui,-apple-system,sans-serif;cursor:pointer}
+.hs-view button.on{background:#F5C518;border-color:#F5C518;color:#000}
+.hs-card{background:#1b1d23;border-radius:20px;padding:16px 18px}
+.hs-k{font-size:14px;color:#aaa;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+.hs-big{font-size:28px;font-weight:800;margin-top:4px;line-height:1.2;overflow-wrap:anywhere}
+.hs-mid{font-size:19px;color:#ddd;margin-top:6px;line-height:1.35}
+.hs-md{border:2px solid #2e9c57;background:#10241a}
+.hs-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.hs-tile{min-height:104px;border-radius:18px;border:2px solid #444;background:#1b1d23;color:#fff;font:700 20px system-ui,-apple-system,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;padding:8px;text-decoration:none;cursor:pointer;box-sizing:border-box}
+.hs-tile .ic{font-size:30px;line-height:1}
+.hs-tile.go{background:#F5C518;border-color:#F5C518;color:#000}
+.hs-tile:disabled{opacity:.4;cursor:default}
+.hs-note{font-size:17px;color:#aaa;text-align:center;margin:0;line-height:1.4}
+.hs-ok{background:#173a26;border:2px solid #2e9c57;border-radius:16px;padding:12px 14px;font-size:18px;text-align:center;font-weight:600}
+.hs-who{margin-top:auto;display:flex;justify-content:space-between;align-items:center;gap:10px;border-top:1px solid #2a2d35;padding-top:12px;font-size:17px;color:#aaa}
+.hs-who a{color:#9cc4ff;font-weight:700;font-size:18px;min-height:44px;display:inline-flex;align-items:center}
+.hs-ov{position:fixed;inset:0;z-index:30;background:rgba(10,11,13,.96);display:flex;align-items:center;justify-content:center;padding:20px}
+.hs-ov .hs-card{max-width:520px;width:100%;display:flex;flex-direction:column;gap:12px}
+.hs-ov h2{margin:0;font-size:26px}.hs-ov ol{margin:0;padding-left:24px;font-size:19px;line-height:1.55;color:#ddd}
+.hs-close{min-height:64px;border-radius:18px;border:2px solid #555;background:none;color:#fff;font:700 20px system-ui,-apple-system,sans-serif;cursor:pointer}
+.rtabar{flex:none}
+@media (min-width:700px){.hs-grid{grid-template-columns:1fr 1fr 1fr}}
+</style>
+</helmet>
+<div class="hs-app">
+  <div class="hs">
+    <div class="hs-top"><h1>{{svcName}}</h1><button class="hs-help" onClick="{{openHelp}}">Help</button></div>
+    <div class="hs-view" role="group" aria-label="View"><span>View:</span><button class="on" aria-pressed="true">Simple</button><button onClick="{{toFull}}" aria-pressed="false">Full</button></div>
+    <div class="hs-card" aria-live="polite">
+      <div class="hs-k">Now</div>
+      <div class="hs-big">{{nowTitle}}</div>
+      <div class="hs-mid">{{nowLine}}</div>
+    </div>
+    <div class="hs-card hs-md">
+      <div class="hs-k" style="color:#5fd38a">The MD said · {{mdAt}}</div>
+      <div class="hs-mid" style="font-size:22px;color:#fff">“{{mdText}}”</div>
+    </div>
+    <sc-if value="{{msg}}" hint-placeholder-val="{{ false }}"><div class="hs-ok" role="status">{{msg}}</div></sc-if>
+    <div class="hs-grid">
+      <sc-for list="{{tiles}}" as="t" hint-placeholder-count="4">
+        <sc-if value="{{t.isLink}}" hint-placeholder-val="{{ true }}"><a class="hs-tile" href="{{t.href}}"><span class="ic" aria-hidden="true">{{t.icon}}</span>{{t.name}}</a></sc-if>
+        <sc-if value="{{t.isButton}}" hint-placeholder-val="{{ false }}"><button class="hs-tile go" onClick="{{t.run}}" disabled="{{t.off}}"><span class="ic" aria-hidden="true">{{t.icon}}</span>{{t.name}}</button></sc-if>
+      </sc-for>
+    </div>
+    <div class="hs-who"><span>{{whoText}}</span><a href="User.dc.html">Change user</a></div>
+  </div>
+  <div style="position:absolute;inset:0;z-index:6;pointer-events:none"><dc-import name="MDTalk" hint-size="390px,844px"></dc-import></div>
+  <div class="rtabar"><dc-import name="MiniRTA" hint-size="390px,48px"></dc-import></div>
+  <sc-if value="{{help}}" hint-placeholder-val="{{ false }}">
+    <div class="hs-ov" role="dialog" aria-label="Help">
+      <div class="hs-card">
+        <h2>This screen</h2>
+        <ol>
+          <li><b>Now</b> shows the song or talk on screen, and the slide.</li>
+          <li><b>The MD said</b> is the last thing the music director said on talkback. Every screen goes green while they talk.</li>
+          <li>The big buttons open what you use most. Message the booth sends a message to the sound team.</li>
+          <li>The bar along the bottom is how loud the room is.</li>
+        </ol>
+        <p class="hs-note" style="text-align:left">Want everything? Tap <b>Full</b> at the top. You can come back to Simple any time.</p>
+        <button class="hs-close" onClick="{{closeHelp}}">Close</button>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+// Home, simple view: each person chooses Simple or Full (Change user asks once; switch at the top any time). It's
+// kept with them on the C3 Life server (POST /api/me/view), so it follows them to any phone or iPad.
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { hm: null, help: false, msg: '' }; }
+  user() { try { return JSON.parse(localStorage.getItem('booth.user') || 'null'); } catch (e) { return null; } }
+  tok() { try { const x = JSON.parse(localStorage.getItem('booth.session') || 'null'); return x ? x.token : ''; } catch (e) { return ''; } }
+  api(path, method, body) {
+    const h = { 'Content-Type': 'application/json' }; const t = this.tok(); if (t) h.Authorization = 'Bearer ' + t;
+    return fetch(path, { method: method || 'GET', headers: h, body: body ? JSON.stringify(body) : undefined }).then((r) => r.json().catch(() => ({})).then((j) => ({ code: r.status, j: j || {} })));
+  }
+  componentDidMount() { this.load(); this.t = setInterval(() => this.load(), 2000); }
+  componentWillUnmount() { clearInterval(this.t); clearTimeout(this.sayT); }
+  load() {
+    if (this.demo || this.busy) return;
+    this.busy = true;
+    this.api('/api/home').then(({ code, j }) => { this.busy = false; if (code === 404) { this.demo = true; return; } if (code === 200 && j.ok) this.setState({ hm: j }); }).catch(() => { this.busy = false; });
+  }
+  say(t) { this.setState({ msg: t }); clearTimeout(this.sayT); this.sayT = setTimeout(() => this.setState({ msg: '' }), 4000); }
+  readMd() { try { const l = JSON.parse(localStorage.getItem('booth.mdlog') || 'null'); if (l && l.length) return l[0]; } catch (e) {} return { at: '10:12', text: 'Go round the chorus one more time' }; }
+  svc() {
+    try { const l = JSON.parse(localStorage.getItem('booth.services') || 'null'); const id = localStorage.getItem('booth.service') || ''; if (Array.isArray(l) && l.length) return (l.find((x) => x.id === id) || l[0]).name; } catch (e) {}
+    return 'Sunday 10:00';
+  }
+  level(role, i) { try { const r = JSON.parse(localStorage.getItem('booth.access') || 'null'); const x = Array.isArray(r) && r.find((y) => y.name === role); if (x) return x.p[i]; } catch (e) {} return null; }
+  chatOk(u) {
+    if (!u) return false;
+    try { const l = JSON.parse(localStorage.getItem('booth.users') || 'null'); const me = Array.isArray(l) ? l.find((x) => x.name === u.name) : null; if (me && typeof me.chat === 'boolean') return me.chat; } catch (e) {}
+    return u.role !== 'Listener' && u.role !== 'Viewer';
+  }
+  setView(v) {
+    const u = this.user(); if (!u) return;
+    try { localStorage.setItem('booth.view.' + u.name, v); } catch (e) {}
+    if (this.tok()) this.api('/api/me/view', 'POST', { view: v }).catch(() => {});
+  }
+  renderVals() {
+    const s = this.state, u = this.user(), H = s.hm, p = (H && H.pp) || null, can = (H && H.can) || {};
+    const role = u ? u.role : '';
+    const showCtl = H ? !!can.show : ['Admin', 'FOH sound', 'ProPresenter'].indexOf(role) >= 0;
+    const showView = this.level(role, 4) !== null ? this.level(role, 4) >= 1 : ['Admin', 'FOH sound', 'ProPresenter', 'Lighting', 'Viewer'].indexOf(role) >= 0;
+    const md = this.readMd();
+    const tiles = [];
+    if (this.chatOk(u)) tiles.push({ name: 'Message the booth', icon: '💬', href: 'Chat.dc.html', isLink: true, isButton: false });
+    tiles.push({ name: 'Listen', icon: '🎧', href: 'Listen.dc.html', isLink: true, isButton: false });
+    if (showView) tiles.push({ name: 'Bible verse', icon: '📖', href: 'Bible.dc.html', isLink: true, isButton: false });
+    tiles.push({ name: 'Report a problem', icon: '🙋', href: 'Report.dc.html', isLink: true, isButton: false });
+    if (showCtl) tiles.unshift({ name: 'Next slide', icon: '⏭', isLink: false, isButton: true, off: !!(H && p && !p.connected && p.error),
+      run: () => { if (this.demo || !H) { this.say('Next slide (preview: nothing is sent)'); return; } this.api('/api/pp/trigger', 'POST', { do: 'next' }).then(({ j }) => this.say(j && j.error ? j.error : '✓ Next slide')).catch(() => this.say('The C3 Life server didn’t answer.')); } });
+    const nowTitle = H ? (p && p.presentation ? p.presentation : (p && p.error ? 'ProPresenter isn’t connected' : 'Nothing on screen yet')) : 'Song 2 of 4';
+    const nowLine = H ? (p && p.current ? 'Slide: ' + (p.current.group || '—') + (p.next && p.next.group ? ' · next: ' + p.next.group : '') : '') : 'Slide: Chorus · next: Verse 2';
+    return {
+      svcName: this.svc(), nowTitle, nowLine, mdAt: md.at, mdText: md.text, tiles, msg: s.msg,
+      whoText: u ? u.name + (u.role && u.role !== u.name ? ' · ' + u.role : '') : 'Not signed in',
+      toFull: () => { this.setView('full'); if (window.__load) window.__load('Main.dc.html'); },
+      help: s.help, openHelp: () => this.setState({ help: true }), closeHelp: () => this.setState({ help: false })
+    };
+  }
+}
+</script>
+</body>
+</html>
