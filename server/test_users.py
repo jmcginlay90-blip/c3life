@@ -101,9 +101,16 @@ class Users(unittest.TestCase):
         self.assertNotIn("musicians", self.call("/api/monitors", tok=keys)[1])  # a musician sees only their own mixes
         code, j = self.call("/api/monitors", "PUT", {"people": {"Keys (musician)": {"own": 1, "extra": [2]}}}, tok=foh)
         self.assertEqual(code, 200, j)
-        self.assertEqual(j["people"]["Keys (musician)"], {"own": 1, "extra": [2]})
+        self.assertEqual(j["people"]["Keys (musician)"], {"own": 1, "extra": [2], "me": None})
         self.assertIn("Keys (musician)", j["musicians"])
         self.assertEqual(self.call("/api/monitors", "PUT", {"people": {"Keys (musician)": {"own": 9}}}, tok=foh)[0], 400)  # not a monitor mix
+        # their own channel (Me in My mix): a Wing channel 1 to 40, or none; the musician sees their own
+        self.assertEqual(self.call("/api/monitors", "PUT", {"people": {"Keys (musician)": {"own": 1, "me": 41}}}, tok=foh)[0], 400)
+        self.assertEqual(self.call("/api/monitors", "PUT", {"people": {"Keys (musician)": {"own": 1, "me": True}}}, tok=foh)[0], 400)
+        code, j = self.call("/api/monitors", "PUT", {"people": {"Keys (musician)": {"own": 1, "extra": [2], "me": 14}}}, tok=foh)
+        self.assertEqual((code, j["people"]["Keys (musician)"]["me"]), (200, 14))
+        self.assertEqual(self.call("/api/monitors", tok=keys)[1]["me"], 14)
+        self.assertIsNone(self.call("/api/monitors", tok=foh)[1]["me"])  # FOH has no channel of their own
         self.assertEqual(self.call("/api/monitors", "PUT", {"people": {}}, tok=keys)[0], 403)
 
 
