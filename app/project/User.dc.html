@@ -318,7 +318,7 @@ class Component extends DCLogic {
   isAdmin(u) { return !!u && u.role === 'Admin'; }
   // Admin passwords: 8 or more characters, with a letter and a number or symbol (the C3 Life server checks the same).
   goodPassword(p) { return p.length >= 8 && /[A-Za-z]/.test(p) && /[^A-Za-z]/.test(p); }
-  homeOf(u) { return u && u.role === 'Foyer team' ? 'FoyerTeam.dc.html' : (u && u.role === 'Musician' ? 'MyMix.dc.html' : (u && u.role === 'Listener' ? 'Listen.dc.html' : 'Main.dc.html')); }
+  homeOf(u) { return u && u.role === 'Foyer team' ? 'FoyerSimple.dc.html' : (u && u.role === 'Musician' ? 'MyMix.dc.html' : (u && u.role === 'Listener' ? 'Listen.dc.html' : 'Main.dc.html')); }
   // Go to another screen: in the app (player.html) straight away; in a canvas preview a page may not navigate itself,
   // so it stays here and the screen shows its link instead. Returns true if it went.
   goTo(page) { if (typeof window !== 'undefined' && window.__load) { window.__load(page); return true; } return false; }

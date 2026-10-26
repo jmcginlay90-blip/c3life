@@ -87,6 +87,7 @@ function Get-OwnNetworks {
   }
   return $out
 }
+$givenBoothNetwork = $BoothNetwork   # remembered for updates (install-options.json), before it's filled in below
 if ($BoothNetwork) { $boothNets = @($BoothNetwork); $fwRemote = $BoothNetwork }
 else {
   $boothNets = @(Get-OwnNetworks)
@@ -99,7 +100,7 @@ $here = $PSScriptRoot
 
 $p = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
 if (-not $p.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { throw 'Run this in an Administrator PowerShell.' }
-foreach ($need in 'server\c3life_server.py', 'server\listen.py', 'server\access.py', 'server\dante.py', 'server\nametags.py', 'server\scripture.py', 'server\cues.py', 'server\reports.py', 'server\pco.py', 'server\wing.py', 'server\tio.py', 'server\monitors.py', 'server\scan.py', 'server\hwcheck.py', 'server\foyer.py', 'server\rta_inputs.py', 'server\rta_patch.py', 'server\dante_names.py', 'server\lightkey.py', 'server\rta_live.py', 'server\midi_in.py', 'server\desk.py', 'server\music.py', 'server\helpers.py', 'server\health.py', 'server\ringout.py', 'server\macros.py', 'server\audio_engine.py', 'server\recorder.py', 'server\propresenter.py', 'server\power.py', 'server\chat.py', 'server\syscheck.py', 'server\setup.py', 'server\mdtalk.py', 'server\shure.py', 'server\midi_buttons.py', 'server\netwin.py', 'server\loadtest.py', 'server\daily.py', 'server\patching.py', 'server\patchlist.py', 'server\bibles\KJV.txt.gz', 'server\bibles\WEBBE.txt.gz', 'app\player.html') {
+foreach ($need in 'server\c3life_server.py', 'server\listen.py', 'server\access.py', 'server\dante.py', 'server\nametags.py', 'server\scripture.py', 'server\cues.py', 'server\reports.py', 'server\pco.py', 'server\wing.py', 'server\tio.py', 'server\monitors.py', 'server\scan.py', 'server\hwcheck.py', 'server\foyer.py', 'server\rta_inputs.py', 'server\rta_patch.py', 'server\dante_names.py', 'server\lightkey.py', 'server\rta_live.py', 'server\midi_in.py', 'server\desk.py', 'server\music.py', 'server\helpers.py', 'server\health.py', 'server\ringout.py', 'server\macros.py', 'server\audio_engine.py', 'server\recorder.py', 'server\propresenter.py', 'server\power.py', 'server\chat.py', 'server\syscheck.py', 'server\setup.py', 'server\mdtalk.py', 'server\shure.py', 'server\midi_buttons.py', 'server\netwin.py', 'server\loadtest.py', 'server\daily.py', 'server\patching.py', 'server\patchlist.py', 'server\qr.py', 'server\updater.py', 'Update-C3Life.ps1', 'Set-GitHubKey.ps1', 'server\bibles\KJV.txt.gz', 'server\bibles\WEBBE.txt.gz', 'app\player.html') {
   if (-not (Test-Path (Join-Path $here $need))) { throw "Missing $need next to this script. Copy the whole c3life-server folder." }
 }
 
@@ -200,6 +201,8 @@ if ($startup) {
   if ($found['Dante Virtual Soundcard']) { Write-Host "  4. Start Dante Virtual Soundcard when $BoothUser signs in" }
   if (-not $NoKiosk -and $edge) { Write-Host "  5. Open C3 Life full screen on the booth screen when $BoothUser signs in" }
 }
+Write-Host "  6. Updates: look on GitHub for a new version once a day (task 'C3 Life Update'); an Admin updates in the app"
+Write-Host '     (it asks first, never on a Sunday). It needs the GitHub key once: .\Set-GitHubKey.ps1 (you type it)'
 Write-Host ''
 Write-Host 'Booth software found:' -ForegroundColor Cyan
 foreach ($k in $found.Keys) {
@@ -214,7 +217,7 @@ if (-not $go) { Write-Host 'Nothing was changed.'; Stop-Transcript | Out-Null; r
 Stop-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
 Get-CimInstance Win32_Process -Filter "Name like 'python%'" | Where-Object { $_.CommandLine -like '*c3life_server.py*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 New-Item -ItemType Directory -Force -Path $serverDir, $appDir | Out-Null
-Copy-Item -Force (Join-Path $here 'server\c3life_server.py'), (Join-Path $here 'server\listen.py'), (Join-Path $here 'server\access.py'), (Join-Path $here 'server\dante.py'), (Join-Path $here 'server\nametags.py'), (Join-Path $here 'server\scripture.py'), (Join-Path $here 'server\cues.py'), (Join-Path $here 'server\reports.py'), (Join-Path $here 'server\pco.py'), (Join-Path $here 'server\wing.py'), (Join-Path $here 'server\tio.py'), (Join-Path $here 'server\monitors.py'), (Join-Path $here 'server\scan.py'), (Join-Path $here 'server\hwcheck.py'), (Join-Path $here 'server\foyer.py'), (Join-Path $here 'server\rta_inputs.py'), (Join-Path $here 'server\rta_patch.py'), (Join-Path $here 'server\dante_names.py'), (Join-Path $here 'server\lightkey.py'), (Join-Path $here 'server\rta_live.py'), (Join-Path $here 'server\midi_in.py'), (Join-Path $here 'server\desk.py'), (Join-Path $here 'server\music.py'), (Join-Path $here 'server\helpers.py'), (Join-Path $here 'server\health.py'), (Join-Path $here 'server\ringout.py'), (Join-Path $here 'server\macros.py'), (Join-Path $here 'server\audio_engine.py'), (Join-Path $here 'server\recorder.py'), (Join-Path $here 'server\propresenter.py'), (Join-Path $here 'server\power.py'), (Join-Path $here 'server\chat.py'), (Join-Path $here 'server\syscheck.py'), (Join-Path $here 'server\setup.py'), (Join-Path $here 'server\mdtalk.py'), (Join-Path $here 'server\shure.py'), (Join-Path $here 'server\midi_buttons.py'), (Join-Path $here 'server\netwin.py'), (Join-Path $here 'server\loadtest.py'), (Join-Path $here 'server\daily.py'), (Join-Path $here 'server\patching.py'), (Join-Path $here 'server\patchlist.py') $serverDir
+Copy-Item -Force (Join-Path $here 'server\c3life_server.py'), (Join-Path $here 'server\listen.py'), (Join-Path $here 'server\access.py'), (Join-Path $here 'server\dante.py'), (Join-Path $here 'server\nametags.py'), (Join-Path $here 'server\scripture.py'), (Join-Path $here 'server\cues.py'), (Join-Path $here 'server\reports.py'), (Join-Path $here 'server\pco.py'), (Join-Path $here 'server\wing.py'), (Join-Path $here 'server\tio.py'), (Join-Path $here 'server\monitors.py'), (Join-Path $here 'server\scan.py'), (Join-Path $here 'server\hwcheck.py'), (Join-Path $here 'server\foyer.py'), (Join-Path $here 'server\rta_inputs.py'), (Join-Path $here 'server\rta_patch.py'), (Join-Path $here 'server\dante_names.py'), (Join-Path $here 'server\lightkey.py'), (Join-Path $here 'server\rta_live.py'), (Join-Path $here 'server\midi_in.py'), (Join-Path $here 'server\desk.py'), (Join-Path $here 'server\music.py'), (Join-Path $here 'server\helpers.py'), (Join-Path $here 'server\health.py'), (Join-Path $here 'server\ringout.py'), (Join-Path $here 'server\macros.py'), (Join-Path $here 'server\audio_engine.py'), (Join-Path $here 'server\recorder.py'), (Join-Path $here 'server\propresenter.py'), (Join-Path $here 'server\power.py'), (Join-Path $here 'server\chat.py'), (Join-Path $here 'server\syscheck.py'), (Join-Path $here 'server\setup.py'), (Join-Path $here 'server\mdtalk.py'), (Join-Path $here 'server\shure.py'), (Join-Path $here 'server\midi_buttons.py'), (Join-Path $here 'server\netwin.py'), (Join-Path $here 'server\loadtest.py'), (Join-Path $here 'server\daily.py'), (Join-Path $here 'server\patching.py'), (Join-Path $here 'server\patchlist.py'), (Join-Path $here 'server\qr.py'), (Join-Path $here 'server\updater.py') $serverDir
 New-Item -ItemType Directory -Force -Path (Join-Path $serverDir 'bibles') | Out-Null
 Copy-Item -Force (Join-Path $here 'server\bibles\*') (Join-Path $serverDir 'bibles')
 New-Item -ItemType Directory -Force -Path (Join-Path $serverDir 'seed') | Out-Null
@@ -230,7 +233,9 @@ if ($AudioEngine -eq 'asio') {
 if (Test-Path $appDir) { Get-ChildItem $appDir | Remove-Item -Recurse -Force }
 Copy-Item -Recurse -Force (Join-Path $here 'app\*') $appDir
 if (Test-Path $cfgPath) { $cfg = Get-Content $cfgPath -Raw | ConvertFrom-Json }
-else { $cfg = [pscustomobject][ordered]@{ port = $Port; bind = '0.0.0.0'; app_dir = $appDir; data_dir = $dataDir; allowed_networks = @($boothNets + '127.0.0.0/8'); start_page = '/player.html?p=Listen.dc.html&start=1' } }
+else { $cfg = [pscustomobject][ordered]@{ port = $Port; bind = '0.0.0.0'; app_dir = $appDir; data_dir = $dataDir; allowed_networks = @($boothNets + '127.0.0.0/8'); start_page = '/player.html?p=User.dc.html&start=1' } }
+# The app's own address opens Sign in (Listen has its own address now, /listen). Only the old default is changed.
+if ($cfg.start_page -eq '/player.html?p=Listen.dc.html&start=1') { $cfg.start_page = '/player.html?p=User.dc.html&start=1' }
 # Listen settings are refreshed every time: where ffmpeg is, the DVS sound device, and listening from home.
 if ($ffmpeg) { $cfg | Add-Member -Force -NotePropertyName ffmpeg -NotePropertyValue $ffmpeg }
 if ($dvsDevice) { $cfg | Add-Member -Force -NotePropertyName listen_device -NotePropertyValue $dvsDevice }
@@ -342,6 +347,10 @@ if ($RemoteSupport) { $supportRoles = @('Admin') }
 $cfg | Add-Member -Force -NotePropertyName remote_networks -NotePropertyValue $remoteNets
 $cfg | Add-Member -Force -NotePropertyName remote_support_roles -NotePropertyValue $supportRoles
 $cfg | ConvertTo-Json -Depth 4 | Set-Content -Path $cfgPath -Encoding UTF8
+# The options this was run with, so an update (Update-C3Life.ps1) runs it again the same way. No keys or passwords.
+[ordered]@{ BoothUser = $BoothUser; Port = $Port; InstallDir = $InstallDir; BoothNetwork = $givenBoothNetwork; NoKiosk = [bool]$NoKiosk; AudioEngine = $AudioEngine;
+  ListenFromHome = [bool]$ListenFromHome; RemoteSupport = [bool]$RemoteSupport; TailscaleNetwork = $TailscaleNetwork; NoSubtitles = [bool]$NoSubtitles;
+  Languages = $(if ($Languages) { $Languages } else { 'none' }) } | ConvertTo-Json | Set-Content -Path (Join-Path $InstallDir 'install-options.json') -Encoding UTF8
 # Where the apps C3 Life opens on this PC are (Dante > Open R Remote, and Dante Controller).
 [ordered]@{ rremote = $found['R Remote']; dante = $found['Dante Controller']; dvs = $found['Dante Virtual Soundcard']; companion = $found['Companion'] } |
   ConvertTo-Json | Set-Content -Path (Join-Path $InstallDir 'local-apps.json') -Encoding UTF8
@@ -357,6 +366,28 @@ $trigger = New-ScheduledTaskTrigger -AtLogOn -User "$($env:COMPUTERNAME)\$BoothU
 $settings = New-ScheduledTaskSettingsSet -RestartCount 999 -RestartInterval (New-TimeSpan -Minutes 1) -ExecutionTimeLimit ([TimeSpan]::Zero) -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -MultipleInstances IgnoreNew
 $principal = New-ScheduledTaskPrincipal -UserId "$($env:COMPUTERNAME)\$BoothUser" -LogonType Interactive -RunLevel Limited
 Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings -Principal $principal -Force | Out-Null
+
+# 2b. Updates: Update-C3Life.ps1 runs as SYSTEM (only it can read the GitHub key and replace the program files), once a
+#     day to look, and when the app asks (the booth user may start this task, nothing more). An update runs this
+#     installer from inside that task, so it leaves the task alone then (C3LIFE_UPDATING).
+foreach ($f in 'Update-C3Life.ps1', 'Set-GitHubKey.ps1') { Copy-Item -Force (Join-Path $here $f) (Join-Path $InstallDir $f) }
+New-Item -ItemType Directory -Force -Path (Join-Path $dataDir 'update') | Out-Null
+if (-not $env:C3LIFE_UPDATING) {
+  $updTask = 'C3 Life Update'
+  $uAction = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument ('-NoProfile -ExecutionPolicy Bypass -File "{0}" -InstallDir "{1}"' -f (Join-Path $InstallDir 'Update-C3Life.ps1'), $InstallDir)
+  $uTrigger = New-ScheduledTaskTrigger -Daily -At '04:23'
+  $uSettings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Hours 2) -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -MultipleInstances IgnoreNew
+  $uPrincipal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
+  Register-ScheduledTask -TaskName $updTask -Action $uAction -Trigger $uTrigger -Settings $uSettings -Principal $uPrincipal -Force | Out-Null
+  # let the booth user start it (Read and Run), so the app's Look for updates and Update now can
+  try {
+    $sid = (New-Object Security.Principal.NTAccount("$env:COMPUTERNAME\$BoothUser")).Translate([Security.Principal.SecurityIdentifier]).Value
+    $ts = New-Object -ComObject Schedule.Service; $ts.Connect()
+    $t = $ts.GetFolder('\').GetTask($updTask)
+    $sd = $t.GetSecurityDescriptor(4)
+    if ($sd -notmatch [regex]::Escape($sid)) { $t.SetSecurityDescriptor($sd + "(A;;GRGX;;;$sid)", 0) }
+  } catch { Write-Warning "The app can't start updates by itself ($($_.Exception.Message)). An Admin can still run the task 'C3 Life Update'." }
+}
 
 # 3. Firewall, booth network only
 foreach ($r in @(@{ n = 'C3 Life (booth network)'; p = $Port }, @{ n = 'Companion (booth network)'; p = 8000 })) {

@@ -17,7 +17,8 @@ steps.
 1. **Ask before every change**, and say in plain words what it will change. Read-only checks can just run.
 2. **Never on a Sunday morning, or during a service.** Set up and update on a weekday.
 3. **Never type, ask for or store passwords, PINs or licence keys.** The person types them: the Audinate licence,
-   booth's password in Autologon, and the C3 Life PINs and Admin password (`--set-pin`, see README).
+   booth's password in Autologon, the C3 Life PINs and Admin password (`--set-pin`, see README), and the GitHub key for
+   updates (`Set-GitHubKey.ps1`, which asks for it itself).
 4. **Nothing on the Sunday run sheet runs by itself.** Don't turn on anything that starts macros by itself. Recording is
    the one exception: it only listens.
 5. **Devices start in Watch only.** Only an Admin, in the app, switches the Wing or the Tio to Control. Don't do it for
@@ -45,6 +46,8 @@ Then, in an Administrator PowerShell in `C:\Setup\c3life-server`:
 7. The Mac mini helper (on the Mac, the person does it) and the switch's DHCP with two reservations: the HP .10 and the
    smart plug .5. Everything else is found by itself.
 8. The final checks: `.\Check-C3LifeServer.ps1` (every line OK), then the checklist in Step 8 of the HP Set-up guide.
+9. Updates: the person makes a read-only GitHub key (README, Order step 11) and runs `.\Set-GitHubKey.ps1` in an
+   Administrator PowerShell in `C:\C3Life`, pasting it themselves. Never ask them for it or type it.
 
 ## Their system (so the Dante set-up matches)
 
@@ -81,7 +84,9 @@ reusing one: the patch list shows who receives each card output.
 - `.\Check-C3LifeServer.ps1`: checks everything, reads only.
 - `schtasks /end /tn "C3 Life"` and `schtasks /run /tn "C3 Life"`: stop and start C3 Life.
 - Logs: `C:\C3Life\logs`. Settings: `C:\C3Life\server\config.json`. Data (PINs hashed, mixes, layouts): `C:\C3Life\data`.
-- The app on any phone on the booth Wi-Fi: http://192.168.10.10 (or http://c3life.local). Help > Run system check
+- The app on any phone on the booth Wi-Fi: http://192.168.10.10 (or http://c3life.local) opens Sign in. Listening for
+  anyone, no sign-in: http://192.168.10.10/listen (and /listen/<page>). The foyer team: /foyer. Help > Run system check
   reads every device and changes nothing.
-- Updating later: the "Updating the app on the HP" section of the manual (back up first, new folder, run
-  `Install-C3Life.ps1` again; settings and data are kept).
+- Updating later: in the app, Saved setup > Updates (an Admin; it backs up first, installs with the same options and puts
+  the backup back if C3 Life doesn't start; never on a Sunday). It needs the GitHub key once (`Set-GitHubKey.ps1`, the
+  person pastes it). By hand: the "Updating the app on the HP" section of the manual. Log: `C:\C3Life\logs\update.log`.

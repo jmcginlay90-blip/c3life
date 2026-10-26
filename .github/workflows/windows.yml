@@ -95,11 +95,57 @@ jobs:
           }
           "C3 Life $($h.version) is up, serving the $($h.app) folder"
           $to = curl.exe -s -o NUL -w "%{redirect_url}" http://127.0.0.1:8080/
-          if ($to -notlike '*Listen.dc.html*') { throw "The address should open Listen, not '$to'" }
+          if ($to -notlike '*User.dc.html*') { throw "The address should open Sign in, not '$to'" }
           "The address opens: $to"
+          $to = curl.exe -s -o NUL -w "%{redirect_url}" http://127.0.0.1:8080/listen
+          if ($to -notlike '*Hear.dc.html*') { throw "/listen should open the Listen page, not '$to'" }
+          "/listen opens: $to"
           Invoke-WebRequest http://127.0.0.1:8080/project/Lights.dc.html -UseBasicParsing -TimeoutSec 5 | Out-Null
           'Lights page served'
           Stop-Process $p
+      - name: Updates (Update-C3Life.ps1, with a pretend GitHub)
+        shell: pwsh
+        run: |
+          $t = Get-ScheduledTask -TaskName 'C3 Life Update'
+          "Update task: runs as $($t.Principal.UserId), $($t.Actions[0].Execute) $($t.Actions[0].Arguments)"
+          if ($t.Principal.UserId -notmatch 'SYSTEM') { throw 'The update task should run as SYSTEM' }
+          $sid = (New-Object Security.Principal.NTAccount("$env:COMPUTERNAME\booth")).Translate([Security.Principal.SecurityIdentifier]).Value
+          $ts = New-Object -ComObject Schedule.Service; $ts.Connect()
+          $sd = $ts.GetFolder('\').GetTask('C3 Life Update').GetSecurityDescriptor(4)
+          if ($sd -notmatch [regex]::Escape($sid)) { throw "The booth user should be allowed to start it: $sd" }
+          if (-not (Test-Path C:\C3Life\install-options.json)) { throw 'install-options.json is missing' }
+          Get-Content C:\C3Life\install-options.json
+          # the new version: this checkout, as GitHub's download would have it
+          git archive --prefix owner-c3life-bbbbbbb/ -o "$env:RUNNER_TEMP\new.zip" HEAD
+          $cfg = Get-Content C:\C3Life\server\config.json -Raw | ConvertFrom-Json
+          $cfg | Add-Member -Force -NotePropertyName update_api -NotePropertyValue 'http://127.0.0.1:8977'
+          $cfg | Add-Member -Force -NotePropertyName update_repo -NotePropertyValue 'owner/c3life'
+          $cfg | ConvertTo-Json -Depth 6 | Set-Content C:\C3Life\server\config.json -Encoding UTF8
+          Start-Process python -ArgumentList '.github\ci\fake_github.py', '8977', "$env:RUNNER_TEMP\new.zip", 'test-key' | Out-Null
+          Start-Sleep 2
+          # the key, as Set-GitHubKey.ps1 keeps it (encrypted for this PC)
+          Add-Type -AssemblyName System.Security
+          New-Item -ItemType Directory -Force C:\C3Life\secrets | Out-Null
+          [IO.File]::WriteAllBytes('C:\C3Life\secrets\github-key.dat', [Security.Cryptography.ProtectedData]::Protect([Text.Encoding]::UTF8.GetBytes('test-key'), $null, [Security.Cryptography.DataProtectionScope]::LocalMachine))
+          ('{"sha":"' + ('a' * 40) + '","title":"Before"}') | Set-Content C:\C3Life\data\update\installed.json
+          # 1. look (as the daily run does), in Windows PowerShell like the task
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\C3Life\Update-C3Life.ps1
+          $st = Get-Content C:\C3Life\data\update\status.json -Raw | ConvertFrom-Json
+          "Looked: ok=$($st.ok) behind=$($st.behind) new: $(($st.new | ForEach-Object { $_.title }) -join ' | ')"
+          if (-not $st.ok -or -not $st.behind -or @($st.new).Count -lt 2) { Get-Content C:\C3Life\logs\update.log; throw 'Looking for updates did not work' }
+          # 2. update, as when an Admin taps Update now
+          ('{"action":"apply","sha":"' + ('b' * 40) + '","by":"CI"}') | Set-Content C:\C3Life\data\update\request.json
+          $env:C3LIFE_UPDATE_ANY_DAY = '1'
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\C3Life\Update-C3Life.ps1
+          $st = Get-Content C:\C3Life\data\update\status.json -Raw | ConvertFrom-Json
+          Get-Content C:\C3Life\logs\update.log
+          if ($st.last.result -ne 'updated') { Get-ChildItem C:\C3Life\logs\update-install-*.txt | Get-Content -Tail 60; throw "The update did not finish: $($st.last.why)" }
+          if ((Get-Content C:\C3Life\data\update\installed.json -Raw | ConvertFrom-Json).sha -ne ('b' * 40)) { throw 'installed.json should say the new version' }
+          if (-not (Get-ChildItem C:\C3Life\backups -Directory -Filter 'before-update-*')) { throw 'It should have backed up first' }
+          if (-not (Get-ScheduledTask -TaskName 'C3 Life Update' -ErrorAction SilentlyContinue)) { throw 'The update task should still be there' }
+          $c2 = Get-Content C:\C3Life\server\config.json -Raw | ConvertFrom-Json
+          if ($c2.port -ne 8080) { throw 'The update should keep the same options (port 8080)' }
+          'Looked, backed up, installed with the same options, and kept its settings'
       - name: Keep the install logs
         if: always()
         uses: actions/upload-artifact@v4

@@ -314,6 +314,33 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
     </section>
     </sc-if>
 
+    <sc-if value="{{updShow}}" hint-placeholder-val="{{ true }}">
+    <section class="card" style="display:flex;flex-direction:column;gap:8px;border-color:{{updBorder}}" aria-label="Updates">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><div class="lbl">Updates</div><span style="font-size:12px;color:#A3ACB8">{{updChecked}}</span></div>
+      <div style="font-size:14px">{{updInstalled}}</div>
+      <sc-if value="{{updHasNew}}" hint-placeholder-val="{{ true }}">
+        <div style="font-size:15px;font-weight:600;color:#F5C518">{{updHeadline}}</div>
+        <ul style="margin:0;padding-left:20px;font-size:13px;color:#C9CFD7;line-height:1.5"><sc-for list="{{updNew}}" as="n" hint-placeholder-count="2"><li>{{n.title}}</li></sc-for></ul>
+      </sc-if>
+      <sc-if value="{{updBusy}}" hint-placeholder-val="{{ false }}"><div role="status" style="font-size:14px;color:#6CB4F5">{{updBusyText}}</div></sc-if>
+      <sc-if value="{{updLast}}" hint-placeholder-val="{{ false }}"><div role="status" style="font-size:13px;color:{{updLastCol}};line-height:1.45">{{updLast}}</div></sc-if>
+      <sc-if value="{{updErr}}" hint-placeholder-val="{{ false }}"><div role="alert" style="font-size:13px;color:#FF7A45;line-height:1.45">{{updErr}}</div></sc-if>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn" onClick="{{updCheck}}" disabled="{{updNoCheck}}">Look for updates</button>
+        <button class="btn pri" onClick="{{updAsk}}" disabled="{{updNoApply}}">Update now…</button>
+      </div>
+      <sc-if value="{{updWhy}}" hint-placeholder-val="{{ false }}"><div style="font-size:12px;color:#A3ACB8">{{updWhy}}</div></sc-if>
+      <sc-if value="{{updAsking}}" hint-placeholder-val="{{ false }}">
+        <div class="card" role="dialog" aria-label="Update C3 Life?" style="border-color:#F5C518;display:flex;flex-direction:column;gap:8px">
+          <div style="font-size:15px;font-weight:600">Update C3 Life to the version from {{updDate}}?</div>
+          <div style="font-size:13px;color:#C9CFD7;line-height:1.45">Everything is backed up first. Then it installs, and C3 Life restarts: about 5 minutes, and every phone and iPad loses C3 Life for a minute or two (the desk, Dante and the sound keep going). If it doesn’t start again, the version before is put back by itself. Don’t do this just before or during a service.</div>
+          <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px"><button class="btn" onClick="{{updNo}}">Cancel</button><button class="btn pri" onClick="{{updYes}}">Yes, update now</button></div>
+        </div>
+      </sc-if>
+      <div style="font-size:12px;color:#A3ACB8;line-height:1.45">C3 Life looks on GitHub once a day. Only an Admin can update, and never on a Sunday or while recording or playing back.</div>
+    </section>
+    </sc-if>
+
     <section class="card" style="display:flex;flex-direction:column;gap:10px">
       <div class="lbl">What the save file holds</div>
       <div style="display:flex;flex-wrap:wrap;gap:6px">
@@ -378,9 +405,10 @@ class Component extends DCLogic {
         if (!j || !j.ok) return;  // no C3 Life server: the demo
         try { localStorage.setItem('booth.appname', j.name); } catch (e) {}
         const first = !this.state.srv;
-        this.setState(Object.assign({ srv: j, admin: j.admin, appSaved: j.name }, first || this.state.appDraft === this.state.appSaved ? { appDraft: j.name } : {}));
+        this.setState(Object.assign({ srv: j, admin: j.admin, appSaved: j.name, srvGone: false }, first || this.state.appDraft === this.state.appSaved ? { appDraft: j.name } : {}));
+        if (j.admin) fetch('/api/update', { headers: { Authorization: 'Bearer ' + this.tok() } }).then((r) => r.json()).then((u) => { if (u && u.ok) this.setState({ upd: u }); }).catch(() => {});
       })
-      .catch(() => {});
+      .catch(() => { if (this.state.srv && this.state.upd && this.state.upd.busy) this.setState({ srvGone: true }); });
   }
   post(path, body) {
     return fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + this.tok() }, body: JSON.stringify(body) })
@@ -421,6 +449,36 @@ class Component extends DCLogic {
       },
       holdsNote: 'Not in a backup: recordings, report photos and saved subtitles (they’re big, and copied their own ways), the Wing’s own scenes, ProPresenter slides and Spotify downloads. PINs and passwords stay hashed.'
     });
+  }
+  // Updates (Admin): what the "C3 Life Update" task found on GitHub, and asking it to look or to install.
+  updVals() {
+    const s = this.state, u = s.srv ? s.upd : (s.pvUpd || { installed: { title: 'Patch update', when: '2026-10-20 10:00' }, latest: { sha: 'b'.repeat(40), date: '2026-10-27T10:00:00Z', title: 'Simple pages' }, new: [{ title: 'Simple pages: Foyer, Listen pages and updates' }, { title: 'Marker tools: Previous/Next, several parts' }], behind: true, checked: '2026-10-26 04:23', key: true, state: 'idle', busy: false, why_not: '', can_check: true });
+    const day = (d) => { try { return new Date(d).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' }); } catch (e) { return d; } };
+    const STATE = { checking: 'Looking on GitHub…', downloading: 'Downloading the new version…', 'backing up': 'Backing everything up…', installing: 'Installing… C3 Life restarts in a minute or two.', starting: 'Checking C3 Life starts again…', 'putting back': 'It didn’t start, so the version before is being put back…', waiting: 'Starting…' };
+    const go = (path, body, msg) => fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + this.tok() }, body: JSON.stringify(body) })
+      .then((r) => r.json()).then((j) => { this.setState({ upd: j, updMsg: j.ok ? msg : (j.error || 'Not started.') }); }).catch(() => this.setState({ updMsg: 'The C3 Life server didn’t answer.' }));
+    if (!u) return { updShow: !!s.admin && !!s.srv, updInstalled: 'Reading…', updHasNew: false, updNew: [], updBusy: false, updLast: '', updErr: '', updNoCheck: true, updNoApply: true, updWhy: '', updAsking: false, updChecked: '', updBorder: '#262C36' };
+    const last = u.last, busy = u.busy || s.srvGone;
+    return {
+      updShow: !!s.admin,
+      updChecked: u.checked ? 'Last looked ' + u.checked : '',
+      updInstalled: u.installed ? 'Installed: ' + u.installed.title + (u.installed.when ? ' (' + u.installed.when + ')' : '') : 'Installed: not known yet (installed by hand). The first update sets it.',
+      updHasNew: !!u.behind && !!u.latest, updHeadline: u.latest ? 'New version from ' + day(u.latest.date) + (u.new && u.new.length ? ':' : ': ' + u.latest.title) : '',
+      updNew: (u.new || []).slice(0, 8), updDate: u.latest ? day(u.latest.date) : '',
+      updBorder: u.behind ? '#F5C518' : '#262C36',
+      updBusy: !!busy, updBusyText: s.srvGone ? 'C3 Life is restarting with the new version… this screen comes back by itself.' : (STATE[u.state] || 'Working…'),
+      updLast: last ? (last.result === 'updated' ? '✓ Updated to “' + last.title + '” on ' + last.when + ' by ' + last.by + '.' : 'The update on ' + last.when + ' didn’t work: ' + last.why) : (s.updMsg || ''),
+      updLastCol: last && last.result !== 'updated' ? '#FF7A45' : '#4FD18B',
+      updErr: u.error || '',
+      updNoCheck: !u.can_check || busy, updNoApply: busy || !!u.why_not, updWhy: busy ? '' : u.why_not,
+      updCheck: () => { if (!s.srv) { this.setState({ pvUpd: Object.assign({}, u, { checked: new Date().toLocaleString() }) }); return; } go('/api/update/check', {}, 'Looking on GitHub… this takes a few seconds.'); },
+      updAsking: !!s.updAsk, updAsk: () => this.setState({ updAsk: true }), updNo: () => this.setState({ updAsk: false }),
+      updYes: () => {
+        this.setState({ updAsk: false });
+        if (!s.srv) { this.setState({ pvUpd: Object.assign({}, u, { busy: true, state: 'installing' }) }); setTimeout(() => this.setState({ pvUpd: Object.assign({}, u, { busy: false, behind: false, new: [], installed: { title: u.latest.title, when: 'just now' }, last: { result: 'updated', title: u.latest.title, when: 'just now', by: 'Admin' }, why_not: 'This is the newest version.' }) }), 2500); return; }
+        go('/api/update/apply', { sha: u.latest.sha }, 'Updating… C3 Life restarts in a minute or two.');
+      }
+    };
   }
   stamp() { return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
   renderVals() {
@@ -512,6 +570,7 @@ class Component extends DCLogic {
       demoAdminLabel: s.admin ? 'Demo: lock again' : 'Demo: unlock as Admin',
       demoAdmin: () => this.setState({ admin: !s.admin })
     };
+    Object.assign(base, this.updVals());
     return s.srv ? this.srvVals(base) : base;
   }
 }

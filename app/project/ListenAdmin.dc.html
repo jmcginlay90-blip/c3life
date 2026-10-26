@@ -121,6 +121,10 @@ select{min-height:44px;border-radius:10px;border:1px solid #333B47;background:#0
 .subs-bar{flex-wrap:nowrap}.subs-bar select.lang{min-height:44px;flex:1;min-width:0;max-width:60%;font-size:14px}
 .subs-size{display:flex;align-items:center;gap:8px}.subs-size .ptext{flex:1}
 .btn.ghost{background:transparent;border-style:dashed;color:#A3ACB8;align-self:center}
+.pgpill{font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.pgpill.on{background:#173a26;color:#4FD18B}.pgpill.off{background:#262C36;color:#A3ACB8}
+.pgurl{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:13px;color:#6CB4F5;word-break:break-all}
+.btn.red{border-color:#C0392B;color:#FF8A7A}
 .saved{min-height:44px;display:flex;align-items:center;justify-content:center;font-size:14px;color:#4FD18B}
 .pm{display:flex;gap:8px}@media (max-width:500px){.pm{flex-direction:column}}
 .plink{color:#6CB4F5;font-size:15px;word-break:break-all;min-height:44px;display:flex;align-items:center}
@@ -191,7 +195,7 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
         <a href="Recording.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.5" fill="currentColor"/></svg>Record</a></sc-if>
         <sc-if value="{{m_plan}}" hint-placeholder-val="{{ true }}"><a href="Plan.dc.html" class="{{mc_plan}}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h1M4 12h1M4 18h1"/></svg>Plan</a></sc-if>
         <sc-if value="{{m_mymix}}" hint-placeholder-val="{{ true }}"><a href="MyMix.dc.html" class="{{mc_mymix}}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="3" y="14" width="4" height="6" rx="1.5"/><rect x="17" y="14" width="4" height="6" rx="1.5"/></svg>My mix</a></sc-if>
-        <sc-if value="{{m_foyer}}" hint-placeholder-val="{{ true }}"><a href="FoyerTeam.dc.html" class="{{mc_foyer}}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5L6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>Foyer</a></sc-if>
+        <sc-if value="{{m_foyer}}" hint-placeholder-val="{{ true }}"><a href="FoyerSimple.dc.html" class="{{mc_foyer}}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5L6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>Foyer</a></sc-if>
         <sc-if value="{{m_chat}}" hint-placeholder-val="{{ true }}"><a href="Chat.dc.html" class="{{mc_chat}}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>Chat</a></sc-if>
         <sc-if value="{{m_listen}}" hint-placeholder-val="{{ true }}"><a href="Listen.dc.html" class="{{mc_listen}}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="15" width="4" height="6" rx="1.5"/><rect x="17" y="15" width="4" height="6" rx="1.5"/><path d="M10 9.5a2.5 2.5 0 0 1 4 0"/></svg>Listen</a></sc-if>
         <sc-if value="{{m_lset}}" hint-placeholder-val="{{ true }}"><a href="ListenAdmin.dc.html" class="{{mc_lset}}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Listen settings</a></sc-if>
@@ -209,7 +213,7 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
         <a href="Recording.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.5" fill="currentColor"/></svg>Record</a></sc-if>
         <sc-if value="{{m_plan}}" hint-placeholder-val="{{ true }}"><a href="Plan.dc.html" class="{{mc_plan}}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h1M4 12h1M4 18h1"/></svg>Plan</a></sc-if>
         <sc-if value="{{m_mymix}}" hint-placeholder-val="{{ true }}"><a href="MyMix.dc.html" class="{{mc_mymix}}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="3" y="14" width="4" height="6" rx="1.5"/><rect x="17" y="14" width="4" height="6" rx="1.5"/></svg>My mix</a></sc-if>
-        <sc-if value="{{m_foyer}}" hint-placeholder-val="{{ true }}"><a href="FoyerTeam.dc.html" class="{{mc_foyer}}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5L6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>Foyer</a></sc-if>
+        <sc-if value="{{m_foyer}}" hint-placeholder-val="{{ true }}"><a href="FoyerSimple.dc.html" class="{{mc_foyer}}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5L6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>Foyer</a></sc-if>
         <sc-if value="{{m_chat}}" hint-placeholder-val="{{ true }}"><a href="Chat.dc.html" class="{{mc_chat}}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>Chat</a></sc-if>
         <sc-if value="{{m_listen}}" hint-placeholder-val="{{ true }}"><a href="Listen.dc.html" class="{{mc_listen}}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="15" width="4" height="6" rx="1.5"/><rect x="17" y="15" width="4" height="6" rx="1.5"/><path d="M10 9.5a2.5 2.5 0 0 1 4 0"/></svg>Listen</a></sc-if>
         <sc-if value="{{m_lset}}" hint-placeholder-val="{{ true }}"><a href="ListenAdmin.dc.html" class="{{mc_lset}}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Listen settings</a></sc-if>
@@ -252,6 +256,42 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
         <sc-if value="{{siErr}}" hint-placeholder-val="{{ false }}"><div class="ptext" role="alert" style="color:#FF7A45">{{siErrText}}</div></sc-if>
         <button class="btn pri" onClick="{{signIn}}" disabled="{{siBusy}}">Sign in</button>
       </section>
+    </sc-if>
+
+    <sc-if value="{{isPages}}" hint-placeholder-val="{{ false }}">
+      <div class="ptext">A Listen page plays one feed to anyone on the church Wi-Fi, with no sign-in and no menu: they scan the QR code on the poster and tap Play. Each page has its own address. The main one is {{pgHost}}/listen.</div>
+      <sc-for list="{{pgList}}" as="pg" hint-placeholder-count="2">
+        <section class="card" style="display:flex;flex-direction:column;gap:8px" aria-label="{{pg.name}}">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div style="font-size:17px;font-weight:600">{{pg.name}}</div><span class="{{pg.pillCls}}">{{pg.pill}}</span></div>
+          <div class="pgurl">{{pg.url}}</div>
+          <div class="ptext">Plays: {{pg.feed}}{{pg.wordsText}}</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn sm" onClick="{{pg.poster}}">QR poster</button>
+            <button class="btn sm" onClick="{{pg.edit}}">Change</button>
+            <button class="btn sm" onClick="{{pg.toggle}}">{{pg.toggleText}}</button>
+            <sc-if value="{{pg.canDelete}}" hint-placeholder-val="{{ true }}"><button class="btn sm red" onClick="{{pg.del}}" aria-label="Delete {{pg.name}}">Delete…</button></sc-if>
+          </div>
+          <sc-if value="{{pg.isMain}}" hint-placeholder-val="{{ false }}"><div class="ptext" style="font-size:12px">The main page: it can be turned off, not deleted, so the posters always lead somewhere.</div></sc-if>
+        </section>
+      </sc-for>
+      <sc-if value="{{pgEditing}}" hint-placeholder-val="{{ false }}">
+        <section class="card" style="display:flex;flex-direction:column;gap:8px;border-color:#F5C518" aria-label="{{pgEditTitle}}">
+          <div style="font-size:17px;font-weight:600">{{pgEditTitle}}</div>
+          <label class="ptext" for="pg-name">Page name (at the top of the page)</label>
+          <input type="text" id="pg-name" maxlength="40" value="{{pgName}}" onChange="{{setPgName}}" placeholder="e.g. Kids church">
+          <sc-if value="{{pgCanSlug}}" hint-placeholder-val="{{ true }}">
+            <label class="ptext" for="pg-slug">Its address: {{pgHost}}/listen/…</label>
+            <input type="text" id="pg-slug" maxlength="24" value="{{pgSlug}}" onChange="{{setPgSlug}}" placeholder="e.g. kids" autocapitalize="off" autocorrect="off" spellcheck="false">
+          </sc-if>
+          <label class="ptext" for="pg-src">Plays this feed</label>
+          <select id="pg-src" onChange="{{setPgSrc}}" value="{{pgSrc}}"><sc-for list="{{pgSrcOpts}}" as="o" hint-placeholder-count="4"><option value="{{o.id}}" selected="{{o.sel}}">{{o.name}}</option></sc-for></select>
+          <label class="chk"><input type="checkbox" checked="{{pgWords}}" onChange="{{togglePgWords}}"> Words on screen available <span style="color:#A3ACB8">(best for speech)</span></label>
+          <sc-if value="{{pgErr}}" hint-placeholder-val="{{ false }}"><div class="ptext" role="alert" style="color:#FF7A45">{{pgErr}}</div></sc-if>
+          <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px"><button class="btn" onClick="{{pgCancel}}">Cancel</button><button class="btn pri" onClick="{{pgSave}}">{{pgSaveText}}</button></div>
+        </section>
+      </sc-if>
+      <sc-if value="{{pgNotEditing}}" hint-placeholder-val="{{ true }}"><button class="btn pri" onClick="{{pgAdd}}">+ Add a page…</button></sc-if>
+      <sc-if value="{{pgPreviewNote}}" hint-placeholder-val="{{ false }}"><div class="ptext">Preview: pages are kept on this device. On the C3 Life server they're kept on the server, and the QR posters are made there.</div></sc-if>
     </sc-if>
 
     <sc-if value="{{isRooms}}" hint-placeholder-val="{{ false }}">
@@ -308,9 +348,34 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
     <sc-if value="{{isSources}}" hint-placeholder-val="{{ false }}">
       <div class="ptext">A source is any sound coming into the C3 Life server through Dante Virtual Soundcard: one channel (mono) or two (left and right). DVS channels 1 to 3 are the RTA and MD log, so use 4 onwards. Then route what you want to those channels on <a href="Dante.dc.html">Mixer › Dante</a>. (DVS = Dante Virtual Soundcard on the C3 Life server.) Each source can take its name from Dante, like the Patch tab.</div>
       <sc-if value="{{hasDanteNote}}" hint-placeholder-val="{{ false }}"><div class="ptext" role="status" style="color:{{danteNoteCol}}">{{danteNote}}</div></sc-if>
+      <sc-if value="{{fdClosed}}" hint-placeholder-val="{{ true }}"><button class="btn pri" onClick="{{fdOpen}}">+ Add a feed…</button></sc-if>
+      <sc-if value="{{fdOpenNow}}" hint-placeholder-val="{{ false }}">
+        <section class="card" style="display:flex;flex-direction:column;gap:8px;border-color:#F5C518" aria-label="Add a feed">
+          <div style="font-size:17px;font-weight:600">Add a feed</div>
+          <div class="ptext">Name it and choose where it comes from on Dante. C3 Life picks the HP's channel for you: if the sound already comes in (the recording takes most sources), it's shared and nothing changes on Dante.</div>
+          <label class="ptext" for="fd-name">Feed name</label>
+          <input type="text" id="fd-name" maxlength="40" value="{{fdName}}" onChange="{{fdSetName}}" placeholder="e.g. Choir mics">
+          <div class="ptext">One channel or two?</div>
+          <div style="display:flex;gap:8px"><button class="{{fdMonoCls}}" onClick="{{fdMono}}" aria-pressed="{{fdIsMono}}">Mono</button><button class="{{fdStereoCls}}" onClick="{{fdStereo}}" aria-pressed="{{fdIsStereo}}">Stereo (left and right)</button></div>
+          <label class="ptext" for="fd-l">{{fdLLabel}}</label>
+          <select id="fd-l" onChange="{{fdSetL}}" value="{{fdL}}"><sc-for list="{{fdOptsL}}" as="o" hint-placeholder-count="6"><option value="{{o.v}}" selected="{{o.sel}}">{{o.t}}</option></sc-for></select>
+          <sc-if value="{{fdIsStereo}}" hint-placeholder-val="{{ false }}">
+            <label class="ptext" for="fd-r">Right comes from (Dante)</label>
+            <select id="fd-r" onChange="{{fdSetR}}" value="{{fdR}}"><sc-for list="{{fdOptsR}}" as="o" hint-placeholder-count="6"><option value="{{o.v}}" selected="{{o.sel}}">{{o.t}}</option></sc-for></select>
+          </sc-if>
+          <label class="chk"><input type="checkbox" checked="{{fdWords}}" onChange="{{fdToggleWords}}"> Words on screen <span style="color:#A3ACB8">(speech only, not songs)</span></label>
+          <label class="chk"><input type="checkbox" checked="{{fdPage}}" onChange="{{fdTogglePage}}"> Also make a Listen page</label>
+          <sc-if value="{{fdPage}}" hint-placeholder-val="{{ true }}">
+            <label class="ptext" for="fd-slug">Its address: {{pgHost}}/listen/…</label>
+            <input type="text" id="fd-slug" maxlength="24" value="{{fdSlug}}" onChange="{{fdSetSlug}}" placeholder="e.g. choir" autocapitalize="off" autocorrect="off" spellcheck="false">
+          </sc-if>
+          <sc-if value="{{fdErr}}" hint-placeholder-val="{{ false }}"><div class="ptext" role="alert" style="color:#FF7A45">{{fdErr}}</div></sc-if>
+          <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px"><button class="btn" onClick="{{fdCancel}}">Cancel</button><button class="btn pri" onClick="{{fdGo}}">Add feed…</button></div>
+        </section>
+      </sc-if>
       <sc-for list="{{sources}}" as="x" hint-placeholder-count="3">
         <section class="card" style="display:flex;flex-direction:column;gap:8px" aria-label="{{x.name}}">
-          <div style="display:flex;gap:8px;align-items:center"><sc-if value="{{x.notDante}}" hint-placeholder-val="{{ true }}"><input type="text" maxlength="40" value="{{x.name}}" onChange="{{x.rename}}" aria-label="Source name"></sc-if><sc-if value="{{x.dante}}" hint-placeholder-val="{{ false }}"><div style="flex:1;font-size:16px;font-weight:600">{{x.name}}</div></sc-if><button class="btn sm" style="flex:none" onClick="{{x.remove}}" aria-label="Remove source {{x.name}}">Remove</button></div>
+          <div style="display:flex;gap:8px;align-items:center"><sc-if value="{{x.notDante}}" hint-placeholder-val="{{ true }}"><input type="text" maxlength="40" value="{{x.name}}" onChange="{{x.rename}}" aria-label="Source name"></sc-if><sc-if value="{{x.dante}}" hint-placeholder-val="{{ false }}"><div style="flex:1;font-size:16px;font-weight:600">{{x.name}}</div></sc-if><sc-if value="{{x.hasSound}}" hint-placeholder-val="{{ false }}"><span class="{{x.soundCls}}">{{x.soundText}}</span></sc-if><button class="btn sm" style="flex:none" onClick="{{x.remove}}" aria-label="Remove source {{x.name}}">Remove</button></div>
           <div class="ptext">From Dante: {{x.fromDante}}</div>
           <sc-if value="{{x.danteMoved}}" hint-placeholder-val="{{ false }}"><div class="ptext" style="color:#F5C518">Dante now calls this “{{x.danteNow}}”. Save sources to use the new name.</div></sc-if>
           <label class="chk"><input type="checkbox" checked="{{x.dante}}" onChange="{{x.toggleDante}}"> Use the name from Dante</label>
@@ -327,7 +392,7 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
           <sc-if value="{{x.clash}}" hint-placeholder-val="{{ false }}"><div class="ptext" style="color:#F5C518">{{x.clashText}}</div></sc-if>
         </section>
       </sc-for>
-      <div style="display:flex;gap:8px"><input type="text" maxlength="40" placeholder="New source, e.g. Choir mics" value="{{newSource}}" onChange="{{setNewSource}}" aria-label="New source name"><button class="btn" style="flex:none" onClick="{{addSource}}" disabled="{{noNewSource}}">Add source</button></div>
+      <div style="display:flex;gap:8px"><input type="text" maxlength="40" placeholder="Or by channel number: new source name" value="{{newSource}}" onChange="{{setNewSource}}" aria-label="New source name"><button class="btn" style="flex:none" onClick="{{addSource}}" disabled="{{noNewSource}}">Add source</button></div>
       <sc-if value="{{sourcesSaved}}" hint-placeholder-val="{{ true }}"><div class="saved">✓ Saved</div></sc-if><sc-if value="{{sourcesDirty}}" hint-placeholder-val="{{ false }}"><button class="btn pri" onClick="{{askSaveSources}}">Save sources…</button></sc-if>
       <section class="card" style="display:flex;flex-direction:column;gap:2px" aria-label="Saved subtitles">
         <div class="lbl">Saved subtitles</div>
@@ -407,6 +472,7 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
     <div class="ask" role="dialog" aria-label="{{askTitle}}">
       <div style="font-size:17px;font-weight:600">{{askTitle}}</div>
       <div class="ptext">{{askText}}</div>
+      <sc-if value="{{askHasList}}" hint-placeholder-val="{{ false }}"><ul class="ptext" style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px"><sc-for list="{{askList}}" as="t" hint-placeholder-count="3"><li>{{t}}</li></sc-for></ul></sc-if>
       <sc-if value="{{askNeedsPw}}" hint-placeholder-val="{{ false }}">
         <label class="ptext" for="ask-name">Admin's name</label>
         <input type="text" id="ask-name" maxlength="40" value="{{askPwName}}" onChange="{{setAskPwName}}" autocomplete="username">
@@ -426,7 +492,7 @@ const PAGE = 'admin';  // 'listen' = just listening; 'admin' = Listen settings (
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { tab: PAGE === 'admin' ? 'rooms' : 'listen', cfg: this.loadCfg(), saved: true, srcSaved: true, now: '', playing: false, volume: this.readVol(), ask: null, toast: '',
+    this.state = { tab: PAGE === 'admin' ? 'pages' : 'listen', pages: null, pgEdit: null, feed: null, sound: {}, cfg: this.loadCfg(), saved: true, srcSaved: true, now: '', playing: false, volume: this.readVol(), ask: null, toast: '',
       newRoom: '', newGroup: '', newSource: '', pairRoom: 'creche', server: null, mine: null, room: this.readRoom(), remote: false, live: {},
       subsOn: this.readPref('booth.subs', '1') === '1', subsSize: parseInt(this.readPref('booth.subsize', '20'), 10) || 20, subLines: [], subPartial: '', subStatus: '', subReason: '', subsLang: this.readPref('booth.subslang', ''), langs: null,
       pub: this.loadPub(), pubEdit: {}, pubLinkEdit: null, publicLink: '' };
@@ -527,9 +593,10 @@ class Component extends DCLogic {
     const u = this.user();
     if (u && u.role === 'Admin' && !this.state.room) {
       if (this.state.tab === 'public') this.loadPublic();
+      if (this.state.tab === 'pages' && !this.state.pgEdit) this.loadPages();
       if (this.state.tab === 'sources') this.api('/api/dante/dvs').then(({ code, j }) => { if (code === 200) this.setState({ dante: j }); }).catch(() => {});
       if (this.state.tab === 'sources') this.api('/api/listen/transcripts').then(({ code, j }) => { if (code === 200) this.setState({ transcripts: j.transcripts, transcriptDays: j.days }); }).catch(() => {});
-      this.api('/api/listen/config').then(({ code, j }) => { if (code === 200) this.setState({ live: j.live || {}, paired: j.paired || {}, homeOn: !!j.remote_on, ...(this.state.saved && this.state.srcSaved ? { cfg: { sources: j.sources, groups: j.groups, rooms: j.rooms } } : {}) }); }).catch(() => {});
+      this.api('/api/listen/config').then(({ code, j }) => { if (code === 200) this.setState({ live: j.live || {}, sound: j.sound || {}, paired: j.paired || {}, homeOn: !!j.remote_on, ...(this.state.saved && this.state.srcSaved ? { cfg: { sources: j.sources, groups: j.groups, rooms: j.rooms } } : {}) }); }).catch(() => {});
     }
   }
   // Admins sign in with a password; everyone else with a 4-digit PIN.
@@ -622,6 +689,114 @@ class Component extends DCLogic {
   usedChannels(c, except) {
     const used = {}; c.sources.forEach((x) => { if (x.id !== except) x.ch.forEach((n) => { used[n] = x.name; }); }); [1, 2, 3].forEach((n) => { used[n] = n === 3 ? 'the MD log' : 'the RTA'; }); return used;
   }
+  // ---- Add a feed: name it, pick where it comes from on Dante; the server picks the HP's channel (or shares one) ----
+  feedSources() {
+    if (this.state.server) return this.state.fdSources || [];
+    return [{ dev: 'WING-ABC123', ch: 'Speech' }, { dev: 'WING-ABC123', ch: 'Stream L' }, { dev: 'WING-ABC123', ch: 'Stream R' },
+      { dev: 'Y002-box-2-Yamaha-Tio1608', ch: 'CH5 Choir L' }, { dev: 'Y002-box-2-Yamaha-Tio1608', ch: 'CH6 Choir R' }, { dev: 'C3-Life-Leeds-Media', ch: 'ProPresenter L' }];
+  }
+  feedVals() {
+    const s = this.state, f = s.feed, list = this.feedSources();
+    const ed = (patch) => this.setState({ feed: Object.assign({}, f, patch, { err: '' }) });
+    const opts = (cur) => [{ v: '', t: s.server && !s.fdSources ? 'Reading Dante\u2026' : 'Choose\u2026', sel: !cur }].concat(list.map((x, i) => ({ v: String(i), t: x.dev + ' \u00b7 ' + x.ch, sel: String(i) === cur })));
+    const pick = (v) => (v === '' || !list[+v] ? null : { dev: list[+v].dev, ch: list[+v].ch });
+    return {
+      fdClosed: !f, fdOpenNow: !!f,
+      fdOpen: () => { this.setState({ feed: { name: '', stereo: false, l: '', r: '', words: false, page: true, slug: '', slugTouched: false, err: '' } }); if (s.server) this.api('/api/listen/feed/sources').then(({ code, j }) => { if (code === 200) this.setState({ fdSources: j.sources }); }).catch(() => {}); },
+      fdCancel: () => this.setState({ feed: null }),
+      fdName: f ? f.name : '', fdSetName: (e) => { const nm = e.target.value; ed(Object.assign({ name: nm }, f.slugTouched ? {} : { slug: nm.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 24) })); },
+      fdIsMono: !!f && !f.stereo, fdIsStereo: !!f && f.stereo,
+      fdMonoCls: f && !f.stereo ? 'btn pri' : 'btn', fdStereoCls: f && f.stereo ? 'btn pri' : 'btn',
+      fdMono: () => ed({ stereo: false }), fdStereo: () => ed({ stereo: true }),
+      fdLLabel: f && f.stereo ? 'Left comes from (Dante)' : 'Comes from (Dante)',
+      fdL: f ? f.l : '', fdR: f ? f.r : '', fdOptsL: f ? opts(f.l) : [], fdOptsR: f ? opts(f.r) : [],
+      fdSetL: (e) => ed({ l: e.target.value }), fdSetR: (e) => ed({ r: e.target.value }),
+      fdWords: !!f && f.words, fdToggleWords: () => ed({ words: !f.words }),
+      fdPage: !!f && f.page, fdTogglePage: () => ed({ page: !f.page }),
+      fdSlug: f ? f.slug : '', fdSetSlug: (e) => ed({ slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+/, '').slice(0, 24), slugTouched: true }),
+      fdErr: f ? f.err : '',
+      fdGo: () => {
+        const chans = [pick(f.l)].concat(f.stereo ? [pick(f.r)] : []);
+        const body = { name: f.name.trim(), chans, words: !!f.words, page: f.page ? f.slug.replace(/-+$/, '') : undefined };
+        const err = !body.name ? 'Give the feed a name.' : chans.some((x) => !x) ? 'Choose where it comes from.' : f.page && !body.page ? 'Choose a word for the page\u2019s address, e.g. choir.' : '';
+        if (err) { ed({ err }); return; }
+        if (!s.server) { this.setState({ ask: { kind: 'feed', name: body.name, body, changes: chans.map((x) => 'Send ' + x.dev + ' \u00b7 ' + x.ch + ' to the HP as well. The desk and the stage don\u2019t change.').concat(['Add \u201c' + body.name + '\u201d to Listen.'], body.page ? ['Make /listen/' + body.page + ', which anyone on the church Wi-Fi can hear with no sign-in.'] : []) } }); return; }
+        this.api('/api/listen/feed', 'POST', Object.assign({ check: true }, body)).then(({ code, j }) => {
+          if (code === 200) this.setState({ ask: { kind: 'feed', name: body.name, body, changes: j.changes } });
+          else ed({ err: j.error || 'That can\u2019t be added.' });
+        }).catch(() => ed({ err: 'Can\u2019t reach the C3 Life server.' }));
+      }
+    };
+  }
+  // ---- Listen pages: one simple page per feed at /listen or /listen/<id>, for anyone on the church Wi-Fi ----
+  pagesDefault() { return [{ id: '', name: 'Hear the service', source: 'stream', words: true, on: true }]; }
+  loadPages() {
+    if (!this.state.server) {
+      let l = null; try { l = JSON.parse(localStorage.getItem('booth.listenpages') || 'null'); } catch (e) {}
+      if (!Array.isArray(l) || !l.some((p) => p.id === '')) l = this.pagesDefault();
+      this.setState({ pages: l });
+      return;
+    }
+    this.api('/api/listen/pages').then(({ code, j }) => { if (code === 200 && !this.state.pgEdit) this.setState({ pages: j.pages }); }).catch(() => {});
+  }
+  savePages(list, msg) {
+    if (!this.state.server) { try { localStorage.setItem('booth.listenpages', JSON.stringify(list)); } catch (e) {} this.setState({ pages: list, pgEdit: null }); this.say(msg); return; }
+    this.api('/api/listen/pages', 'PUT', { pages: list }).then(({ code, j }) => {
+      if (code === 200) { this.setState({ pages: j.pages, pgEdit: null }); this.say(msg); }
+      else { this.setState({ pgEdit: this.state.pgEdit ? Object.assign({}, this.state.pgEdit, { err: j.error || 'Not saved.' }) : null }); this.say(j.error || 'Not saved.'); }
+    }).catch(() => this.say('Can\u2019t reach the C3 Life server. Not saved.'));
+  }
+  pgHost() {
+    let h = ''; try { h = location.host; } catch (e) {}
+    return !h || /^(localhost|127\.|\[::1\])/.test(h) ? '192.168.10.10' : h;  // on the HP itself: the address phones use
+  }
+  pgUrl(p) { return 'http://' + this.pgHost() + '/listen' + (p.id ? '/' + p.id : ''); }
+  // A printable poster: the page's name, its QR code (made on the C3 Life server, no internet) and three steps.
+  poster(p) {
+    const url = this.pgUrl(p);
+    if (!this.state.server) { this.say('Preview: posters are made on the C3 Life server.'); return; }
+    const esc = (t) => String(t).replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]);
+    const qr = '/api/listen/qr.svg?text=' + encodeURIComponent(url) + '&t=' + encodeURIComponent(this.token());
+    const w = window.open('', '_blank');
+    if (!w) { this.say('Your browser stopped the poster opening. Allow pop-ups for C3 Life, then try again.'); return; }
+    w.document.write('<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + esc(p.name) + ' \u00b7 poster</title><style>@page{size:A4 portrait;margin:0}body{margin:0;font-family:system-ui,-apple-system,sans-serif;color:#111;background:#fff}.p{max-width:210mm;min-height:280mm;margin:0 auto;box-sizing:border-box;padding:18mm 16mm;display:flex;flex-direction:column;align-items:center;text-align:center;gap:6mm}.tag{background:#F5C518;font-weight:800;padding:2mm 5mm;letter-spacing:1px}h1{font-size:38pt;margin:0;line-height:1.1}.sub{font-size:18pt;margin:0;color:#333}img{width:115mm;height:115mm}ol{text-align:left;font-size:17pt;line-height:1.6;margin:0}.addr{font-size:14pt;color:#444}.addr b{font-family:ui-monospace,monospace;color:#000}.small{font-size:12pt;color:#555;max-width:160mm}.pr{margin:6mm;padding:3mm 8mm;font-size:14pt}@media print{.pr{display:none}}</style></head><body><div class="p"><div class="tag">C3 LIFE</div><h1>' + esc(p.name) + '</h1><p class="sub">Listen on your phone, with headphones or hearing aids</p><img src="' + esc(qr) + '" alt="QR code for ' + esc(url) + '"><ol><li>Join the church Wi-Fi</li><li>Point your phone\u2019s camera at the code</li><li>Tap the link, then tap <b>Play</b></li></ol><p class="addr">Or type <b>' + esc(url.replace(/^https?:\/\//, '')) + '</b> into your web browser</p><p class="small">Using hearing aids in the hall? Set them to \u201cstream only\u201d, so you don\u2019t hear an echo. Ask the welcome team if you need help.</p><button class="pr" onclick="print()">Print</button></div></body></html>');
+    w.document.close();
+  }
+  pageVals(isAdmin) {
+    const s = this.state, list = s.pages || this.pagesDefault(), e = s.pgEdit;
+    const srcs = (s.cfg && s.cfg.sources) || [], srcName = (id) => { const x = srcs.find((y) => y.id === id); return x ? x.name : 'nothing (choose a feed)'; };
+    const host = this.pgHost();
+    return {
+      pgHost: host, pgPreviewNote: s.server === false,
+      pgList: list.map((p, i) => ({
+        name: p.name, url: host + '/listen' + (p.id ? '/' + p.id : ''), feed: srcName(p.source), wordsText: p.words ? ' \u00b7 words on screen' : '',
+        pill: p.on ? '\u25CF On' : 'Off', pillCls: p.on ? 'pgpill on' : 'pgpill off', isMain: p.id === '', canDelete: p.id !== '',
+        toggleText: p.on ? 'Turn off\u2026' : 'Turn on\u2026',
+        poster: () => this.poster(p),
+        edit: () => this.setState({ pgEdit: { i, isNew: false, id: p.id, name: p.name, source: p.source || '', words: !!p.words, on: !!p.on, err: '' } }),
+        toggle: () => { if (!p.on && !p.source) { this.say('Choose the feed it plays first: tap Change.'); return; } this.setState({ ask: { kind: p.on ? 'pgoff' : 'pgon', i, name: p.name, feed: srcName(p.source) } }); },
+        del: () => this.setState({ ask: { kind: 'pgdel', i, name: p.name, url: '/listen/' + p.id } })
+      })),
+      pgEditing: !!e, pgNotEditing: !e,
+      pgEditTitle: e ? (e.isNew ? 'Add a page' : 'Change \u201c' + (list[e.i] ? list[e.i].name : e.name) + '\u201d') : '',
+      pgName: e ? e.name : '', pgSlug: e ? e.id : '', pgCanSlug: !!e && (e.isNew || e.id !== ''), pgSrc: e ? e.source : '', pgWords: !!e && e.words, pgErr: e ? e.err : '',
+      pgSrcOpts: [{ id: '', name: 'Choose a feed\u2026', sel: !!e && !e.source }].concat(srcs.map((x) => ({ id: x.id, name: x.name, sel: !!e && e.source === x.id }))),
+      setPgName: (ev) => this.setState({ pgEdit: Object.assign({}, e, { name: ev.target.value, err: '' }) }),
+      setPgSlug: (ev) => this.setState({ pgEdit: Object.assign({}, e, { id: ev.target.value.toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+/, '').slice(0, 24), err: '' }) }),
+      setPgSrc: (ev) => this.setState({ pgEdit: Object.assign({}, e, { source: ev.target.value, err: '' }) }),
+      togglePgWords: () => this.setState({ pgEdit: Object.assign({}, e, { words: !e.words }) }),
+      pgCancel: () => this.setState({ pgEdit: null }),
+      pgAdd: () => this.setState({ pgEdit: { i: list.length, isNew: true, id: '', name: '', source: '', words: false, on: true, err: '' } }),
+      pgSaveText: e && e.isNew ? 'Make this page\u2026' : 'Save\u2026',
+      pgSave: () => {
+        const name = (e.name || '').trim(), id = (e.id || '').replace(/-+$/, '');
+        const err = !name ? 'Give the page a name.' : (e.isNew || e.id !== '') && !id ? 'Choose a word for its address, e.g. kids.'
+          : list.some((p, j) => j !== e.i && p.id === id) ? 'Another page already uses ' + host + '/listen/' + id + '.' : !e.source ? 'Choose the feed it plays.' : '';
+        if (err) { this.setState({ pgEdit: Object.assign({}, e, { err }) }); return; }
+        this.setState({ pgEdit: Object.assign({}, e, { name, id }), ask: { kind: 'pgsave', i: e.i, isNew: e.isNew, name, feed: srcName(e.source), url: host + '/listen' + (id ? '/' + id : ''), on: e.on } });
+      }
+    };
+  }
   renderVals() {
     const s = this.state, c = s.cfg, u = this.user();
     const isAdmin = !!u && u.role === 'Admin' && !s.room;
@@ -642,7 +817,7 @@ class Component extends DCLogic {
       else { const ids = (me && me.sources ? me.sources : []).slice(); c.groups.forEach((g) => { if (u && g.members.indexOf(u.name) >= 0) g.sources.forEach((i) => { if (ids.indexOf(i) < 0) ids.push(i); }); }); openIds.forEach((i) => { if (ids.indexOf(i) < 0) ids.push(i); }); mine = ids.map((i) => byId[i]).filter(Boolean); }
     }
     const nowSrc = byId[s.now] || (mine.find((x) => x.id === s.now));
-    const tab = (k, n) => ({ name: n, on: s.tab === k, cls: s.tab === k ? 'ltab on' : 'ltab', pick: () => { this.setState({ tab: k }); if (k === 'public' && s.server) this.loadPublic(); } });
+    const tab = (k, n) => ({ name: n, on: s.tab === k, cls: s.tab === k ? 'ltab on' : 'ltab', pick: () => { this.setState({ tab: k }); if (k === 'public' && s.server) this.loadPublic(); if (k === 'pages') this.loadPages(); } });
     const users = (() => { try { const l = JSON.parse(localStorage.getItem('booth.users') || 'null'); if (Array.isArray(l) && l.length) return l.filter((x) => x.active !== false).map((x) => x.name); } catch (e) {} return ['Admin', 'FOH sound', 'ProPresenter', 'Lighting', 'Foyer team', 'Viewer', 'Keys (musician)']; })();
     const editG = (fn) => { const n = JSON.parse(JSON.stringify(c)); fn(n); this.setState({ cfg: n, saved: false }); };
     const editS = (fn) => { const n = JSON.parse(JSON.stringify(c)); fn(n); this.setState({ cfg: n, srcSaved: false }); };
@@ -691,7 +866,7 @@ class Component extends DCLogic {
       },
       subhead: s.room ? 'This device is a room player' : (s.remote ? 'Listening from home' : 'Hear what’s happening anywhere in the building'),
       isAdmin, preview: s.server === false,
-      tabs: [tab('rooms', 'Rooms'), tab('groups', 'Groups'), tab('sources', 'Sources'), tab('home', 'From home'), tab('public', 'Public')],
+      tabs: [tab('pages', 'Listen pages'), tab('rooms', 'Rooms'), tab('groups', 'Groups'), tab('sources', 'Sources'), tab('home', 'From home'), tab('public', 'Public')],
       pageTitle: PAGE === 'admin' ? 'Listen settings' : 'Listen',
       showTabs: PAGE === 'admin' && isAdmin, showSettingsLink: PAGE === 'listen' && isAdmin,
       notAdmin: PAGE === 'admin' && !isAdmin && !(s.server === true && !this.token()),
@@ -699,7 +874,7 @@ class Component extends DCLogic {
       noOne: PAGE === 'listen' && !s.room && !u && s.server === false && !guest,
       roleOff: PAGE === 'listen' && !s.room && !!u && this.listenLevel(u.role) < 1, roleName: u ? u.role : '',
       isListen: PAGE === 'listen' && !s.room && (guest || (!(s.server === true && !this.token()) && !!u && this.listenLevel(u.role) >= 1)),
-      isRooms: PAGE === 'admin' && isAdmin && s.tab === 'rooms', isGroups: PAGE === 'admin' && isAdmin && s.tab === 'groups', isSources: PAGE === 'admin' && isAdmin && s.tab === 'sources', isHome: PAGE === 'admin' && isAdmin && s.tab === 'home', isPublic: PAGE === 'admin' && isAdmin && s.tab === 'public',
+      isPages: PAGE === 'admin' && isAdmin && s.tab === 'pages', ...this.pageVals(isAdmin), ...this.feedVals(), isRooms: PAGE === 'admin' && isAdmin && s.tab === 'rooms', isGroups: PAGE === 'admin' && isAdmin && s.tab === 'groups', isSources: PAGE === 'admin' && isAdmin && s.tab === 'sources', isHome: PAGE === 'admin' && isAdmin && s.tab === 'home', isPublic: PAGE === 'admin' && isAdmin && s.tab === 'public',
       ...this.menuVals(u, mine),
       // room player
       roomName: s.room ? s.room.name : '', roomPlaying: !roomSrc ? 'Nothing chosen for this room yet' : (s.playing ? (s.server && !s.sounding ? 'Starting ' + roomSrc.name + '\u2026' : 'Playing ' + roomSrc.name) : roomSrc.name + ' \u00b7 tap Play to start'),
@@ -788,6 +963,7 @@ class Component extends DCLogic {
           id: x.id, captions: !!x.captions, capVal: x.captions_from || (x.captions ? 'self' : ''),
           capOpts: [{ v: '', l: 'Off' }, { v: 'self', l: 'On, from this sound (speech)' }].concat(c.sources.filter((y) => y.id !== x.id).map((y) => ({ v: y.id, l: 'From ' + y.name }))).map((o) => ({ ...o, sel: o.v === (x.captions_from || (x.captions ? 'self' : '')) })),
           setCaptions: (e) => { const v = e.target.value; editS((n) => { const y = n.sources[xi]; y.captions = v === 'self'; if (v && v !== 'self') y.captions_from = v; else delete y.captions_from; }); },
+          hasSound: s.sound && typeof s.sound[x.id] === 'boolean', soundText: s.sound && s.sound[x.id] ? '\u25CF Sound' : 'No sound', soundCls: s.sound && s.sound[x.id] ? 'pgpill on' : 'pgpill off',
           remove: () => this.setState({ ask: { kind: 'rmsource', i: xi, name: x.name } }) };
       }),
       newSource: s.newSource, setNewSource: (e) => this.setState({ newSource: e.target.value }), noNewSource: !s.newSource.trim(),
@@ -836,14 +1012,38 @@ class Component extends DCLogic {
       pubSaved: Object.keys(pe).length === 0, pubDirty: Object.keys(pe).length > 0,
       askSavePub: () => this.setState({ ask: { kind: 'pubsave' } }),
       // confirm
-      asking: !!a,
-      askTitle: !a ? '' : ({ room: 'Change ' + a.name + ' to ' + a.toName + '?', rmroom: 'Remove ' + a.name + '?', pair: 'Make this device the ' + a.name + ' room player?', leave: 'Stop being a room player?', rmgroup: 'Delete ' + a.name + '?', rmsource: 'Remove ' + a.name + '?', sources: 'Save sources?', pubstart: 'Put ' + a.name + ' on the internet?', pubstop: 'Stop the public feed?', pubsave: 'Save the internet radio settings?', publink: 'Change the public link?', pubunlink: 'Remove the public link?', opengroup: a.id ? 'Let anyone hear ' + a.name + ' without signing in?' : 'Make everyone sign in to listen?', keepdays: a.days ? 'Keep saved subtitles for ' + a.days + ' days?' : 'Stop saving subtitles?', deltr: 'Delete ' + a.name + '?' })[a.kind],
-      askText: !a ? '' : ({ room: 'The room player in ' + a.name + ' switches within a few seconds. Anyone listening there will hear the change.', rmroom: 'Its room players stop playing. You can add the room again later.', pair: 'This device then plays ' + a.name + '’s sound without anyone signing in, until you stop it here. Plug it into the room’s speaker.', leave: 'This device stops playing and goes back to normal. An Admin has to do this, so nobody in the room can switch it off by mistake.', rmgroup: 'Its people can no longer listen to what it allowed (unless another group allows it).', rmsource: 'Groups and rooms that use it will no longer hear it.', sources: 'Anything playing restarts with a 2-second gap, so it picks up the new channels.', pubstart: 'Anyone with the public link will hear ' + a.name + ' until you press Stop. Check you have the rights to stream what\u2019s playing.', pubstop: 'Everyone listening on the public link stops hearing it. Listening in the building and from home carries on.', pubsave: pub.on ? 'The feed is on: stop and start it to use the new settings.' : 'They\u2019re used the next time you start the feed.', publink: 'People are shown the new link straight away. Anyone using the old link may lose the sound.', pubunlink: 'People won\u2019t be shown a link any more.', opengroup: a.id ? 'Anyone on the church Wi-Fi can open Listen and hear ' + a.toName + ', with no sign-in, until you change this.' : 'People listening without signing in will stop hearing it within a few seconds.', keepdays: a.days ? (a.fewer ? 'Saved subtitles older than ' + a.days + ' days are deleted now. This can\u2019t be undone.' : 'Saved subtitles are kept for longer.') : 'All saved subtitles are deleted now, and new ones are only kept until the C3 Life server restarts. This can\u2019t be undone.', deltr: 'That day\u2019s saved subtitles are deleted from the C3 Life server. This can\u2019t be undone.' })[a.kind],
-      askBtn: !a ? '' : ({ room: 'Yes, change it', rmroom: 'Yes, remove it', pair: 'Yes, make it a room player', leave: 'Yes, stop', rmgroup: 'Yes, delete it', rmsource: 'Yes, remove it', sources: 'Yes, save', pubstart: 'Yes, start it', pubstop: 'Yes, stop it', pubsave: 'Yes, save', publink: 'Yes, change it', pubunlink: 'Yes, remove it', opengroup: a.id ? 'Yes, let them' : 'Yes, sign-in needed', keepdays: a.fewer || !a.days ? 'Yes, delete the older ones' : 'Yes, keep them longer', deltr: 'Yes, delete it' })[a.kind],
+      asking: !!a, askHasList: !!a && Array.isArray(a.changes), askList: a && a.changes ? a.changes : [],
+      askTitle: !a ? '' : ({ room: 'Change ' + a.name + ' to ' + a.toName + '?', rmroom: 'Remove ' + a.name + '?', pair: 'Make this device the ' + a.name + ' room player?', leave: 'Stop being a room player?', rmgroup: 'Delete ' + a.name + '?', rmsource: 'Remove ' + a.name + '?', sources: 'Save sources?', pubstart: 'Put ' + a.name + ' on the internet?', pubstop: 'Stop the public feed?', pubsave: 'Save the internet radio settings?', publink: 'Change the public link?', pubunlink: 'Remove the public link?', opengroup: a.id ? 'Let anyone hear ' + a.name + ' without signing in?' : 'Make everyone sign in to listen?', keepdays: a.days ? 'Keep saved subtitles for ' + a.days + ' days?' : 'Stop saving subtitles?', deltr: 'Delete ' + a.name + '?', feed: 'Add \u201c' + a.name + '\u201d?', pgsave: a.isNew ? 'Make \u201c' + a.name + '\u201d?' : 'Save \u201c' + a.name + '\u201d?', pgdel: 'Delete \u201c' + a.name + '\u201d?', pgon: 'Turn on \u201c' + a.name + '\u201d?', pgoff: 'Turn off \u201c' + a.name + '\u201d?' })[a.kind],
+      askText: !a ? '' : ({ room: 'The room player in ' + a.name + ' switches within a few seconds. Anyone listening there will hear the change.', rmroom: 'Its room players stop playing. You can add the room again later.', pair: 'This device then plays ' + a.name + '’s sound without anyone signing in, until you stop it here. Plug it into the room’s speaker.', leave: 'This device stops playing and goes back to normal. An Admin has to do this, so nobody in the room can switch it off by mistake.', rmgroup: 'Its people can no longer listen to what it allowed (unless another group allows it).', rmsource: 'Groups and rooms that use it will no longer hear it.', sources: 'Anything playing restarts with a 2-second gap, so it picks up the new channels.', pubstart: 'Anyone with the public link will hear ' + a.name + ' until you press Stop. Check you have the rights to stream what\u2019s playing.', pubstop: 'Everyone listening on the public link stops hearing it. Listening in the building and from home carries on.', pubsave: pub.on ? 'The feed is on: stop and start it to use the new settings.' : 'They\u2019re used the next time you start the feed.', publink: 'People are shown the new link straight away. Anyone using the old link may lose the sound.', pubunlink: 'People won\u2019t be shown a link any more.', opengroup: a.id ? 'Anyone on the church Wi-Fi can open Listen and hear ' + a.toName + ', with no sign-in, until you change this.' : 'People listening without signing in will stop hearing it within a few seconds.', keepdays: a.days ? (a.fewer ? 'Saved subtitles older than ' + a.days + ' days are deleted now. This can\u2019t be undone.' : 'Saved subtitles are kept for longer.') : 'All saved subtitles are deleted now, and new ones are only kept until the C3 Life server restarts. This can\u2019t be undone.', deltr: 'That day\u2019s saved subtitles are deleted from the C3 Life server. This can\u2019t be undone.', feed: 'This will:', pgsave: a.on ? 'Anyone on the church Wi-Fi with the address or QR code (' + a.url + ') can hear ' + a.feed + ', with no sign-in, until you turn it off.' : 'It stays off: nobody can hear it until you turn it on.', pgdel: 'The page goes completely, with its settings. Anyone with its QR code or ' + a.url + ' will see \u201cThere\u2019s no page here\u201d. This can\u2019t be undone. The feed itself isn\u2019t deleted. Just want it gone for now? Turn it off instead.', pgon: 'Anyone on the church Wi-Fi with its address or QR code can hear ' + a.feed + ', with no sign-in, until you turn it off.', pgoff: 'Anyone listening on it stops within a few seconds. The address and QR code stay the same, so you can turn it back on later without new posters.' })[a.kind],
+      askBtn: !a ? '' : ({ room: 'Yes, change it', rmroom: 'Yes, remove it', pair: 'Yes, make it a room player', leave: 'Yes, stop', rmgroup: 'Yes, delete it', rmsource: 'Yes, remove it', sources: 'Yes, save', pubstart: 'Yes, start it', pubstop: 'Yes, stop it', pubsave: 'Yes, save', publink: 'Yes, change it', pubunlink: 'Yes, remove it', opengroup: a.id ? 'Yes, let them' : 'Yes, sign-in needed', keepdays: a.fewer || !a.days ? 'Yes, delete the older ones' : 'Yes, keep them longer', deltr: 'Yes, delete it', feed: 'Yes, add it', pgsave: a.isNew ? 'Yes, make it' : 'Yes, save', pgdel: 'Yes, delete it', pgon: 'Yes, turn it on', pgoff: 'Yes, turn it off' })[a.kind],
       askNo: () => this.setState({ ask: null, askPw: '', askErr: '' }),
       askNeedsPw: !!a && a.kind === 'leave', askPwName: s.askPwName || '', askPw: s.askPw || '', askHasErr: !!s.askErr, askErr: s.askErr || '',
       setAskPwName: (e) => this.setState({ askPwName: e.target.value, askErr: '' }), setAskPw: (e) => this.setState({ askPw: e.target.value, askErr: '' }),
       askYes: () => {
+        if (a.kind === 'feed') {
+          this.setState({ ask: null });
+          if (!s.server) {
+            const n = JSON.parse(JSON.stringify(c)), used = this.usedChannels(n); let ch = 10; const pickCh = () => { while (used[ch] && ch < 64) ch++; used[ch] = 1; return ch; };
+            const id = this.slug(a.body.name, n.sources); n.sources.push({ id, name: a.body.name, ch: a.body.chans.map(pickCh), captions: !!a.body.words, dante: false });
+            this.setState({ cfg: n, feed: null }); this.saveCfg(n, '\u2713 ' + a.body.name + ' added');
+            if (a.body.page) { const l = (s.pages || this.pagesDefault()).concat([{ id: a.body.page, name: a.body.name, source: id, words: !!a.body.words, on: true }]); try { localStorage.setItem('booth.listenpages', JSON.stringify(l)); } catch (e) {} this.setState({ pages: l }); }
+            return;
+          }
+          this.api('/api/listen/feed', 'POST', a.body).then(({ code, j }) => {
+            if (code === 200) { this.setState({ feed: null, srcSaved: true, saved: true }); this.say('\u2713 ' + a.body.name + ' added' + (a.body.page ? ': /listen/' + a.body.page : '')); this.refresh(); this.loadPages(); }
+            else { this.setState({ feed: Object.assign({}, s.feed, { err: j.error || 'Not added.' }) }); this.say(j.error || 'Not added.'); }
+          }).catch(() => this.say('Can\u2019t reach the C3 Life server.'));
+          return;
+        }
+        if (a.kind === 'pgsave' || a.kind === 'pgdel' || a.kind === 'pgon' || a.kind === 'pgoff') {
+          const list = (s.pages || this.pagesDefault()).map((p) => Object.assign({}, p)), e = s.pgEdit;
+          this.setState({ ask: null });
+          if (a.kind === 'pgsave') list[a.i] = { id: e.id.replace(/-+$/, ''), name: e.name.trim(), source: e.source, words: !!e.words, on: !!e.on };
+          else if (a.kind === 'pgdel') list.splice(a.i, 1);
+          else list[a.i].on = a.kind === 'pgon';
+          this.savePages(list, a.kind === 'pgdel' ? 'Deleted ' + a.name : a.kind === 'pgoff' ? a.name + ' is off' : '\u2713 ' + a.name + (a.kind === 'pgon' || list[a.i].on ? ' is on' : ' saved'));
+          return;
+        }
         const n = JSON.parse(JSON.stringify(c));
         if (a.kind === 'room') { n.rooms.find((y) => y.id === a.id).source = a.to; this.setState({ cfg: n, ask: null }); this.saveCfg(n, '✓ ' + a.name + ' now plays ' + a.toName); }
         else if (a.kind === 'rmroom') { n.rooms = n.rooms.filter((y) => y.id !== a.id); n.groups.forEach(() => {}); this.setState({ cfg: n, ask: null }); this.saveCfg(n, 'Removed ' + a.name); if (s.server) this.api('/api/listen/unpair', 'POST', { room: a.id }).catch(() => {}); }

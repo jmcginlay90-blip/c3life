@@ -20,7 +20,7 @@ class Settings(unittest.TestCase):
     def test_what_is_allowed(self):
         ok = dict(fm.DEFAULT)
         self.assertIsNone(fm.valid(ok))
-        for bad in ({"name": ""}, {"name": "x" * 31}, {"name": "A\nB"}, {"mix_a": 0}, {"mix_b": 17}, {"mix_a": 8}, {"mtx": 9}, {"max_db": -7}, {"mix_a": True}):
+        for bad in ({"name": ""}, {"name": "x" * 31}, {"name": "A\nB"}, {"mix_a": 0}, {"mix_b": 17}, {"mix_a": 8}, {"mtx": 9}, {"max_db": -7}, {"mix_a": True}, {"a_label": "x" * 31}, {"a_from": 3}, {"b_from": "a\nb"}):
             self.assertIsNotNone(fm.valid(dict(ok, **bad)), bad)
 
     def test_kept_and_falls_back_without_a_desk(self):
@@ -95,6 +95,19 @@ class Api(unittest.TestCase):
         self.assertEqual((st, j["name"], j["mix_a"]), (200, "Café", 3))
         self.assertEqual(self.call("/api/foyer", "PUT", {"mix_b": 3})[0], 400)  # the same bus twice
         self.assertEqual(self.call("/api/foyer", who="Foyer team")[1]["name"], "Café")  # every device sees it
+
+    def test_buttons_named_from_the_desk_or_their_own_name(self):
+        for _ in range(60):
+            j = self.call("/api/foyer", who="Foyer team")[1]
+            if j.get("from_desk") and j.get("mix_a_name") == "Foyer Spotify":
+                break
+            time.sleep(0.25)
+        self.assertEqual((j["a_title"], j["b_title"], j["a_from"]), ("Foyer Spotify", "Foyer Live", ""))  # the desk's names
+        st, j = self.call("/api/foyer", "PUT", {"name": "Welcome area", "a_label": " Music ", "a_from": "Spotify on the Media Mac", "b_from": "The hall"})
+        self.assertEqual((st, j["name"], j["a_title"], j["b_title"], j["a_from"], j["b_from"]), (200, "Welcome area", "Music", "Foyer Live", "Spotify on the Media Mac", "The hall"))
+        self.assertEqual(self.call("/api/foyer", "PUT", {"a_label": "x" * 31})[0], 400)
+        self.assertEqual(self.call("/api/foyer", "PUT", {"b_from": "x" * 61})[0], 400)
+        self.assertEqual(self.call("/api/foyer", "PUT", {"a_label": "Music"}, who="FOH sound")[0], 403)  # Admins (Foyer setup)
 
 
 class OnTheWing(Api):

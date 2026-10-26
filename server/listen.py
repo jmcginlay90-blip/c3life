@@ -51,6 +51,35 @@ DEFAULT_LISTEN = {
     "people": {"Listener": {"sources": ["main"], "fixed": ""}},
 }
 
+# Listen pages: one simple page per feed, for anyone on the church Wi-Fi with no sign-in, at /listen (the main page,
+# id "") or /listen/<id>. An Admin adds, changes, turns off and deletes them (the main page can be turned off, not deleted).
+#   {id, name, source: source id or "", words: subtitles on that page, on}
+MAIN_PAGE = {"id": "", "name": "Hear the service", "source": "stream", "words": True, "on": True}
+
+
+def valid_pages(pages, ids):
+    """Return an error message, or "" if the Listen pages make sense. ids: the sources there are."""
+    if not isinstance(pages, list) or len(pages) > 20:
+        return "Up to 20 Listen pages."
+    seen = set()
+    for p in pages:
+        if not isinstance(p, dict) or not isinstance(p.get("id"), str) or (p["id"] and not ID_RE.match(p["id"])):
+            return "A page's address can use small letters, numbers and dashes (up to 24)."
+        if not isinstance(p.get("name"), str) or not 0 < len(p["name"].strip()) <= 40:
+            return "Each page needs a name of up to 40 letters."
+        if p["id"] in seen:
+            return "Two pages have the address /listen/%s." % p["id"]
+        seen.add(p["id"])
+        if p.get("source", "") not in ids and p.get("source", "") != "":
+            return "%s: the feed it plays doesn't exist." % p["name"]
+        if not isinstance(p.get("words", False), bool) or not isinstance(p.get("on", False), bool):
+            return "%s: words on screen and on/off must be yes or no." % p["name"]
+        if p.get("on") and not p.get("source"):
+            return "%s: choose the feed it plays before turning it on." % p["name"]
+    if "" not in seen:
+        return "The main page (/listen) can be turned off, but not deleted."
+    return ""
+
 
 def valid_config(c):
     """Return an error message, or "" if the listening setup makes sense."""
@@ -112,6 +141,44 @@ def valid_people(people, ids):
         if p.get("fixed", "") not in ids and p.get("fixed", "") != "":
             return "%s: the one source they're kept to doesn't exist." % name
     return ""
+
+
+def slug(name, taken):
+    """A short id from a name ("Choir mics" -> "choir-mics"), not one of `taken`."""
+    base = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")[:20] or "feed"
+    out, n = base, 2
+    while out in taken:
+        out, n = "%s-%d" % (base, n), n + 1
+    return out
+
+
+def plan_feed(chans, dvs, used, total=64, reserved=(1, 2, 3)):
+    """Where a new feed's channels go on the HP (Dante Virtual Soundcard).
+    chans: [{"dev","ch"}] (one, or left and right); dvs: {"5": {"tx_device","tx_channel"}} what each DVS channel receives now;
+    used: DVS channels other Listen feeds use. A channel already coming in (the recording takes most sources) is shared,
+    so nothing changes on Dante; otherwise the first free channel from 4 (a free pair, side by side, for stereo).
+    -> ([{"dev","ch","dvs","share"}], error or "")"""
+    have = {}
+    for k, r in (dvs or {}).items():
+        if str(k).isdigit() and r.get("tx_device"):
+            have.setdefault((r["tx_device"].lower(), str(r.get("tx_channel"))), int(k))
+    taken = {int(k) for k, r in (dvs or {}).items() if str(k).isdigit() and r.get("tx_device")} | set(used) | set(reserved)
+    out = []
+    for c in chans:
+        k = have.get((c["dev"].lower(), c["ch"]))
+        out.append({"dev": c["dev"], "ch": c["ch"], "dvs": k, "share": k is not None})
+    need = [p for p in out if p["dvs"] is None]
+    free = [k for k in range(1, total + 1) if k not in taken]
+    if len(need) == 2:  # stereo: side by side if there's room, so the recording sees it as a stereo pair too
+        pair = next((k for k in free if k + 1 in free), None)
+        picks = [pair, pair + 1] if pair else free[:2]
+    else:
+        picks = free[:len(need)]
+    if len(picks) < len(need):
+        return out, "There's no free channel on the HP for this (all %d are in use). Free one on Record › Patch, or share a source that's already coming in." % total
+    for p, k in zip(need, picks):
+        p["dvs"] = k
+    return out, ""
 
 
 def captions_why(e):
@@ -242,6 +309,10 @@ class Listen:
         with self.lock:
             if "people" not in c and os.path.exists(self.path):  # the Listen settings page doesn't send people; keep them
                 c = dict(c, people=self.config().get("people", {}))
+            if "pages" not in c and os.path.exists(self.path) and "pages" in self.config():  # nor the Listen pages
+                c = dict(c, pages=self.config()["pages"])
+            if "pages" in c:  # a page whose feed was removed plays nothing, and is off
+                c = dict(c, pages=[p if p.get("source", "") in new or not p.get("source") else dict(p, source="", on=False) for p in c["pages"]])
             write_json(self.path, c)
         # Only restart a stream whose channels changed or that was removed; everyone else keeps listening.
         for sid in list(self.sources):
@@ -267,6 +338,39 @@ class Listen:
         if err:
             return err
         self.save(dict(c, people=people))
+        return ""
+
+    # ---- Listen pages ----
+    def pages(self):
+        """The Listen pages. Before an Admin has saved any: just the main page, playing what was already open to
+        everyone (so nothing new can be heard without signing in)."""
+        c = self.config()
+        if isinstance(c.get("pages"), list):
+            return c["pages"]
+        ids = [s["id"] for s in c["sources"]]
+        open_ids = [x for g in c["groups"] if g.get("open") for x in g["sources"] if x in ids]
+        src = "stream" if "stream" in open_ids else (open_ids[0] if open_ids else "")
+        return [dict(MAIN_PAGE, source=src, on=bool(src))]
+
+    def page(self, pid):
+        return next((p for p in self.pages() if p["id"] == pid), None)
+
+    def page_source(self, pid):
+        """The source a Listen page plays, if that page is on."""
+        p = self.page(pid)
+        if not p or not p.get("on"):
+            return None
+        return next((s for s in self.config()["sources"] if s["id"] == p.get("source")), None)
+
+    def save_pages(self, pages):
+        from c3life_server import write_json
+        c = self.config()
+        err = valid_pages(pages, {s["id"] for s in c["sources"]})
+        if err:
+            return err
+        with self.lock:
+            write_json(self.path, dict(c, pages=[{"id": p["id"], "name": p["name"].strip(), "source": p.get("source", ""),
+                                                  "words": bool(p.get("words")), "on": bool(p.get("on"))} for p in pages]))
         return ""
 
     # ---- room players: a device paired by an Admin gets a long-lived room token ----
@@ -307,6 +411,9 @@ class Listen:
         if who.get("room") is not None:
             sid = who["room"].get("source", "")
             return [by_id[sid]] if sid in by_id and not remote else []
+        if who.get("page") is not None:  # someone on a Listen page: only that page's feed, in the building
+            src = self.page_source(who["page"])
+            return [src] if src and not remote else []
         if who.get("role") == "Admin" and not remote:
             return list(c["sources"])
         if not who.get("guest") and self.level(who.get("role", "")) < 1:  # Access levels › Listen: None
@@ -366,6 +473,11 @@ class Listen:
 
     def has_open(self):
         return any(g.get("open") and g["sources"] for g in self.config()["groups"])
+
+    def page_words(self, pid):
+        """Words on screen are on for this Listen page (and it's on)."""
+        p = self.page(pid)
+        return bool(p and p.get("on") and p.get("words"))
 
     def caption_source(self, src):
         """The source whose speech makes the subtitles: itself, or the one it takes them from."""

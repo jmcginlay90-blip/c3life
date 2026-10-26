@@ -117,6 +117,15 @@ if ($comp) { Out-Check 'Companion running' 'OK' 'http://c3life.local:8000' } els
 # C3 Life
 $task = Get-ScheduledTask -TaskName 'C3 Life' -ErrorAction SilentlyContinue
 if ($task) { Out-Check 'C3 Life start-up' 'OK' "Starts when $BoothUser signs in" } else { Out-Check 'C3 Life start-up' 'PROBLEM' 'Not installed. Run Install-C3Life.ps1' }
+$utask = Get-ScheduledTask -TaskName 'C3 Life Update' -ErrorAction SilentlyContinue
+if (-not $utask) { Out-Check 'Updates' 'CHECK' 'The update task is missing. Run Install-C3Life.ps1 again' }
+elseif (-not (Test-Path 'C:\C3Life\secrets\github-key.dat')) { Out-Check 'Updates' 'CHECK' 'No GitHub key yet, so C3 Life can''t look for updates. Run .\Set-GitHubKey.ps1 (you type the key)' }
+else {
+  $ust = $null; try { $ust = Get-Content 'C:\C3Life\data\update\status.json' -Raw | ConvertFrom-Json } catch { }
+  if ($ust -and $ust.ok -eq $false) { Out-Check 'Updates' 'CHECK' $ust.error }
+  elseif ($ust -and $ust.checked) { Out-Check 'Updates' 'OK' ("Looks once a day; last looked {0}{1}" -f $ust.checked, $(if ($ust.behind) { '. A new version is ready (Saved setup > Updates)' } else { '' })) }
+  else { Out-Check 'Updates' 'OK' 'Key set; it looks for the first time tonight' }
+}
 try {
   $h = Invoke-RestMethod -Uri "http://127.0.0.1:$Port/api/health" -TimeoutSec 3
   Out-Check 'C3 Life' 'OK' ("Running, version {0}, up {1} min" -f $h.version, [int]($h.uptime_s / 60))

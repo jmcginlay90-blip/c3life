@@ -533,6 +533,229 @@ class NoSignIn(ListenTest):
         self.assertEqual(self.call("/api/listen/mine")[0], 401)
 
 
+class ListenPages(ListenTest):
+    """One simple page per feed, at /listen or /listen/<id>: no sign-in, that page's feed only, in the building."""
+    open_group = True
+
+    def where(self, path):
+        import http.client
+        c = http.client.HTTPConnection("127.0.0.1", self.port, timeout=5)
+        c.request("GET", path)
+        r = c.getresponse()
+        return r.status, r.getheader("Location")
+
+    def pages(self, a, pages):
+        return self.call("/api/listen/pages", "PUT", {"pages": pages}, token=a)
+
+    def page_bytes(self, sid, page, n=3000):
+        r = urllib.request.urlopen("http://127.0.0.1:%d/listen/%s.mp3?page=%s" % (self.port, sid, page), timeout=8)
+        got, t0 = b"", time.time()
+        while len(got) < n and time.time() - t0 < 8:
+            got += r.read(1024)
+        r.close()
+        return got
+
+    def test_each_address_opens_its_page(self):
+        self.assertEqual(self.where("/listen"), (302, "/player.html?p=Hear.dc.html&page="))
+        self.assertEqual(self.where("/listen/"), (302, "/player.html?p=Hear.dc.html&page="))
+        self.assertEqual(self.where("/listen/Kids"), (302, "/player.html?p=Hear.dc.html&page=kids"))
+        self.assertEqual(self.where("/foyer"), (302, "/player.html?p=FoyerSimple.dc.html"))
+
+    def test_main_page_plays_what_was_already_open_to_everyone(self):
+        code, j = self.call("/api/listen/page?page=")
+        self.assertEqual(code, 200)
+        self.assertEqual((j["page"]["name"], j["page"]["on"], j["source"]["id"]), ("Hear the service", True, "stream"))
+        self.assertGreater(len(self.page_bytes("stream", "")), 2000)
+        with self.assertRaises(urllib.error.HTTPError) as e:  # only that page's feed
+            urllib.request.urlopen("http://127.0.0.1:%d/listen/main.mp3?page=" % self.port, timeout=5)
+        self.assertEqual(e.exception.code, 403)
+
+    def test_admin_adds_changes_turns_off_and_deletes(self):
+        a = self.login("Admin")
+        main = self.call("/api/listen/pages", token=a)[1]["pages"][0]
+        kids = {"id": "kids", "name": "Kids church", "source": "speech", "words": True, "on": True}
+        self.assertEqual(self.pages(a, [main, kids])[0], 200)
+        j = self.call("/api/listen/page?page=kids")[1]
+        self.assertEqual((j["page"]["name"], j["source"]["id"]), ("Kids church", "speech"))
+        self.assertGreater(len(self.page_bytes("speech", "kids")), 2000)
+        self.assertEqual(self.pages(a, [main, dict(kids, on=False)])[0], 200)  # off: the address stays, nothing plays
+        self.assertFalse(self.call("/api/listen/page?page=kids")[1]["page"]["on"])
+        with self.assertRaises(urllib.error.HTTPError) as e:
+            urllib.request.urlopen("http://127.0.0.1:%d/listen/speech.mp3?page=kids" % self.port, timeout=5)
+        self.assertEqual(e.exception.code, 403)
+        self.assertEqual(self.pages(a, [main])[0], 200)  # deleted
+        self.assertEqual(self.call("/api/listen/page?page=kids"), (404, {"ok": False, "error": "There's no page here."}))
+
+    def test_main_page_cant_be_deleted_and_bad_pages_refused(self):
+        a = self.login("Admin")
+        main = self.call("/api/listen/pages", token=a)[1]["pages"][0]
+        self.assertIn("can't be deleted", self.pages(a, [])[1]["error"].replace("but not deleted", "can't be deleted"))
+        for bad in ({"id": "Kids!", "name": "x", "source": "main", "words": False, "on": False},
+                    {"id": "x", "name": "", "source": "main", "words": False, "on": False},
+                    {"id": "x", "name": "X", "source": "nope", "words": False, "on": False},
+                    {"id": "x", "name": "X", "source": "", "words": False, "on": True}):
+            self.assertEqual(self.pages(a, [main, bad])[0], 400, bad)
+        self.assertEqual(self.pages(a, [main, dict(main)])[0], 400)  # two pages at /listen
+
+    def test_only_an_admin_changes_pages_or_makes_posters(self):
+        f = self.login("FOH sound")
+        self.assertEqual(self.call("/api/listen/pages", token=f)[0], 403)
+        self.assertEqual(self.pages(f, [])[0], 403)
+        self.assertEqual(self.call("/api/listen/qr.svg?text=http://x/listen&t=" + f)[0], 403)
+        code, j = self.call("/api/listen/qr.svg?text=http%3A%2F%2F192.168.10.10%2Flisten%2Fkids&t=" + self.login("Admin"))
+        self.assertEqual(code, 200)
+        self.assertTrue(j["raw"].startswith(b"<svg"))
+
+    def test_words_on_screen_follow_the_page(self):
+        self.httpd.listen.cfg.update(captions_engine=FakeEngine)
+        a = self.login("Admin")
+        main = self.call("/api/listen/pages", token=a)[1]["pages"][0]
+        self.assertEqual(self.pages(a, [dict(main, words=False)])[0], 200)
+        self.assertEqual(self.call("/api/listen/captions/stream?since=0&page=")[0], 404)
+        self.assertEqual(self.pages(a, [dict(main, words=True)])[0], 200)
+        self.assertEqual(self.call("/api/listen/captions/stream?since=0&page=")[0], 200)
+
+    def test_removing_a_feed_turns_its_page_off(self):
+        a = self.login("Admin")
+        main = self.call("/api/listen/pages", token=a)[1]["pages"][0]
+        self.assertEqual(self.pages(a, [main, {"id": "foyer", "name": "Foyer", "source": "foyer", "words": False, "on": True}])[0], 200)
+        c = self.call("/api/listen/config", token=a)[1]
+        c["sources"] = [x for x in c["sources"] if x["id"] != "foyer"]
+        for g in c["groups"]:
+            g["sources"] = [x for x in g["sources"] if x != "foyer"]
+        self.assertEqual(self.call("/api/listen/config", "PUT", {k: c[k] for k in ("sources", "groups", "rooms")}, token=a)[0], 200)
+        p = next(x for x in self.call("/api/listen/pages", token=a)[1]["pages"] if x["id"] == "foyer")
+        self.assertEqual((p["source"], p["on"]), ("", False))
+
+
+class ListenPagesClosed(ListenTest):
+    def test_main_page_off_when_nothing_was_open_to_everyone(self):
+        j = self.call("/api/listen/page?page=")[1]
+        self.assertFalse(j["page"]["on"])
+        self.assertIsNone(j["source"])
+        with self.assertRaises(urllib.error.HTTPError) as e:  # and its feed can't be heard without signing in
+            urllib.request.urlopen("http://127.0.0.1:%d/listen/stream.mp3?page=" % self.port, timeout=5)
+        self.assertEqual(e.exception.code, 403)
+
+
+class ListenPagesFromHome(ListenTest):
+    open_group = True
+    remote = True
+
+    def test_pages_only_in_the_building(self):
+        code, j = self.call("/api/listen/page?page=")
+        self.assertTrue(code == 403 or not j["page"]["on"], (code, j))
+        with self.assertRaises(urllib.error.HTTPError) as e:
+            urllib.request.urlopen("http://127.0.0.1:%d/listen/stream.mp3?page=" % self.port, timeout=5)
+        self.assertEqual(e.exception.code, 403)
+
+
+class QRCodes(unittest.TestCase):
+    def test_reads_back(self):
+        import qr
+        for text in ("http://192.168.10.10/listen", "http://192.168.10.10/listen/kids", "http://c3life.local/listen/overflow-hall-" + "x" * 90):
+            m = qr.matrix(text)
+            self.assertEqual(len(m) % 4, 1)  # 21, 25, 29... modules across
+            try:
+                import zxingcpp
+                import numpy as np
+            except ImportError:
+                continue  # the reader isn't installed here: the shape check above still runs
+            n, k = len(m), 6
+            img = np.full(((n + 8) * k, (n + 8) * k), 255, np.uint8)
+            for r in range(n):
+                for c in range(n):
+                    if m[r][c]:
+                        img[(r + 4) * k:(r + 5) * k, (c + 4) * k:(c + 5) * k] = 0
+            self.assertEqual(zxingcpp.read_barcodes(img)[0].text, text)
+
+
+class AddFeed(unittest.TestCase):
+    """Add a feed: pick where it comes from on Dante; the HP's channel is chosen for it, sharing one already coming in."""
+
+    def test_plan_shares_what_is_already_coming_in(self):
+        dvs = {"9": {"tx_device": "WING-ABC", "tx_channel": "12"}, "10": {"tx_device": "Tio-1", "tx_channel": "05"}}
+        plan, err = L.plan_feed([{"dev": "wing-abc", "ch": "12"}], dvs, used={4, 5})
+        self.assertEqual((err, plan[0]["dvs"], plan[0]["share"]), ("", 9, True))
+        plan, err = L.plan_feed([{"dev": "Tio-2", "ch": "05"}, {"dev": "Tio-2", "ch": "06"}], dvs, used={4, 5, 6, 7, 8})
+        self.assertEqual([(p["dvs"], p["share"]) for p in plan], [(11, False), (12, False)])  # side by side, not 1-3 (RTA, MD log)
+        full = {str(k): {"tx_device": "X", "tx_channel": str(k)} for k in range(4, 65)}
+        self.assertIn("no free channel", L.plan_feed([{"dev": "Y", "ch": "1"}], full, used=set())[1])
+        self.assertEqual(L.slug("Choir mics!", {"choir-mics"}), "choir-mics-2")
+
+    def setUp(self):
+        import sys
+        self.tmp = tempfile.mkdtemp()
+        self.state = os.path.join(self.tmp, "dante.json")
+        with open(self.state, "w") as f:
+            json.dump({"subs": [{"rx_device": "C3LIFE", "rx_channel": "09", "rx_channel_number": 9, "tx_device": "WING-ABC", "tx_channel": "Speech"}],
+                       "tx": {"WING-ABC": {"38": "Speech"}, "Tio-2": {"5": "CH5 Choir L", "6": "CH6 Choir R"}}}, f)
+        os.environ["FAKE_DANTE"] = self.state
+        app = os.path.join(self.tmp, "app")
+        os.makedirs(os.path.join(app, "project"))
+        with open(os.path.join(app, "player.html"), "w") as fh:
+            fh.write("<x-dc></x-dc>")
+        cfg = s.load_config(None)
+        cfg.update(port=0, bind="127.0.0.1", app_dir=app, data_dir=os.path.join(self.tmp, "data"), listen_input=FAKE_DVS, propresenter="",
+                   dante_dvs_name="C3LIFE", netaudio=[sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "fake_netaudio.py")])
+        cfg["_nets"], cfg["_remote"] = [s.ipaddress.ip_network("127.0.0.0/8")], []
+        self.httpd = s.serve(cfg)
+        self.port = self.httpd.server_address[1]
+        threading.Thread(target=self.httpd.serve_forever, daemon=True).start()
+        self.httpd.recorder.dante.refresh()
+        self.a = ListenTest.login(self, "Admin")
+
+    def tearDown(self):
+        self.httpd.shutdown()
+        self.httpd.server_close()
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    call = ListenTest.call
+
+    def subs(self):
+        with open(self.state) as f:
+            return [(x["rx_channel_number"], x["tx_device"], x["tx_channel"]) for x in json.load(f)["subs"]]
+
+    def test_sources_to_choose_from(self):
+        code, j = self.call("/api/listen/feed/sources", token=self.a)
+        self.assertEqual(code, 200)
+        self.assertIn({"dev": "Tio-2", "ch": "CH5 Choir L", "num": 5}, j["sources"])
+        self.assertEqual(self.call("/api/listen/feed/sources", token=ListenTest.login(self, "FOH sound"))[0], 403)
+
+    def test_check_lists_the_changes_and_changes_nothing(self):
+        body = {"name": "Choir mics", "chans": [{"dev": "Tio-2", "ch": "CH5 Choir L"}, {"dev": "Tio-2", "ch": "CH6 Choir R"}], "page": "choir", "check": True}
+        code, j = self.call("/api/listen/feed", "POST", body, token=self.a)
+        self.assertEqual(code, 200)
+        self.assertEqual([p["dvs"] for p in j["plan"]], [10, 11])
+        self.assertTrue(any("Send Tio-2 · CH5 Choir L" in c and "desk and the stage don't change" in c for c in j["changes"]))
+        self.assertTrue(any("/listen/choir" in c for c in j["changes"]))
+        self.assertEqual(len(self.subs()), 1)  # nothing routed yet
+        self.assertNotIn("choir-mics", [x["id"] for x in self.httpd.listen.config()["sources"]])
+
+    def test_add_routes_it_and_makes_the_page(self):
+        body = {"name": "Choir mics", "chans": [{"dev": "Tio-2", "ch": "CH5 Choir L"}, {"dev": "Tio-2", "ch": "CH6 Choir R"}], "page": "choir", "words": False}
+        code, j = self.call("/api/listen/feed", "POST", body, token=self.a)
+        self.assertEqual(code, 200, j)
+        self.assertIn((10, "Tio-2", "CH5 Choir L"), self.subs())
+        self.assertIn((11, "Tio-2", "CH6 Choir R"), self.subs())
+        src = next(x for x in self.httpd.listen.config()["sources"] if x["id"] == "choir-mics")
+        self.assertEqual(src["ch"], [10, 11])
+        self.assertEqual(self.httpd.listen.page_source("choir")["id"], "choir-mics")
+
+    def test_shared_source_routes_nothing(self):
+        code, j = self.call("/api/listen/feed", "POST", {"name": "Speech", "chans": [{"dev": "WING-ABC", "ch": "Speech"}], "words": True}, token=self.a)
+        self.assertEqual(code, 200, j)
+        self.assertEqual((j["plan"][0]["dvs"], j["plan"][0]["share"]), (9, True))
+        self.assertEqual(len(self.subs()), 1)
+
+    def test_bad_requests(self):
+        for body in ({"name": "", "chans": [{"dev": "a", "ch": "b"}]}, {"name": "X", "chans": []}, {"name": "X", "chans": [{"dev": "a"}]},
+                     {"name": "X", "chans": [{"dev": "Tio-2", "ch": "CH5 Choir L"}], "page": "Bad Word"},
+                     {"name": "X", "chans": [{"dev": "Tio-2", "ch": "CH5 Choir L"}], "page": ""}):  # the main page is already there
+            self.assertEqual(self.call("/api/listen/feed", "POST", body, token=self.a)[0], 400, body)
+        self.assertEqual(self.call("/api/listen/feed", "POST", {"name": "X", "chans": [{"dev": "a", "ch": "b"}]}, token=ListenTest.login(self, "FOH sound"))[0], 403)
+
+
 class NoSignInFromHome(ListenTest):
     open_group = True
     remote = True

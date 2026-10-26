@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>C3 Life – Hear the service</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+/* A Listen page: one feed, no sign-in, no menu. Big, plain, the phone's own fonts (nothing to download). */
+html{-webkit-text-size-adjust:100%;touch-action:manipulation}
+body{margin:0;background:#0A0B0D}
+.hp{min-height:100vh;min-height:100dvh;box-sizing:border-box;max-width:560px;margin:0 auto;padding:22px 18px 28px;display:flex;flex-direction:column;gap:18px;color:#fff;font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif}
+.hp-top{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.hp-top h1{margin:0;font-size:30px;line-height:1.15;font-weight:700}
+.hp-help{flex:none;min-height:48px;padding:0 18px;border-radius:999px;border:2px solid #5aa0ff;background:none;color:#9cc4ff;font:600 18px system-ui,-apple-system,sans-serif;cursor:pointer}
+.hp-say{font-size:21px;line-height:1.4;color:#ccc;margin:0}
+.hp-big{min-height:140px;border-radius:24px;border:none;font:700 34px system-ui,-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;gap:16px;cursor:pointer;width:100%}
+.hp-play{background:#F5C518;color:#000}.hp-pause{background:#2a2d35;color:#fff;min-height:110px}
+.hp-card{background:#1b1d23;border-radius:22px;padding:18px 20px}
+.hp-row{display:flex;justify-content:space-between;align-items:baseline;font-size:21px;font-weight:600;margin-bottom:12px;gap:10px}
+.hp-row span:last-child{font-size:17px;color:#aaa;font-weight:600}
+/* a big slider: a thick yellow track and a thumb you can't miss */
+.hp input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:60px;margin:0;background:transparent;cursor:pointer}
+.hp input[type=range]::-webkit-slider-runnable-track{height:22px;border-radius:11px;background:linear-gradient(90deg,#F5C518 var(--v,50%),#2a2d35 var(--v,50%))}
+.hp input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:52px;height:52px;margin-top:-15px;border-radius:50%;background:#fff;border:3px solid #F5C518;box-shadow:0 2px 8px rgba(0,0,0,.5)}
+.hp input[type=range]::-moz-range-track{height:22px;border-radius:11px;background:#2a2d35}
+.hp input[type=range]::-moz-range-progress{height:22px;border-radius:11px;background:#F5C518}
+.hp input[type=range]::-moz-range-thumb{width:46px;height:46px;border-radius:50%;background:#fff;border:3px solid #F5C518}
+.hp-btn{width:100%;min-height:72px;border-radius:20px;border:2px solid #444;background:#1b1d23;color:#fff;font:700 22px system-ui,-apple-system,sans-serif;cursor:pointer}
+.hp-two{display:flex;gap:12px}.hp-two .hp-btn{min-height:60px;font-size:20px}
+.hp-live{display:flex;align-items:center;gap:10px;color:#5fd38a;font-weight:700;font-size:20px}
+.hp-dot{width:12px;height:12px;border-radius:50%;background:#5fd38a}
+.hp-wait{color:#F5C518}.hp-wait .hp-dot{background:#F5C518}
+.hp-words{background:#000;border-radius:20px;padding:18px 20px;line-height:1.35;min-height:160px;max-height:50vh;overflow-y:auto}
+.hp-words .old{color:#8a8a8a}.hp-words .part{color:#bbb;font-style:italic}
+.hp-note{font-size:18px;line-height:1.45;color:#aaa;text-align:center;margin:0}
+.hp-warn{background:#2A1208;border:2px solid #FF7A45;border-radius:18px;padding:14px 16px;font-size:19px;line-height:1.4;color:#FFE3D6}
+.hp-gone{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:16px}
+.hp-gone h2{margin:0;font-size:30px}.hp-gone p{margin:0;font-size:20px;line-height:1.45;color:#ccc}
+.hp-addr{font-family:ui-monospace,Menlo,monospace;color:#9cc4ff;font-size:19px}
+.hp-ov{position:fixed;inset:0;z-index:20;background:rgba(10,11,13,.96);display:flex;align-items:center;justify-content:center;padding:20px}
+.hp-ov .hp-card{max-width:520px;width:100%;display:flex;flex-direction:column;gap:14px}
+.hp-ov h2{margin:0;font-size:26px}
+.hp-ov ol{margin:0;padding-left:26px;font-size:20px;line-height:1.55;color:#ddd}
+</style>
+</helmet>
+<div class="hp">
+  <sc-if value="{{gone}}" hint-placeholder-val="{{ false }}">
+    <div class="hp-gone" role="status">
+      <div style="font-size:52px" aria-hidden="true">🔇</div>
+      <h2>There's no page here</h2>
+      <p>This listening page isn't here any more.</p>
+      <p style="font-size:18px">Ask the welcome team, or try the main page:</p>
+      <a class="hp-addr" href="{{mainHref}}">{{mainAddr}}</a>
+    </div>
+  </sc-if>
+  <sc-if value="{{shown}}" hint-placeholder-val="{{ true }}">
+    <div class="hp-top"><h1>{{title}}</h1><button class="hp-help" onClick="{{openHelp}}">Help</button></div>
+    <sc-if value="{{off}}" hint-placeholder-val="{{ false }}">
+      <div class="hp-gone" role="status">
+        <div style="font-size:52px" aria-hidden="true">⏸</div>
+        <h2>This page is off right now</h2>
+        <p>{{offWhy}}</p>
+      </div>
+    </sc-if>
+    <sc-if value="{{ready}}" hint-placeholder-val="{{ true }}">
+      <sc-if value="{{idle}}" hint-placeholder-val="{{ true }}">
+        <p class="hp-say">On your own phone, with headphones or hearing aids.</p>
+        <button class="hp-big hp-play" onClick="{{play}}" aria-label="Play {{feed}}"><span aria-hidden="true">▶</span> Play</button>
+      </sc-if>
+      <sc-if value="{{playing}}" hint-placeholder-val="{{ false }}">
+        <div class="{{liveCls}}" role="status"><span class="hp-dot"></span>{{liveText}}</div>
+        <button class="hp-big hp-pause" onClick="{{pause}}" aria-label="Pause"><span aria-hidden="true">❚❚</span> Pause</button>
+      </sc-if>
+      <sc-if value="{{problem}}" hint-placeholder-val="{{ false }}"><div class="hp-warn" role="alert">{{problem}}</div></sc-if>
+      <sc-if value="{{canVolume}}" hint-placeholder-val="{{ true }}">
+        <div class="hp-card">
+          <div class="hp-row"><span>Volume</span><span>On this phone</span></div>
+          <input type="range" min="0" max="100" value="{{volume}}" style="--v:{{volume}}%" onChange="{{setVolume}}" aria-label="Volume on this phone">
+        </div>
+      </sc-if>
+      <sc-if value="{{iosVolume}}" hint-placeholder-val="{{ false }}">
+        <div class="hp-card"><div class="hp-row" style="margin:0"><span>Volume</span><span>Use your phone's volume buttons</span></div></div>
+      </sc-if>
+      <sc-if value="{{hasWords}}" hint-placeholder-val="{{ true }}">
+        <button class="hp-btn" onClick="{{toggleWords}}" aria-pressed="{{wordsOn}}">Aa &nbsp;Words on screen: {{wordsState}}</button>
+        <sc-if value="{{showWords}}" hint-placeholder-val="{{ false }}">
+          <div class="hp-words subs" style="font-size:{{wordsSize}}px" aria-live="polite">
+            <sc-if value="{{noWordsYet}}" hint-placeholder-val="{{ false }}"><div class="old">{{wordsWait}}</div></sc-if>
+            <sc-for list="{{lines}}" as="l" hint-placeholder-count="3"><div class="{{l.cls}}">{{l.text}}</div></sc-for>
+            <sc-if value="{{partial}}" hint-placeholder-val="{{ false }}"><div class="part">{{partial}}</div></sc-if>
+          </div>
+          <div class="hp-two"><button class="hp-btn" onClick="{{smaller}}" aria-label="Smaller words">A− Smaller</button><button class="hp-btn" onClick="{{bigger}}" aria-label="Bigger words">Bigger A+</button></div>
+        </sc-if>
+      </sc-if>
+      <p class="hp-note">In the hall? Set your hearing aids to <b>stream only</b>, so you don't hear an echo.</p>
+    </sc-if>
+  </sc-if>
+  <sc-if value="{{help}}" hint-placeholder-val="{{ false }}">
+    <div class="hp-ov" role="dialog" aria-label="Help">
+      <div class="hp-card">
+        <h2>How to listen</h2>
+        <ol>
+          <li>Make sure you're on the church Wi-Fi.</li>
+          <li>Tap <b>Play</b>. The sound is about 2 seconds behind the room.</li>
+          <li>Turn it up or down with your phone's volume buttons.</li>
+          <li>Tap <b>Words on screen</b> to read along, if it's there.</li>
+        </ol>
+        <p class="hp-note" style="text-align:left">Hearing aids that connect to your phone play it straight into your ears. In the hall, set them to "stream only" so there's no echo. Still stuck? Ask the welcome team.</p>
+        <button class="hp-btn" onClick="{{closeHelp}}">Close</button>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+// A Listen page (/listen or /listen/<id>): one feed an Admin chose, for anyone on the church Wi-Fi, with no sign-in.
+// Admins add and change these pages in Listen settings › Listen pages.
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    let pid = '';
+    try { pid = new URLSearchParams(location.search).get('page') || ''; } catch (e) {}
+    this.pid = /^[a-z0-9-]{0,24}$/.test(pid) ? pid : '#';
+    this.state = { loaded: false, page: null, source: null, gone: false, server: null, playing: false, sounding: false, problem: '', help: false,
+      volume: this.num('booth.listenvol', 80), words: this.pref('booth.hearwords', '0') === '1', size: this.num('booth.hearsize', 26), lines: [], partial: '', wordsStatus: '' };
+  }
+  pref(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } }
+  num(k, d) { const v = parseInt(this.pref(k, String(d)), 10); return isNaN(v) ? d : v; }
+  save(k, v) { try { localStorage.setItem(k, String(v)); } catch (e) {} }
+  ios() { try { return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); } catch (e) { return false; } }
+  q() { return 'page=' + encodeURIComponent(this.pid); }
+  componentDidMount() {
+    fetch('/api/health').then((r) => (r.ok ? r.json() : null)).then((h) => {
+      const on = !!(h && h.service === 'c3life');
+      this.setState({ server: on });
+      if (on) { this.load(); this.poll = setInterval(() => this.load(), 10000); }
+      else this.setState({ loaded: true, page: { id: this.pid, name: this.pid ? this.pid.charAt(0).toUpperCase() + this.pid.slice(1).replace(/-/g, ' ') : 'Hear the service', words: true, on: true }, source: { id: 'stream', name: 'Stream mix' } });
+    }).catch(() => this.setState({ server: false, loaded: true, page: { id: '', name: 'Hear the service', words: true, on: true }, source: { id: 'stream', name: 'Stream mix' } }));
+    this.wordsT = setInterval(() => this.wordsTick(), 1000);
+  }
+  componentWillUnmount() { clearInterval(this.poll); clearInterval(this.wordsT); clearTimeout(this.retryT); this.stopAudio(); }
+  load() {
+    if (this.pid === '#') { this.setState({ loaded: true, gone: true }); return; }
+    fetch('/api/listen/page?' + this.q()).then((r) => r.json().then((j) => ({ code: r.status, j }))).then(({ code, j }) => {
+      if (code === 404) { this.stopAudio(); this.setState({ loaded: true, gone: true, playing: false }); return; }
+      if (code !== 200) { this.setState({ loaded: true, page: { id: this.pid, name: 'Listen', on: false }, source: null, remote: true }); return; }
+      if (!j.page.on && this.state.playing) { this.stopAudio(); this.setState({ playing: false }); }
+      this.setState({ loaded: true, gone: false, page: j.page, source: j.source, remote: !!j.remote });
+    }).catch(() => {});
+  }
+  stopAudio() { if (this.audio) { const a = this.audio; this.audio = null; a.onerror = a.onended = a.onplaying = null; a.pause(); a.src = ''; } }
+  play(again) {
+    const src = this.state.source;
+    if (!src) return;
+    if (!again) this.tries = 0;
+    this.stopAudio();
+    this.setState({ playing: true, sounding: false, problem: '' });
+    if (!this.state.server || typeof Audio !== 'function') { setTimeout(() => this.setState({ sounding: true }), 600); return; }  // the preview: no sound
+    const url = '/listen/' + src.id + '.mp3?' + this.q();
+    const a = new Audio(url);
+    a.volume = this.state.volume / 100;
+    a.play().catch(() => this.setState({ playing: false, problem: 'Tap Play again to start the sound.' }));
+    const retry = () => {
+      if (this.audio !== a) return;
+      if (!this.state.sounding) {  // no sound at all: ask the server why, in words
+        fetch(url).then((r) => (r.status !== 200 ? r.json().catch(() => ({})) : (r.body && r.body.cancel && r.body.cancel(), null))).then((j) => {
+          if (this.audio !== a) return;
+          if (j) { this.stopAudio(); this.setState({ playing: false, problem: (j.error || 'There’s no sound right now.') + ' Ask the welcome team.' }); }
+          else this.retryLater(a);
+        }).catch(() => this.retryLater(a));
+        return;
+      }
+      this.retryLater(a);
+    };
+    a.onerror = retry; a.onended = retry;
+    a.onplaying = () => { this.tries = 0; this.setState({ sounding: true, problem: '' }); };
+    this.audio = a;
+  }
+  // The Wi-Fi blipped or the C3 Life server restarted: try again by itself, up to 10 times.
+  retryLater(a) {
+    this.tries = (this.tries || 0) + 1;
+    if (this.tries > 10) { this.stopAudio(); this.setState({ playing: false, problem: 'The sound stopped. Check you’re on the church Wi-Fi, then tap Play.' }); return; }
+    this.setState({ sounding: false });
+    clearTimeout(this.retryT);
+    this.retryT = setTimeout(() => { if (this.audio === a) this.play(true); }, 2000);
+  }
+  wordsTick() {
+    const s = this.state, src = s.source;
+    if (!s.playing || !s.words || !src || !(s.page && s.page.words)) return;
+    if (!s.server) {  // the preview: what it looks like
+      const demo = ['Welcome everyone, it’s great to have you here.', 'Please turn with me to Psalm 23.', 'The Lord is my shepherd, I shall not want.', 'He makes me lie down in green pastures.'];
+      this.n = (this.n || 0) + 1;
+      this.setState({ lines: demo.slice(0, Math.min(demo.length, 1 + Math.floor(this.n / 3))).map((t, i) => ({ id: i, text: t })), wordsStatus: 'live' });
+      return;
+    }
+    fetch('/api/listen/captions/' + src.id + '?since=' + (this.last || 0) + '&' + this.q()).then((r) => r.json().then((j) => ({ code: r.status, j }))).then(({ code, j }) => {
+      if (code !== 200) { this.setState({ wordsStatus: 'off' }); return; }
+      const lines = this.state.lines.concat(j.lines || []).slice(-60);
+      if (j.lines && j.lines.length) this.last = j.lines[j.lines.length - 1].id;
+      this.setState({ lines, partial: j.partial || '', wordsStatus: j.status || '' });
+      setTimeout(() => { const b = typeof document !== 'undefined' && document.querySelector('.subs'); if (b) b.scrollTop = b.scrollHeight; }, 60);
+    }).catch(() => {});
+  }
+  renderVals() {
+    const s = this.state, p = s.page, ok = !!(p && p.on && s.source);
+    const ios = this.ios();
+    const lines = s.lines.slice(-6);
+    return {
+      gone: s.loaded && s.gone, shown: s.loaded && !s.gone,
+      mainHref: '/listen', mainAddr: (typeof location !== 'undefined' ? location.host : '192.168.10.10') + '/listen',
+      title: p ? p.name : '',
+      off: s.loaded && !s.gone && !ok,
+      offWhy: s.remote ? 'Listen pages only work on the church Wi-Fi. Join it, then open this page again.' : 'Ask the welcome team, or try again later. The address stays the same, so keep it.',
+      ready: ok, idle: ok && !s.playing, playing: ok && s.playing,
+      feed: s.source ? s.source.name : '',
+      liveCls: s.sounding ? 'hp-live' : 'hp-live hp-wait', liveText: s.sounding ? 'Playing' : 'Starting…',
+      play: () => this.play(), pause: () => { this.stopAudio(); this.setState({ playing: false, sounding: false }); },
+      problem: s.problem,
+      canVolume: ok && !ios, iosVolume: ok && ios, volume: s.volume,
+      setVolume: (e) => { const v = parseInt(e.target.value, 10) || 0; this.save('booth.listenvol', v); if (this.audio) this.audio.volume = v / 100; this.setState({ volume: v }); },
+      hasWords: ok && !!p.words, wordsOn: s.words, wordsState: s.words ? 'On' : 'Off',
+      toggleWords: () => { const w = !s.words; this.save('booth.hearwords', w ? 1 : 0); this.setState({ words: w }); },
+      showWords: ok && p.words && s.words && s.playing, wordsSize: s.size,
+      noWordsYet: !lines.length && !s.partial, wordsWait: s.wordsStatus === 'off' ? 'Words on screen aren’t available right now.' : 'The words appear here when someone speaks.',
+      lines: lines.map((l, i) => ({ text: l.text, cls: i < lines.length - 2 ? 'old' : '' })), partial: s.partial,
+      smaller: () => { const v = Math.max(18, s.size - 3); this.save('booth.hearsize', v); this.setState({ size: v }); },
+      bigger: () => { const v = Math.min(44, s.size + 3); this.save('booth.hearsize', v); this.setState({ size: v }); },
+      help: s.help, openHelp: () => this.setState({ help: true }), closeHelp: () => this.setState({ help: false })
+    };
+  }
+}
+</script>
+</body>
+</html>

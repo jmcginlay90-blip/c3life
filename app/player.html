@@ -7,7 +7,7 @@
   function chatOk(){var u=get('booth.user');if(!u)return true;var l=get('booth.users'),me=null;if(Array.isArray(l))for(var i=0;i<l.length;i++)if(l[i].name===u.name)me=l[i];if(me&&typeof me.chat==='boolean')return me.chat;return (u.role||u.name)!=='Listener';}
   function foyerName(){var c=get('booth.foyer');return c&&typeof c.name==='string'&&c.name.trim()?c.name.trim():'Foyer';}
   /* menus and tabs that say "Foyer" use the foyer's own name */
-  function names(){var n=foyerName(),a=document.querySelectorAll('a[href="FoyerTeam.dc.html"],a[href="Foyer.dc.html"]');for(var i=0;i<a.length;i++){var k=a[i].childNodes;for(var j=k.length-1;j>=0;j--){var t=k[j];if(t.nodeType===3&&t.nodeValue.trim()){if(t.nodeValue.trim()==='Foyer'&&n!=='Foyer')t.nodeValue=t.nodeValue.replace('Foyer',n);break;}}}}
+  function names(){var n=foyerName(),a=document.querySelectorAll('a[href="FoyerTeam.dc.html"],a[href="FoyerSimple.dc.html"],a[href="Foyer.dc.html"]');for(var i=0;i<a.length;i++){var k=a[i].childNodes;for(var j=k.length-1;j>=0;j--){var t=k[j];if(t.nodeType===3&&t.nodeValue.trim()){if(t.nodeValue.trim()==='Foyer'&&n!=='Foyer')t.nodeValue=t.nodeValue.replace('Foyer',n);break;}}}}
   function apply(){var no=!chatOk(),h=document.documentElement;if(no!==h.hasAttribute('data-nochat')){if(no)h.setAttribute('data-nochat','');else h.removeAttribute('data-nochat');}names();}
   apply();setInterval(apply,1000);
   try{window.addEventListener('storage',apply);}catch(e){}
@@ -166,5 +166,5 @@ document.addEventListener('click',e=>{const a=e.target.closest('a'); if(!a)retur
 window.__load=load;
 // Opened from the app's address ("/" adds start=1): Listen, unless someone is already signed in on this device,
 // who goes to their own first screen (as after signing in).
-load((function(){var q=new URLSearchParams(location.search),p=q.get('p')||'Main.dc.html';if(q.get('start')==='1'){try{var u=JSON.parse(localStorage.getItem('booth.user')||'null'),x=JSON.parse(localStorage.getItem('booth.session')||'null');if(u&&x&&x.token&&(!x.expires||x.expires*1000>Date.now()))p=u.role==='Foyer team'?'FoyerTeam.dc.html':(u.role==='Musician'?'MyMix.dc.html':(u.role==='Listener'?'Listen.dc.html':'Main.dc.html'));}catch(e){}}return p;})());
+load((function(){var q=new URLSearchParams(location.search),p=q.get('p')||'Main.dc.html';if(q.get('start')==='1'){try{var u=JSON.parse(localStorage.getItem('booth.user')||'null'),x=JSON.parse(localStorage.getItem('booth.session')||'null');if(u&&x&&x.token&&(!x.expires||x.expires*1000>Date.now()))p=u.role==='Foyer team'?'FoyerSimple.dc.html':(u.role==='Musician'?'MyMix.dc.html':(u.role==='Listener'?'Listen.dc.html':'Main.dc.html'));}catch(e){}}return p;})());
 </script></body></html>
