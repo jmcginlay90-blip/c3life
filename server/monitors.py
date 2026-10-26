@@ -4,7 +4,8 @@ Kept here, not on each phone, so the C3 Life server can check that a musician on
 their own bus, plus any extra ones FOH has given them. FOH sound and Admins may change every monitor mix.
 When FOH locks monitor mixes (for a quiet moment), musicians can see their mix but not change it.
 
-data/monitors.json: {"buses": [1, 2, 4], "people": {"Keys (musician)": {"own": 4, "extra": [1, 2]}}, "locked": false}
+data/monitors.json: {"buses": [1, 2, 4], "people": {"Keys (musician)": {"own": 4, "extra": [1, 2], "me": 5}}, "locked": false}
+("me" is the person's own channel on the Wing, for Me and More me in My mix; None until FOH chooses it.)
 
 The check: for My mix to work, each monitor bus needs every send Pre (so FOH faders don't change it) and pan
 link off (so musicians can pan for themselves). check() lists what isn't; the app fixes it only after Yes.
@@ -33,6 +34,9 @@ def valid(d, bus_count=16):
             return "%s's own mix must be one of the monitor mixes." % name
         if not isinstance(v.get("extra", []), list) or not all(x in b for x in v.get("extra", [])):
             return "%s's extra mixes must be monitor mixes." % name
+        me = v.get("me")
+        if me is not None and (not isinstance(me, int) or isinstance(me, bool) or not 1 <= me <= 40):
+            return "%s's own channel is a Wing channel, 1 to 40." % name
     if not isinstance(d.get("locked", False), bool):
         return "Locked is yes or no."
     return None
@@ -55,7 +59,7 @@ class Monitors:
 
     def save(self, d):
         with self.lock:
-            self.d = {"buses": d["buses"], "people": {k: {"own": v.get("own"), "extra": list(v.get("extra", []))} for k, v in d["people"].items()},
+            self.d = {"buses": d["buses"], "people": {k: {"own": v.get("own"), "extra": list(v.get("extra", [])), "me": v.get("me")} for k, v in d["people"].items()},
                       "locked": bool(d.get("locked", False))}
             tmp = self.path + ".tmp"
             with open(tmp, "w", encoding="utf-8") as f:
@@ -73,6 +77,11 @@ class Monitors:
             p = self.d["people"].get(name) or {}
             own = p.get("own")
             return ([own] if own else []) + [b for b in p.get("extra", []) if b != own]
+
+    def me(self, name):
+        """This person's own channel on the Wing (Me in My mix), or None."""
+        with self.lock:
+            return (self.d["people"].get(name) or {}).get("me")
 
     def may_change(self, name, role_level_mixer, bus):
         """Mixer control (FOH, Admin): any monitor mix. Otherwise only your own mixes, and not while locked."""

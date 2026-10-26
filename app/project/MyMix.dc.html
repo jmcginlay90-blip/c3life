@@ -370,6 +370,7 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
     <sc-if value="{{isSimple}}" hint-placeholder-val="{{ false }}">
       <div class="simple" aria-label="My mix, simple view">
         <div class="ptext" style="margin:0 2px">{{simpleHead}}</div>
+        <sc-if value="{{noMe}}" hint-placeholder-val="{{ false }}"><div class="ptext" style="margin:0 2px;color:#F5C518">Your own channel isn’t chosen yet, so there’s no “Me” row. Ask FOH to set it on the Mixer (Who’s on which mix).</div></sc-if>
         <sc-for list="{{srows}}" as="r" hint-placeholder-count="5">
           <div class="{{r.cls}}" role="group" aria-label="{{r.name}}">
             <button class="sbig" onClick="{{r.down}}" disabled="{{r.noDown}}" aria-label="{{r.downAria}}">−</button>
@@ -402,8 +403,8 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
 
     <sc-if value="{{isMix}}" hint-placeholder-val="{{ true }}">
       <div class="merow" role="group" aria-label="My own channel">
-        <button class="pbtn" onClick="{{meDown}}" disabled="{{locked}}" aria-label="Less me: {{meName}} down 3 dB">− Less me</button>
-        <button class="pbtn pri" onClick="{{meUp}}" disabled="{{locked}}" aria-label="More me: {{meName}} up 3 dB">+ More me</button>
+        <button class="pbtn" onClick="{{meDown}}" disabled="{{meOff}}" aria-label="Less me: {{meName}} down 3 dB">− Less me</button>
+        <button class="pbtn pri" onClick="{{meUp}}" disabled="{{meOff}}" aria-label="More me: {{meName}} up 3 dB">+ More me</button>
       </div>
       <div class="desk">
         <sc-if value="{{pg.many}}" hint-placeholder-val="{{ false }}"><button class="pgside" onClick="{{pg.prev}}" disabled="{{pg.first}}" aria-label="Previous channels, {{pg.text}}">‹</button></sc-if>
@@ -605,7 +606,7 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
       <div class="panel" role="dialog" aria-label="{{panelTitle}}">
         <div style="display:flex;align-items:center;gap:10px"><div style="flex:1;font-size:17px;font-weight:600">{{panelTitle}}</div><button class="ub" onClick="{{closePanel}}" aria-label="Close">✕</button></div>
         <sc-if value="{{isSettings}}" hint-placeholder-val="{{ true }}">
-          <button class="pbtn pri" onClick="{{meUp}}" disabled="{{locked}}">More me (+3 dB on {{meName}})</button>
+          <button class="pbtn pri" onClick="{{meUp}}" disabled="{{meOff}}">More me (+3 dB on {{meName}})</button>
           <sc-if value="{{otherMixes}}" hint-placeholder-val="{{ true }}"><button class="pbtn" onClick="{{openMixes}}">Change to another mix…</button></sc-if>
           <button class="pbtn" onClick="{{undo}}" disabled="{{noUndo}}">Undo last change</button>
           <button class="pbtn" onClick="{{resetMix}}" disabled="{{locked}}">Go back to the sound desk’s starting mix…</button>
@@ -660,7 +661,7 @@ class Component extends DCLogic {
   }
   fresh() {
     const lv = { me: 72, click: 60, c1: 56, c2: 42, c3: 42, c4: 46, c5: 72, c6: 56, c7: 52, c9: 46, c10: 50, c11: 40, c12: 66 };
-    const ch = {}; this.src.forEach((x) => { ch[x.k] = { lv: lv[x.k] || 50, pan: 0, on: true, mca: x.t === 'kick' || x.t === 'snare' ? 3 : (x.t === 'mic' && x.ch <= 3 ? 1 : 0) }; });
+    const ch = {}; this.src.forEach((x) => { ch[x.k] = { lv: lv[x.k] || 50, pan: 0, on: true, mca: this.live ? 0 : (x.t === 'kick' || x.t === 'snare' ? 3 : (x.t === 'mic' && x.ch <= 3 ? 1 : 0)) }; });
     return { ch, master: { lv: 72, pan: 0, mute: false }, mca: { 1: 75, 2: 75, 3: 75, 4: 75 }, order: this.src.map((x) => x.k), hidden: [], eq: { on: true, hpf: { on: true, f: 80 }, bands: [{ t: 'Low', f: 100, g: 0 }, { t: 'Low mid', f: 400, g: 0, q: 'Normal' }, { t: 'High mid', f: 2500, g: 0, q: 'Normal' }, { t: 'High', f: 8000, g: 0 }] } };
   }
   key(bus) { let u = null; try { u = JSON.parse(localStorage.getItem('booth.user') || 'null'); } catch (e) {} const b = bus === undefined ? (this.state ? this.state.bus : null) : bus; return b && b !== this.ownBus() ? 'booth.busmix.' + b : 'booth.mymix.' + (u ? u.name : 'musician'); }
@@ -675,7 +676,27 @@ class Component extends DCLogic {
     if (!Array.isArray(extra)) extra = [1, 2]; // mock-up: Keys also looks after the wedges and the band IEMs
     return [this.ownBus()].concat(this.monitorBuses().filter((b) => b !== this.ownBus() && extra.indexOf(b) >= 0));
   }
-  load(bus) { try { const m = JSON.parse(localStorage.getItem(this.key(bus)) || 'null'); if (m && m.ch) { if (!m.eq) m.eq = this.fresh().eq; return m; } } catch (e) {} return this.fresh(); }
+  load(bus) { try { const m = JSON.parse(localStorage.getItem(this.key(bus)) || 'null'); if (m && m.ch) { if (!m.eq) m.eq = this.fresh().eq; this.fill(m); return m; } } catch (e) {} return this.fresh(); }
+  // Every channel in the list has a place in the mix (a channel named on the desk later is added at the end).
+  fill(m, sends) {
+    let added = false;
+    this.src.forEach((x) => { if (m.ch[x.k]) return; const w = sends && sends[this.sendKey(x)];
+      m.ch[x.k] = { lv: w && w.lvl !== undefined ? this.dbToLv(w.lvl) : 50, pan: 0, on: w && w.on !== undefined ? !!w.on : true, mca: 0 }; added = true; });
+    this.src.forEach((x) => { if (m.order.indexOf(x.k) < 0) { m.order.push(x.k); added = true; } });
+    return added;
+  }
+  // On the C3 Life server: the channels are the Wing's own, every channel and aux input with a name on the desk, in
+  // the desk's order, with its colour. Me is the channel FOH chose for this person (Mixer › Who's on which mix).
+  liveSrc(j) {
+    const cols = ['#5B6B7F', '#2F6CC4', '#2B4FA3', '#2BB3B3', '#3FA65A', '#7F9A3A', '#D6C23A', '#E08A2E', '#C43B3B', '#E07A6A', '#B8408E', '#8A5AD0'];
+    const col = (c) => (c ? cols[(c - 1) % 12] : '#5B6B7F'), t = (nm) => (/click/i.test(nm) ? 'click' : (/talk|tb\b/i.test(nm) ? 'talk' : (/kick/i.test(nm) ? 'kick' : (/snare/i.test(nm) ? 'snare' : (/key|piano|synth/i.test(nm) ? 'keys' : (/gtr|guitar|bass|acoustic/i.test(nm) ? 'guitar' : (/play|track|pb\b/i.test(nm) ? 'playback' : 'mic')))))));
+    const out = [];
+    Object.keys(j.names || {}).map(Number).sort((a, b) => a - b).forEach((n) => { const nm = (j.names[n] || '').trim(); if (!nm) return;
+      out.push({ k: 'w' + n, ch: n, t: t(nm), col: col((j.cols || {})[n]), me: n === this.monMe, name: nm }); });
+    Object.keys(j.aux_names || {}).map(Number).sort((a, b) => a - b).forEach((n) => { const nm = (j.aux_names[n] || '').trim(); if (!nm) return;
+      out.push({ k: 'wa' + n, aux: n, num: 'A' + n, t: t(nm), col: col((j.aux_cols || {})[n]), name: nm }); });
+    return out.map((x) => ({ ...x, icon: this.P[x.t] }));
+  }
   // ---- On the C3 Life server with the Wing in Control: this mix is a real bus on the Wing ----
   // Each channel's level here (with its MCA) is its send to the bus; ON is the send on; pan is the send's pan.
   // Your own volume, MUTE and pan are the bus's fader, mute and pan. Changes made at FOH come back here.
@@ -690,7 +711,7 @@ class Component extends DCLogic {
     if (typeof fetch !== 'function' || !this.wTok()) return;
     this.wApi('/api/monitors').then(({ code, j }) => {
       if (code === 404 || !j || !j.ok) return;
-      this.monMine = j.mine && j.mine.length ? j.mine : null; this.monBuses = j.buses || null;
+      this.monMine = j.mine && j.mine.length ? j.mine : null; this.monBuses = j.buses || null; this.monMe = j.me || null;
       if (j.locked !== undefined && j.locked !== this.state.locked) this.setState({ locked: j.locked });
       this.wingPoll(); this.wingT = setInterval(() => this.wingPoll(), 1500); this.wingF = setInterval(() => this.wingFlush(), 100);
       this.setState({ tick: Date.now() });
@@ -711,10 +732,14 @@ class Component extends DCLogic {
       this.wBusy = false;
       if (!j || !j.ok) { if (this.wingOn) this.setState({ wingOn: false }); return; }
       const on = j.status === 'connected' && j.mode === 'control';
+      // the channel list follows the desk even in Watch only, so musicians see their real channels and names
+      if (j.names && j.status === 'connected') { const ls = this.liveSrc(j), sig = JSON.stringify(ls);
+        if (ls.length && sig !== this.srcSig) { this.srcSig = sig; this.src = ls; this.live = true; const m0 = JSON.parse(JSON.stringify(this.state.mix)); this.fill(m0, j.sends); this.setState({ mix: m0 }); } }
       if (j.locked !== undefined && j.locked !== this.state.locked) this.setState({ locked: j.locked });
       if (!on || j.bus !== this.myBusNow()) { if (this.state.wingOn !== on) this.setState({ wingOn: on, wingWhy: j.status !== 'connected' ? 'The Wing isn’t connected' : 'The Wing is set to watch only' }); return; }
       // what the Wing has now; anything FOH changed (that we didn't just send) comes into this mix
       const m = JSON.parse(JSON.stringify(this.state.mix)); let changed = false;
+      if (this.fill(m, j.sends)) changed = true;
       this.src.forEach((x) => {
         const sk = this.sendKey(x); if (!sk) return; const w = j.sends[sk]; if (!w) return; const c = m.ch[x.k]; if (!c) return;
         const key = (f) => b + '/' + sk + '/' + f, recent = (f) => this.wSent && this.wSent[key(f)] && Date.now() - this.wSent[key(f)] < 3000;
@@ -896,7 +921,7 @@ class Component extends DCLogic {
     try { const l = JSON.parse(localStorage.getItem(this.savesKey()) || 'null'); if (Array.isArray(l)) return l; } catch (e) {}
     // Mock-up: musicians start with two example saved mixes (the same ones the sign-in pop-up offers).
     let u = null; try { u = JSON.parse(localStorage.getItem('booth.user') || 'null'); } catch (e) {}
-    if (!u || u.role !== 'Musician') return [];
+    if (!u || u.role !== 'Musician' || this.live) return [];  // the examples are for the mock-up's channels only
     const a = this.fresh(), b = this.fresh();
     a.ch.click.lv = 70; a.ch.c1.lv = 62; b.ch.c7.on = false; b.ch.c9.on = false; b.ch.c4.lv = 70; b.eq.bands[0].g = -3;
     return [{ id: 'demo1', name: 'Sunday AM', at: 'Sun 09:12', mix: a }, { id: 'demo2', name: 'Acoustic set', at: 'Wed 19:40', mix: b }];
@@ -1071,7 +1096,7 @@ class Component extends DCLogic {
     };
   }
   wn() { try { const w = JSON.parse(localStorage.getItem('booth.wingnames') || 'null'); if (w && w.ch) return w; } catch (e) {} return this.wnDefaults(); }
-  chName(n) { return this.wn().ch[n] || 'Ch ' + String(n).padStart(2, '0'); }
+  chName(n) { const x = this.live && this.src.find((y) => y.ch === n); return (x && x.name) || this.wn().ch[n] || 'Ch ' + String(n).padStart(2, '0'); }
   chLabel(n) { return 'Ch ' + String(n).padStart(2, '0') + ' · ' + this.chName(n); }
   wnSave(kind, n, name, by) {
     const w = this.wn(); w[kind] = { ...w[kind], [n]: name };
@@ -1081,6 +1106,7 @@ class Component extends DCLogic {
   }
   renderVals() {
     const s = this.state, m = s.mix;
+    if (m && m.ch && this.src.some((x) => !m.ch[x.k])) this.fill(m);  // a mix saved before the desk's channels arrived
     const db = (l) => (l <= 0 ? '−∞' : ((l >= 75 ? ((l - 75) / 25) * 10 : -((75 - l) * 1.2))).toFixed(1));
     const panText = (p) => (p === 0 ? 'Centre' : (p < 0 ? 'Left ' + -p : 'Right ' + p));
     const panX = (p) => (50 + p * 0.47 - 1.5).toFixed(1);
@@ -1090,9 +1116,9 @@ class Component extends DCLogic {
     // Names, colours and icons all come from the Wing (falls back to the app's own if the Wing hasn't sent one).
     const W = this.wn(), wk = (x) => (x.aux ? 'aux' + x.aux : x.ch);
     const D = this.wnDefaults();
-    const nameOf = (x) => (x.aux ? ((W.aux && W.aux[x.aux]) || D.aux[x.aux] || 'Aux ' + x.aux) : this.chName(x.ch));
-    const colOf = (x) => (W.col && W.col[wk(x)]) || x.col;
-    const iconOf = (x) => this.P[(W.icon && W.icon[wk(x)]) || x.t] || x.icon;
+    const nameOf = (x) => (x.name || (x.aux ? ((W.aux && W.aux[x.aux]) || D.aux[x.aux] || 'Aux ' + x.aux) : this.chName(x.ch)));
+    const colOf = (x) => (this.live ? x.col : ((W.col && W.col[wk(x)]) || x.col));
+    const iconOf = (x) => (this.live ? x.icon : this.P[(W.icon && W.icon[wk(x)]) || x.t] || x.icon);
     const own = this.ownBus(), myBus = s.bus || own, onOwn = myBus === own;
     const bName = (b) => (W.bus && W.bus[b]) || D.bus[b] || 'Bus ' + b;
     const busNm = (W.bus && W.bus[myBus]) || D.bus[myBus] || 'Bus ' + myBus, busCol = (W.col && W.col['bus' + myBus]) || '#9BCB3C';
@@ -1100,7 +1126,7 @@ class Component extends DCLogic {
     const order = m.order.filter((k) => byK[k] || k.indexOf('blank') === 0);
     const vis = order.filter((k) => m.hidden.indexOf(k) < 0 && (!s.spill || (byK[k] && m.ch[k].mca === s.spill)));
     const mf = this.fader(['master'], m.master.lv), mp = this.panner(['master'], m.master.pan);
-    const meK = this.src.find((x) => x.me).k;
+    const meX = this.src.find((x) => x.me), meK = meX ? meX.k : null;
     const view = this.viewNow(), simple = view === 'simple';
     const tab = (k, n) => ({ name: n, on: s.tab === k, cls: s.tab === k ? 'mt on' : 'mt', pick: () => this.setState({ tab: k, panel: '', sx: 0, ask: null }) });  // a confirm never follows you to another tab
     // How many strips fit across this screen. When they don't all fit, swipe across them, or use ‹ › to jump a screenful.
@@ -1229,9 +1255,9 @@ class Component extends DCLogic {
           up: f(1), down: f(-1), noUp: s.locked || lv >= 100, noDown: s.locked || lv <= 0, upAria: 'More ' + name, downAria: 'Less ' + name }; };
         const chRow = (x, me) => { const c = m.ch[x.k], nm = (me ? 'Me: ' : '') + nameOf(x);
           return row(nm, c.on ? db(c.lv) + ' dB' : 'Off in your mix (turn it on in the full mixer)', c.on ? c.lv : 0, (n) => n.ch[x.k].lv, (n, v) => { n.ch[x.k].lv = v; }, { cls: (me ? ' me' : '') + (c.on ? '' : ' off'), bar: colOf(x) }); };
-        const out = [chRow(byK[meK], true)];
+        const out = meK ? [chRow(byK[meK], true)] : [];
         [1, 2, 3, 4].forEach((g) => { const mem = this.src.filter((x) => m.ch[x.k].mca === g && x.k !== meK && m.hidden.indexOf(x.k) < 0); if (!mem.length) return;
-          out.push(row(mem.length === 1 ? nameOf(mem[0]) : 'Group ' + g, mem.map(nameOf).join(', '), m.mca[g], (n) => n.mca[g], (n, v) => { n.mca[g] = v; }, { bar: this.mcaCols[g] })); });
+          out.push(row(mem.length === 1 ? nameOf(mem[0]) : 'Group ' + g, mem.length === 1 ? 'Group ' + g + ' \u00b7 ' + db(m.mca[g]) + ' dB' : mem.map(nameOf).join(', '), m.mca[g], (n) => n.mca[g], (n, v) => { n.mca[g] = v; }, { bar: this.mcaCols[g] })); });
         order.forEach((k) => { const x = byK[k]; if (x && k !== meK && !m.ch[k].mca && m.hidden.indexOf(k) < 0) out.push(chRow(x, false)); });
         out.push(row('My volume', m.master.mute ? 'Muted (unmute it in the full mixer)' : 'Everything in my ears · ' + db(m.master.lv) + ' dB', m.master.lv, (n) => n.master.lv, (n, v) => { n.master.lv = v; }, { cls: ' vol', bar: '#F5C518' }));
         return out;
@@ -1270,9 +1296,9 @@ class Component extends DCLogic {
       openInfo: () => this.setState({ panel: s.panel === 'info' ? '' : 'info' }),
       lockInfo: () => this.setState({ panel: s.panel === 'lock' ? '' : 'lock' }),
       closePanel: () => this.setState({ panel: '' }),
-      meName: this.chName(byK[meK].ch),
-      meUp: () => { const n = JSON.parse(JSON.stringify(m)); n.ch[meK].lv = Math.min(100, n.ch[meK].lv + 3); this.save(n, 'More me: ' + this.chName(byK[meK].ch) + ' up 3 dB'); },
-      meDown: () => { const n = JSON.parse(JSON.stringify(m)); n.ch[meK].lv = Math.max(0, n.ch[meK].lv - 3); this.save(n, 'Less me: ' + this.chName(byK[meK].ch) + ' down 3 dB'); },
+      meName: meK ? this.chName(byK[meK].ch) : '', noMe: !meK, meOff: s.locked || !meK,
+      meUp: () => { if (!meK) return; const n = JSON.parse(JSON.stringify(m)); n.ch[meK].lv = Math.min(100, n.ch[meK].lv + 3); this.save(n, 'More me: ' + this.chName(byK[meK].ch) + ' up 3 dB'); },
+      meDown: () => { if (!meK) return; const n = JSON.parse(JSON.stringify(m)); n.ch[meK].lv = Math.max(0, n.ch[meK].lv - 3); this.save(n, 'Less me: ' + this.chName(byK[meK].ch) + ' down 3 dB'); },
       resetMix: () => this.setState({ panel: '', ask: { kind: 'foh', name: 'the sound desk\u2019s starting mix' } }),
       hasToast: !!s.toast, toast: s.toast,
       who, busName: 'Bus ' + myBus + ' \u00b7 ' + busNm, busShort: busNm.toUpperCase(), busNum: '', busCol, busInk: ink(busCol),

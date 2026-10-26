@@ -1042,9 +1042,9 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                     if mixer >= 1:
                         # the musicians, so FOH can choose whose mix is whose (Who's on which mix, on the Mixer)
                         mus = [u["name"] for u in store.public() if u["role"] == "Musician" and u["active"]]
-                        self.send_json(200, dict(d, ok=True, mine=monitors.mine(s["name"]), musicians=mus))
+                        self.send_json(200, dict(d, ok=True, mine=monitors.mine(s["name"]), me=monitors.me(s["name"]), musicians=mus))
                     elif own >= 1:
-                        self.send_json(200, {"ok": True, "buses": monitors.mine(s["name"]), "mine": monitors.mine(s["name"]), "locked": d["locked"]})
+                        self.send_json(200, {"ok": True, "buses": monitors.mine(s["name"]), "mine": monitors.mine(s["name"]), "me": monitors.me(s["name"]), "locked": d["locked"]})
                     else:
                         self.send_json(403, {"ok": False, "error": "Your role can't do this (Access levels)."})
                     return
@@ -1068,6 +1068,8 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 self.send_json(200, {"ok": True, "bus": b, "status": st["status"], "mode": st["mode"], "sends": desk.bus_sends(b), "strip": st["strips"]["bus"].get(str(b), {}),
                                      "names": {n: v.get("name", "") for n, v in st["strips"]["ch"].items()}, "locked": d["locked"],
                                      "aux_names": {n: v.get("name", "") for n, v in st["strips"]["aux"].items()}, "eq": desk.bus_eq(b),
+                                     "cols": {n: v.get("col") for n, v in st["strips"]["ch"].items() if v.get("col")},
+                                     "aux_cols": {n: v.get("col") for n, v in st["strips"]["aux"].items() if v.get("col")},
                                      "can_change": desk.settings["mode"] == "control" and not monitors.may_change(s["name"], mixer, b) if b in d["buses"] else mixer >= 2 and desk.settings["mode"] == "control"})
                 return
             if path == "/api/daily":
