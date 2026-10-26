@@ -166,6 +166,7 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
       <h1 style="margin:4px 0 0;font-size:26px;font-weight:600;letter-spacing:-0.01em">{{appName}}</h1>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
+    <sc-if value="{{hasViews}}" hint-placeholder-val="{{ true }}"><button onClick="{{toSimple}}" aria-label="Change to the simple view" style="min-height:44px;padding:0 12px;border-radius:22px;border:1px solid #F5C518;background:#161A21;color:#F5C518;font:600 13px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer">Simple view</button></sc-if>
     <button onClick="{{toggleEdit}}" aria-pressed="{{editing}}" style="min-height:44px;padding:0 12px;border-radius:22px;border:1px solid {{editBorder}};background:#161A21;color:{{editColor}};font:500 13px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer">{{editLabel}}</button>
     <a href="User.dc.html" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:#ECEEF1;background:#161A21;border:1px solid #262C36;border-radius:24px;padding:5px 12px 5px 5px;min-height:44px;box-sizing:border-box" aria-label="{{userAria}}">
       <span style="width:34px;height:34px;border-radius:50%;background:{{userColor}};color:#0D1015;font-weight:600;font-size:13px;display:flex;align-items:center;justify-content:center">{{userInitials}}</span>
@@ -1046,6 +1047,14 @@ class Component extends DCLogic {
       editLabel: s.editing ? 'Done' : 'Edit Home',
       editBorder: s.editing ? '#F5C518' : '#262C36', editColor: s.editing ? '#F5C518' : '#ECEEF1',
       toggleEdit: () => this.setState({ editing: !s.editing }),
+      // Simple view: chosen by each person, kept on this device and on the C3 Life server. Simple has a Full button to come back.
+      hasViews: !!s.user && s.user.role !== 'Foyer team' && s.user.role !== 'Listener',
+      toSimple: () => {
+        const u = s.user; if (!u) return;
+        try { localStorage.setItem('booth.view.' + u.name, 'simple'); } catch (e) {}
+        const t = this.bsToken(); if (t && typeof fetch === 'function') fetch('/api/me/view', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + t }, body: JSON.stringify({ view: 'simple' }) }).catch(() => {});
+        if (typeof window !== 'undefined' && window.__load) window.__load('HomeSimple.dc.html');
+      },
       roleName: role,
       show, ord,
       editRows: allIds.map((k) => {

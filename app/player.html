@@ -164,7 +164,67 @@ async function load(name){
 }
 document.addEventListener('click',e=>{const a=e.target.closest('a'); if(!a)return; const h=(a.getAttribute('href')||'').split('#')[0]; if(h.endsWith('.dc.html')){e.preventDefault(); load(h);} else if(h.startsWith('http')) e.preventDefault();});
 window.__load=load;
+// "Help with this screen": a short, plain-words help for each screen, at the bottom of its menu. The simple pages
+// (Simple home, Hear, Foyer simple) have their own Help button instead.
+const SCREEN_HELP={
+ 'Main.dc.html':['Home','What is happening now: the slide on screen, who is on, and the buttons you use most. Tap a tile to open it. Anything that changes the sound, the lights or the screens asks you first.','Prefer bigger buttons? Tap Simple view at the top. You can come back with Full.'],
+ 'Laptop.dc.html':['Home','What is happening now: the slide on screen, who is on, and the buttons you use most. Tap a tile to open it. Anything that changes the sound, the lights or the screens asks you first.','Prefer bigger buttons? Tap Simple view at the top. You can come back with Full.'],
+ 'Tablet.dc.html':['Home','What is happening now: the slide on screen, who is on, and the buttons you use most. Tap a tile to open it. Anything that changes the sound, the lights or the screens asks you first.','Prefer bigger buttons? Tap Simple view at the top. You can come back with Full.'],
+ 'TabletPortrait.dc.html':['Home','What is happening now: the slide on screen, who is on, and the buttons you use most. Tap a tile to open it. Anything that changes the sound, the lights or the screens asks you first.','Prefer bigger buttons? Tap Simple view at the top. You can come back with Full.'],
+ 'MyMix.dc.html':['My mix','This is what you hear in your in-ears or wedge. Only your mix changes: nothing reaches the main speakers or anyone else.','Simple: tap − or + on a row. Full mixer: drag the faders. Undo puts back your last change. If the lock is yellow, the sound desk has paused changes for a moment.'],
+ 'Chat.dc.html':['Chat','Messages between the booth, the stage and the team. Type at the bottom and send.'],
+ 'Help.dc.html':['Help','Answers to common questions. Run system check reads every device and changes nothing.'],
+ 'Report.dc.html':['Report an issue','Something not working? Say what happened, add a photo if it helps, then send it to the people who look after the booth.'],
+ 'Wing.dc.html':['Mixer','The Wing sound desk: faders, mutes and names come from the desk. C3 Life starts in Watch only, so it can’t move the desk until an Admin switches it to Control.','Who’s on which mix: give each musician their own monitor mix. It asks before saving.'],
+ 'Show.dc.html':['Show','ProPresenter: what is on screen and what is next. Things only go on screen when you tap them.'],
+ 'Plan.dc.html':['Running order','The service plan from Planning Center. Nothing on it runs by itself.'],
+ 'Music.dc.html':['Music','Background music from Spotify on the media Mac: play, pause and how loud.'],
+ 'Foyer.dc.html':['Foyer setup','The foyer speakers: their name, the two mixes they can play, and the loudest they can go.'],
+ 'FoyerTeam.dc.html':['Foyer','What the foyer speakers play and how loud. It can’t go above the maximum an Admin set.'],
+ 'Listen.dc.html':['Listen','Hear the service on your phone. Tap a feed to play it, and use your phone’s volume.'],
+ 'ListenAdmin.dc.html':['Listen settings','The feeds people can hear on their phones, and the Listen pages, each with its own address and QR code.'],
+ 'RTA.dc.html':['RTA','How loud the room is, and which sounds are strongest. It only listens: it never changes the sound.'],
+ 'Calibrate.dc.html':['RTA mic calibration','Makes the room mic’s loudness numbers right, with a calibrator or a sound level meter. It doesn’t change the sound.'],
+ 'Recording.dc.html':['Recording','Records every channel, one file each, to the recording drive. Recording only listens. Playing back to the desk asks first.'],
+ 'Lights.dc.html':['Lights','The Lightkey cues. Your role decides whether you can only see them or also use them.'],
+ 'Macros.dc.html':['Run sheet','Buttons that do several things at once (desk, music, lights, slides). They only run when someone taps them.'],
+ 'Cues.dc.html':['Slide cues','Changes tied to a slide. When the slide goes live a countdown shows, with Cancel and Run now.'],
+ 'Setup.dc.html':['Saved setup','Backups, the booth’s name, and updates for the C3 Life server. Updates are never on a Sunday, and they ask first.'],
+ 'Users.dc.html':['Users and PINs','Who can sign in and their role. Each person types their own PIN.'],
+ 'Access.dc.html':['Access levels','What each role can see (View) and change (Control). Desk patch and Dante changes always ask first.'],
+ 'Devices.dc.html':['Devices','Everything C3 Life looks after, and whether it is answering.'],
+ 'Network.dc.html':['Network','The C3 Life server’s cables and Wi-Fi. The booth gear always stays on its own network.'],
+ 'Dante.dc.html':['Dante','Which device sends sound to which. Every change asks you first.'],
+ 'Patch.dc.html':['Wing patch','What feeds each of the Wing’s outputs. Every change asks you first.'],
+ 'Mics.dc.html':['Wireless mics','The radio mics and their batteries. A low battery warning shows on Home for everyone.'],
+ 'Midi.dc.html':['MIDI buttons','Pads, keys and footswitches that run a macro when pressed.'],
+ 'NetMidi.dc.html':['Network MIDI','MIDI between the booth Macs over the network.'],
+ 'Talkback.dc.html':['MD talk settings','How the music director’s mic is picked up and shown. Screens go green while the MD is talking.'],
+ 'MDTalk.dc.html':['MD talk','Shows when the music director is talking.'],
+ 'Bible.dc.html':['Bible verse','Find a verse and get it ready for the screens. It only goes on screen when you say so.'],
+ 'Shutdown.dc.html':['Server power','Restart or turn off the C3 Life server. Each one asks first and is written to the activity log. Never during a service.'],
+ 'Wiring.dc.html':['Wiring list','Every cable and device in the booth, with its number and address.'],
+ 'Drivers.dc.html':['Drivers','How the app talks to each piece of gear: its type, address and port.'],
+ 'Connect.dc.html':['Internet and schedule','The internet is only for Planning Center and sending reports. The desk, Dante and the show never need it.']
+};
+function screenHelp(){
+  const h=SCREEN_HELP[window.__page]; if(!h) return;
+  let o=document.getElementById('screen-help'); if(o){ o.remove(); return; }
+  o=document.createElement('div'); o.id='screen-help'; o.setAttribute('role','dialog'); o.setAttribute('aria-label','Help with this screen');
+  o.style.cssText='position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center;padding:16px';
+  const c=document.createElement('div'); c.style.cssText='background:#1A1C20;color:#ECEEF1;border:1px solid #F5C518;border-radius:16px;padding:18px;max-width:520px;width:100%;font:400 16px/1.5 IBM Plex Sans,system-ui,sans-serif;display:flex;flex-direction:column;gap:10px;max-height:80dvh;overflow:auto';
+  const t=document.createElement('div'); t.style.cssText='font-size:19px;font-weight:600'; t.textContent='Help: '+h[0]; c.appendChild(t);
+  h.slice(1).forEach(x=>{ const pp=document.createElement('div'); pp.textContent=x; c.appendChild(pp); });
+  const row=document.createElement('div'); row.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px';
+  const more=document.createElement('button'); more.textContent='More help'; const ok=document.createElement('button'); ok.textContent='Close';
+  [more,ok].forEach((b,i)=>{ b.style.cssText='min-height:52px;border-radius:12px;font:600 16px IBM Plex Sans,system-ui,sans-serif;cursor:pointer;border:1px solid '+(i?'#F5C518;background:#F5C518;color:#1A1204':'#3A3F47;background:#26282C;color:#ECEEF1'); row.appendChild(b); });
+  more.onclick=()=>{ o.remove(); load('Help.dc.html'); }; ok.onclick=()=>o.remove(); o.onclick=(e)=>{ if(e.target===o) o.remove(); };
+  c.appendChild(row); o.appendChild(c); document.body.appendChild(o); ok.focus();
+}
+window.__screenHelp=screenHelp;
+// Put the button at the bottom of each menu (the drop-down menu and the side menu), after every draw.
+new MutationObserver(()=>{ if(!SCREEN_HELP[window.__page]) return; document.querySelectorAll('#app .mlist, #app .wkside').forEach(m=>{ if(m.querySelector('.sh-btn')) return; const b=document.createElement('button'); b.type='button'; b.className='sh-btn'; b.textContent='? Help with this screen'; b.style.cssText='display:flex;align-items:center;width:100%;min-height:48px;padding:0 14px;border:0;border-top:1px solid #2A2F38;background:transparent;color:#F5C518;font:600 15px IBM Plex Sans,system-ui,sans-serif;cursor:pointer;text-align:left'; b.onclick=(e)=>{ e.preventDefault(); const d=b.closest('details'); if(d) d.open=false; screenHelp(); }; m.appendChild(b); }); }).observe(document.getElementById('app'),{childList:true,subtree:true});
 // Opened from the app's address ("/" adds start=1): Listen, unless someone is already signed in on this device,
 // who goes to their own first screen (as after signing in).
-load((function(){var q=new URLSearchParams(location.search),p=q.get('p')||'Main.dc.html';if(q.get('start')==='1'){try{var u=JSON.parse(localStorage.getItem('booth.user')||'null'),x=JSON.parse(localStorage.getItem('booth.session')||'null');if(u&&x&&x.token&&(!x.expires||x.expires*1000>Date.now()))p=u.role==='Foyer team'?'FoyerSimple.dc.html':(u.role==='Musician'?'MyMix.dc.html':(u.role==='Listener'?'Listen.dc.html':'Main.dc.html'));}catch(e){}}return p;})());
+load((function(){var q=new URLSearchParams(location.search),p=q.get('p')||'Main.dc.html';if(q.get('start')==='1'){try{var u=JSON.parse(localStorage.getItem('booth.user')||'null'),x=JSON.parse(localStorage.getItem('booth.session')||'null');if(u&&x&&x.token&&(!x.expires||x.expires*1000>Date.now()))p=u.role==='Foyer team'?'FoyerSimple.dc.html':(u.role==='Musician'?'MyMix.dc.html':(u.role==='Listener'?'Listen.dc.html':(localStorage.getItem('booth.view.'+u.name)==='simple'?'HomeSimple.dc.html':'Main.dc.html')));}catch(e){}}return p;})());
 </script></body></html>

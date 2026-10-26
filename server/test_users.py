@@ -74,6 +74,38 @@ class Users(unittest.TestCase):
                 p["active"] = False
         self.assertIn("at least one Admin", self.call("/api/users", "PUT", {"password": "c3life-admin", "users": people}, tok=self.admin)[1]["error"])
 
+    def test_simple_or_full_view_is_each_persons_own(self):
+        code, j = self.login("FOH sound", "1234")
+        self.assertEqual((code, j["view"]), (200, ""))  # not chosen yet: the app asks
+        foh = j["token"]
+        self.assertEqual(self.call("/api/me/view", "POST", {"view": "simple"})[0], 401)  # signed in only
+        self.assertEqual(self.call("/api/me/view", "POST", {"view": "tiny"}, tok=foh)[0], 400)
+        self.assertEqual(self.call("/api/me/view", "POST", {"view": "simple"}, tok=foh), (200, {"ok": True, "error": "", "view": "simple"}))
+        self.assertEqual(self.login("FOH sound", "1234")[1]["view"], "simple")  # on every device they sign in on
+        self.assertEqual(self.login("Keys (musician)", "1234")[1]["view"], "")  # nobody else's changes
+        # Users & PINs saving everyone keeps it
+        users = self.call("/api/users", tok=self.admin)[1]["users"]
+        people = [dict(old=u["name"], **{k: u[k] for k in ("name", "role", "active", "chat")}) for u in users]
+        self.assertEqual(self.call("/api/users", "PUT", {"password": "c3life-admin", "users": people}, tok=self.admin)[0], 200)
+        self.assertEqual(self.login("FOH sound", "1234")[1]["view"], "simple")
+        self.assertEqual(self.call("/api/me/view", "POST", {"view": "full"}, tok=foh)[0], 200)
+        self.assertEqual(self.login("FOH sound", "1234")[1]["view"], "full")
+
+    def test_monitors_lists_the_musicians_for_whos_on_which_mix(self):
+        foh = self.login("FOH sound", "1234")[1]["token"]
+        code, j = self.call("/api/monitors", tok=foh)
+        self.assertEqual(code, 200)
+        self.assertIn("Keys (musician)", j["musicians"])
+        self.assertNotIn("FOH sound", j["musicians"])
+        keys = self.login("Keys (musician)", "1234")[1]["token"]
+        self.assertNotIn("musicians", self.call("/api/monitors", tok=keys)[1])  # a musician sees only their own mixes
+        code, j = self.call("/api/monitors", "PUT", {"people": {"Keys (musician)": {"own": 1, "extra": [2]}}}, tok=foh)
+        self.assertEqual(code, 200, j)
+        self.assertEqual(j["people"]["Keys (musician)"], {"own": 1, "extra": [2]})
+        self.assertIn("Keys (musician)", j["musicians"])
+        self.assertEqual(self.call("/api/monitors", "PUT", {"people": {"Keys (musician)": {"own": 9}}}, tok=foh)[0], 400)  # not a monitor mix
+        self.assertEqual(self.call("/api/monitors", "PUT", {"people": {}}, tok=keys)[0], 403)
+
 
 if __name__ == "__main__":
     unittest.main()

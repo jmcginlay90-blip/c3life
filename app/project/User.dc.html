@@ -116,7 +116,15 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
         <div style="font-size:19px;font-weight:600">Signed in as {{selName}}</div>
         <div style="font-size:13px;color:#A3ACB8">{{selRole}} · {{selCan}}</div>
         <sc-if value="{{hasLoaded}}" hint-placeholder-val="{{ false }}"><div style="font-size:13px;color:#4FD18B">{{loadedLine}}</div></sc-if>
-        <a href="{{homeHref}}" class="btn pri" style="display:flex;align-items:center;justify-content:center;text-decoration:none;width:100%;box-sizing:border-box">{{homeLabel}}</a>
+        <sc-if value="{{askView}}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:8px;width:100%;text-align:left">
+            <div style="font-size:16px;font-weight:600;text-align:center">Which view would you like?</div>
+            <button class="btn" style="min-height:64px;text-align:left;padding:8px 14px" onClick="{{pickSimple}}"><b>Simple view</b><br><span style="font-size:13px;color:#A3ACB8">{{simpleWhat}}</span></button>
+            <button class="btn" style="min-height:64px;text-align:left;padding:8px 14px" onClick="{{pickFull}}"><b>Full view</b><br><span style="font-size:13px;color:#A3ACB8">{{fullWhat}}</span></button>
+            <div style="font-size:12px;color:#A3ACB8;text-align:center">You can change this any time, at the top of {{viewWhere}}.</div>
+          </div>
+        </sc-if>
+        <sc-if value="{{viewChosen}}" hint-placeholder-val="{{ true }}"><a href="{{homeHref}}" class="btn pri" style="display:flex;align-items:center;justify-content:center;text-decoration:none;width:100%;box-sizing:border-box">{{homeLabel}}</a></sc-if>
       </div>
     </sc-if>
 
@@ -281,7 +289,7 @@ class Component extends DCLogic {
         if (!h || h.service !== 'c3life') { localStorage.removeItem('booth.session'); return null; }
         return fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, pin }) })
           .then((r) => (r.ok ? r.json() : null))
-          .then((j) => { if (j && j.token) localStorage.setItem('booth.session', JSON.stringify({ token: j.token, name: j.name })); else localStorage.removeItem('booth.session'); });
+          .then((j) => { if (j && j.token) { localStorage.setItem('booth.session', JSON.stringify({ token: j.token, name: j.name })); this.keepView(j); } else localStorage.removeItem('booth.session'); });
       }).catch(() => {});
     } catch (e) {}
   }
@@ -318,7 +326,17 @@ class Component extends DCLogic {
   isAdmin(u) { return !!u && u.role === 'Admin'; }
   // Admin passwords: 8 or more characters, with a letter and a number or symbol (the C3 Life server checks the same).
   goodPassword(p) { return p.length >= 8 && /[A-Za-z]/.test(p) && /[^A-Za-z]/.test(p); }
-  homeOf(u) { return u && u.role === 'Foyer team' ? 'FoyerSimple.dc.html' : (u && u.role === 'Musician' ? 'MyMix.dc.html' : (u && u.role === 'Listener' ? 'Listen.dc.html' : 'Main.dc.html')); }
+  // Simple or Full view: each person's own choice, kept with them on the C3 Life server (POST /api/me/view).
+  keepView(j) { try { if (j && j.name) localStorage.setItem('booth.view.' + j.name, j.view || ''); } catch (e) {} }
+  viewOf(u) { try { return u ? (localStorage.getItem('booth.view.' + u.name) || '') : ''; } catch (e) { return ''; } }
+  hasViews(u) { return !!u && u.role !== 'Foyer team' && u.role !== 'Listener'; }
+  homeOf(u) { return u && u.role === 'Foyer team' ? 'FoyerSimple.dc.html' : (u && u.role === 'Musician' ? 'MyMix.dc.html' : (u && u.role === 'Listener' ? 'Listen.dc.html' : (this.viewOf(u) === 'simple' ? 'HomeSimple.dc.html' : 'Main.dc.html'))); }
+  setView(u, v) {
+    try { localStorage.setItem('booth.view.' + u.name, v); } catch (e) {}
+    let t = ''; try { t = (JSON.parse(localStorage.getItem('booth.session') || 'null') || {}).token || ''; } catch (e) {}
+    if (t) fetch('/api/me/view', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + t }, body: JSON.stringify({ view: v }) }).catch(() => {});
+    this.setState({ viewTick: Date.now() });
+  }
   // Go to another screen: in the app (player.html) straight away; in a canvas preview a page may not navigate itself,
   // so it stays here and the screen shows its link instead. Returns true if it went.
   goTo(page) { if (typeof window !== 'undefined' && window.__load) { window.__load(page); return true; } return false; }
@@ -358,7 +376,7 @@ class Component extends DCLogic {
           .then((res) => res.json().then((j) => ({ code: res.status, j })))
           .then(({ code, j }) => {
             if (code === 200 && j.token) {
-              try { localStorage.setItem('booth.session', JSON.stringify({ token: j.token, name: j.name })); } catch (e) {}
+              try { localStorage.setItem('booth.session', JSON.stringify({ token: j.token, name: j.name })); this.keepView(j); } catch (e) {}
               this.setState({ checking: false });
               if (r.mustChange) this.setState({ pin: '', step: 'new1', newPin: '', newPin2: '', wrong: false }); else this.finish(r);
             } else this.setState({ pin: '', wrong: true, checking: false, lockMsg: code === 429 ? j.error : '' });
@@ -401,7 +419,7 @@ class Component extends DCLogic {
             fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: r.name, password: s.pw }) })
               .then((res) => res.json().then((j) => ({ code: res.status, j })))
               .then(({ code, j }) => {
-                if (code === 200 && j.token) { try { localStorage.setItem('booth.session', JSON.stringify({ token: j.token, name: j.name })); } catch (e) {} this.setState({ checking: false }); if (r.mustChange) this.setState({ pw: '', step: 'new1' }); else this.finish(r); }
+                if (code === 200 && j.token) { try { localStorage.setItem('booth.session', JSON.stringify({ token: j.token, name: j.name })); this.keepView(j); } catch (e) {} this.setState({ checking: false }); if (r.mustChange) this.setState({ pw: '', step: 'new1' }); else this.finish(r); }
                 else this.setState({ pw: '', wrong: true, checking: false, pwMsg: code === 429 ? j.error : 'Wrong password. Try again.' });
               }).catch(() => this.setState({ pw: '', wrong: true, checking: false, pwMsg: 'Can\u2019t reach the C3 Life server. Try again.' }));
             return;
@@ -448,6 +466,12 @@ class Component extends DCLogic {
       },
       selName: r ? r.name : '', selRole: r ? r.role : '', selCan: meta.can, selColor: meta.color, selInitials: r ? this.initials(r.name) : '?',
       homeHref: this.homeOf(r),
+      askView: this.hasViews(r) && !this.viewOf(r), viewChosen: !(this.hasViews(r) && !this.viewOf(r)),
+      simpleWhat: r && r.role === 'Musician' ? 'One row for each thing you hear, with big − and + buttons.' : 'What\u2019s happening now, the MD\u2019s last words, and a few big buttons.',
+      fullWhat: r && r.role === 'Musician' ? 'The full mixer: faders, groups, EQ and saved mixes.' : 'Everything for your role, as the sound team uses it.',
+      viewWhere: r && r.role === 'Musician' ? 'My mix' : 'Home',
+      pickSimple: () => { this.setView(r, 'simple'); this.goTo(this.homeOf(r)); },
+      pickFull: () => { this.setView(r, 'full'); this.goTo(this.homeOf(r)); },
       homeLabel: r && r.role === 'Foyer team' ? 'Go to the Foyer screen' : (r && r.role === 'Musician' ? 'Go to My mix' : (r && r.role === 'Listener' ? 'Go to Listen' : 'Go to Home')),
       viewOnly: () => { this.serverSignIn(r.name, ''); this.finish(r); if (r.role === 'Listener') this.goTo('Listen.dc.html'); },
       popTitle: s.step === 'preset' ? 'Signed in as ' + (r ? r.name : '') : (newStep ? (this.isAdmin(r) ? 'Choose your own password' : 'Choose your own PIN') : (r ? r.name : '')),
