@@ -87,6 +87,9 @@ reusing one: the patch list shows who receives each card output.
 - The app on any phone on the booth Wi-Fi: http://192.168.10.10 (or http://c3life.local) opens Sign in. Listening for
   anyone, no sign-in: http://192.168.10.10/listen (and /listen/<page>). The foyer team: /foyer. Help > Run system check
   reads every device and changes nothing.
+- Simple or Full: each person chooses on Home and My mix for themselves (kept on the server). Don't choose it for them.
+  Musicians' own mixes are set on Mixer > **Who's on which mix** (FOH or an Admin; it asks first, the Wing doesn't
+  change). Every screen has **Help with this screen** at the bottom of its menu.
 - Updating later: in the app, Saved setup > Updates (an Admin; it backs up first, installs with the same options and puts
   the backup back if C3 Life doesn't start; never on a Sunday). It needs the GitHub key once (`Set-GitHubKey.ps1`, the
   person pastes it). By hand: the "Updating the app on the HP" section of the manual. Log: `C:\C3Life\logs\update.log`.
