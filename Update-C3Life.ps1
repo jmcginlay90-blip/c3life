@@ -126,13 +126,25 @@ function Apply($key, $req) {
   $updates = Join-Path $InstallDir 'updates'
   New-Item -ItemType Directory -Force -Path $updates | Out-Null
   $zip = Join-Path $updates "$sha.zip"
-  $h = @{ 'Authorization' = "Bearer $key"; 'Accept' = 'application/vnd.github+json'; 'User-Agent' = 'C3-Life-updater' }
   $url = "$api/repos/$repo/zipball/$sha"
-  # GitHub answers with a short-lived download link; follow it without sending the key on
-  $loc = $null
-  try { $r = Invoke-WebRequest -Uri $url -Headers $h -MaximumRedirection 0 -UseBasicParsing -TimeoutSec 60 -ErrorAction Stop; if ($r.StatusCode -ge 300) { $loc = $r.Headers.Location } else { [IO.File]::WriteAllBytes($zip, $r.Content) } }
-  catch { $resp = $_.Exception.Response; if ($resp -and $resp.Headers -and $resp.Headers.Location) { $loc = [string]$resp.Headers.Location } else { throw } }
-  if ($loc) { Invoke-WebRequest -Uri ([string]$loc) -UseBasicParsing -OutFile $zip -TimeoutSec 600 -Headers @{ 'User-Agent' = 'C3-Life-updater' } }
+  # GitHub answers with a short-lived download link: follow it without sending the key on. HttpWebRequest behaves the
+  # same in Windows PowerShell 5.1 (the HP) and PowerShell 7, unlike Invoke-WebRequest with redirects turned off.
+  $wr = [Net.HttpWebRequest]::Create($url)
+  $wr.AllowAutoRedirect = $false
+  $wr.UserAgent = 'C3-Life-updater'
+  $wr.Accept = 'application/vnd.github+json'
+  $wr.Timeout = 60000
+  $wr.Headers['Authorization'] = "Bearer $key"
+  try { $resp = $wr.GetResponse() } catch [Net.WebException] { $resp = $_.Exception.Response; if (-not $resp) { throw } }
+  $code = [int]$resp.StatusCode
+  $loc = $resp.Headers['Location']
+  if ($code -ge 300 -and $code -lt 400 -and $loc) {
+    $resp.Close()
+    Invoke-WebRequest -Uri $loc -UseBasicParsing -OutFile $zip -TimeoutSec 600 -Headers @{ 'User-Agent' = 'C3-Life-updater' }
+  } elseif ($code -eq 200) {
+    $fs = [IO.File]::Create($zip)
+    try { $resp.GetResponseStream().CopyTo($fs) } finally { $fs.Close(); $resp.Close() }
+  } else { $resp.Close(); throw "GitHub answered $code to the download" }
   $out = Join-Path $updates $sha
   if (Test-Path $out) { Remove-Item -Recurse -Force $out }
   Expand-Archive -Path $zip -DestinationPath $out -Force
