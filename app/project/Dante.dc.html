@@ -228,6 +228,23 @@ html:not([data-look=classic]) input[type=checkbox],html:not([data-look=classic])
       </sc-if></div>
     </section>
 
+    <section class="card" role="region" aria-label="Backup Mac" style="display:flex;flex-direction:column;gap:10px">
+      <div class="lbl">Backup Mac for Playback</div>
+      <div style="font-size:12px;color:#A3ACB8;line-height:1.45">The Backup Mac button on Home moves every Wing Dante input that comes from the main Mac to the backup Mac's channel with the same name (or number), in one press. For 10 seconds it says Undo, which puts back exactly what was there. Both Macs need Playback open with the same song. The Wing must be in Control.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#A3ACB8">Main Mac
+          <select aria-label="Main Playback Mac" value="{{foMain}}" onChange="{{foPickMain}}" disabled="{{foCantChoose}}"><sc-for list="{{foDevs}}" as="o" hint-placeholder-count="4"><option value="{{o}}">{{o}}</option></sc-for></select>
+        </label>
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#A3ACB8">Backup Mac
+          <select aria-label="Backup Playback Mac" value="{{foBackup}}" onChange="{{foPickBackup}}" disabled="{{foCantChoose}}"><sc-for list="{{foDevs}}" as="o" hint-placeholder-count="4"><option value="{{o}}">{{o}}</option></sc-for></select>
+        </label>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="flex:1;font-size:13px;color:{{foColor}};line-height:1.45" role="status">{{foLine}}</div>
+        <button class="btn" onClick="{{foSave}}" disabled="{{foCantSave}}">Save</button>
+      </div>
+    </section>
+
     <section class="card" style="display:flex;align-items:center;gap:12px;padding:12px 14px">
       <div style="flex:1">
         <div style="font-size:15px;font-weight:600">{{lockTitle}}</div>
@@ -438,6 +455,28 @@ class Component extends DCLogic {
       if (code === 404) { this.dnDemo = true; return; }
       if (code === 200 && j.ok) this.setState({ dnLive: j.devices });
     }).catch(() => {});
+    this.dnApi('/api/failover').then(({ code, j }) => { if (code === 200 && j.ok) this.setState({ fo: j }); }).catch(() => {});
+  }
+  // The backup Playback Mac: which two Macs the Home button swaps the Wing's Dante inputs between.
+  foVals(list) {
+    const s = this.state, F = s.fo || { main: '', backup: '', can: { choose: false } };
+    const main = s.foMain !== undefined ? s.foMain : F.main, backup = s.foBackup !== undefined ? s.foBackup : F.backup;
+    const devs = [''].concat(list.map((d) => d.name).filter((n) => n));
+    [F.main, F.backup].forEach((n) => { if (n && devs.indexOf(n) < 0) devs.push(n); });
+    const changed = main !== F.main || backup !== F.backup;
+    const line = s.foMsg || (!s.fo ? 'Not connected to the C3 Life server.' : !F.backup ? 'No backup Mac chosen yet.'
+      : 'The Wing hears ' + (F.on === 'backup' ? F.backup + ' (the backup)' : F.main || 'the main Mac') + '.');
+    return {
+      foDevs: devs, foMain: main, foBackup: backup, foCantChoose: !(F.can && F.can.choose),
+      foCantSave: !(F.can && F.can.choose) || !changed || !main || !backup || main === backup,
+      foLine: line, foColor: s.foBad ? '#FF7A45' : '#A3ACB8',
+      foPickMain: (e) => this.setState({ foMain: e.target.value, foMsg: '' }),
+      foPickBackup: (e) => this.setState({ foBackup: e.target.value, foMsg: '' }),
+      foSave: () => this.dnApi('/api/failover/settings', 'POST', { main, backup }).then(({ j }) => {
+        if (j && j.ok) this.setState({ fo: { ...F, ...j, can: F.can }, foMain: undefined, foBackup: undefined, foMsg: 'Saved. The Backup Mac button on Home is ready.', foBad: false });
+        else this.setState({ foMsg: (j && j.error) || 'Not saved.', foBad: true });
+      }).catch(() => this.setState({ foMsg: 'The C3 Life server didn’t answer.', foBad: true }))
+    };
   }
   // The preview's devices, with any names given here.
   dnDemoNames() { try { return JSON.parse(localStorage.getItem('booth.dantenames') || '{}') || {}; } catch (e) { return {}; } }
@@ -594,6 +633,7 @@ class Component extends DCLogic {
       hasNote: !!s.note, note: s.note,
       devNames: this.devs.map((d) => d.name),
       ...this.dnVals(),
+      ...this.foVals(this.dnList()),
       txDev: s.tx, rxDev: s.rx,
       pickTx: (e) => this.setState({ tx: e.target.value, txBank: 0 }),
       pickRx: (e) => this.setState({ rx: e.target.value, rxBank: 0 }),
