@@ -101,6 +101,24 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(self.login(name="Nobody")[0], 401)
         self.assertEqual(self.login(name="Viewer", pin="")[0], 200)
 
+    def test_backup_mac_access(self):
+        _, mus = self.login()
+        self.assertEqual(self.get("/api/failover", token=mus["token"])[0], 403)  # a musician can't see it
+        self.assertEqual(self.get("/api/failover/do", "POST", {"do": "backup"}, token=mus["token"])[0], 403)
+        _, view = self.login(name="Viewer", pin="")
+        self.assertEqual(self.get("/api/failover/do", "POST", {"do": "backup"}, token=view["token"])[0], 403)
+        code, b, _ = self.get("/api/login", "POST", {"name": "Admin", "password": "c3life-admin"})
+        tok = json.loads(b)["token"]
+        code, b, _ = self.get("/api/failover", token=tok)
+        b = json.loads(b)
+        self.assertEqual((code, b["can"], b["ready"]), (200, {"switch": True, "choose": True}, False))
+        code, b, _ = self.get("/api/failover/settings", "POST", {"main": "C3-LIfe-Multitracks", "backup": "C3-Life-Backup"}, token=tok)
+        self.assertEqual((code, json.loads(b)["backup"]), (200, "C3-Life-Backup"))
+        code, b, _ = self.get("/api/failover/do", "POST", {"do": "backup"}, token=tok)  # the Wing starts in Watch only
+        self.assertEqual(code, 409)
+        self.assertIn("Watch only", json.loads(b)["error"])
+        self.assertEqual(self.get("/api/failover/do", "POST", {"do": "undo"}, token=tok)[0], 409)  # nothing to undo
+
     def test_admin_signs_in_with_a_password(self):
         code, b, _ = self.get("/api/login", "POST", {"name": "Admin", "password": "c3life-admin"})
         self.assertEqual((code, json.loads(b)["role"]), (200, "Admin"))

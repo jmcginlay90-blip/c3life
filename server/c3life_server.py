@@ -44,6 +44,11 @@ API (JSON):
   GET  /api/dante/devices                 (Dante view) every Dante device with its transmit and receive channel names
   POST /api/dante/rename/check {"device","new"} or {"device","kind":"tx"|"rx","number","new"}   (Dante view)
                                            what renaming it would break: every route that uses the old name
+  GET  /api/failover                     (Mixer or Dante view) the backup Mac: which Mac the Wing's Dante inputs come from,
+                                           the two Macs, and the 10-second undo
+  POST /api/failover/do {"do": "backup|main|undo"}   (Mixer control) move every Wing card input from the main Playback Mac
+                                           to the backup one (or back); undo within 10 s puts back exactly what was there
+  POST /api/failover/settings {"main","backup"}   (Dante control) which Macs those are, by their Dante names
   POST /api/dante/rename {..., "id"}       (Dante control) rename it, then route those again with the new name
   GET  /api/access                        the roles and what each may do (Access levels)
   PUT  /api/access  {"roles","password"}  (Admin, password again)
@@ -224,6 +229,7 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
 import access as access_mod
 import dante as dante_mod
+import failover as failover_mod
 import listen as listen_mod
 import nametags as nametags_mod
 import scripture as scripture_mod
@@ -611,7 +617,7 @@ def _ip_ok(x):
         return False
 
 
-def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bible=None, cues=None, reports=None, plan=None, desk=None, tio=None, monitors=None, scanner=None, foyer=None, rta_inputs=None, dante_names=None, lights=None, rta_live=None, midi=None, music=None, helpers=None, health=None, macros=None, recorder=None, pp=None, midi_peers=None, power=None, chat=None, setup=None, md=None, mics=None, buttons=None, network=None, daily=None):
+def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bible=None, cues=None, reports=None, plan=None, desk=None, tio=None, monitors=None, scanner=None, foyer=None, rta_inputs=None, dante_names=None, lights=None, rta_live=None, midi=None, music=None, helpers=None, health=None, macros=None, recorder=None, pp=None, midi_peers=None, power=None, chat=None, setup=None, md=None, mics=None, buttons=None, network=None, daily=None, failover=None):
     nets = cfg["_nets"]
     remote_nets = cfg.get("_remote", [])
     updater = updater_mod.Updater(cfg["data_dir"], cfg, log)
@@ -960,6 +966,12 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                     srcs = [{"dev": d, "ch": nm, "num": n} for d in sorted(chans, key=str.lower) if d.lower() != me for n, nm in sorted((chans[d].get("tx") or {}).items())]
                 self.send_json(200, {"ok": True, "sources": srcs, "dante": bool(dante)})
                 return
+            if path == "/api/failover":
+                s = self.level("Mixer", "Dante")
+                if s and failover:
+                    self.send_json(200, dict(failover.view(), ok=True, can={"switch": access.level(s["role"], "Mixer") >= 2,
+                                                                        "choose": access.level(s["role"], "Dante") >= 2}))
+                return
             if path == "/api/dante/devices":
                 if self.level("Dante"):
                     self.send_json(200, {"ok": True, "devices": dante_names_mod.devices(dante, cfg)})
@@ -1237,6 +1249,8 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 lv = lambda a: access.level(s["role"], a)
                 out = {"ok": True, "can": {"show": lv("Show") >= 2, "mixer": lv("Mixer") >= 2, "foyer": lv("Foyer") >= 2, "lights": lv("Lights") >= 2,
                                            "recording": lv("Recording") >= 2}}
+                if failover and lv("Mixer") >= 1:
+                    out["backup"] = failover.view()
                 if lv("Show") >= 1 or lv("Running order") >= 1:
                     st = pp.status()
                     out["pp"] = {k: st[k] for k in ("presentation", "index", "count", "current", "next", "error", "connected")}
@@ -1679,6 +1693,27 @@ def make_handler(cfg, store, sessions, listen, access, dante=None, tags=None, bi
                 m, err = chat.send(s["name"], s["role"], body.get("text") if isinstance(body, dict) else "", body.get("ch", 0) if isinstance(body, dict) else 0,
                                    body.get("stage") if isinstance(body, dict) else False)
                 self.send_json(200 if m else 400, {"ok": bool(m), "message": m, **({"error": err} if err else {})})
+                return
+            if path in ("/api/failover/do", "/api/failover/settings"):
+                body = self.read_json()
+                body = body if isinstance(body, dict) else {}
+                s = self.level("Mixer" if path.endswith("/do") else "Dante", need=2)
+                if not s:
+                    return
+                if not failover:
+                    self.send_json(404, {"ok": False, "error": "Not here"})
+                    return
+                if path.endswith("/settings"):
+                    err = failover.save(body.get("main") if isinstance(body.get("main"), str) else "",
+                                        body.get("backup") if isinstance(body.get("backup"), str) else "", s["name"])
+                elif body.get("do") == "undo":
+                    err = failover.undo(s["name"])
+                elif body.get("do") in ("backup", "main"):
+                    err = failover.switch(body["do"], s["name"])
+                else:
+                    self.send_json(400, {"ok": False, "error": "Bad request"})
+                    return
+                self.send_json(200 if not err else 409, dict(failover.view(), ok=not err, **({"error": err} if err else {})))
                 return
             if path == "/api/home/do":
                 body = self.read_json() or {}
@@ -2909,6 +2944,7 @@ def serve(cfg):
     macros = macros_mod.Macros(cfg["data_dir"], cfg, log, desk=desk, music=music, foyer=foyer, lights=lights, midi=midi)
     macros.left_out = health.left_out
     recorder = recorder_mod.Recorder(cfg["data_dir"], cfg, log, engine, desk=desk, dante=dante)
+    failover = failover_mod.Failover(cfg["data_dir"], cfg, log, dante, desk=desk)
 
     def patch_read():
         routes, chans, me, wing = recorder._dante_now()
@@ -2991,12 +3027,13 @@ def serve(cfg):
         gone = lambda d, name: [name] if d and d.status()["status"] == "no answer" else []
         threading.Thread(target=scanner.watch, args=([lambda: gone(desk, desk.NAME), lambda: gone(tio, "the Tio"), health.check],), daemon=True).start()
     httpd = ThreadingHTTPServer((cfg["bind"], int(cfg["port"])), make_handler(cfg, store, sessions, listen, access, dante, tags, bible, cues, reports, plan, desk, tio, monitors, scanner, foyer, rta_inputs, dante_names, lights, rta_live, midi, music, helpers, health, macros, recorder, pp,
-                                                                              lambda: [p for p in midi.peers.values() if p.get("data") and time.time() - p["seen"] < 60], power, chat, setup, md, mics, buttons, network, daily))
+                                                                              lambda: [p for p in midi.peers.values() if p.get("data") and time.time() - p["seen"] < 60], power, chat, setup, md, mics, buttons, network, daily, failover))
     httpd.daemon_threads = True
     close = httpd.server_close
     httpd.server_close = lambda: (scanner.stop.set(), follow_stop.set(), md.stop_ev.set(), daily.stop_ev.set(), mics.stop_ev.set(), lights.close(), rta_live.stop(), midi.close(), recorder.close(), engine.stop(), close())
     httpd.store, httpd.sessions, httpd.listen, httpd.access, httpd.tags, httpd.bible, httpd.reports, httpd.plan, httpd.desk, httpd.tio, httpd.monitors, httpd.scanner, httpd.foyer, httpd.rta_inputs, httpd.lights, httpd.rta_live, httpd.midi, httpd.music, httpd.helpers, httpd.health, httpd.macros = store, sessions, listen, access, tags, bible, reports, plan, desk, tio, monitors, scanner, foyer, rta_inputs, lights, rta_live, midi, music, helpers, health, macros
     httpd.md, httpd.setup, httpd.mics, httpd.buttons, httpd.network, httpd.daily = md, setup, mics, buttons, network, daily
+    httpd.failover = failover
     httpd.wing = desk  # the tests, and older code, call it this
     httpd.engine, httpd.recorder, httpd.pp, httpd.power = engine, recorder, pp, power
     return httpd

@@ -238,6 +238,24 @@ You can run any script again safely. `Setup-C3LifeServer.ps1` only changes what 
 .\Uninstall-C3Life.ps1 -RemoveData           # also delete logs and config
 ```
 
+## The backup Playback Mac
+
+If the Multitracks MacBook fails, the **Backup Mac** button on Home (a quick button; add it with Edit Home if it isn't
+there) moves every Wing Dante input that comes from the main Mac to the backup Mac, in one press. Each one goes to the
+backup Mac's channel with the same name, or the same number if the names differ. Nothing on the Wing itself changes,
+only where Dante sends those card inputs from, so the Mon- copies follow too. Recording and the Tios aren't touched.
+
+- **Choosing the two Macs:** Mixer › Dante › Backup Mac for Playback (Dante control, so an Admin). They're kept in
+  `data\failover.json`.
+- **Undo:** for 10 seconds after a switch the button says Undo, which puts back exactly the routes there were. After
+  that it says On backup Mac; pressing it switches back to the main Mac (it asks first, with another 10-second undo).
+- **Who:** anyone with Mixer control (FOH sound, Admin). The Wing must be in Control (an Admin switches it).
+- **The Macs:** both run Playback with the same song loaded, and Dante Virtual Soundcard with the same channel layout.
+  Nothing new is installed on either Mac. If one route doesn't take, the rest still switch and the button says how many
+  didn't.
+- **Untested:** this hasn't been tried on the church's Dante network yet. Each route is one `netaudio` call, so 20 or so
+  channels may take several seconds; the button shows how far it's got.
+
 ## Changing the sound desk
 
 C3 Life talks to the sound desk only through a **desk driver** (`server\desk.py`). The Behringer Wing is the first driver (`server\wing.py`).

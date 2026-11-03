@@ -545,7 +545,7 @@ class Component extends DCLogic {
     this.hmApi('/api/home').then(({ code, j }) => {
       this.hmBusy = false;
       if (code === 404) { this.hmDemo = true; clearInterval(this.hmT); return; }
-      if (code === 200 && j.ok) { if (j.app_name) { try { localStorage.setItem('booth.appname', j.app_name); } catch (e) {} } this.setState({ hm: j }); }
+      if (code === 200 && j.ok) { if (j.app_name) { try { localStorage.setItem('booth.appname', j.app_name); } catch (e) {} } this.setState({ hm: j, ...this.bkUntil(j.backup) }); }
     }).catch(() => { this.hmBusy = false; });
     if (this.state.hm && this.state.hm.pp && (this.hmN = (this.hmN || 0) + 1) % 3 === 1)
       this.hmApi('/api/pp/timers').then(({ code, j }) => { if (code === 200) this.setState({ hmTimers: j.timers || [] }); }).catch(() => {});
@@ -554,6 +554,30 @@ class Component extends DCLogic {
   hmDo(path, body, done) {
     return this.hmApi(path, 'POST', body).then(({ j }) => { this.hmSay((j && j.error) || done || '', !!(j && j.error)); this.hmLoad(); })
       .catch(() => this.hmSay('The C3 Life server didn’t answer.', true));
+  }
+  // The backup Mac: one press moves the Wing's Dante inputs to the backup Playback Mac; 10 seconds to undo.
+  bkUntil(b) { return b ? { hmBkUntil: b.undo_left > 0 ? Date.now() + b.undo_left * 1000 : 0 } : {}; }
+  bkDo(what, done) {
+    return this.hmApi('/api/failover/do', 'POST', { do: what }).then(({ j }) => {
+      const hm = this.state.hm || {};
+      if (j && j.main !== undefined) this.setState({ hm: { ...hm, backup: j }, ...this.bkUntil(j) });
+      this.hmSay((j && j.error) || done, !!(j && j.error));
+    }).catch(() => this.hmSay('The C3 Life server didn’t answer.', true));
+  }
+  bkQuick(B, can) {
+    const name = 'Backup Mac';
+    if (!B) return { name, label: 'Switch to backup Mac', sub: 'Wing Dante inputs', off: true, run: () => {} };
+    const left = Math.max(0, Math.ceil(((this.state.hmBkUntil || 0) - Date.now()) / 1000));
+    const L = B.last || {}, off = !can.mixer;
+    if (!B.ready) return { name, label: 'Switch to backup Mac', sub: 'Choose the Macs on Mixer › Dante', off: true, run: () => {} };
+    if (B.busy) return { name, label: 'Switching… Undo', sub: L.of ? L.done + ' of ' + L.of + ' inputs' : 'Reading Dante', hot: true, off, run: () => this.bkDo('undo', 'Undone: the Wing hears ' + B.main + ' again') };
+    if (left > 0) return { name, label: 'Undo (' + left + ' s)', sub: 'Now on ' + (L.to === 'main' ? B.main : B.backup) + (L.failed && L.failed.length ? ' · ' + L.failed.length + ' didn’t switch' : ''), hot: true, off,
+      run: () => this.bkDo('undo', 'Undone: the Wing hears ' + (L.to === 'main' ? B.backup : B.main) + ' again') };
+    if (L.error && !L.undone && !L.done) return { name, label: 'Switch to backup Mac', sub: L.error, off, run: () => this.bkDo('backup', 'Switching to ' + B.backup + '…') };
+    if (B.on === 'backup') return { name, label: 'On backup Mac', sub: 'Tap to go back to ' + B.main, hot: true, off,
+      run: () => this.setState({ ask: { title: 'Go back to ' + B.main + '?', text: 'Every Wing Dante input from ' + B.backup + ' moves back to ' + B.main + '. Make sure it’s playing the same song. You can undo it for 10 seconds.', btn: 'Yes, go back',
+        act: () => this.bkDo('main', 'Switching back to ' + B.main + '…') } }) };
+    return { name, label: 'Switch to backup Mac', sub: B.main + ' → ' + B.backup, off, run: () => this.bkDo('backup', 'Switching to ' + B.backup + '… Undo for 10 s') };
   }
   hmVals(qDefs, timersDemo) {
     const s = this.state, H = s.hm, p = H.pp || {}, can = H.can || {};
@@ -576,7 +600,8 @@ class Component extends DCLogic {
       foyer: { name: 'Foyer source', label: fy ? fy.name + ': ' + (fyLive ? fy.b : fy.a) : 'Foyer', sub: 'Tap to switch', off: !can.foyer || !fy,
         run: () => this.setState({ ask: { title: 'Switch the ' + fy.name + ' to ' + (fyLive ? fy.a : fy.b) + '?', text: 'The speakers change straight away.', btn: 'Switch', act: () => this.hmDo('/api/foyer/do', { do: 'source', to: fyLive ? 'a' : 'b' }, fy.name + ' switched') } }) },
       mdtest: { name: 'MD talk test', label: 'MD talk test', sub: 'Every screen goes green for 5 s', off: !can.mixer,
-        run: () => this.hmDo('/api/md/test', {}, 'MD talk test: every screen is green for 5 seconds') }
+        run: () => this.hmDo('/api/md/test', {}, 'MD talk test: every screen is green for 5 seconds') },
+      backup: this.bkQuick(H.backup, can)
     };
     const devices = (H.devices || []).map((d) => {
       const k = d.ok ? 'ok' : (d.info && !d.alert ? 'off' : 'lost');  // alert: a message in orange (the computer nearly full)
@@ -654,8 +679,8 @@ class Component extends DCLogic {
   // Each user has their own Home layout, starting from a default for their role.
   homeDefault(role) {
     const d = {
-      'Admin': { sections: ['now', 'quick', 'timers', 'bible', 'macros', 'devices', 'settings'], quick: ['next', 'play', 'band', 'mark'] },
-      'FOH sound': { sections: ['now', 'quick', 'macros', 'mdlast', 'timers', 'devices', 'settings'], quick: ['band', 'mark', 'play', 'next'] },
+      'Admin': { sections: ['now', 'quick', 'timers', 'bible', 'macros', 'devices', 'settings'], quick: ['next', 'play', 'band', 'mark', 'backup'] },
+      'FOH sound': { sections: ['now', 'quick', 'macros', 'mdlast', 'timers', 'devices', 'settings'], quick: ['band', 'mark', 'play', 'next', 'backup'] },
       'ProPresenter': { sections: ['now', 'bible', 'timers', 'quick', 'macros', 'settings'], quick: ['next', 'msgplus', 'mark'] },
       'Lighting': { sections: ['now', 'quick', 'macros', 'settings'], quick: ['lights', 'next', 'mark'] },
       'Viewer': { sections: ['now', 'mdlast', 'devices', 'settings'], quick: [] }
@@ -1026,7 +1051,13 @@ class Component extends DCLogic {
       msgplus: { name: 'Message +1 min', label: 'Message +1 min', sub: 'Countdown ' + this.tmFmt(this.tmNow(msg)), run: () => this.tmChange('msg', (t) => ({ ...t, left: t.left + 60 }), (t) => 'Message countdown +1 min \u2192 ' + this.tmFmt(t.left)) },
       lights: { name: 'Lights Go', label: 'Lights Go', sub: 'Lightkey · next cue ' + (s.lightCue + 1), run: () => this.setState({ lightCue: s.lightCue + 1 }) },
       foyer: { name: 'Foyer source', label: s.foyerLive ? 'Foyer: Live' : 'Foyer: Spotify', sub: 'Tap to switch', run: () => this.setState({ foyerLive: !s.foyerLive }) },
-      mdtest: { name: 'MD talk test', label: 'MD talk test', sub: s.mdTest || 'Every screen goes green', run: () => this.setState({ mdTest: 'Test sent ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }) }
+      mdtest: { name: 'MD talk test', label: 'MD talk test', sub: s.mdTest || 'Every screen goes green', run: () => this.setState({ mdTest: 'Test sent ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }) },
+      backup: (() => {
+        const left = Math.max(0, Math.ceil(((s.bkDemoUntil || 0) - Date.now()) / 1000));
+        if (left > 0) return { name: 'Backup Mac', label: 'Undo (' + left + ' s)', sub: 'Now on the backup Mac', hot: true, run: () => this.setState({ bkDemoOn: !s.bkDemoOn, bkDemoUntil: 0 }) };
+        return s.bkDemoOn ? { name: 'Backup Mac', label: 'On backup Mac', sub: 'Tap to go back to the MacBook Pro', hot: true, run: () => this.setState({ bkDemoOn: false, bkDemoUntil: Date.now() + 10000 }) }
+          : { name: 'Backup Mac', label: 'Switch to backup Mac', sub: 'MacBook Pro → backup Mac', run: () => this.setState({ bkDemoOn: true, bkDemoUntil: Date.now() + 10000 }) };
+      })()
     };
     const HV = s.hm ? this.hmVals(qDefs) : null;
     if (HV) Object.keys(HV.q).forEach((k) => { qDefs[k] = HV.q[k]; });
